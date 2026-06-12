@@ -3,14 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { PortfolioCardV2 } from "@/components/audric/cards/PortfolioCardV2";
 import { ProfilePublicCard } from "@/components/profile/profile-public-card";
 import { isReserved } from "@/lib/identity/reserved-usernames";
 import { validateAudricLabel } from "@/lib/identity/validate-label";
-import {
-  fetchProfilePortfolio,
-  type ProfilePortfolio,
-} from "@/lib/profile-portfolio";
 import { getSuiRpcUrl } from "@/lib/sui-rpc";
 import { resolveSuinsCached } from "@/lib/suins-cache";
 
@@ -25,15 +20,14 @@ import { resolveSuinsCached } from "@/lib/suins-cache";
  *   - 404 on invalid / reserved / unresolved labels.
  *   - Profile card with Audric mark + 🪪 + display handle + QR + send +
  *     copy-address.
- *   - Public portfolio panel via cross-app fetch (Option F lock —
- *     server-side `x-internal-key` call to apps/web's `/api/portfolio`).
- *     Hidden for empty wallets (netWorth < $0.01).
  *   - Store empty-state ("alice hasn't set up their store yet").
  *   - Per-username OG card via the sibling `opengraph-image.tsx`.
  *
- * Privacy note: the portfolio panel surfaces data that is ALREADY public
- * on Sui (every Sui address is queryable via SuiVision / Sui RPC). Showing
- * it here makes existing public data more discoverable, not new info.
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2e / S.387d — 2026-06-10] The public
+ * portfolio panel (`PortfolioCardV2` + `lib/profile-portfolio.ts`) was
+ * stripped: a public net-worth panel on a pay page is off-thesis and
+ * privacy-noisy. The page is now a clean "pay this handle" surface;
+ * Audric Store extends it later.
  *
  * Theming: this page follows the visitor's OS theme. Profile pages are
  * recipient-facing — visitors may not be Audric users but they did set
@@ -48,9 +42,6 @@ import { resolveSuinsCached } from "@/lib/suins-cache";
  */
 
 const AUDRIC_PARENT_NAME = "audric.sui";
-const DUST_USD = 0.5;
-const STABLECOINS = new Set(["USDC", "USDsui", "USDT", "USDe", "AUSD"]);
-const MAX_ALLOCATIONS = 10;
 
 interface UsernamePageProps {
   params: Promise<{ username: string }>;
@@ -99,125 +90,6 @@ async function resolveHandle(
     console.warn(`[/${rawUsername}] SuiNS lookup failed: ${detail}`);
     return null;
   }
-}
-
-interface PortfolioCardData {
-  address?: string;
-  allocations: {
-    symbol: string;
-    amount: number;
-    usdValue: number;
-    percentage: number;
-  }[];
-  dailyEarning?: number;
-  debtValue: number;
-  defiSource?: ProfilePortfolio["defiSource"];
-  defiValue?: number;
-  healthFactor: number | null;
-  insights: { type: string; message: string }[];
-  isSelfQuery?: boolean;
-  savingsApy?: number;
-  savingsValue: number;
-  stablePercentage: number;
-  suinsName?: string | null;
-  totalValue: number;
-  walletValue: number;
-}
-
-function buildPortfolioCardData(
-  portfolio: ProfilePortfolio,
-  handle: string
-): PortfolioCardData | null {
-  if (portfolio.netWorthUsd < 0.01 && portfolio.wallet.length === 0) {
-    return null;
-  }
-
-  const allocations: PortfolioCardData["allocations"] = [];
-  let walletValue = 0;
-  for (const coin of portfolio.wallet) {
-    const amount = Number(coin.balance) / 10 ** coin.decimals;
-    if (!Number.isFinite(amount) || amount <= 0) {
-      continue;
-    }
-    let usdValue: number;
-    if (coin.usdValue !== undefined) {
-      usdValue = coin.usdValue;
-    } else if (coin.price === undefined) {
-      usdValue = 0;
-    } else {
-      usdValue = amount * coin.price;
-    }
-    walletValue += usdValue;
-    if (usdValue >= DUST_USD) {
-      allocations.push({
-        symbol: coin.symbol,
-        amount,
-        usdValue,
-        percentage: 0,
-      });
-    }
-  }
-
-  if (portfolio.defiValueUsd >= DUST_USD) {
-    allocations.push({
-      symbol: "DeFi (aggregate)",
-      amount: 0,
-      usdValue: portfolio.defiValueUsd,
-      percentage: 0,
-    });
-  }
-
-  const totalValue =
-    walletValue + portfolio.positions.savings + portfolio.defiValueUsd;
-  for (const a of allocations) {
-    a.percentage = totalValue > 0 ? (a.usdValue / totalValue) * 100 : 0;
-  }
-  allocations.sort((a, b) => b.usdValue - a.usdValue);
-
-  const stableValue =
-    allocations
-      .filter((a) => STABLECOINS.has(a.symbol))
-      .reduce((s, a) => s + a.usdValue, 0) + portfolio.positions.savings;
-  const stablePercentage =
-    totalValue > 0 ? (stableValue / totalValue) * 100 : 0;
-
-  const savingsApy =
-    portfolio.positions.savingsRate > 0
-      ? portfolio.positions.savingsRate
-      : undefined;
-  const dailyEarning =
-    savingsApy && portfolio.positions.savings > 0
-      ? (portfolio.positions.savings * savingsApy) / 365
-      : undefined;
-
-  return {
-    totalValue: portfolio.netWorthUsd,
-    walletValue,
-    savingsValue: portfolio.positions.savings,
-    defiValue: portfolio.defiValueUsd > 0 ? portfolio.defiValueUsd : undefined,
-    defiSource: portfolio.defiValueUsd > 0 ? portfolio.defiSource : undefined,
-    debtValue: portfolio.positions.borrows,
-    healthFactor: portfolio.positions.healthFactor,
-    allocations: allocations.slice(0, MAX_ALLOCATIONS),
-    stablePercentage,
-    insights: [],
-    savingsApy,
-    dailyEarning,
-    address: portfolio.address,
-    isSelfQuery: false,
-    suinsName: handle,
-  };
-}
-
-async function fetchPortfolioCard(
-  address: string,
-  handle: string
-): Promise<PortfolioCardData | null> {
-  const portfolio = await fetchProfilePortfolio(address);
-  if (!portfolio) {
-    return null;
-  }
-  return buildPortfolioCardData(portfolio, handle);
 }
 
 export async function generateMetadata({
@@ -286,8 +158,7 @@ async function UsernameContent({ params }: UsernamePageProps) {
     notFound();
   }
 
-  const { label, handle, displayHandle, address } = resolved;
-  const portfolioCardData = await fetchPortfolioCard(address, handle);
+  const { label, displayHandle, address } = resolved;
 
   return (
     <main className="flex min-h-screen flex-col items-center bg-background px-4 py-12">
@@ -297,12 +168,6 @@ async function UsernameContent({ params }: UsernamePageProps) {
           displayHandle={displayHandle}
           label={label}
         />
-
-        {portfolioCardData ? (
-          <div className="mt-4">
-            <PortfolioCardV2 data={portfolioCardData} />
-          </div>
-        ) : null}
 
         <div className="mt-6 text-center">
           <p className="text-[11px] text-muted-foreground">

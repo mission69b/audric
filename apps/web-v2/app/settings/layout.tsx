@@ -24,16 +24,17 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
-type Section = "passport" | "safety" | "services" | "memory";
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] The Safety section was
+// removed: its per-operation USD-threshold table covered DeFi operations
+// that no longer exist, and it was already inert (every write taps via
+// `need-approval.ts` — no server-signing agent). The tap-free Services
+// allowance lives in Settings → Services (the daily cap IS the control).
+type Section = "passport" | "services" | "memory";
 
 const SECTION_META: Record<Section, { title: string; sub: string }> = {
   passport: {
     title: "Passport",
     sub: "Your identity, wallet, and session",
-  },
-  safety: {
-    title: "Safety",
-    sub: "Spending limits and transaction guards",
   },
   services: {
     title: "Services",
@@ -47,7 +48,6 @@ const SECTION_META: Record<Section, { title: string; sub: string }> = {
 
 const SECTION_HREFS: Array<{ id: Section; href: string }> = [
   { id: "passport", href: "/settings/passport" },
-  { id: "safety", href: "/settings/safety" },
   { id: "services", href: "/settings/services" },
   { id: "memory", href: "/settings/memory" },
 ];

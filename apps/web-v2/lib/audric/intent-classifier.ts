@@ -6,12 +6,18 @@
  * ## What this does
  *
  * Given the latest USER text message in a turn, classify the user's
- * intent against a fixed set of finance categories (`save`, `borrow`,
- * `send`, `swap`, `rewards`, `history`, `portfolio`, `paymentLinks`,
- * `rates`, plus a `general` fallback) and return the narrowed subset of
- * engine tools the LLM needs for that intent. The result is fed into
- * AI SDK's `prepareStep.activeTools` so the model only sees ~5-8 tool
- * definitions per step instead of the full 26 the engine registers.
+ * intent against a small set of categories (`send`, `services`, `exit`,
+ * plus a `general` fallback) and return the narrowed subset of engine
+ * tools the LLM needs for that intent. The result is fed into AI SDK's
+ * `prepareStep.activeTools` so the model only sees the tool definitions
+ * it needs per step.
+ *
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2e — 2026-06-10] Intent collapse: the 9
+ * finance intents (`save` / `borrow` / `swap` / `rewards` / `rates` /
+ * `portfolio` / `history` / `paymentLinks` + general) collapsed with
+ * the DeFi removal. `exit` is a TRANSITIONAL intent covering the §2d
+ * 7-day grace window (withdraw / repay / swap-to-USDC) — delete it,
+ * its keywords, and its tool row at the post-window cut.
  *
  * ## Why heuristic v1
  *
@@ -81,18 +87,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export type Intent =
-  | "borrow"
-  | "general"
-  | "history"
-  | "paymentLinks"
-  | "portfolio"
-  | "rates"
-  | "rewards"
-  | "save"
-  | "send"
-  | "services"
-  | "swap";
+export type Intent = "exit" | "general" | "send" | "services";
 
 export interface IntentResult {
   /**
@@ -124,85 +119,28 @@ export interface IntentResult {
 // ---------------------------------------------------------------------------
 
 const INTENT_KEYWORDS: Record<Exclude<Intent, "general">, RegExp[]> = {
-  borrow: [
-    /\bborrow\b/i,
-    /\bloans?\b/i,
-    /\bcredit\b/i,
-    /\bleverage\b/i,
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2d — transitional] Grace-window exit
+  // verbs: unwind NAVI positions + consolidate long-tail tokens to
+  // USDC. Delete this row (and its TOOLS_BY_INTENT entry) at the
+  // post-window cut.
+  exit: [
+    /\bwithdraw\b/i,
+    /\bwithdrawal\b/i,
     /\brepay\b/i,
     /\bpay\s+back\b/i,
     /\bpay\s+off\b/i,
     /\bdebt\b/i,
     /\bowe\b/i,
     /\bowed\b/i,
-    /\bhealth\s+factor\b/i,
-    /\bHF\b/,
-  ],
-  history: [
-    /\bhistory\b/i,
-    /\btransactions?\b/i,
-    /\bactivity\b/i,
-    /\bwhat\s+(did|happened)\b/i,
-    /\bexplain\b/i,
-    /\bspending\b/i,
-    /\bspent\b/i,
-    /\bshow\s+me\s+my\s+(past|recent)\b/i,
-  ],
-  paymentLinks: [
-    /\bpayment\s+links?\b/i,
-    /\binvoices?\b/i,
-    /\bQR\s+code\b/i,
-    /\breceive\b/i,
-    // Matches "request 25 USDC from alice", "request payment", etc.
-    // The lookahead anchors `request` to a finance noun within ~30
-    // chars so "request a refund" or "request help" stay in `general`.
-    /\brequest\b.{0,30}\b(?:USDC|USDsui|payment|money|coin)\b/i,
-    /\bgenerate\s+(?:a\s+)?link\b/i,
-  ],
-  portfolio: [
-    /\bportfolio\b/i,
-    /\bnet\s+worth\b/i,
-    /\bbalances?\b/i,
-    /\bhow\s+much\s+(do\s+i\s+have|am\s+i\s+worth)\b/i,
-    /\bworth\b/i,
-    /\ball\s+my\b/i,
-    /\bholdings?\b/i,
-    /\ballocations?\b/i,
-    /\bwallet\b/i,
-    // [F6 — 2026-05-31] SuiNS name-resolution cues. `portfolio` already
-    // carries `resolve_suins` in TOOLS_BY_INTENT, so routing bare
-    // "resolve alice.sui" / "what's the address for suins.sui" here
-    // hands the model the tool instead of falling to `general` (which
-    // omitted it → the agent hallucinated "I don't have resolve_suins").
-    /\bresolve\b/i,
-    /\bsuins\b/i,
-    /\.sui\b/i,
-    /\bwhat('?s| is)\s+the\s+address\b/i,
-  ],
-  rates: [
-    /\brates?\b/i,
-    /\bAPY\b/,
-    /\bAPR\b/,
-    /\binterest\b/i,
-    /\bbest\s+yields?\b/i,
-    /\bcompare\s+(?:rates|yields|APYs?)\b/i,
-  ],
-  rewards: [/\brewards?\b/i, /\bclaim\b/i, /\bharvest\b/i, /\bcompound\b/i],
-  save: [
-    /\bsave\b/i,
-    /\bsaving\b/i,
     /\bsavings?\b/i,
-    /\bdeposit\b/i,
-    /\bearn\b/i,
-    /\byield\b/i,
-    /\bwithdraw\b/i,
-    /\bwithdrawal\b/i,
-    // Workflow phrases that touch save (rebalance often moves wallet
-    // assets into savings; auto-save is a save-shaped workflow).
-    /\brebalance\b/i,
-    /\bauto[- ]save\b/i,
+    /\bdeposit(?:s|ed)?\b/i,
+    /\bnavi\b/i,
+    /\bswap\b/i,
+    /\bconvert\b/i,
+    /\bconsolidate\b/i,
+    /\bexchange\b/i,
   ],
-  // Send: explicitly excludes "pay back" / "pay off" (those are borrow/repay).
+  // Send: explicitly excludes "pay back" / "pay off" (those are exit/repay).
   // The `pay` keyword is intentionally narrow — only matches when followed
   // by something send-shaped (a recipient indicator or an amount).
   send: [
@@ -212,6 +150,12 @@ const INTENT_KEYWORDS: Record<Exclude<Intent, "general">, RegExp[]> = {
     /\bgive\b/i,
     /\bto\s+0x[a-f0-9]/i,
     /\bto\s+@/,
+    // SuiNS name-resolution cues (resolve_suins lives in `send`'s tool
+    // row — recipients are the consumer use case post-DeFi-removal).
+    /\bresolve\b/i,
+    /\bsuins\b/i,
+    /\.sui\b/i,
+    /\bwhat('?s| is)\s+the\s+address\b/i,
   ],
   // Services: paid third-party APIs callable via MPP (image gen,
   // transcription, TTS/voice, paid search, etc.). The headline Channel A
@@ -232,16 +176,6 @@ const INTENT_KEYWORDS: Record<Exclude<Intent, "general">, RegExp[]> = {
     /\beleven\s*labs\b/i,
     /\bpaid\s+(?:api|service)\b/i,
     /\bthird[- ]party\s+(?:api|service)\b/i,
-  ],
-  swap: [
-    /\bswap\b/i,
-    /\bconvert\b/i,
-    /\btrade\b/i,
-    /\bexchange\b/i,
-    // Workflow phrases that touch swap (rebalance + diversify both
-    // typically involve at least one swap leg).
-    /\brebalance\b/i,
-    /\bdiversify\b/i,
   ],
 };
 
@@ -274,97 +208,46 @@ const INTENT_KEYWORDS: Record<Exclude<Intent, "general">, RegExp[]> = {
 // ---------------------------------------------------------------------------
 
 const TOOLS_BY_INTENT: Record<Intent, readonly string[]> = {
-  borrow: [
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2d — transitional] Grace-window exit
+  // surface. `balance_check` reports NAVI savings/debt alongside wallet
+  // holdings, so it's the orientation read for "what do I still need to
+  // unwind?". Delete this row at the post-window cut.
+  exit: [
     "balance_check",
-    "savings_info",
-    "health_check",
-    "rates_info",
-    "borrow",
+    "withdraw",
     "repay_debt",
+    "swap_quote",
+    "swap_execute",
+    // NAVI MCP token search — resolves long-tail coin types so exotic
+    // holdings can exit to USDC (the swap tools' ASSET_NOT_SUPPORTED
+    // recovery path). Registered at the chat route; filtered out when
+    // the MCP connection is down.
+    "navi_navi_search_tokens",
   ],
-  // [HOTFIX 2026-05-24] General fallback now includes the 6 most common
-  // write tools (save_deposit, withdraw, send_transfer, borrow,
-  // repay_debt, swap_execute) alongside the 6 read tools. Pre-hotfix
-  // the fallback was reads-only, so misclassifications stripped writes
-  // from activeTools and caused the model to hallucinate that tools
-  // didn't exist (production smoke: "I don't have a save_deposit tool").
-  //
-  // Token cost: +~900 tokens of schema on misclassified turns (10-15%
-  // of traffic per the accuracy budget). On HIGH-confidence intent turns
-  // (the 85-90% case) the narrow per-intent subset is still used —
-  // general is the fallback, not the floor.
-  //
-  // The post-write refresh reads (savings_info, health_check) stay
-  // included so the LLM can verify state after any write executes.
-  // Niche writes (claim_rewards, harvest_rewards) deliberately omitted:
-  // they're rewards-intent-only operations the LLM should never pick
-  // without a clear keyword cue.
+  // General fallback includes the surviving writes degrade-open: a
+  // misclassified turn must never strip a tool the model needs (the
+  // pre-collapse production smoke: "I don't have a save_deposit tool").
+  // All writes are confirm-tier (user taps), so exposing them on
+  // ambiguous turns is safe.
   general: [
     // Reads
     "balance_check",
-    "savings_info",
-    "health_check",
     "transaction_history",
-    "portfolio_analysis",
-    "rates_info",
-    // [F6 — 2026-05-31] resolve_suins is degrade-open in the fallback:
-    // a cheap, side-effect-free read so a misclassified name-resolution
-    // turn still hands the model the tool (pre-fix the agent claimed it
-    // didn't exist on bare "resolve X.sui" queries).
     "resolve_suins",
-    // Writes (degrade-open per docstring's conservative-by-construction claim)
-    "save_deposit",
-    "withdraw",
+    // Writes (degrade-open)
     "send_transfer",
-    "borrow",
-    "repay_debt",
-    "swap_execute",
     // [Channel A] MPP Services are the headline capability — keep both
     // the discover (read) + call (pay) tools degrade-open in the fallback
     // so an unanticipated phrasing ("can you make me a logo?") never hits
-    // "I don't have that tool". mpp_call is confirm-tier (user taps), so
-    // exposing it on ambiguous turns is safe.
+    // "I don't have that tool".
     "mpp_services",
     "mpp_call",
-  ],
-  history: [
-    "transaction_history",
-    "explain_tx",
-    "activity_summary",
-    "spending_analytics",
-    "yield_summary",
-  ],
-  paymentLinks: [
-    "balance_check",
-    "list_payment_links",
-    "create_payment_link",
-    "cancel_payment_link",
-  ],
-  portfolio: [
-    "balance_check",
-    "savings_info",
-    "health_check",
-    "portfolio_analysis",
-    "token_prices",
-    "pending_rewards",
-    "resolve_suins",
-  ],
-  rates: ["rates_info", "savings_info", "token_prices", "portfolio_analysis"],
-  rewards: [
-    "balance_check",
-    "savings_info",
-    "pending_rewards",
-    "health_check",
-    "claim_rewards",
-    "harvest_rewards",
-  ],
-  save: [
-    "balance_check",
-    "savings_info",
-    "rates_info",
-    "health_check",
-    "save_deposit",
+    // §2d grace window (cut post-window):
     "withdraw",
+    "repay_debt",
+    "swap_quote",
+    "swap_execute",
+    "navi_navi_search_tokens",
   ],
   send: [
     "balance_check",
@@ -377,20 +260,18 @@ const TOOLS_BY_INTENT: Record<Intent, readonly string[]> = {
   // cached for the whole turn after step 0). balance_check lets the LLM
   // sanity-check funds before paying.
   services: ["balance_check", "mpp_services", "mpp_call"],
-  swap: ["balance_check", "swap_quote", "token_prices", "swap_execute"],
 };
 
 /**
  * Tools always exposed to the model regardless of classified intent.
  *
- *   - `render_canvas` is the universal visualization primitive. Any
- *     turn might end with the LLM wanting to chart a result.
- *
- * Hosts wire additional always-on tools at the call site (e.g., the
- * gateway-managed `perplexity_search` when `useGateway === true`) by
- * passing them through `alwaysInclude` on the prepare-step factory.
+ * Empty since the §2e render-surface collapse (`render_canvas` was the
+ * sole entry; the canvas subsystem is deleted). Hosts wire additional
+ * always-on tools at the call site (e.g., the gateway-managed
+ * `perplexity_search` when `useGateway === true`) by passing them
+ * through `alwaysInclude` on the prepare-step factory.
  */
-export const ALWAYS_ON_TOOLS: readonly string[] = ["render_canvas"];
+export const ALWAYS_ON_TOOLS: readonly string[] = [];
 
 // ---------------------------------------------------------------------------
 // Public API

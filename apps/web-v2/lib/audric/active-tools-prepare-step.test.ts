@@ -2,49 +2,37 @@
  * Unit tests for the active-tools prepareStep factory.
  *
  * [SPEC_AI_SDK_HARDENING P3.1 — 2026-05-24]
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2e — 2026-06-10] Rewritten for the
+ * post-collapse intent set (`send` / `services` / transitional `exit`
+ * / `general`). The 9 finance intents and their tools are gone.
  *
  * Covers: registration filter, alwaysInclude merge, empty-input
  * fallback, step-0-cache semantics, multi-step reuse, undefined return
- * when no tools registered.
+ * when no tools registered, low-confidence conversational carryover.
  */
 
 import type { ModelMessage } from "ai";
 import { describe, expect, it, vi } from "vitest";
 import { buildActiveToolsPrepareStep } from "./active-tools-prepare-step";
 
-// All 26 engine tool names — matches READ_TOOLS + WRITE_TOOLS in
-// `packages/engine/src/tools/index.ts` post-S.277. Tests pass these as
-// the agent's `registeredToolNames` so the filter never drops anything
-// unexpectedly.
+// Audric's registered tool set — engine READ_TOOL_NAMES + WRITE_TOOL_NAMES
+// minus the payment-link trio (deferred to Store; filtered at the chat
+// route). Matches `packages/engine/src/tools/index.ts` post window-start
+// cut. Tests pass these as the agent's `registeredToolNames` so the
+// filter never drops anything unexpectedly.
 const ALL_TOOLS: string[] = [
-  // reads (18)
-  "render_canvas",
+  // reads (5)
   "balance_check",
-  "savings_info",
-  "health_check",
-  "rates_info",
   "transaction_history",
   "swap_quote",
-  "explain_tx",
-  "portfolio_analysis",
-  "token_prices",
-  "list_payment_links",
-  "cancel_payment_link",
-  "create_payment_link",
-  "spending_analytics",
-  "yield_summary",
-  "activity_summary",
   "resolve_suins",
-  "pending_rewards",
-  // writes (8)
-  "save_deposit",
+  "mpp_services",
+  // writes (5)
   "withdraw",
   "send_transfer",
-  "borrow",
   "repay_debt",
-  "claim_rewards",
-  "harvest_rewards",
   "swap_execute",
+  "mpp_call",
 ];
 
 function userMessage(text: string): ModelMessage {
@@ -57,36 +45,37 @@ describe("buildActiveToolsPrepareStep", () => {
     expect(fn).toBeUndefined();
   });
 
-  it("returns 7 tools for 'save 10 USDC' input on step 0", async () => {
+  it("returns the send subset for 'send 5 USDC to @alice' on step 0", async () => {
     const fn = buildActiveToolsPrepareStep({
       registeredToolNames: ALL_TOOLS,
     });
     expect(fn).toBeDefined();
     const result = await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     expect(result?.activeTools).toBeDefined();
-    expect(result?.activeTools).toHaveLength(7);
-    expect(result?.activeTools).toContain("save_deposit");
-    expect(result?.activeTools).toContain("withdraw");
-    expect(result?.activeTools).toContain("render_canvas");
+    expect(result?.activeTools).toHaveLength(4);
+    expect(result?.activeTools).toContain("send_transfer");
+    expect(result?.activeTools).toContain("resolve_suins");
+    expect(result?.activeTools).toContain("balance_check");
+    expect(result?.activeTools).not.toContain("mpp_call");
   });
 
   it("filters out tool names not in registeredToolNames", async () => {
     // Register only a tiny subset — intent's tool list will be filtered.
     const fn = buildActiveToolsPrepareStep({
-      registeredToolNames: ["save_deposit", "render_canvas"],
+      registeredToolNames: ["send_transfer", "resolve_suins"],
     });
     const result = await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     expect(result?.activeTools).toEqual(
-      expect.arrayContaining(["save_deposit", "render_canvas"])
+      expect.arrayContaining(["send_transfer", "resolve_suins"])
     );
     expect(result?.activeTools).not.toContain("balance_check");
-    expect(result?.activeTools).not.toContain("savings_info");
+    expect(result?.activeTools).not.toContain("transaction_history");
   });
 
   it("includes alwaysInclude tools regardless of intent", async () => {
@@ -96,10 +85,10 @@ describe("buildActiveToolsPrepareStep", () => {
     });
     const result = await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     expect(result?.activeTools).toContain("perplexity_search");
-    expect(result?.activeTools).toContain("save_deposit");
+    expect(result?.activeTools).toContain("send_transfer");
   });
 
   it("filters alwaysInclude tools that aren't registered", async () => {
@@ -111,7 +100,7 @@ describe("buildActiveToolsPrepareStep", () => {
     });
     const result = await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     expect(result?.activeTools).not.toContain("perplexity_search");
   });
@@ -127,12 +116,12 @@ describe("buildActiveToolsPrepareStep", () => {
       messages: [{ role: "user", content: "" }],
     });
     expect(result?.activeTools).toBeDefined();
-    // Post-hotfix general fallback: 6 reads + 6 common writes +
-    // render_canvas = 13. Test stays on `toContain` only so future
-    // count changes don't break this case unnecessarily.
+    // The degrade-open general fallback carries the reads + every
+    // surviving write. Test stays on `toContain` only so future count
+    // changes don't break this case unnecessarily.
     expect(result?.activeTools).toContain("balance_check");
-    expect(result?.activeTools).toContain("portfolio_analysis");
-    expect(result?.activeTools).toContain("render_canvas");
+    expect(result?.activeTools).toContain("send_transfer");
+    expect(result?.activeTools).toContain("mpp_call");
   });
 
   it("caches step 0's classification for step 1+", async () => {
@@ -141,15 +130,15 @@ describe("buildActiveToolsPrepareStep", () => {
     });
     const r0 = await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     const r1 = await fn?.({
       stepNumber: 1,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     const r2 = await fn?.({
       stepNumber: 2,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     expect(r0?.activeTools).toEqual(r1?.activeTools);
     expect(r1?.activeTools).toEqual(r2?.activeTools);
@@ -161,17 +150,17 @@ describe("buildActiveToolsPrepareStep", () => {
     });
     const r0 = await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     // Step 1 with totally different messages — intent shouldn't change
     // because we cached step 0's result.
     const r1 = await fn?.({
       stepNumber: 1,
-      messages: [userMessage("borrow 50 USDC")],
+      messages: [userMessage("withdraw my savings")],
     });
     expect(r1?.activeTools).toEqual(r0?.activeTools);
-    expect(r1?.activeTools).toContain("save_deposit");
-    expect(r1?.activeTools).not.toContain("borrow");
+    expect(r1?.activeTools).toContain("send_transfer");
+    expect(r1?.activeTools).not.toContain("withdraw");
   });
 
   it("extracts text from array-shaped user content", async () => {
@@ -183,11 +172,11 @@ describe("buildActiveToolsPrepareStep", () => {
       messages: [
         {
           role: "user",
-          content: [{ type: "text", text: "save 10 USDC" }],
+          content: [{ type: "text", text: "send 5 USDC to @alice" }],
         },
       ],
     });
-    expect(result?.activeTools).toContain("save_deposit");
+    expect(result?.activeTools).toContain("send_transfer");
   });
 
   it("joins multiple text parts in user content", async () => {
@@ -200,16 +189,16 @@ describe("buildActiveToolsPrepareStep", () => {
         {
           role: "user",
           content: [
-            { type: "text", text: "save 10 USDC" },
-            { type: "text", text: "and check my borrow rate" },
+            { type: "text", text: "withdraw my savings" },
+            { type: "text", text: "and send 5 USDC to bob" },
           ],
         },
       ],
     });
-    // Multi-intent: save + borrow + rates (the word "rate" matches rates intent)
-    expect(result?.activeTools).toContain("save_deposit");
-    expect(result?.activeTools).toContain("borrow");
-    expect(result?.activeTools).toContain("rates_info");
+    // Multi-intent: exit + send → union of both tool rows.
+    expect(result?.activeTools).toContain("withdraw");
+    expect(result?.activeTools).toContain("send_transfer");
+    expect(result?.activeTools).toContain("resolve_suins");
   });
 
   it("walks backwards to find the latest user message", async () => {
@@ -221,37 +210,37 @@ describe("buildActiveToolsPrepareStep", () => {
       messages: [
         userMessage("how are you"),
         { role: "assistant", content: "i'm well" },
-        userMessage("borrow 50 USDC"),
+        userMessage("repay my debt"),
         { role: "assistant", content: "ok let me check" },
       ],
     });
-    // Latest user is "borrow 50 USDC", not the older "how are you".
-    expect(result?.activeTools).toContain("borrow");
+    // Latest user is "repay my debt", not the older "how are you".
     expect(result?.activeTools).toContain("repay_debt");
+    expect(result?.activeTools).toContain("withdraw");
   });
 
   it("handles HITL resume turn (tool role messages don't break classification)", async () => {
     // Replicates the actual ModelMessage shape produced by
     // `convertToModelMessages` on a resume turn:
-    //   1. user: "save 10 USDC" (original text prompt)
-    //   2. assistant: [tool-call(save_deposit, ...)]
+    //   1. user: "withdraw 10 USDC" (original text prompt)
+    //   2. assistant: [tool-call(withdraw, ...)]
     //   3. tool:      [tool-result(...)]
     // AI SDK puts tool-results in `role: 'tool'` (not `role: 'user'`),
     // so the extractLatestUserMessage loop walks past it and finds the
-    // ORIGINAL "save 10 USDC" prompt. Result: same intent + same tool
-    // subset as the original turn.
+    // ORIGINAL "withdraw 10 USDC" prompt. Result: same intent + same
+    // tool subset as the original turn.
     const fn = buildActiveToolsPrepareStep({
       registeredToolNames: ALL_TOOLS,
     });
     const messages: ModelMessage[] = [
-      userMessage("save 10 USDC"),
+      userMessage("withdraw 10 USDC"),
       {
         role: "assistant",
         content: [
           {
             type: "tool-call",
             toolCallId: "abc",
-            toolName: "save_deposit",
+            toolName: "withdraw",
             input: { amount: 10 },
           },
         ],
@@ -262,16 +251,16 @@ describe("buildActiveToolsPrepareStep", () => {
           {
             type: "tool-result",
             toolCallId: "abc",
-            toolName: "save_deposit",
+            toolName: "withdraw",
             output: { type: "json", value: { ok: true } },
           },
         ],
       },
     ];
     const result = await fn?.({ stepNumber: 0, messages });
-    expect(result?.activeTools).toContain("save_deposit");
-    expect(result?.activeTools).toContain("savings_info");
     expect(result?.activeTools).toContain("withdraw");
+    expect(result?.activeTools).toContain("balance_check");
+    expect(result?.activeTools).toContain("repay_debt");
   });
 
   // -------------------------------------------------------------------------
@@ -282,47 +271,43 @@ describe("buildActiveToolsPrepareStep", () => {
   // keyword matches), the closure looks back ONE user-message earlier
   // and inherits THAT message's intent if it was high/medium confidence.
   // This handles common follow-up phrasings + typo'd continuations
-  // that don't carry any save/borrow/swap keywords on their own.
+  // that don't carry any send/exit/services keywords on their own.
   // -------------------------------------------------------------------------
 
-  it("carryover: inherits previous turn's save intent on low-confidence follow-up", async () => {
+  it("carryover: inherits previous turn's exit intent on low-confidence follow-up", async () => {
     const fn = buildActiveToolsPrepareStep({
       registeredToolNames: ALL_TOOLS,
     });
-    // Replicates the production smoke: turn 1 was a save question,
-    // turn 2 is a typo'd follow-up ("yeild" defeats /yield/i) with
-    // no other save keywords.
+    // Turn 1 was an exit question, turn 2 is a bare continuation with
+    // no exit keywords of its own.
     const result = await fn?.({
       stepNumber: 0,
       messages: [
-        userMessage("what's the most i can save this week"),
-        { role: "assistant", content: "you can save up to $20.66" },
-        userMessage(
-          "yea lets go with the usdsui option and let me know how much weekly yeild i get from it"
-        ),
+        userMessage("withdraw my navi savings"),
+        { role: "assistant", content: "you have 20.66 USDC deposited" },
+        userMessage("yea lets pull all of it out"),
       ],
     });
-    // Should inherit `save` intent → save_deposit must be active.
-    expect(result?.activeTools).toContain("save_deposit");
+    // Should inherit `exit` intent → withdraw must be active.
     expect(result?.activeTools).toContain("withdraw");
-    expect(result?.activeTools).toContain("savings_info");
+    expect(result?.activeTools).toContain("repay_debt");
+    expect(result?.activeTools).toContain("balance_check");
   });
 
-  it("carryover: inherits previous turn's borrow intent on bare confirmation", async () => {
+  it("carryover: inherits previous turn's services intent on bare confirmation", async () => {
     const fn = buildActiveToolsPrepareStep({
       registeredToolNames: ALL_TOOLS,
     });
     const result = await fn?.({
       stepNumber: 0,
       messages: [
-        userMessage("can i borrow 100 against my collateral"),
-        { role: "assistant", content: "yes at 4.2% APY" },
+        userMessage("generate an image of a sunset over sui"),
+        { role: "assistant", content: "that'll cost $0.04 via fal.ai" },
         userMessage("yes do it"),
       ],
     });
-    expect(result?.activeTools).toContain("borrow");
-    expect(result?.activeTools).toContain("repay_debt");
-    expect(result?.activeTools).toContain("health_check");
+    expect(result?.activeTools).toContain("mpp_services");
+    expect(result?.activeTools).toContain("mpp_call");
   });
 
   it("carryover: does NOT inherit when previous turn was also low-confidence", async () => {
@@ -330,7 +315,7 @@ describe("buildActiveToolsPrepareStep", () => {
       registeredToolNames: ALL_TOOLS,
     });
     // Both turns are low-confidence generic phrasings. Carryover should
-    // NOT loop — fall through to the (hardened) general fallback.
+    // NOT loop — fall through to the (degrade-open) general fallback.
     const result = await fn?.({
       stepNumber: 0,
       messages: [
@@ -339,31 +324,31 @@ describe("buildActiveToolsPrepareStep", () => {
         userMessage("ok thanks"),
       ],
     });
-    // Hardened `general` fallback (post-hotfix) includes common
-    // writes so the LLM never hallucinates a missing write tool.
-    expect(result?.activeTools).toContain("save_deposit");
+    // Degrade-open `general` fallback includes the surviving writes so
+    // the LLM never hallucinates a missing write tool.
     expect(result?.activeTools).toContain("send_transfer");
+    expect(result?.activeTools).toContain("mpp_call");
   });
 
   it("carryover: does NOT trigger when current turn ITSELF is high-confidence", async () => {
     const fn = buildActiveToolsPrepareStep({
       registeredToolNames: ALL_TOOLS,
     });
-    // Current turn matches `borrow` → no carryover, just normal
-    // classification. The previous turn's `save` intent should NOT
+    // Current turn matches `send` → no carryover, just normal
+    // classification. The previous turn's `exit` intent should NOT
     // pollute this turn's tool set.
     const result = await fn?.({
       stepNumber: 0,
       messages: [
-        userMessage("save 10 USDC"),
+        userMessage("withdraw my savings"),
         { role: "assistant", content: "ok" },
-        userMessage("how much can i borrow"),
+        userMessage("send 5 USDC to @bob"),
       ],
     });
-    expect(result?.activeTools).toContain("borrow");
-    expect(result?.activeTools).toContain("repay_debt");
-    // The borrow intent's tool set doesn't include `withdraw`, so if
-    // carryover had over-inherited from `save` we'd see it.
+    expect(result?.activeTools).toContain("send_transfer");
+    expect(result?.activeTools).toContain("resolve_suins");
+    // The send intent's tool set doesn't include `withdraw`, so if
+    // carryover had over-inherited from `exit` we'd see it.
     expect(result?.activeTools).not.toContain("withdraw");
   });
 
@@ -377,8 +362,8 @@ describe("buildActiveToolsPrepareStep", () => {
       stepNumber: 0,
       messages: [userMessage("hi audric")],
     });
-    // Hardened general fallback. No hallucinated tool absence.
-    expect(result?.activeTools).toContain("save_deposit");
+    // Degrade-open general fallback. No hallucinated tool absence.
+    expect(result?.activeTools).toContain("send_transfer");
     expect(result?.activeTools).toContain("balance_check");
   });
 
@@ -392,7 +377,7 @@ describe("buildActiveToolsPrepareStep", () => {
     await fn?.({
       stepNumber: 0,
       messages: [
-        userMessage("save 10 USDC"),
+        userMessage("send 5 USDC to @alice"),
         { role: "assistant", content: "ok" },
         userMessage("yea go ahead"),
       ],
@@ -401,7 +386,7 @@ describe("buildActiveToolsPrepareStep", () => {
       expect.stringContaining("outcome=carried-over")
     );
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("intents=save")
+      expect.stringContaining("intents=send")
     );
     logSpy.mockRestore();
   });
@@ -415,13 +400,13 @@ describe("buildActiveToolsPrepareStep", () => {
     });
     await fn?.({
       stepNumber: 0,
-      messages: [userMessage("save 10 USDC")],
+      messages: [userMessage("send 5 USDC to @alice")],
     });
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining("[web-v2 active-tools-prepare-step] step=0")
     );
     expect(logSpy).toHaveBeenCalledWith(
-      expect.stringContaining("intents=save")
+      expect.stringContaining("intents=send")
     );
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining("confidence=high")

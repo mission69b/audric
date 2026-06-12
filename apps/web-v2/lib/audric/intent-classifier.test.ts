@@ -2,6 +2,10 @@
  * Unit tests for the heuristic intent classifier + tool selector.
  *
  * [SPEC_AI_SDK_HARDENING P3.1 — 2026-05-24]
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2e — 2026-06-10] Intent collapse: the 9
+ * finance intents fell to send · services · general + the transitional
+ * `exit` intent covering the §2d 7-day grace window. Delete the `exit`
+ * blocks (and the intent) at the post-window cut.
  *
  * Strategy: one test per intent for the common phrasings + edge cases
  * (empty input, multi-intent, no-match fallback). The point is to
@@ -17,48 +21,6 @@ import {
 } from "./intent-classifier";
 
 describe("classifyIntent — single-intent matches", () => {
-  it("classifies 'save 10 USDC' as save", () => {
-    expect(classifyIntent("save 10 USDC")).toEqual({
-      intents: ["save"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'deposit USDC into savings' as save", () => {
-    expect(classifyIntent("deposit USDC into savings")).toEqual({
-      intents: ["save"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'withdraw my USDC' as save", () => {
-    expect(classifyIntent("withdraw my USDC")).toEqual({
-      intents: ["save"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'borrow 50 USDC' as borrow", () => {
-    expect(classifyIntent("borrow 50 USDC")).toEqual({
-      intents: ["borrow"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'pay back my loan' as borrow (NOT send)", () => {
-    expect(classifyIntent("pay back my loan")).toEqual({
-      intents: ["borrow"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'what is my health factor' as borrow", () => {
-    expect(classifyIntent("what is my health factor")).toEqual({
-      intents: ["borrow"],
-      confidence: "high",
-    });
-  });
-
   it("classifies 'send 10 USDC to alice' as send", () => {
     expect(classifyIntent("send 10 USDC to alice")).toEqual({
       intents: ["send"],
@@ -73,128 +35,46 @@ describe("classifyIntent — single-intent matches", () => {
     });
   });
 
-  it("classifies 'pay alice 10 USDC' as send (NOT borrow)", () => {
+  it("classifies 'pay alice 10 USDC' as send (NOT exit)", () => {
     expect(classifyIntent("pay alice 10 USDC")).toEqual({
       intents: ["send"],
       confidence: "high",
     });
   });
 
-  it("classifies 'swap SUI for USDC' as swap", () => {
+  it("classifies 'withdraw my USDC' as exit (grace window)", () => {
+    expect(classifyIntent("withdraw my USDC")).toEqual({
+      intents: ["exit"],
+      confidence: "high",
+    });
+  });
+
+  it("classifies 'pay back my loan' as exit (NOT send)", () => {
+    expect(classifyIntent("pay back my loan")).toEqual({
+      intents: ["exit"],
+      confidence: "high",
+    });
+  });
+
+  it("classifies 'swap SUI for USDC' as exit", () => {
     expect(classifyIntent("swap SUI for USDC")).toEqual({
-      intents: ["swap"],
+      intents: ["exit"],
       confidence: "high",
     });
   });
 
-  it("classifies 'convert my SUI to USDC' as swap", () => {
+  it("classifies 'convert my SUI to USDC' as exit", () => {
     expect(classifyIntent("convert my SUI to USDC")).toEqual({
-      intents: ["swap"],
+      intents: ["exit"],
       confidence: "high",
     });
   });
 
-  it("classifies 'claim my rewards' as rewards", () => {
-    expect(classifyIntent("claim my rewards")).toEqual({
-      intents: ["rewards"],
+  it("classifies 'consolidate everything to USDC' as exit", () => {
+    expect(classifyIntent("consolidate everything to USDC")).toEqual({
+      intents: ["exit"],
       confidence: "high",
     });
-  });
-
-  it("classifies 'harvest and compound' as rewards", () => {
-    expect(classifyIntent("harvest and compound")).toEqual({
-      intents: ["rewards"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'show my transaction history' as history", () => {
-    expect(classifyIntent("show my transaction history")).toEqual({
-      intents: ["history"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'what did I spend this week' as history", () => {
-    expect(classifyIntent("what did I spend this week")).toEqual({
-      intents: ["history"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'show my portfolio' as portfolio", () => {
-    expect(classifyIntent("show my portfolio")).toEqual({
-      intents: ["portfolio"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'what is my net worth' as portfolio", () => {
-    expect(classifyIntent("what is my net worth")).toEqual({
-      intents: ["portfolio"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'create a payment link for 50 USDC' as paymentLinks", () => {
-    expect(classifyIntent("create a payment link for 50 USDC")).toEqual({
-      intents: ["paymentLinks"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'request 25 USDC from alice' as paymentLinks", () => {
-    expect(classifyIntent("request 25 USDC from alice")).toEqual({
-      intents: ["paymentLinks"],
-      confidence: "high",
-    });
-  });
-
-  it("classifies 'what is the current APY' as rates", () => {
-    expect(classifyIntent("what is the current APY")).toEqual({
-      intents: ["rates"],
-      confidence: "high",
-    });
-  });
-});
-
-describe("classifyIntent — multi-intent matches", () => {
-  it("matches both swap and save in 'swap SUI and save the USDC'", () => {
-    const result = classifyIntent("swap SUI and save the USDC");
-    expect(result.intents).toContain("swap");
-    expect(result.intents).toContain("save");
-    expect(result.confidence).toBe("medium");
-  });
-
-  it("matches both save and rates in 'what is the save APY'", () => {
-    const result = classifyIntent("what is the save APY");
-    expect(result.intents).toContain("save");
-    expect(result.intents).toContain("rates");
-    expect(result.confidence).toBe("medium");
-  });
-
-  it("matches both borrow and rates in 'compare borrow rates'", () => {
-    const result = classifyIntent("compare borrow rates");
-    expect(result.intents).toContain("borrow");
-    expect(result.intents).toContain("rates");
-    expect(result.confidence).toBe("medium");
-  });
-
-  it("matches save + swap + portfolio for 'rebalance my portfolio'", () => {
-    // Workflow phrasings should activate the union of write tools that
-    // could be involved. 'rebalance' touches save (might deposit) and
-    // swap (might trade); 'portfolio' adds the portfolio_analysis read.
-    const result = classifyIntent("rebalance my portfolio");
-    expect(result.intents).toContain("save");
-    expect(result.intents).toContain("swap");
-    expect(result.intents).toContain("portfolio");
-    expect(result.confidence).toBe("medium");
-  });
-
-  it("matches swap + portfolio for 'diversify my holdings'", () => {
-    const result = classifyIntent("diversify my holdings");
-    expect(result.intents).toContain("swap");
-    expect(result.intents).toContain("portfolio");
   });
 });
 
@@ -217,13 +97,6 @@ describe("classifyIntent — services (Channel A / MPP)", () => {
     });
     expect(tools).toContain("mpp_services");
     expect(tools).toContain("mpp_call");
-  });
-
-  it("does NOT misroute 'create a payment link' / 'generate a link' to services", () => {
-    expect(classifyIntent("create a payment link").intents).not.toContain(
-      "services"
-    );
-    expect(classifyIntent("generate a link").intents).not.toContain("services");
   });
 });
 
@@ -258,24 +131,17 @@ describe("classifyIntent — fallbacks", () => {
 });
 
 describe("classifyIntent — case insensitivity + word boundaries", () => {
-  it("matches uppercase 'SAVE 10 USDC'", () => {
-    expect(classifyIntent("SAVE 10 USDC")).toEqual({
-      intents: ["save"],
+  it("matches uppercase 'WITHDRAW MY USDC'", () => {
+    expect(classifyIntent("WITHDRAW MY USDC")).toEqual({
+      intents: ["exit"],
       confidence: "high",
     });
   });
 
-  it("does NOT match 'behaviour' as borrow (substring guard)", () => {
-    // "behaviour" contains "havi" not "borrow" — sanity check that
-    // /\bborrow\b/ doesn't match partials.
-    const result = classifyIntent("describe your behaviour around tool errors");
-    expect(result.intents).toEqual(["general"]);
-  });
-
-  it("does NOT match 'lifesaver' as save (substring guard)", () => {
+  it("does NOT match 'lifesaver' as exit (substring guard)", () => {
+    // 'savings' is an exit keyword but \bsavings?\b must not fire on
+    // partial words.
     const result = classifyIntent("you are a lifesaver");
-    // 'saver' is not a save keyword but 'save' would match if boundary
-    // was lax. With \bsave\b the match should NOT fire.
     expect(result.intents).toEqual(["general"]);
   });
 });
@@ -283,7 +149,7 @@ describe("classifyIntent — case insensitivity + word boundaries", () => {
 describe("selectActiveTools", () => {
   it("includes ALWAYS_ON_TOOLS in every selection", () => {
     const tools = selectActiveTools({
-      intents: ["save"],
+      intents: ["send"],
       confidence: "high",
     });
     for (const t of ALWAYS_ON_TOOLS) {
@@ -291,52 +157,94 @@ describe("selectActiveTools", () => {
     }
   });
 
-  it("returns 7 tools for single save intent", () => {
-    const tools = selectActiveTools({
-      intents: ["save"],
-      confidence: "high",
-    });
-    // save's set (6) + render_canvas (1) = 7
-    expect(tools).toHaveLength(7);
-    expect(tools).toContain("save_deposit");
-    expect(tools).toContain("withdraw");
-    expect(tools).toContain("balance_check");
-    expect(tools).toContain("savings_info");
-    expect(tools).toContain("rates_info");
-    expect(tools).toContain("health_check");
-    expect(tools).toContain("render_canvas");
+  it("does NOT include render_canvas anywhere (canvas subsystem deleted)", () => {
+    expect(ALWAYS_ON_TOOLS).not.toContain("render_canvas");
+    const tools = selectActiveTools(classifyIntent(""));
+    expect(tools).not.toContain("render_canvas");
   });
 
-  it("dedupes the union for multi-intent (swap + save share balance_check)", () => {
+  it("returns the send set for a send intent", () => {
     const tools = selectActiveTools({
-      intents: ["swap", "save"],
+      intents: ["send"],
+      confidence: "high",
+    });
+    expect(tools).toContain("balance_check");
+    expect(tools).toContain("resolve_suins");
+    expect(tools).toContain("transaction_history");
+    expect(tools).toContain("send_transfer");
+    expect(tools).not.toContain("withdraw");
+    expect(tools).not.toContain("mpp_call");
+  });
+
+  it("returns the exit set for a grace-window exit intent", () => {
+    const tools = selectActiveTools({
+      intents: ["exit"],
+      confidence: "high",
+    });
+    expect(tools).toContain("balance_check");
+    expect(tools).toContain("withdraw");
+    expect(tools).toContain("repay_debt");
+    expect(tools).toContain("swap_quote");
+    expect(tools).toContain("swap_execute");
+    expect(tools).not.toContain("send_transfer");
+  });
+
+  it("dedupes the union for multi-intent (send + exit share balance_check)", () => {
+    const tools = selectActiveTools({
+      intents: ["send", "exit"],
       confidence: "medium",
     });
-    // swap (4) + save (6) - shared(balance_check) + render_canvas (1)
-    // = (4 + 6 - 1) + 1 = 10
-    expect(tools).toHaveLength(10);
-    // balance_check appears once
     const balanceCount = tools.filter((t) => t === "balance_check").length;
     expect(balanceCount).toBe(1);
   });
 
-  it("returns hardened general fallback for empty input", () => {
+  it("general fallback is degrade-open: surviving writes + MPP + grace-window tools", () => {
     const tools = selectActiveTools(classifyIntent(""));
-    // Post-hotfix general: 6 reads + resolve_suins (F6) + 6 writes +
-    // mpp_services + mpp_call (Channel A) + render_canvas = 16
-    expect(tools).toHaveLength(16);
+    // Reads
     expect(tools).toContain("balance_check");
-    expect(tools).toContain("portfolio_analysis");
+    expect(tools).toContain("transaction_history");
     expect(tools).toContain("resolve_suins");
+    // Writes (degrade-open)
+    expect(tools).toContain("send_transfer");
     expect(tools).toContain("mpp_services");
     expect(tools).toContain("mpp_call");
+    // §2d grace window (cut post-window)
+    expect(tools).toContain("withdraw");
+    expect(tools).toContain("repay_debt");
+    expect(tools).toContain("swap_quote");
+    expect(tools).toContain("swap_execute");
+  });
+
+  it("general fallback does NOT include deleted DeFi tools", () => {
+    const tools = selectActiveTools(classifyIntent(""));
+    for (const dead of [
+      "save_deposit",
+      "borrow",
+      "claim_rewards",
+      "harvest_rewards",
+      "savings_info",
+      "health_check",
+      "rates_info",
+      "portfolio_analysis",
+      "token_prices",
+      "pending_rewards",
+      "yield_summary",
+      "activity_summary",
+      "spending_analytics",
+      "explain_tx",
+      "create_payment_link",
+      "list_payment_links",
+      "cancel_payment_link",
+    ]) {
+      expect(tools).not.toContain(dead);
+    }
   });
 
   it("exposes resolve_suins for a bare SuiNS name-resolution query (F6)", () => {
     // Pre-F6 "resolve suins.sui" matched no intent → general fallback,
     // which omitted resolve_suins → the agent claimed the tool didn't
-    // exist. Now SuiNS cues route to `portfolio` (which carries it) AND
-    // it's in the general fallback as a safety net.
+    // exist. Now SuiNS cues route to `send` (which carries it) AND it's
+    // in the general fallback as a safety net.
     for (const q of [
       "resolve suins.sui",
       "what's the address for alice.sui",
@@ -345,83 +253,5 @@ describe("selectActiveTools", () => {
       const tools = selectActiveTools(classifyIntent(q));
       expect(tools).toContain("resolve_suins");
     }
-  });
-
-  it("includes write tools only for narrow intents (portfolio stays read-only)", () => {
-    const portfolio = selectActiveTools({
-      intents: ["portfolio"],
-      confidence: "high",
-    });
-    expect(portfolio).not.toContain("save_deposit");
-    expect(portfolio).not.toContain("send_transfer");
-    expect(portfolio).not.toContain("swap_execute");
-    expect(portfolio).not.toContain("borrow");
-  });
-
-  it("includes save_deposit + withdraw ONLY for save intent (NOT portfolio)", () => {
-    const portfolio = selectActiveTools({
-      intents: ["portfolio"],
-      confidence: "high",
-    });
-    expect(portfolio).not.toContain("save_deposit");
-    expect(portfolio).not.toContain("withdraw");
-
-    const save = selectActiveTools({
-      intents: ["save"],
-      confidence: "high",
-    });
-    expect(save).toContain("save_deposit");
-    expect(save).toContain("withdraw");
-  });
-
-  // -------------------------------------------------------------------------
-  // Hardened general fallback (HOTFIX 2026-05-24)
-  // -------------------------------------------------------------------------
-  //
-  // Pre-hotfix the general fallback was reads-only, which stripped
-  // writes from activeTools on misclassified turns and caused the model
-  // to hallucinate "I don't have save_deposit". Post-hotfix general
-  // includes the 6 most common writes as a degrade-open floor.
-  // -------------------------------------------------------------------------
-
-  it("hardened general includes the 6 common writes for degrade-open safety", () => {
-    const tools = selectActiveTools({
-      intents: ["general"],
-      confidence: "low",
-    });
-    expect(tools).toContain("save_deposit");
-    expect(tools).toContain("withdraw");
-    expect(tools).toContain("send_transfer");
-    expect(tools).toContain("borrow");
-    expect(tools).toContain("repay_debt");
-    expect(tools).toContain("swap_execute");
-  });
-
-  it("hardened general DOES NOT include niche writes (claim/harvest_rewards)", () => {
-    // The hardened set deliberately omits niche writes the LLM should
-    // never select without a clear keyword cue. Those stay in their
-    // respective intent subsets (rewards).
-    const tools = selectActiveTools({
-      intents: ["general"],
-      confidence: "low",
-    });
-    expect(tools).not.toContain("claim_rewards");
-    expect(tools).not.toContain("harvest_rewards");
-  });
-
-  it("hardened general still includes the read tools (additive change, not replacement)", () => {
-    const tools = selectActiveTools({
-      intents: ["general"],
-      confidence: "low",
-    });
-    // The pre-hotfix reads stay — this was an ADDITION to general,
-    // not a swap-in. The 6 reads are required for post-write refresh
-    // observation even when the model misclassifies.
-    expect(tools).toContain("balance_check");
-    expect(tools).toContain("savings_info");
-    expect(tools).toContain("health_check");
-    expect(tools).toContain("transaction_history");
-    expect(tools).toContain("portfolio_analysis");
-    expect(tools).toContain("rates_info");
   });
 });

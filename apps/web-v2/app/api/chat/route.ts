@@ -109,6 +109,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   type AddressPortfolio,
+  adaptMcpTool,
   buildInternalContext,
   buildStepFinishHandler,
   classifyEffort,
@@ -120,6 +121,7 @@ import {
   harnessShapeForEffort,
   isBundleableTool,
   MAX_BUNDLE_OPS,
+  NAVI_MCP_CONFIG,
   type PendingAction,
   type PendingToolCall,
   READ_TOOL_SET,
@@ -850,13 +852,51 @@ export async function POST(request: Request) {
   // two ToolSets directly. `getDefaultTools()` returns the same
   // merged set but we spread here so the gateway path can inject
   // `perplexity_search` into the same object.
-  const engineTools: ToolSet = { ...READ_TOOL_SET, ...WRITE_TOOL_SET };
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2f / S.387c — 2026-06-10] Payment-link
+  // CRUD is DEFERRED to Audric Store: the engine retains the three
+  // tools as commerce substrate, but Audric drops them from its
+  // registered set (receivables/get-paid is a merchant/creator use
+  // case, not "pay for services"). Delete this filter when the Store
+  // spec re-homes them.
+  const {
+    create_payment_link: _deferredCreate,
+    list_payment_links: _deferredList,
+    cancel_payment_link: _deferredCancel,
+    ...activeReadTools
+  } = READ_TOOL_SET;
+  const engineTools: ToolSet = { ...activeReadTools, ...WRITE_TOOL_SET };
+
+  // [SPEC_AUDRIC_DEFI_REMOVAL §2d — 2026-06-10] Register NAVI MCP's
+  // token-search as an LLM tool (`navi_navi_search_tokens`). The engine's
+  // swap tools return ASSET_NOT_SUPPORTED with a hint instructing the
+  // model to call it for long-tail coin-type resolution — load-bearing
+  // for the exit window's "consolidate everything to USDC" flow, where
+  // users hold tokens outside the standard registry. Only this one MCP
+  // tool is exposed; the rest of the NAVI surface stays engine-internal
+  // (balance_check routes through `mcpManager` in ToolContext). Cut with
+  // the swap tools at the post-window cleanup.
+  const naviSearchToolSet: ToolSet = {};
+  const naviConn = mcpManager.getConnection(NAVI_MCP_CONFIG.name);
+  if (naviConn?.status === "connected") {
+    const searchDef = naviConn.tools.find(
+      (t) => t.name === "navi_search_tokens"
+    );
+    if (searchDef) {
+      const entry = adaptMcpTool(searchDef, {
+        manager: mcpManager,
+        serverName: NAVI_MCP_CONFIG.name,
+      });
+      naviSearchToolSet[entry.name] = entry.tool;
+    }
+  }
+
   const tools: ToolSet = useGateway
     ? {
         perplexity_search: gateway.tools.perplexitySearch(),
         ...engineTools,
+        ...naviSearchToolSet,
       }
-    : engineTools;
+    : { ...engineTools, ...naviSearchToolSet };
 
   // 6. Build the InternalContext envelope threaded through every
   // tool.execute() + needsApproval + step-finish callback via
@@ -875,22 +915,15 @@ export async function POST(request: Request) {
   // in the POST handler scope that contains both.
   let activeAbortCleanup: (() => void) | null = null;
   // [Phase 6.5 / SPEC_V07C_PHASE_6_5_CHAT_PARITY A.1 / S.198 — 2026-05-20]
-  // Thread `AUDRIC_INTERNAL_API_URL` through `ToolContext.env` so the
-  // 7 engine read tools that hit Audric's canonical API surface resolve
-  // their internal base URL. The tools are:
+  // Thread `AUDRIC_INTERNAL_API_URL` through `ToolContext.env` so engine
+  // tools that hit Audric's canonical API surface resolve their internal
+  // base URL.
   //
-  //   - `portfolio_analysis` (calls `/api/portfolio` via getAudricApiBase
-  //     for the canonical priced portfolio so the LLM, dashboard, and
-  //     daily cron all see identical numbers)
-  //   - `spending_analytics` (calls `/api/analytics/spending`)
-  //   - `yield_summary` (calls `/api/analytics/yield`)
-  //   - `activity_summary` (calls `/api/analytics/activity`)
-  //   - `create_payment_link` / `list_payment_links` /
-  //     `cancel_payment_link` (call `/api/internal/payments`).
-  //     Payment links also cover invoicing post-V07E_INVOICE_DEPRECATION
-  //     (S.269 item 7 — engine 2.17.0 deleted create_invoice /
-  //     list_invoices / cancel_invoice; payment-link tool descriptions
-  //     route invoice intents into them).
+  // [SPEC_AUDRIC_DEFI_REMOVAL — 2026-06-10] The original 7 consumers are
+  // gone from Audric's surface: the 4 analytics/portfolio read tools were
+  // deleted from the engine (window-start cut) and the payment-link trio
+  // is unregistered (deferred to Store). The threading stays — the
+  // payment-link tools resolve through it when Store re-homes them.
   //
   // Pre-Phase-6.5 web-v2's chat route built `toolContext` without an
   // `env:` field, so these tools silently returned empty/null when

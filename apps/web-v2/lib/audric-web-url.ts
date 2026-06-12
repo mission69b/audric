@@ -14,7 +14,7 @@
  *
  * Used by:
  *   - `hooks/use-user-status.ts`
- *   - `components/settings/safety-section.tsx` (reads/writes preferences)
+ *   - `lib/swr/user-preferences.ts` (reads/writes preferences)
  *   - `components/settings/username-change-modal.tsx` (identity APIs)
  */
 

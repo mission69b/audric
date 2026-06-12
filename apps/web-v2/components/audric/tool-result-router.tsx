@@ -8,35 +8,14 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
-import { ActivitySummaryCard } from "./cards/ActivitySummaryCard";
-import { BalanceCardV2 } from "./cards/BalanceCardV2";
 import { ConfirmationChip } from "./cards/ConfirmationChip";
-import { CanvasCard, type CanvasData } from "./cards/canvas";
-import { ExplainTxCard } from "./cards/ExplainTxCard";
-import { HealthCardV2 } from "./cards/HealthCardV2";
 import { MppResultCard } from "./cards/MppResultCard";
-import { PaymentLinkCard } from "./cards/PaymentLinkCard";
-import { PendingRewardsCardV2 } from "./cards/PendingRewardsCardV2";
-import { PortfolioCardV2 } from "./cards/PortfolioCardV2";
-import { PriceCard } from "./cards/PriceCard";
-// [S.277] ProtocolCard / SearchResultsCard / StakingCard imports removed
-// — engine tools `protocol_deep_dive`, `web_search`, `volo_*` cut in
-// engine 2.18.0 ("Earns Its Keep" audit).
 import { extractData } from "./cards/primitives";
-import { RatesCardV2 } from "./cards/RatesCardV2";
-import { SavingsCard } from "./cards/SavingsCard";
-import { SuinsResolution } from "./cards/SuinsResolution";
 import { SwapQuoteCardV2 } from "./cards/SwapQuoteCardV2";
-import { TransactionHistoryCard } from "./cards/TransactionHistoryCard";
 import { TransactionReceiptCard } from "./cards/TransactionReceiptCard";
-import { YieldEarningsCard } from "./cards/YieldEarningsCard";
 
 /**
  * ToolResultRouter — discriminated renderer for AI SDK `tool-*` parts.
- *
- * Mirrors `apps/web/components/engine/ToolResultCard.tsx` (`CARD_RENDERERS`
- * map + write-tool fallback) but consumes AI SDK v6 `ToolUIPart` directly
- * instead of the legacy `useEngine` `ToolExecution` shape.
  *
  * Renders:
  *  - AI Elements `<Tool>` accordion while the tool input is streaming /
@@ -47,35 +26,27 @@ import { YieldEarningsCard } from "./cards/YieldEarningsCard";
  *    `<Weather>` on `output-available`).
  *  - Generic AI Elements `<Tool>` JSON dump otherwise.
  *
- * Coverage as of Phase 5b (2026-05-19): 20+ light cards + 8 canvas
- * templates wired. Deferred intentionally:
- *  - `spending_analytics` — has no card (returns text-only)
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2e — 2026-06-10] Render-surface collapse:
+ * chat renders the agent's *transactional output* only (Services results
+ * + Pay receipts). The DeFi read cards (rates / balance / health /
+ * savings / portfolio / yield / rewards / prices), the explorer cards
+ * (history / explain_tx / activity), the payment-link cards (deferred to
+ * Audric Store), the standalone SuiNS card (resolution folds into the
+ * send confirm), and the entire `render_canvas` subsystem were deleted.
+ * Read tools that survive (`balance_check`, `transaction_history`,
+ * `resolve_suins`) answer in prose — no card.
  *
- * S.245 cleanup: `pay_api` / `mpp_services` references removed —
- * tools deleted from engine entirely; redesigned cleanly in Audric
- * Store SPEC.
- *
- * Motion family is intentionally NOT ported — founder-locked
- * 2026-05-19 to skeleton-pulse only (Tailwind `animate-pulse`). The
- * legacy `MountAnimate` / `NumberTicker` / `TypingDots` /
- * `WorkingState` / `ReceiptChoreography` components stay deleted from
- * scope, NOT deferred. See BENEFITS_SPEC_v07c.md §"Phase 5".
- *
- * Traceability: BENEFITS_SPEC_v07c.md §"Phase 5 — Renderer migration
- * sweep" + Phase 5a.1 (infra) + 5a.2-5a.4 (light cards) + 5b (canvas).
+ * Grace-window surfaces (cut after the §2d 7-day exit window closes):
+ * `swap_quote` card + `withdraw` / `repay_debt` / `swap_execute`
+ * receipts and denial pills.
  */
 
 const WRITE_TOOLS_WITH_RECEIPT = new Set([
-  "save_deposit",
-  "withdraw",
   "send_transfer",
-  "borrow",
+  // §2d grace window — cut post-window:
+  "withdraw",
   "repay_debt",
   "swap_execute",
-  // [S.277] volo_stake / volo_unstake removed — engine tools cut in
-  // 2.18.0 ("Earns Its Keep" audit).
-  "claim_rewards",
-  "harvest_rewards",
 ]);
 
 // [S.296 — 2026-05-24] Denial pill labels per write tool. Replaces
@@ -86,14 +57,11 @@ const WRITE_TOOLS_WITH_RECEIPT = new Set([
 // confirms it's gone. Falls back to a derived label for any write
 // tool not in the map.
 const DENIAL_LABELS: Record<string, string> = {
-  borrow: "BORROW CANCELLED",
-  save_deposit: "DEPOSIT CANCELLED",
-  withdraw: "WITHDRAW CANCELLED",
   send_transfer: "TRANSFER CANCELLED",
-  swap_execute: "SWAP CANCELLED",
+  // §2d grace window — cut post-window:
+  withdraw: "WITHDRAW CANCELLED",
   repay_debt: "REPAY CANCELLED",
-  claim_rewards: "CLAIM CANCELLED",
-  harvest_rewards: "HARVEST CANCELLED",
+  swap_execute: "SWAP CANCELLED",
 };
 
 // Exact string written by BOTH deny paths:
@@ -104,64 +72,7 @@ const DENIAL_LABELS: Record<string, string> = {
 // and should still hit the generic <Tool> fallback so the user sees it.
 export const USER_DENIAL_ERROR_TEXT = "User denied the action.";
 
-function renderCard(
-  toolName: string,
-  output: unknown,
-  toolCallId: string,
-  onSendMessage?: (text: string) => void
-): React.ReactNode | null {
-  // Canvas has a special wire-shape stamped by the engine's
-  // `render_canvas` tool (see `packages/engine/src/tools/canvas.ts`):
-  //   { __canvas: true, template: <id>, title: <string>, templateData: <payload> }
-  // The actual canvas payload lives in `templateData`, NOT `data` — the
-  // legacy `apps/web` reads `tool.result.templateData` and maps it to
-  // the card's `data` prop (see `apps/web/lib/timeline-builder.ts` line
-  // ~1045). Pre-S.206 web-v2 read `output.data` here, which was always
-  // `undefined` → S.205's defensive coercion painted the "Canvas data
-  // was not returned by the tool" fallback for every canvas render
-  // (surfaced during the post-S.205 production smoke).
-  if (toolName === "render_canvas") {
-    const canvasOutput = output as
-      | {
-          __canvas?: boolean;
-          template?: string;
-          title?: string;
-          templateData?: unknown;
-        }
-      | undefined;
-    if (
-      !canvasOutput ||
-      typeof canvasOutput.template !== "string" ||
-      typeof canvasOutput.title !== "string"
-    ) {
-      return null;
-    }
-    // [S.205 — 2026-05-20] Defensive coercion: canvas data MUST be a
-    // plain object so the canvas components' `"available" in data`
-    // discriminator doesn't crash on the `in` operator. The engine's
-    // tool *usually* returns `{ available: true, address, ... }` or
-    // `{ available: false, message }`, but an upstream tool failure
-    // could still surface `templateData: undefined`. Coerce to the
-    // safe `available: false` sentinel so the existing "not available"
-    // fallback paints instead of crashing.
-    const safeData: unknown =
-      canvasOutput.templateData &&
-      typeof canvasOutput.templateData === "object" &&
-      !Array.isArray(canvasOutput.templateData)
-        ? canvasOutput.templateData
-        : {
-            available: false as const,
-            message: "Canvas data was not returned by the tool.",
-          };
-    const canvas: CanvasData = {
-      template: canvasOutput.template,
-      title: canvasOutput.title,
-      data: safeData,
-      toolUseId: toolCallId,
-    };
-    return <CanvasCard canvas={canvas} onSendMessage={onSendMessage} />;
-  }
-
+function renderCard(toolName: string, output: unknown): React.ReactNode | null {
   // mpp_call hits ANY Service — render its result by output modality
   // (media chips + verbatim JSON), not a per-Service card. Handled before
   // the `extractData` unwrap because the payload lives in `output.body`,
@@ -176,97 +87,12 @@ function renderCard(
   }
 
   switch (toolName) {
-    // ─── Read tools ─────────────────────────────────────────────────────
-    case "rates_info":
-      return (
-        <RatesCardV2 data={data as Parameters<typeof RatesCardV2>[0]["data"]} />
-      );
-    case "balance_check":
-      return (
-        <BalanceCardV2
-          data={data as Parameters<typeof BalanceCardV2>[0]["data"]}
-        />
-      );
-    case "health_check":
-      return (
-        <HealthCardV2
-          data={data as Parameters<typeof HealthCardV2>[0]["data"]}
-        />
-      );
-    case "savings_info":
-      return (
-        <SavingsCard data={data as Parameters<typeof SavingsCard>[0]["data"]} />
-      );
-    case "portfolio_analysis":
-      return (
-        <PortfolioCardV2
-          data={data as Parameters<typeof PortfolioCardV2>[0]["data"]}
-        />
-      );
-    case "resolve_suins":
-      return (
-        <SuinsResolution {...(data as Parameters<typeof SuinsResolution>[0])} />
-      );
+    // §2d grace window — exit-quote card; cut with the swap verb
+    // post-window.
     case "swap_quote":
       return (
         <SwapQuoteCardV2
           data={data as Parameters<typeof SwapQuoteCardV2>[0]["data"]}
-        />
-      );
-    case "activity_summary":
-      return (
-        <ActivitySummaryCard
-          data={data as Parameters<typeof ActivitySummaryCard>[0]["data"]}
-        />
-      );
-    case "yield_summary":
-      return (
-        <YieldEarningsCard
-          data={data as Parameters<typeof YieldEarningsCard>[0]["data"]}
-        />
-      );
-    case "transaction_history":
-      return (
-        <TransactionHistoryCard
-          data={data as Parameters<typeof TransactionHistoryCard>[0]["data"]}
-        />
-      );
-    case "explain_tx":
-      return (
-        <ExplainTxCard
-          data={data as Parameters<typeof ExplainTxCard>[0]["data"]}
-        />
-      );
-    case "token_prices":
-      return (
-        <PriceCard data={data as Parameters<typeof PriceCard>[0]["data"]} />
-      );
-    // [S.277] `protocol_deep_dive`, `volo_stats`, `web_search` case
-    // branches removed — engine tools cut in 2.18.0 ("Earns Its Keep"
-    // audit). Gateway-managed `perplexity_search` (when enabled) still
-    // renders via AI Elements' default tool-part UI.
-    case "pending_rewards":
-      return (
-        <PendingRewardsCardV2
-          data={data as Parameters<typeof PendingRewardsCardV2>[0]["data"]}
-        />
-      );
-
-    // ─── Payment links (invoicing folded in — V07E_INVOICE_DEPRECATION
-    //     / S.269 item 7, 2026-05-23). create_invoice / list_invoices /
-    //     cancel_invoice are gone from the engine; payment-link cards
-    //     render every receivable.
-    case "create_payment_link":
-    case "list_payment_links":
-      return <PaymentLinkCard data={data} />;
-
-    // ─── No-tx-receipt write confirmations ───────────────────────────
-    case "cancel_payment_link":
-      return (
-        <ConfirmationChip
-          detail={(data as { slug?: string }).slug ?? undefined}
-          label="PAYMENT LINK CANCELLED"
-          tone="neutral"
         />
       );
     default: {
@@ -287,7 +113,6 @@ function renderCard(
 
 export function ToolResultRouter({
   part,
-  onSendMessage,
 }: {
   part: ToolUIPart;
   onSendMessage?: (text: string) => void;
@@ -296,23 +121,6 @@ export function ToolResultRouter({
     ? part.type.slice("tool-".length)
     : part.type;
 
-  // Skeleton state — the input is still streaming from the model, the
-  // tool has been dispatched and we're awaiting the result, OR the
-  // user just approved a write and the sponsored-tx execution is in
-  // flight (~1s "approval-responded" limbo between Approve tap and
-  // `addToolOutput`). Renders an animate-pulse placeholder shaped
-  // like the eventual output so the page doesn't jump when the real
-  // card lands. Tools mapped to `null` in `skeleton-variants.ts`
-  // (e.g. `render_canvas`, `spending_analytics`) fall through to the
-  // generic Tool view.
-  //
-  // [P1.1 / 2026-05-24] Added `approval-responded` to close the
-  // user-visible JSON-flash bug: pre-fix this state fell through to
-  // the generic <Tool> renderer, which dumped raw `part.input` as
-  // JSON for ~1s before the receipt card landed. Differentiated
-  // ariaLabel ("Submitting") signals to screen readers that the user
-  // gesture has been accepted.
-  //
   // [S.296 — 2026-05-24] Both deny paths (PermissionCard onDeny click
   // in audric-chat-client.tsx + translateChunk `tool-output-denied`
   // mapper in route.ts) emit `state: 'output-error'` with the exact
@@ -343,8 +151,7 @@ export function ToolResultRouter({
   // vendored `<Tool>` accordion — a compact "name · Running" row the user
   // can watch and expand to see params — exactly like vercel/chatbot's
   // `tool-getWeather` running branch. On `output-available` (below) it
-  // resolves into the bare rich finance card. This replaces the former
-  // Phase-5 `SkeletonCard` pulse.
+  // resolves into the bare rich card.
   if (
     part.state === "input-streaming" ||
     part.state === "input-available" ||
@@ -361,12 +168,7 @@ export function ToolResultRouter({
   }
 
   if (part.state === "output-available") {
-    const card = renderCard(
-      toolName,
-      part.output,
-      part.toolCallId,
-      onSendMessage
-    );
+    const card = renderCard(toolName, part.output);
     if (card !== null) {
       return card;
     }

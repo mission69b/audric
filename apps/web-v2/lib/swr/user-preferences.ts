@@ -4,19 +4,22 @@
  * `usePreferences` — single SWR cache slot for `/api/user/preferences`.
  *
  * Shipped in v0.7c Session 4.7.A as the canonical reader for everything
- * persisted on the user-preferences endpoint. Today the sole consumer
- * is `SafetySection` (settings → safety). When the safety tab mounts
- * the SWR cache is populated; subsequent renders use the cached value.
+ * persisted on the user-preferences endpoint.
  *
- * Replaces the raw `useState/useEffect/useRef` patterns previously
- * used by `safety-section` (manual loading state). SWR's
- * `dedupingInterval` provides built-in dedup for free.
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] The Safety section
+ * (settings → safety, the original sole consumer) was removed with the
+ * DeFi cut — its per-op USD-threshold table was inert and DeFi-shaped.
+ * The surviving consumer is `ServicesSpendingSection` (settings →
+ * services, the B-cap daily limit). `permissionPreset` stays on the
+ * shape: the chat route still feeds the preset-derived
+ * `permissionConfig` to the engine for per-turn analytics, and the
+ * server merge contract is unchanged — there's just no UI writing the
+ * preset anymore (everyone effectively keeps their stored/default value).
  *
- * Mutation contract: `updatePreset` (safety-section) posts to the same
- * route with a partial payload. The server merges the partial into
- * the persisted record. The `mutate` returned from this hook accepts
- * an optimistic updater that patches only the affected field;
- * rollback-on-error is built in.
+ * Mutation contract: consumers post partial payloads to the same route.
+ * The server merges the partial into the persisted record. The `mutate`
+ * returned from this hook accepts an optimistic updater that patches
+ * only the affected field; rollback-on-error is built in.
  *
  * [S.243 / V07E_CONTACTS_SIMPLIFICATION Path A — 2026-05-22] Pre-S.243,
  * `useContacts` was the second consumer of this hook; the `contacts`

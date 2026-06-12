@@ -32,9 +32,16 @@ export interface ChipConfig {
 }
 
 /**
- * Six chips, visible at all times below the composer. Order matches the
- * runbook: Audric Finance verbs first (Save / Send / Swap / Credit),
- * then orchestration (Harvest), then read-only (Charts).
+ * [SPEC_AUDRIC_DEFI_REMOVAL §2a/§2c — 2026-06-10] The DeFi chips
+ * (Save / Swap / Credit / Harvest / Charts) were cut with the
+ * window-start removal — chips are open-new-position affordances and
+ * the products behind them are retired (§2c also bans a user-facing
+ * Swap verb/chip outright). Only "Send" survives.
+ *
+ * The Services chip row (Research · Create · Pay · Audric's choice —
+ * S.372 taxonomy) ships with the composer-as-homepage work in
+ * `SPEC_AUDRIC_MPP_REENABLE.md`; the final chip set is locked there,
+ * not here.
  *
  * [L4 — 2026-05-31] The "Receive" chip was removed — the Add-funds
  * button in the chat shell now owns the receive / show-my-address flow,
@@ -42,21 +49,9 @@ export interface ChipConfig {
  *
  * Each `prompt` is the literal sentence the agent receives if the user
  * hits Enter without editing — written as a natural request so the
- * agent's tool-selection logic does the rest. The agent picks USDC vs
- * USDsui via a fresh `balance_check` tool call, asks
- * for the amount when ambiguous, and surfaces a confirm card for any
- * write above the user's permission threshold.
+ * agent's tool-selection logic does the rest. The agent asks for the
+ * amount when ambiguous and surfaces a confirm card for every write.
  */
 export const CHIP_CONFIGS: readonly ChipConfig[] = [
-  { id: "save", label: "Save", prompt: "Save USDC into NAVI savings" },
   { id: "send", label: "Send", prompt: "Send USDC to someone" },
-  { id: "swap", label: "Swap", prompt: "Swap one token for another" },
-  { id: "credit", label: "Credit", prompt: "Borrow USDC against my savings" },
-  {
-    id: "harvest",
-    label: "Harvest",
-    prompt:
-      "Show what NAVI rewards I can harvest, then bundle them into savings",
-  },
-  { id: "charts", label: "Charts", prompt: "Show my full portfolio" },
 ] as const;

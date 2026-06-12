@@ -9,45 +9,21 @@
 // [S.277 — 2026-05-23] `volo_stats` / `volo_stake` / `volo_unstake` /
 // `web_search` / `protocol_deep_dive` skeleton entries removed per
 // AUDIT_V07E_EARNS_ITS_KEEP_2026-05-23 (engine 2.18.0 cut).
+// [SPEC_AUDRIC_DEFI_REMOVAL §2e — 2026-06-10] DeFi read/write entries
+// removed with their tools + cards. `withdraw` / `repay_debt` /
+// `swap_quote` / `swap_execute` survive the §2d grace window only.
 
 import type { SkeletonVariant } from './SkeletonCard';
 
 const TOOL_TO_VARIANT: Record<string, SkeletonVariant | null> = {
   // Compact (single-row reads)
-  rates_info: 'compact',
   swap_quote: 'compact',
-  health_check: 'compact',
-  token_prices: 'compact',
-  pending_rewards: 'compact',
 
-  // Wide (multi-row analytics + receipts)
-  balance_check: 'wide',
-  portfolio_analysis: 'wide',
-  savings_info: 'wide',
-  activity_summary: 'wide',
-  yield_summary: 'wide',
-  explain_tx: 'wide',
-  create_payment_link: 'wide',
-  save_deposit: 'wide',
+  // Wide (multi-row receipts)
   withdraw: 'wide',
   send_transfer: 'wide',
   swap_execute: 'wide',
-  borrow: 'wide',
   repay_debt: 'wide',
-  claim_rewards: 'wide',
-  harvest_rewards: 'wide',
-
-  // List (multi-row catalog/history)
-  transaction_history: 'list',
-  list_payment_links: 'list',
-
-  // Chip (single-line confirmations)
-  cancel_payment_link: 'chip',
-  resolve_suins: 'chip',
-
-  // Tools with no card
-  spending_analytics: null,
-  render_canvas: null,
 };
 
 export function getSkeletonVariant(

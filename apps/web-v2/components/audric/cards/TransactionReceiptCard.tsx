@@ -27,13 +27,15 @@ function ReceiptChoreography({
   return <>{children}</>;
 }
 
+// [SPEC_AUDRIC_DEFI_REMOVAL — 2026-06-10] Receipt shape trimmed to the
+// surviving write tools: send_transfer + the §2d grace-window trio
+// (withdraw / repay_debt / swap_execute). The save / borrow / claim /
+// harvest receipt fields left with their tools.
 interface TxReceiptData {
   tx: string;
   gasCost?: number;
   amount?: number;
   asset?: string;
-  apy?: number;
-  savingsBalance?: number;
   to?: string;
   contactName?: string;
   suinsName?: string;
@@ -45,36 +47,8 @@ interface TxReceiptData {
   received?: number | string;
   priceImpact?: number;
   route?: string;
-  amountSui?: number;
-  vSuiReceived?: number;
-  vSuiAmount?: number;
-  suiReceived?: number;
   fee?: number;
-  healthFactor?: number;
   remainingDebt?: number;
-  rewards?: {
-    asset?: string;
-    symbol?: string;
-    amount: number;
-    estimatedValueUsd?: number;
-  }[];
-  totalValueUsd?: number | null;
-  claimed?: {
-    symbol?: string;
-    amount: number;
-    estimatedValueUsd?: number;
-  }[];
-  swaps?: {
-    fromSymbol: string;
-    inputAmount: number;
-    expectedOutputUsdc: number;
-  }[];
-  skipped?: {
-    symbol?: string;
-    amount: number;
-    reason: 'untradeable' | 'dust' | 'no-route';
-  }[];
-  expectedUsdcDeposited?: number;
   memo?: string;
   serviceName?: string;
   serviceEndpoint?: string;
@@ -146,37 +120,11 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
     return lines;
   }
 
-  if (toolName === 'save_deposit') {
-    lines.push({
-      label: 'Deposited',
-      value: `${fmtAmt(data.amount ?? 0)} ${data.asset ?? 'USDC'}`,
-    });
-    if (data.apy != null)
-      lines.push({
-        label: 'APY',
-        value: `${(data.apy * 100).toFixed(2)}%`,
-        emphasis: 'positive',
-      });
-    return lines;
-  }
-
   if (toolName === 'withdraw') {
     lines.push({
       label: 'Withdrawn',
       value: `${fmtAmt(data.amount ?? 0)} ${data.asset ?? 'USDC'}`,
     });
-    return lines;
-  }
-
-  if (toolName === 'borrow') {
-    lines.push({ label: 'Borrowed', value: `$${fmtAmt(data.amount ?? 0)}` });
-    if (data.healthFactor != null) {
-      lines.push({
-        label: 'Health',
-        value: data.healthFactor.toFixed(2),
-        emphasis: data.healthFactor < 1.5 ? 'negative' : 'positive',
-      });
-    }
     return lines;
   }
 
@@ -190,103 +138,8 @@ function getHeroLines(data: TxReceiptData, toolName: string): HeroLine[] {
     return lines;
   }
 
-  if (toolName === 'claim_rewards') {
-    const rewards = (data.rewards ?? []).filter(
-      (r) => Number.isFinite(r.amount) && r.amount > 0,
-    );
-
-    for (const r of rewards) {
-      const symbol = r.symbol ?? r.asset ?? 'REWARD';
-      lines.push({
-        label: 'Claimed',
-        value: `${fmtAmt(r.amount, 4)} ${symbol}`,
-        emphasis: 'positive',
-      });
-    }
-
-    if (data.totalValueUsd != null && data.totalValueUsd > 0) {
-      lines.push({
-        label: 'Value',
-        value: `~$${fmtAmt(data.totalValueUsd)}`,
-        emphasis: 'positive',
-      });
-    }
-
-    if (rewards.length === 0) {
-      lines.push({
-        label: 'Claimed',
-        value: 'No pending rewards',
-        emphasis: 'neutral',
-      });
-    }
-
-    return lines;
-  }
-
-  if (toolName === 'harvest_rewards') {
-    const claimed = (data.claimed ?? []).filter(
-      (r) => Number.isFinite(r.amount) && r.amount > 0,
-    );
-    const swaps = (data.swaps ?? []).filter((s) =>
-      Number.isFinite(s.expectedOutputUsdc),
-    );
-    const skipped = data.skipped ?? [];
-    const deposited = data.expectedUsdcDeposited ?? 0;
-
-    for (const c of claimed) {
-      const symbol = c.symbol ?? 'REWARD';
-      lines.push({
-        label: 'Claimed',
-        value: `${fmtAmt(c.amount, 4)} ${symbol}`,
-        emphasis: 'positive',
-      });
-    }
-
-    for (const s of swaps) {
-      lines.push({
-        label: 'Swapped',
-        value: `${s.fromSymbol} → ~${fmtAmt(s.expectedOutputUsdc, 4)} USDC`,
-      });
-    }
-
-    if (deposited > 0) {
-      lines.push({
-        label: 'Deposited',
-        value: `~$${fmtAmt(deposited)} USDC`,
-        emphasis: 'positive',
-      });
-    }
-
-    for (const sk of skipped) {
-      const symbol = sk.symbol ?? 'token';
-      const reasonLabel =
-        sk.reason === 'dust'
-          ? 'Sent to wallet (dust)'
-          : sk.reason === 'no-route'
-            ? 'Sent to wallet (no swap route)'
-            : 'Sent to wallet (untradeable)';
-      lines.push({
-        label: reasonLabel,
-        value: `${fmtAmt(sk.amount, 4)} ${symbol}`,
-      });
-    }
-
-    if (
-      claimed.length === 0 &&
-      swaps.length === 0 &&
-      deposited === 0 &&
-      skipped.length === 0
-    ) {
-      lines.push({
-        label: 'Harvested',
-        value: 'No rewards available',
-        emphasis: 'neutral',
-      });
-    }
-
-    return lines;
-  }
-
+  // [SPEC_AUDRIC_DEFI_REMOVAL] save_deposit / borrow / claim_rewards /
+  // harvest_rewards branches removed with their tools (window-start cut).
   // [S.277] volo_stake / volo_unstake branches removed — engine tools
   // cut in 2.18.0 ("Earns Its Keep" audit).
 
@@ -306,75 +159,6 @@ const emphasisClass: Record<string, string> = {
   neutral: '',
 };
 
-type ReceiptLeg = { name: string; chain: string; value: string };
-
-// [R6.4 / A5] Numbered multi-leg body for the harvest receipt (phase2
-// P7 `.leg`): claim → swap → save (+ any skipped/sent-to-wallet legs),
-// each a numbered circle + name + chain tag + value. Derived from the
-// same `claimed[] / swaps[] / expectedUsdcDeposited / skipped[]` shape
-// `getHeroLines` reads for the flat-line tools.
-function getHarvestLegs(data: TxReceiptData): ReceiptLeg[] {
-  const legs: ReceiptLeg[] = [];
-  const claimed = (data.claimed ?? []).filter(
-    (r) => Number.isFinite(r.amount) && r.amount > 0,
-  );
-  const swaps = (data.swaps ?? []).filter((s) =>
-    Number.isFinite(s.expectedOutputUsdc),
-  );
-  const deposited = data.expectedUsdcDeposited ?? 0;
-  const skipped = data.skipped ?? [];
-
-  const claimedUsd = claimed.reduce(
-    (sum, c) => sum + (c.estimatedValueUsd ?? 0),
-    0,
-  );
-  if (claimed.length > 0) {
-    legs.push({
-      name: 'Claimed rewards',
-      chain: 'NAVI',
-      value: claimedUsd > 0 ? `$${fmtAmt(claimedUsd)}` : `${claimed.length}×`,
-    });
-  }
-  if (swaps.length > 0) {
-    legs.push({ name: 'Swapped to USDC', chain: 'CETUS', value: 'merged' });
-  }
-  if (deposited > 0) {
-    legs.push({
-      name: 'Saved to NAVI',
-      chain: 'NAVI',
-      value: `$${fmtAmt(deposited)}`,
-    });
-  }
-  for (const sk of skipped) {
-    const symbol = sk.symbol ?? 'token';
-    legs.push({
-      name: 'Sent to wallet',
-      chain: sk.reason === 'dust' ? 'DUST' : 'NO ROUTE',
-      value: `${fmtAmt(sk.amount, 4)} ${symbol}`,
-    });
-  }
-  return legs;
-}
-
-function ReceiptLegRow({ index, leg }: { index: number; leg: ReceiptLeg }) {
-  return (
-    <div className="grid grid-cols-[18px_1fr_auto] items-center gap-2.5 py-1.5">
-      <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-accent font-medium font-mono text-[10px] text-foreground">
-        {index}
-      </span>
-      <span className="text-[13px] text-foreground tracking-[-0.011em]">
-        {leg.name}
-        <span className="ml-1.5 font-mono text-[9.5px] text-muted-foreground uppercase tracking-[0.06em]">
-          {leg.chain}
-        </span>
-      </span>
-      <span className="font-mono text-[12px] text-muted-foreground tabular-nums">
-        {leg.value}
-      </span>
-    </div>
-  );
-}
-
 // [R6.3] Per-tool receipt header (title + settlement sub) per the
 // phase2-receipts-denials spec. The body rrows still come from
 // `getHeroLines`; this just supplies the calm green-header headline.
@@ -384,22 +168,14 @@ function getReceiptHeader(
 ): { title: string; sub: string } {
   const sub = 'Settled on Sui';
   switch (toolName) {
-    case 'save_deposit':
-      return { title: 'Saved to NAVI', sub };
     case 'withdraw':
       return { title: 'Withdrawn from NAVI', sub };
     case 'send_transfer': {
       const name = data.contactName ?? data.suinsName;
       return { title: name ? `Sent to ${name}` : 'Sent', sub };
     }
-    case 'borrow':
-      return { title: 'Borrowed against savings', sub };
     case 'repay_debt':
       return { title: 'Repaid NAVI debt', sub };
-    case 'claim_rewards':
-      return { title: 'Claimed rewards', sub };
-    case 'harvest_rewards':
-      return { title: 'Compounded rewards', sub };
     case 'swap_execute': {
       const from = data.fromToken ?? data.from;
       const to = data.toToken ?? data.to;
@@ -439,16 +215,12 @@ export function TransactionReceiptCard({
 }) {
   if (!data.tx) return null;
 
-  const isHarvest = toolName === 'harvest_rewards';
-  const legs = isHarvest ? getHarvestLegs(data) : [];
-  const lines = isHarvest ? [] : getHeroLines(data, toolName);
+  const lines = getHeroLines(data, toolName);
   const { title, sub: baseSub } = getReceiptHeader(data, toolName);
 
   // [R6.4 / A5] Enrich the settlement sub per-tool (phase2 P7/P8 subs).
   let sub = baseSub;
-  if (isHarvest && legs.length > 0) {
-    sub = `${legs.length} legs · 1 transaction`;
-  } else if (toolName === 'swap_execute') {
+  if (toolName === 'swap_execute') {
     const route = data.route ?? 'Cetus';
     const impact =
       data.priceImpact == null ? null : Number(data.priceImpact);
@@ -486,10 +258,6 @@ export function TransactionReceiptCard({
         </div>
 
         <div className="flex flex-col gap-1 px-[18px] py-[14px]">
-          {isHarvest &&
-            legs.map((leg, idx) => (
-              <ReceiptLegRow index={idx + 1} key={`${leg.name}-${idx}`} leg={leg} />
-            ))}
           {lines.map((line, idx) => {
             if (line.variant === 'address') {
               const addrToShow = line.rawAddress ?? line.value;

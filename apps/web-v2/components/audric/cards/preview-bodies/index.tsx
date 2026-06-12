@@ -1,9 +1,7 @@
 "use client";
 
-import { SAVE_FEE_BPS, BORROW_FEE_BPS } from "@t2000/sdk/browser";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { fmtUsd } from "../primitives";
 import { APYBlock, AssetAmountBlock } from "../shared";
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -39,26 +37,20 @@ import { APYBlock, AssetAmountBlock } from "../shared";
 // PendingAction, the rich rows light up automatically — no body changes
 // needed.
 //
-// FEE ACCURACY:
-//   Fee constants imported from @t2000/sdk to match the actual fees
-//   charged in `app/api/transactions/prepare/route.ts`:
-//     - save_deposit:    SAVE_FEE_BPS    (10 bps, 0.10%) — feeHooks.save_deposit
-//     - borrow:          BORROW_FEE_BPS  (5 bps,  0.05%) — feeHooks.borrow
-//     - withdraw:        NO FEE — prepare route returns directly
-//     - repay_debt:      NO FEE — prepare route returns directly
-//     - harvest_rewards: per-leg description (10 bps Cetus + 10 bps NAVI)
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a/§2d — 2026-06-10] The save_deposit /
+// borrow / harvest_rewards bodies were deleted with their tools. The
+// surviving withdraw + repay_debt bodies cover the 7-day exit grace
+// window; delete this whole file at the post-window cut (neither
+// withdraw nor repay charges a fee, and send_transfer / mpp_call never
+// used PREVIEW_BODIES).
 //
-// usdValue=amount assumption: save/borrow/repay/withdraw assets are
-// constrained to USDC | USDsui by the SDK allow-list (see
-// .cursor/rules/savings-usdc-only.mdc). Both stables peg to ~$1, so
+// usdValue=amount assumption: repay/withdraw assets are constrained to
+// USDC | USDsui by the SDK allow-list. Both stables peg to ~$1, so
 // `usdValue = amount` is correct.
 // ───────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_USDC_APY_BPS = 462;
 const DEFAULT_USDSUI_APY_BPS = 520;
-
-const SAVE_FEE_BPS_NUM = Number(SAVE_FEE_BPS);
-const BORROW_FEE_BPS_NUM = Number(BORROW_FEE_BPS);
 
 const SECTION_LABEL =
   "font-mono text-[9px] text-muted-foreground tracking-[0.14em] uppercase";
@@ -84,24 +76,6 @@ function resolveApyBpsForAsset(
     return override?.usdsuiApyBps ?? DEFAULT_USDSUI_APY_BPS;
   }
   return override?.usdcApyBps ?? DEFAULT_USDC_APY_BPS;
-}
-
-interface FeeRowProps {
-  label: string;
-  usdValue?: number;
-}
-
-function FeeRow({ label, usdValue }: FeeRowProps) {
-  return (
-    <div className="flex items-baseline justify-between border-border border-t pt-2 text-[11px]">
-      <span className={SECTION_LABEL}>{label}</span>
-      {usdValue != null && (
-        <span className="font-mono text-muted-foreground tabular-nums">
-          ${usdValue.toFixed(2)}
-        </span>
-      )}
-    </div>
-  );
 }
 
 interface APYRowProps {
@@ -176,50 +150,12 @@ function HFRow({
   );
 }
 
-function feeChip(feeBps: number): {
-  label: string;
-  usdFor(amount: number): number;
-} {
-  return {
-    label: `${(feeBps / 100).toFixed(2)}% NAVI overlay`,
-    usdFor: (amount: number) => (amount * feeBps) / 10_000,
-  };
-}
-
 interface PreviewBodyProps {
   borrowApyBps?: number;
   currentHF?: number | null;
   input: Record<string, unknown>;
   projectedHF?: number | null;
   ratesOverride?: { usdcApyBps?: number; usdsuiApyBps?: number };
-}
-
-export function SaveDepositPreviewBody({
-  input,
-  ratesOverride,
-  currentHF,
-  projectedHF,
-}: PreviewBodyProps): ReactNode {
-  const amount = typeof input.amount === "number" ? input.amount : 0;
-  const asset = resolveAsset(input as BasePreviewInput, "USDC");
-  const apyBps = resolveApyBpsForAsset(asset, ratesOverride);
-  const fee = feeChip(SAVE_FEE_BPS_NUM);
-
-  return (
-    <div className="space-y-3">
-      <AssetAmountBlock
-        amount={amount}
-        asset={asset}
-        label="Deposit"
-        usdValue={amount}
-      />
-      <APYRow apyBps={apyBps} asset={asset} label="Pool APY" />
-      {currentHF !== undefined && (
-        <HFRow healthFactor={currentHF} projected={projectedHF} />
-      )}
-      <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
-    </div>
-  );
 }
 
 export function WithdrawPreviewBody({
@@ -244,39 +180,6 @@ export function WithdrawPreviewBody({
       {currentHF !== undefined && (
         <HFRow healthFactor={currentHF} projected={projectedHF} />
       )}
-    </div>
-  );
-}
-
-export function BorrowPreviewBody({
-  input,
-  borrowApyBps,
-  currentHF,
-  projectedHF,
-}: PreviewBodyProps): ReactNode {
-  const amount = typeof input.amount === "number" ? input.amount : 0;
-  const asset = resolveAsset(input as BasePreviewInput, "USDC");
-  const fee = feeChip(BORROW_FEE_BPS_NUM);
-
-  return (
-    <div className="space-y-3">
-      <AssetAmountBlock
-        amount={amount}
-        asset={asset}
-        label="Borrow"
-        usdValue={amount}
-      />
-      {borrowApyBps === undefined ? (
-        <div className="pt-1 text-[10px] text-muted-foreground italic">
-          Variable rate — locked at execute time.
-        </div>
-      ) : (
-        <APYRow apyBps={borrowApyBps} asset={asset} label="Borrow rate" />
-      )}
-      {currentHF !== undefined && (
-        <HFRow healthFactor={currentHF} projected={projectedHF} />
-      )}
-      <FeeRow label={fee.label} usdValue={fee.usdFor(amount)} />
     </div>
   );
 }
@@ -316,81 +219,20 @@ export function RepayPreviewBody({
   );
 }
 
-interface HarvestPreviewInput {
-  minRewardUsd?: number;
-  slippage?: number;
-}
-
-export function HarvestRewardsPreviewBody({
-  input,
-}: {
-  input: Record<string, unknown>;
-}): ReactNode {
-  const h = input as HarvestPreviewInput;
-  const slipPct =
-    typeof h.slippage === "number" ? (h.slippage * 100).toFixed(2) : "1.00";
-  const minRewardLabel =
-    typeof h.minRewardUsd === "number" && h.minRewardUsd > 0
-      ? `Min reward · $${fmtUsd(h.minRewardUsd)}`
-      : null;
-
-  return (
-    <div className="space-y-3">
-      <div className="text-[11px] text-muted-foreground">
-        Compound all pending rewards in one transaction —
-        <span className="font-medium text-foreground">
-          {" "}
-          claim → swap each non-USDC reward to USDC → deposit merged USDC into
-          savings
-        </span>
-        .
-      </div>
-      <div className="space-y-1.5 border-border border-t pt-2">
-        <div className="flex items-baseline justify-between text-[11px]">
-          <span className={SECTION_LABEL}>Per-swap slippage</span>
-          <span className="font-mono text-foreground tabular-nums">
-            {slipPct}%
-          </span>
-        </div>
-        {minRewardLabel && (
-          <div className="flex items-baseline justify-between text-[11px]">
-            <span className={SECTION_LABEL}>Threshold</span>
-            <span className="font-mono text-foreground tabular-nums">
-              {minRewardLabel}
-            </span>
-          </div>
-        )}
-        <div className="flex items-baseline justify-between text-[11px]">
-          <span className={SECTION_LABEL}>Per-leg fee</span>
-          <span className="font-mono text-muted-foreground tabular-nums">
-            0.10% Cetus + 0.10% NAVI
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Dispatcher ───────────────────────────────────────────────────────────
 
 const PREVIEW_BODIES: Record<
   string,
   (props: PreviewBodyProps) => ReactNode
 > = {
-  borrow: BorrowPreviewBody,
-  harvest_rewards: HarvestRewardsPreviewBody,
+  // §2d grace window — delete with the post-window cut.
   repay_debt: RepayPreviewBody,
-  save_deposit: SaveDepositPreviewBody,
   withdraw: WithdrawPreviewBody,
 };
 
 /**
  * Returns a preview body for the given write tool, or `null` if the tool
  * isn't covered (caller falls back to the single-line `inputSummary` text).
- *
- * Per-tool fee bps are sourced from `@t2000/sdk` (SAVE_FEE_BPS,
- * BORROW_FEE_BPS) — no override needed; the canonical fee values are
- * single-source-of-truth in the SDK constants.
  */
 export function renderPreviewBody(
   toolName: string,

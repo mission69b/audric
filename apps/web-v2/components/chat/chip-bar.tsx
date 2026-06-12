@@ -8,7 +8,7 @@
  * sentence, edits if they want, hits Enter — and the agent handles
  * everything from there.
  *
- * See `lib/chip-configs.ts` for the locked 7-chip set + the
+ * See `lib/chip-configs.ts` for the current chip set + the
  * architectural decision behind injection-only chips (CHIP_REVIEW_3).
  */
 

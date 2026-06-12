@@ -99,24 +99,19 @@ import {
 // data.
 // ---------------------------------------------------------------------------
 
+// [SPEC_AUDRIC_DEFI_REMOVAL §2a — 2026-06-10] `savings_info` /
+// `health_check` left the engine with the DeFi cut; `balance_check`
+// reports wallet + NAVI savings + debt in one read, so it's the single
+// refresh target for every surviving write. The grace-window writes
+// (`withdraw` / `repay_debt` / `swap_execute`) leave this map at the
+// §2d post-window cut.
 export const POST_WRITE_REFRESH_MAP: Readonly<
   Record<string, readonly string[]>
 > = {
-  save_deposit: ["balance_check", "savings_info"],
-  withdraw: ["balance_check", "savings_info"],
-  borrow: ["balance_check", "savings_info", "health_check"],
-  repay_debt: ["balance_check", "savings_info", "health_check"],
+  withdraw: ["balance_check"],
+  repay_debt: ["balance_check"],
   send_transfer: ["balance_check"],
   swap_execute: ["balance_check"],
-  // [S.277] volo_stake / volo_unstake entries removed — engine tools
-  // cut in 2.18.0 ("Earns Its Keep" audit).
-  claim_rewards: ["balance_check", "savings_info"],
-  // Compound — claims clear rewards (savings_info), swap leg moves
-  // wallet balances (balance_check), final deposit adds to NAVI USDC
-  // pool (savings_info), AND it can affect health factor since
-  // collateral changed (health_check). Refresh all three so the
-  // narration after settlement reflects ground truth.
-  harvest_rewards: ["balance_check", "savings_info", "health_check"],
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -38,7 +38,6 @@ import {
   type LucideIcon,
   PanelLeftIcon,
   PenSquareIcon,
-  ShieldIcon,
   UserIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -72,7 +71,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 const SETTINGS_TABS: Array<{ href: string; label: string; icon: LucideIcon }> =
   [
     { href: "/settings/passport", label: "Passport", icon: UserIcon },
-    { href: "/settings/safety", label: "Safety", icon: ShieldIcon },
     { href: "/settings/services", label: "Services", icon: CoinsIcon },
     { href: "/settings/memory", label: "Memory", icon: BrainIcon },
   ];

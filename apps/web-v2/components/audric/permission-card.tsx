@@ -175,12 +175,10 @@ const TIER_BAR_CLASS = {
   err: "bg-destructive",
 } as const;
 
+// [SPEC_AUDRIC_DEFI_REMOVAL — 2026-06-10] Labels trimmed to the
+// surviving writes: send_transfer + the §2d grace-window trio.
 const TOOL_LABELS: Record<string, string> = {
-  borrow: "Borrow",
-  claim_rewards: "Claim rewards",
-  harvest_rewards: "Harvest rewards",
   repay_debt: "Repay debt",
-  save_deposit: "Save deposit",
   send_transfer: "Send transfer",
   swap_execute: "Swap",
   withdraw: "Withdraw",
@@ -769,8 +767,7 @@ function bundleStepSummary(step: BundlePermissionCardStep): string {
   }
   // [S.277] volo_stake / volo_unstake branches removed — engine tools
   // cut in 2.18.0 ("Earns Its Keep" audit).
-  // Default: "<Label> <amount> <asset>". Covers save / borrow / repay /
-  // withdraw / claim / harvest naturally.
+  // Default: "<Label> <amount> <asset>". Covers repay / withdraw naturally.
   const amt = input.amount;
   const asset = typeof input.asset === "string" ? input.asset : "USDC";
   if (amt !== undefined && amt !== null) {
@@ -808,15 +805,11 @@ export function bundleStepReceiptRow(step: {
     }
     case "send_transfer":
       return { label: "Sent", value: amt ? `${amt} ${asset}` : "" };
-    case "save_deposit":
-      return { label: "Saved into NAVI", value: amt ? `${amt} ${asset}` : "" };
     case "withdraw":
       return {
         label: "Withdrew from NAVI",
         value: amt ? `${amt} ${asset}` : "",
       };
-    case "borrow":
-      return { label: "Borrowed", value: amt ? `${amt} ${asset}` : "" };
     case "repay_debt":
       return { label: "Repaid", value: amt ? `${amt} ${asset}` : "" };
     default: {
