@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import {
   assertOwns,
   authenticateRequest,
+  getJwtVerifiedEmail,
   isJwtEmailVerified,
   isValidSuiAddress,
 } from "@/lib/audric-auth";
@@ -68,11 +69,17 @@ export async function GET(request: NextRequest) {
 
   const jwt = request.headers.get("x-zklogin-jwt");
 
+  // [S.408] Capture the verified Google email on the same upsert that
+  // materialises the User row (S.261 reversal — outreach infra). Update on
+  // every poll so a changed Google account refreshes it; null never
+  // overwrites an existing value.
+  const email = getJwtVerifiedEmail(jwt);
+
   const [user, sessionCount] = await Promise.all([
     prisma.user.upsert({
       where: { suiAddress: address },
-      create: { suiAddress: address },
-      update: {},
+      create: { suiAddress: address, email },
+      update: email ? { email } : {},
       select: {
         // [SPEC 10 B-wiring] `username` (and the timestamp it was claimed)
         // drive the signup-page username gate. The dashboard reads this to

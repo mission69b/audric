@@ -11,6 +11,12 @@ model User {
   id          String   @id @default(cuid())
   suiAddress  String   @unique
   displayName String?
+  // [S.408 — 2026-06-12] Re-added (S.261 dropped it with the Resend verify
+  // flow). Outreach infra: captured from the zkLogin Google JWT's `email`
+  // claim (only when `email_verified === true`) at the /api/user/status
+  // upsert. NOT unique — one person can hold multiple wallets. Not
+  // authoritative for auth; display/contact only.
+  email       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

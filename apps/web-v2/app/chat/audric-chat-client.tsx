@@ -60,6 +60,7 @@ import { useZkLogin } from "@/components/auth/use-zklogin";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { ChipBar } from "@/components/chat/chip-bar";
 import { EmptyState } from "@/components/chat/empty-state";
+import { GraceBanner } from "@/components/chat/grace-banner";
 import {
   MessageVoteThumbs,
   type VoteState,
@@ -958,6 +959,7 @@ function AudricChatPanel({
         hidden={status === "streaming" || status === "submitted"}
         onChipClick={handleChipClick}
       />
+      <GraceBanner onConsolidate={handleChipClick} />
     </div>
   );
 

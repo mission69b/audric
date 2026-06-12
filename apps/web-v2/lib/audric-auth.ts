@@ -466,6 +466,27 @@ export function isJwtEmailVerified(jwt: string | null | undefined): boolean {
   return payload?.email_verified === true;
 }
 
+/**
+ * [S.408] Extract the VERIFIED email from the zkLogin Google JWT, or null.
+ * Only returns an address when Google asserts `email_verified` — unverified
+ * claims are not stored. Outreach/contact use only; never authoritative
+ * for auth (the JWT signature check in authenticateRequest is).
+ */
+export function getJwtVerifiedEmail(
+  jwt: string | null | undefined
+): string | null {
+  if (!jwt) {
+    return null;
+  }
+  const payload = decodeJwt(jwt);
+  if (payload?.email_verified !== true) {
+    return null;
+  }
+  return typeof payload.email === "string" && payload.email.includes("@")
+    ? payload.email
+    : null;
+}
+
 // -----------------------------------------------------------------------------
 // Test seam — Vitest tests can override the address cache or pre-seed it.
 // -----------------------------------------------------------------------------
