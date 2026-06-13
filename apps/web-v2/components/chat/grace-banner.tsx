@@ -4,20 +4,20 @@ import { XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 /**
- * GraceBanner — the DeFi wind-down contact surface (SPEC_AUDRIC_DEFI_REMOVAL
- * §2d "contact users", founder-locked banner-only channel; S.408).
+ * GraceBanner — the DeFi wind-down surface (SPEC_AUDRIC_DEFI_REMOVAL §2d;
+ * S.408, copy/gating revised S.428).
  *
- * Shown to everyone while the 7-day grace window runs (cut deployed
- * 2026-06-12 → window closes 2026-06-19). Dismissible per-browser via
- * localStorage. The "Consolidate to USDC" action prefills the composer with
- * the canonical exit prompt (injection-only, CHIP_REVIEW_3 — the agent +
- * grace-window tools do the work; no custom stepper).
+ * S.428 reframe: web-v2 is kept FROZEN + INTACT (DeFi-exit tools +
+ * BlockVision) as the legacy app until Audric v3 replaces it — the
+ * post-window cut is CANCELLED. So there is NO June-19 close: the exit
+ * tools stay available indefinitely. The banner shows (dismissible
+ * per-browser) until web-v2 is deleted; the "Consolidate to USDC" action
+ * prefills the composer with the canonical exit prompt (injection-only,
+ * CHIP_REVIEW_3 — the agent + grace tools do the work; no custom stepper).
  *
- * Delete this component at the post-window cut along with
- * withdraw/repay_debt/swap.
+ * Delete this component when web-v2 is deleted (v3 cutover).
  */
 
-const GRACE_WINDOW_ENDS_MS = Date.parse("2026-06-19T23:59:59Z");
 const DISMISS_KEY = "audric-defi-grace-banner-dismissed";
 
 export const CONSOLIDATE_PROMPT =
@@ -32,9 +32,6 @@ export function GraceBanner({
   const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
-    if (Date.now() > GRACE_WINDOW_ENDS_MS) {
-      return;
-    }
     try {
       setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
     } catch {
@@ -61,9 +58,8 @@ export function GraceBanner({
         <span className="font-medium text-foreground">
           Something new is coming.
         </span>{" "}
-        Savings &amp; DeFi close{" "}
-        <span className="font-medium text-foreground">June 19</span> — move
-        everything back to USDC in one tap.
+        Savings &amp; DeFi are winding down — move everything back to USDC
+        whenever you&apos;re ready, in one tap.
       </p>
       <button
         className="shrink-0 rounded-full border border-foreground/20 px-3 py-1 font-mono text-[10px] text-foreground uppercase tracking-[0.1em] transition hover:border-foreground/50"
