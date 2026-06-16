@@ -44,10 +44,11 @@ import { SponsoredTxError, sponsoredTx } from "@/lib/audric/sponsored-tx";
 
 type Tab = "wallet" | "bank";
 type Step = "form" | "review" | "sent";
-type Asset = "USDC" | "USDsui";
 
-const ASSETS: Asset[] = ["USDC", "USDsui"];
-const ASSET_DECIMALS = 6;
+// Sends route by asset: USDC/USDsui/SUI take the gasless `send` path;
+// every other held registry token (MANIFEST, WAL, DEEP, …) takes the
+// generic `send-token` path (still Enoki-sponsored → gasless to the user).
+const GASLESS_NATIVE = new Set(["USDC", "USDsui", "SUI"]);
 
 export interface WithdrawFundsModalProps {
   address: string;
@@ -225,7 +226,7 @@ function WalletBody({
   const { session } = useZkLogin();
   const { data: portfolio } = usePortfolio(address);
 
-  const [asset, setAsset] = useState<Asset>("USDC");
+  const [asset, setAsset] = useState<string>("USDC");
   const [assetMenuOpen, setAssetMenuOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [destination, setDestination] = useState("");
@@ -238,15 +239,41 @@ function WalletBody({
   } | null>(null);
   const [resolveStatus, setResolveStatus] = useState<ResolveStatus>("idle");
 
-  const available = useMemo(() => {
-    const coin = portfolio?.wallet.find(
-      (c) => c.symbol.toLowerCase() === asset.toLowerCase()
-    );
-    if (!coin) {
-      return 0;
+  // Every held coin with a non-zero balance is sendable. Stables sort
+  // first; the rest alphabetical. Decimals come per-coin from the portfolio
+  // (NOT a hardcoded 6) so non-6dp tokens floor correctly.
+  const heldCoins = useMemo(
+    () =>
+      (portfolio?.wallet ?? [])
+        .map((c) => ({
+          symbol: c.symbol,
+          decimals: c.decimals,
+          balance: floorTo(Number(c.balance) / 10 ** c.decimals, c.decimals),
+        }))
+        .filter((c) => c.balance > 0)
+        .sort((a, b) => {
+          if (a.symbol === "USDC") {
+            return -1;
+          }
+          if (b.symbol === "USDC") {
+            return 1;
+          }
+          return a.symbol.localeCompare(b.symbol);
+        }),
+    [portfolio]
+  );
+
+  // If the default (USDC) isn't held, fall back to the first held coin so
+  // the form doesn't open on a $0 asset.
+  useEffect(() => {
+    if (heldCoins.length > 0 && !heldCoins.some((c) => c.symbol === asset)) {
+      setAsset(heldCoins[0].symbol);
     }
-    return floorTo(Number(coin.balance) / 10 ** coin.decimals, ASSET_DECIMALS);
-  }, [portfolio, asset]);
+  }, [heldCoins, asset]);
+
+  const selectedCoin = heldCoins.find((c) => c.symbol === asset);
+  const decimals = selectedCoin?.decimals ?? 6;
+  const available = selectedCoin?.balance ?? 0;
 
   const numAmount = Number.parseFloat(amount);
   const amountValid =
@@ -344,13 +371,24 @@ function WalletBody({
     setSubmitting(true);
     setError(null);
     try {
-      const result = await sponsoredTx({
-        type: "send",
-        amount: floorTo(numAmount, ASSET_DECIMALS),
-        recipient,
-        asset,
-        session,
-      });
+      const sendAmount = floorTo(numAmount, decimals);
+      // USDC/USDsui/SUI → gasless `send`; any other held registry token
+      // → generic `send-token` (resolved by symbol server-side).
+      const result = GASLESS_NATIVE.has(asset)
+        ? await sponsoredTx({
+            type: "send",
+            amount: sendAmount,
+            recipient,
+            asset: asset as "USDC" | "USDsui" | "SUI",
+            session,
+          })
+        : await sponsoredTx({
+            type: "send-token",
+            amount: sendAmount,
+            recipient,
+            symbol: asset,
+            session,
+          });
       setDigest(result.digest);
       setStep("sent");
     } catch (err) {
@@ -395,7 +433,7 @@ function WalletBody({
           </div>
         </div>
         <Receipt
-          amount={`−${floorTo(numAmount, ASSET_DECIMALS)} ${asset}`}
+          amount={`−${floorTo(numAmount, decimals)} ${asset}`}
           destination={recipient ?? trimmedDest}
           digest={digest}
         />
@@ -424,9 +462,9 @@ function WalletBody({
     return (
       <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-5">
         <Receipt
-          amount={`−${floorTo(numAmount, ASSET_DECIMALS)} ${asset}`}
+          amount={`−${floorTo(numAmount, decimals)} ${asset}`}
           destination={recipient ?? trimmedDest}
-          left={`${floorTo(available - numAmount, ASSET_DECIMALS)} ${asset}`}
+          left={`${floorTo(available - numAmount, decimals)} ${asset}`}
         />
         <div className="flex w-full items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2.5 text-[12.5px] text-warning leading-[1.5]">
           <span className="mt-px font-mono font-semibold">!</span>
@@ -494,20 +532,22 @@ function WalletBody({
                 type="button"
               />
               <div className="absolute right-0 top-[calc(100%+4px)] z-20 min-w-[110px] overflow-hidden rounded-md border border-border bg-card shadow-lg">
-                {ASSETS.map((a) => (
+                {heldCoins.map((c) => (
                   <button
                     className={`flex w-full items-center px-3 py-2 text-left font-mono text-[12px] transition hover:bg-accent ${
-                      a === asset ? "text-foreground" : "text-muted-foreground"
+                      c.symbol === asset
+                        ? "text-foreground"
+                        : "text-muted-foreground"
                     }`}
-                    key={a}
+                    key={c.symbol}
                     onClick={() => {
-                      setAsset(a);
+                      setAsset(c.symbol);
                       setAssetMenuOpen(false);
                       setError(null);
                     }}
                     type="button"
                   >
-                    {a}
+                    {c.symbol}
                   </button>
                 ))}
               </div>
@@ -575,7 +615,7 @@ function WalletBody({
 
       <div className="flex items-center gap-2 rounded-lg border border-signal/25 bg-signal/[0.06] px-3 py-2 text-[12px] text-foreground">
         <ZapIcon className="text-signal" size={13} />
-        <span>USDC &amp; USDsui withdrawals are gasless.</span>
+        <span>Withdrawals are gasless — we cover the network fee.</span>
       </div>
 
       {error && (

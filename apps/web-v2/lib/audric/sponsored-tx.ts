@@ -140,6 +140,18 @@ export type SponsoredTxRequest =
       asset?: SupportedAsset;
     }
   | {
+      // [send-any-registry-token] Send a NON-stable/non-SUI registry token
+      // (e.g. MANIFEST, WAL, DEEP) the user holds. The high-level `send`
+      // path is gasless-stable + SUI only (`OPERATION_ASSETS.send`); this
+      // path builds a generic sponsored transfer (selectAndSplitCoin +
+      // addSendToTx) by coin type. The prepare route resolves `symbol` →
+      // coinType + decimals via `COIN_REGISTRY` (case-insensitive).
+      type: "send-token";
+      amount: number;
+      recipient: string;
+      symbol: string;
+    }
+  | {
       type: "swap";
       amount: number;
       from: string;
@@ -259,6 +271,13 @@ function buildPrepareBody(
         amount: req.amount,
         recipient: req.recipient,
         ...(req.asset ? { asset: req.asset } : {}),
+      };
+    case "send-token":
+      return {
+        ...base,
+        amount: req.amount,
+        recipient: req.recipient,
+        symbol: req.symbol,
       };
     case "swap":
       return {

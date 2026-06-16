@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 const DISMISS_KEY = "audric-defi-grace-banner-dismissed";
 
 export const CONSOLIDATE_PROMPT =
-  "Withdraw all my NAVI savings, repay any outstanding debt, and swap all my non-USDC tokens to USDC";
+  "Withdraw all my NAVI savings and repay any outstanding debt";
 
 export function GraceBanner({
   onConsolidate,
@@ -58,8 +58,8 @@ export function GraceBanner({
         <span className="font-medium text-foreground">
           Something new is coming.
         </span>{" "}
-        Savings &amp; DeFi are winding down — move everything back to USDC
-        whenever you&apos;re ready, in one tap.
+        Savings &amp; DeFi are winding down — withdraw your savings and clear
+        any debt whenever you&apos;re ready, in one tap.
       </p>
       <button
         className="shrink-0 rounded-full border border-foreground/20 px-3 py-1 font-mono text-[10px] text-foreground uppercase tracking-[0.1em] transition hover:border-foreground/50"

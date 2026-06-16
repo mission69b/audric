@@ -74,10 +74,14 @@
  * + L545-630 (`buildAndSponsor`).
  */
 
+import { Transaction } from "@mysten/sui/transactions";
 import {
   addFeeTransfer,
+  addSendToTx,
   assertAllowedAsset,
   BORROW_FEE_BPS,
+  COIN_REGISTRY,
+  type ComposeTxResult,
   composeTx,
   deserializeCetusRoute,
   OVERLAY_FEE_RATE,
@@ -85,6 +89,7 @@ import {
   type SerializedCetusRoute,
   SUPPORTED_ASSETS,
   type SupportedAsset,
+  selectAndSplitCoin,
   T2000_OVERLAY_FEE_WALLET,
   type WriteStep,
 } from "@t2000/sdk";
@@ -191,6 +196,20 @@ const sendSchema = z.object({
   recipient: recipientField,
   asset: anySupportedAsset.optional(),
 });
+// [send-any-registry-token] Send a NON-stable/non-SUI registry token the
+// user holds (e.g. MANIFEST, WAL, DEEP). The high-level `send` path is
+// gasless-stable + SUI only (`OPERATION_ASSETS.send`); this path resolves
+// `symbol` → coin type + decimals via `COIN_REGISTRY` and builds a generic
+// sponsored transfer (`selectAndSplitCoin` + `addSendToTx`) — gas still
+// sponsored by Enoki, so it stays gasless to the user. `symbol` is matched
+// case-insensitively against the registry (validated in `composeTokenTransfer`).
+const sendTokenSchema = z.object({
+  type: z.literal("send-token"),
+  address: addressField,
+  amount: positiveAmount,
+  recipient: recipientField,
+  symbol: z.string().min(1).max(32),
+});
 const swapSchema = z.object({
   type: z.literal("swap"),
   address: addressField,
@@ -295,6 +314,7 @@ const prepareBodySchema = z.discriminatedUnion("type", [
   borrowSchema,
   repaySchema,
   sendSchema,
+  sendTokenSchema,
   swapSchema,
   claimRewardsSchema,
   harvestSchema,
@@ -501,6 +521,78 @@ function buildBundleSteps(body: BundleBody): WriteStep[] {
   }) as WriteStep[];
 }
 
+/**
+ * [send-any-registry-token] Build a generic sponsored transfer for a
+ * registry token the high-level `send` path won't take (anything but
+ * USDC/USDsui/SUI). Bypasses `composeTx.send_transfer` (which gates on
+ * `OPERATION_ASSETS.send` + symbol-keyed `SUPPORTED_ASSETS`) and instead
+ * uses the SDK's generic primitives `selectAndSplitCoin` + `addSendToTx`
+ * by coin type, returning a minimal `ComposeTxResult` the Enoki sponsor
+ * understands (it reads `tx`, `txKindBytes`, `derivedAllowedAddresses`).
+ *
+ * Coin sourcing mirrors the main route: try coin-objects first
+ * (`sponsoredContext: true`, Enoki-sponsorable); on
+ * `ADDRESS_BALANCE_UNSPONSORABLE` retry address-balance-aware. Gas stays
+ * Enoki-sponsored → gasless to the user. `symbol` is matched
+ * case-insensitively against `COIN_REGISTRY` (the registry symbols are
+ * mixed-case, e.g. `wBTC`).
+ */
+async function composeTokenTransfer(args: {
+  sender: string;
+  recipient: string;
+  symbol: string;
+  amount: number;
+  client: ReturnType<typeof createSuiRpcClient>;
+}): Promise<ComposeTxResult> {
+  const { sender, recipient, symbol, amount, client } = args;
+  const entry = Object.values(COIN_REGISTRY).find(
+    (m) => m.symbol.toLowerCase() === symbol.toLowerCase()
+  );
+  if (!entry) {
+    throw new Error(
+      `Sending ${symbol} isn't supported yet — it isn't a known token.`
+    );
+  }
+  const coinType = entry.type;
+  // Floor (never round up) so amount * 10^decimals can't exceed the
+  // on-chain balance — see `.cursor/rules/financial-amounts.mdc`.
+  const rawAmount = BigInt(Math.floor(amount * 10 ** entry.decimals));
+  if (rawAmount <= 0n) {
+    throw new Error("Amount is too small to send.");
+  }
+
+  const build = async (sponsoredContext: boolean): Promise<ComposeTxResult> => {
+    const tx = new Transaction();
+    tx.setSender(sender);
+    const { coin } = await selectAndSplitCoin(
+      tx,
+      client,
+      sender,
+      coinType,
+      rawAmount,
+      { sponsoredContext }
+    );
+    addSendToTx(tx, coin, recipient);
+    const txKindBytes = await tx.build({ client, onlyTransactionKind: true });
+    // Minimal ComposeTxResult — only the fields the Enoki sponsor reads.
+    return {
+      tx,
+      txKindBytes,
+      derivedAllowedAddresses: [recipient],
+      perStepPreviews: [],
+    } as unknown as ComposeTxResult;
+  };
+
+  try {
+    return await build(true);
+  } catch (err) {
+    if ((err as { code?: string })?.code === "ADDRESS_BALANCE_UNSPONSORABLE") {
+      return await build(false);
+    }
+    throw err;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // POST handler
 // ---------------------------------------------------------------------------
@@ -566,7 +658,7 @@ export async function POST(request: NextRequest) {
   // Audric's brand-specific `@audric` translation stays out of `@t2000/
   // sdk`. CLI's contacts.json legacy path is a separate cleanup tracked
   // in the backlog (S.264 candidate).
-  if (body.type === "send") {
+  if (body.type === "send" || body.type === "send-token") {
     try {
       body = { ...body, recipient: await resolveRecipient(body.recipient) };
     } catch (err) {
@@ -602,6 +694,59 @@ export async function POST(request: NextRequest) {
           error: err instanceof Error ? err.message : String(err),
         },
         { status: 400 }
+      );
+    }
+  }
+
+  // 3.6. [send-any-registry-token] Self-contained path for sending a
+  // non-stable/non-SUI registry token. Builds a generic sponsored transfer
+  // (`composeTokenTransfer`) and sponsors it directly — it does NOT go
+  // through `buildWriteStep`/`composeTx` (whose `send_transfer` appender
+  // gates on `OPERATION_ASSETS.send` + symbol-keyed `SUPPORTED_ASSETS`).
+  // Kept fully separate so the existing single-write + bundle compose
+  // paths stay untouched.
+  if (body.type === "send-token") {
+    const tokenClient = createSuiRpcClient();
+    let tokenComposed: ComposeTxResult;
+    try {
+      tokenComposed = await composeTokenTransfer({
+        sender: body.address,
+        recipient: body.recipient,
+        symbol: body.symbol,
+        amount: body.amount,
+        client: tokenClient,
+      });
+    } catch (err) {
+      console.error("[prepare] composeTokenTransfer failed:", redactPII(err));
+      return NextResponse.json(
+        {
+          error:
+            err instanceof Error ? err.message : "Failed to assemble transfer",
+        },
+        { status: 400 }
+      );
+    }
+    try {
+      const tokenSponsored = await enokiSponsor.prepare({
+        composed: tokenComposed,
+        sender: body.address,
+        client: tokenClient,
+        network: env.NEXT_PUBLIC_SUI_NETWORK,
+        jwt,
+      });
+      return NextResponse.json({
+        bytes: tokenSponsored.bytes,
+        digest: tokenSponsored.digest,
+      });
+    } catch (err) {
+      const status = err instanceof EnokiSponsorError ? err.status : 500;
+      console.error(
+        "[prepare] enoki sponsor error type=send-token:",
+        redactPII(err)
+      );
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Sponsorship failed" },
+        { status }
       );
     }
   }
