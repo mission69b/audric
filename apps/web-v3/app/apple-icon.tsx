@@ -1,6 +1,8 @@
 /**
- * Apple touch icon — 180×180 AudricMark (Next.js metadata route). Ported from
- * web-v2: white mark on an opaque dark tile (iOS rounds the corners itself).
+ * Apple touch icon — 180×180 AudricMark (Next.js metadata route). White mark on
+ * an opaque dark tile (iOS rounds the corners itself). viewBox cropped to the
+ * diamond's bounds (92→420 = 328) so the mark fills the tile (~73%) instead of
+ * floating small in the center.
  */
 
 import { ImageResponse } from "next/og";
@@ -35,7 +37,7 @@ export default function AppleIcon() {
         justifyContent: "center",
       }}
     >
-      <svg fill="#ffffff" height="120" viewBox="0 0 512 512" width="120">
+      <svg fill="#ffffff" height="132" viewBox="92 92 328 328" width="132">
         <title>Audric</title>
         {GRID.map(([row, col]) => (
           <rect

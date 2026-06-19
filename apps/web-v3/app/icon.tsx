@@ -1,9 +1,10 @@
 /**
  * Favicon — the AudricMark diamond as a 32×32 PNG (Next.js metadata route).
- * Ported verbatim from web-v2: white mark on a dark rounded tile (a browser tab
- * has no theme context, and a dark tile reads far better than a white one in
- * light chrome). Canonical geometry: viewBox 512, offset 92 / gap 68 / cell 56
- * (symmetric centering).
+ * White mark on a dark rounded tile (a browser tab has no theme context; a dark
+ * tile reads far better than a white one in light chrome). Canonical geometry
+ * (offset 92 / gap 68 / cell 56), but the viewBox is CROPPED to the diamond's
+ * exact bounds (92→420 = 328) so the mark FILLS the tile and stays legible at a
+ * real 16px tab — the full-512 viewBox left it a tiny speck.
  */
 
 import { ImageResponse } from "next/og";
@@ -40,7 +41,7 @@ export default function Icon() {
         justifyContent: "center",
       }}
     >
-      <svg fill="#ffffff" height="24" viewBox="0 0 512 512" width="24">
+      <svg fill="#ffffff" height="26" viewBox="92 92 328 328" width="26">
         <title>Audric</title>
         {GRID.map(([row, col]) => (
           <rect
