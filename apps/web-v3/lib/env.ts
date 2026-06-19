@@ -54,8 +54,8 @@ const serverSchema = z.object({
   /** Stripe webhook signing secret (whsec_…) — verifies credit-granting events. */
   STRIPE_WEBHOOK_SECRET: optionalString,
   /** Recurring Price IDs for the subscription tiers (inert until set). */
-  STRIPE_PRICE_PLUS: optionalString,
   STRIPE_PRICE_PRO: optionalString,
+  STRIPE_PRICE_PRO_PLUS: optionalString,
   STRIPE_PRICE_MAX: optionalString,
 });
 
@@ -80,8 +80,8 @@ const runtimeEnv = {
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-  STRIPE_PRICE_PLUS: process.env.STRIPE_PRICE_PLUS,
   STRIPE_PRICE_PRO: process.env.STRIPE_PRICE_PRO,
+  STRIPE_PRICE_PRO_PLUS: process.env.STRIPE_PRICE_PRO_PLUS,
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,

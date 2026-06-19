@@ -41,7 +41,7 @@ export const user = pgTable("User", {
   closedLoopAcceptedAt: timestamp("closedLoopAcceptedAt"),
   /** Subscription (scaffold — inert until Stripe Price IDs are provisioned). */
   subscriptionTier: varchar("subscriptionTier", {
-    enum: ["free", "plus", "pro", "max"],
+    enum: ["free", "pro", "proPlus", "max"],
   })
     .notNull()
     .default("free"),

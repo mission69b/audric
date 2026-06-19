@@ -8,7 +8,7 @@ import {
   priceIdForTier,
 } from "@/lib/stripe";
 
-const PAID_TIERS: TierId[] = ["plus", "pro", "max"];
+const PAID_TIERS: TierId[] = ["pro", "proPlus", "max"];
 
 // Create a hosted Stripe Checkout session in SUBSCRIPTION mode for a paid tier.
 // Inert until the tier's Price ID is provisioned (priceIdForTier → 400). The

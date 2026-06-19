@@ -149,7 +149,7 @@ export async function acceptClosedLoopTerms(userId: string) {
 export async function setSubscription(
   userId: string,
   opts: {
-    tier: "free" | "plus" | "pro" | "max";
+    tier: "free" | "pro" | "proPlus" | "max";
     status?: string | null;
     stripeSubscriptionId?: string | null;
   }
