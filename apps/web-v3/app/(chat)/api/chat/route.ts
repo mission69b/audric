@@ -12,6 +12,7 @@ import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import { maxMessagesPerHour } from "@/lib/ai/entitlements";
+import { inlineImageAttachments } from "@/lib/ai/inline-attachments";
 import {
   allowedModelIds,
   chatModels,
@@ -245,7 +246,10 @@ export async function POST(request: Request) {
     const isReasoningModel = capabilities?.reasoning === true;
     const supportsTools = capabilities?.tools === true;
 
-    const modelMessages = await convertToModelMessages(uiMessages);
+    // Inline private-blob image attachments as base64 so vision models receive
+    // the pixels (they can't fetch our session-gated /api/files/blob URLs).
+    const inlinedMessages = await inlineImageAttachments(uiMessages);
+    const modelMessages = await convertToModelMessages(inlinedMessages);
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,

@@ -1,7 +1,6 @@
 /**
- * Apple touch icon — 180×180 AudricMark (Next.js metadata route). Same
- * canonical geometry as the favicon, INVERTED per brand: dark mark on a white
- * tile (iOS rounds the corners itself).
+ * Apple touch icon — 180×180 AudricMark (Next.js metadata route). Ported from
+ * web-v2: white mark on an opaque dark tile (iOS rounds the corners itself).
  */
 
 import { ImageResponse } from "next/og";
@@ -30,13 +29,13 @@ export default function AppleIcon() {
       style={{
         width: "100%",
         height: "100%",
-        background: "#ffffff",
+        background: "#0a0a0a",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <svg fill="#0a0a0a" height="120" viewBox="0 0 512 512" width="120">
+      <svg fill="#ffffff" height="120" viewBox="0 0 512 512" width="120">
         <title>Audric</title>
         {GRID.map(([row, col]) => (
           <rect
