@@ -3,8 +3,6 @@ import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { ExportedSessionKey } from "@mysten/seal";
-import { isSealConfigured, sealFetch, sealStore } from "@/lib/seal";
 
 // Private blob storage seam (SPEC_AUDRIC_V3 §6b).
 //
@@ -28,48 +26,6 @@ const LOCAL_DIR = join(process.cwd(), ".blob-store");
 
 function isVercelBlobEnabled(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-// --- Walrus+Seal backend (decentralized, owner-encrypted) ---
-//
-// A Walrus ref is self-describing: `walrus:<blobId>:<blobObjectId>:<contentType>`
-// — blobId reads the bytes, blobObjectId deletes the (deletable) blob, and the
-// contentType is carried so the decrypt path needs no extra metadata.
-const WALRUS_PREFIX = "walrus:";
-
-// Walrus is the backend whenever Seal is configured (API key + policy package).
-// No separate flag: the keys we need anyway ARE the switch. Falls back to
-// Vercel/local when Seal isn't set up (dev/CI/contributors).
-function useWalrus(): boolean {
-  return isSealConfigured();
-}
-
-export function isWalrusRef(ref: string): boolean {
-  return ref.startsWith(WALRUS_PREFIX);
-}
-
-function makeWalrusRef(
-  blobId: string,
-  blobObjectId: string,
-  contentType: string
-): string {
-  return `${WALRUS_PREFIX}${blobId}:${blobObjectId}:${contentType}`;
-}
-
-/** Parse a `walrus:<blobId>:<blobObjectId>:<contentType>` ref. */
-export function parseWalrusRef(ref: string): {
-  blobId: string;
-  blobObjectId: string;
-  contentType: string;
-} {
-  const [blobId, blobObjectId, ...rest] = ref
-    .slice(WALRUS_PREFIX.length)
-    .split(":");
-  return {
-    blobId: blobId ?? "",
-    blobObjectId: blobObjectId ?? "",
-    contentType: rest.join(":") || "application/octet-stream",
-  };
 }
 
 export type PutBlobResult = {
@@ -119,23 +75,10 @@ function toBuffer(data: ArrayBuffer | Buffer | Uint8Array): Buffer {
 export async function putBlob(
   pathname: string,
   data: ArrayBuffer | Buffer | Uint8Array,
-  options?: { contentType?: string; owner?: string }
+  options?: { contentType?: string }
 ): Promise<PutBlobResult> {
   const body = toBuffer(data);
   const contentType = options?.contentType ?? "application/octet-stream";
-
-  // Walrus+Seal: encrypt to the owner + store the ciphertext on Walrus. The
-  // returned `url`/`pathname` IS the walrus ref — display goes through the
-  // session-keyed decrypt route (not a plain GET), so we don't hand back the
-  // in-app GET URL here.
-  if (useWalrus() && options?.owner) {
-    const { blobId, blobObjectId } = await sealStore(
-      options.owner,
-      new Uint8Array(body)
-    );
-    const ref = makeWalrusRef(blobId, blobObjectId, contentType);
-    return { pathname: ref, url: ref, contentType };
-  }
 
   if (isVercelBlobEnabled()) {
     const { put } = await import("@vercel/blob");
@@ -160,11 +103,6 @@ export async function putBlob(
 }
 
 export async function getBlob(pathname: string): Promise<BlobReadResult> {
-  if (isWalrusRef(pathname)) {
-    // Walrus blobs are Seal-encrypted — they need the user's SessionKey to
-    // decrypt. Callers must use getBlobViaSeal (a plain GET can't carry one).
-    throw new Error("Walrus blob requires getBlobViaSeal (session-keyed)");
-  }
   if (isVercelBlobEnabled()) {
     const { get } = await import("@vercel/blob");
     const result = await get(pathname, { access: "private" });
@@ -199,31 +137,7 @@ export async function getBlob(pathname: string): Promise<BlobReadResult> {
   return { body, contentType };
 }
 
-/**
- * Read a blob, decrypting Walrus+Seal refs with the user's session key.
- * Non-walrus refs fall through to the normal getBlob. The contentType is read
- * from the self-describing ref (Walrus stores raw bytes).
- */
-export async function getBlobViaSeal(
-  ref: string,
-  owner: string,
-  exported: ExportedSessionKey
-): Promise<BlobReadResult> {
-  if (!isWalrusRef(ref)) {
-    return getBlob(ref);
-  }
-  const { blobId, contentType } = parseWalrusRef(ref);
-  const bytes = await sealFetch(owner, exported, blobId);
-  return { body: Buffer.from(bytes), contentType };
-}
-
 export async function deleteBlob(pathname: string): Promise<void> {
-  if (isWalrusRef(pathname)) {
-    // Walrus blobs are `deletable`; proper on-chain delete (by blobObjectId)
-    // lands with the deletion surface wiring. They also expire after the
-    // storage epochs, so an un-deleted blob is bounded, not permanent.
-    return;
-  }
   if (isVercelBlobEnabled()) {
     const { del } = await import("@vercel/blob");
     await del(pathname);

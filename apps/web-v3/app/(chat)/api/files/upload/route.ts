@@ -73,11 +73,10 @@ export async function POST(request: Request) {
     const fileBuffer = await file.arrayBuffer();
 
     try {
-      // Private blob via the storage seam (§6b). Owner-encrypted on Walrus when
-      // Seal is configured; otherwise the session-gated Vercel/local read URL.
+      // Private blob via the storage seam (§6b). Returns the session-gated
+      // in-app read URL — never a public vendor URL.
       const result = await putBlob(safeName, fileBuffer, {
         contentType: uploadedFile.type || "application/octet-stream",
-        owner: session.user.id,
       });
 
       return NextResponse.json({
