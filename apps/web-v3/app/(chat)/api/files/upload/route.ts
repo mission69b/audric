@@ -4,16 +4,33 @@ import { z } from "zod";
 import { auth } from "@/app/(auth)/auth";
 import { putBlob } from "@/lib/blob";
 
+// Vision-model-supported image types. Clipboard/web pastes are frequently
+// webp/gif (not just jpeg/png) — accept the full set the models can read so a
+// paste doesn't hard-400.
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
     .refine((file) => file.size <= 5 * 1024 * 1024, {
       message: "File size should be less than 5MB",
     })
-    .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
-      message: "File type should be JPEG or PNG",
+    .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), {
+      message: "File type should be JPEG, PNG, WebP, or GIF",
     }),
 });
+
+const EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -45,8 +62,14 @@ export async function POST(request: Request) {
     }
 
     const uploadedFile = formData.get("file") as File;
-    const filename = uploadedFile.name;
-    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    // Pasted clipboard images often arrive with an empty or odd filename →
+    // sanitizing can collapse to "" and break the blob pathname. Fall back to a
+    // typed default so paste always yields a valid name.
+    const ext = EXT_BY_TYPE[file.type] ?? "png";
+    const rawName = uploadedFile.name?.trim() || `pasted-image.${ext}`;
+    const sanitized = rawName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeName =
+      sanitized.replace(/^[._]+/, "") || `pasted-image.${ext}`;
     const fileBuffer = await file.arrayBuffer();
 
     try {
