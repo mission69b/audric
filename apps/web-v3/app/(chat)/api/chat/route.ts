@@ -110,8 +110,13 @@ export async function POST(request: Request) {
     const chatModel =
       session?.user || requestedIsFree ? requestedModel : DEFAULT_CHAT_MODEL;
 
-    // IP rate-limit applies to everyone — the anonymous-abuse guard.
-    await checkIpRateLimit(ipAddress(request));
+    // IP rate-limit guards the ANONYMOUS try-before-signup surface only (no
+    // account to cap). Authed users — free OR paid — are governed by the
+    // per-user hourly cap below (100 free / 10k paid), so the strict 10/hr IP
+    // guard must NOT apply to them (it was capping paying subscribers at 10/hr).
+    if (!session?.user) {
+      await checkIpRateLimit(ipAddress(request));
+    }
 
     const isToolApprovalFlow = Boolean(messages);
     let messagesFromDb: DBMessage[] = [];
