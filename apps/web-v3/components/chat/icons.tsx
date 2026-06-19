@@ -50,6 +50,43 @@ export const AttachmentIcon = () => (
   </svg>
 );
 
+// Audric brand mark — the 9-cell diamond (mirrors the OG card + audric-mark).
+// Monochrome ink; inherits `currentColor`.
+const AUDRIC_MARK_CELLS: [number, number][] = [
+  [22, 0],
+  [11, 11],
+  [33, 11],
+  [0, 22],
+  [22, 22],
+  [44, 22],
+  [11, 33],
+  [33, 33],
+  [22, 44],
+];
+
+export const AudricMark = ({ size = 18 }: { size?: number }) => (
+  <svg
+    fill="none"
+    height={size}
+    viewBox="0 0 53 53"
+    width={size}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <title>Audric</title>
+    {AUDRIC_MARK_CELLS.map(([x, y]) => (
+      <rect
+        fill="currentColor"
+        height={9}
+        key={`${x}-${y}`}
+        rx={2}
+        width={9}
+        x={x}
+        y={y}
+      />
+    ))}
+  </svg>
+);
+
 export const GitIcon = () => (
   <svg
     height="16"

@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://v3.audric.ai"),
+  metadataBase: new URL("https://audric.ai"),
   title: "Audric",
   description: "Private, decentralized AI — truly yours.",
 };

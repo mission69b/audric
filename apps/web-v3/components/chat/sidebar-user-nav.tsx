@@ -41,7 +41,7 @@ function shortAddress(address: string): string {
 }
 
 export function SidebarUserNav() {
-  const { status, address, login, logout } = useZkLogin();
+  const { status, address, email, login, logout } = useZkLogin();
   const { setTheme, resolvedTheme } = useTheme();
   const router = useRouter();
   const { data: balance } = useSWR<{ usdc: number | null }>(
@@ -98,22 +98,29 @@ export function SidebarUserNav() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              className="h-8 rounded-lg bg-transparent px-2 text-[13px] text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="h-auto rounded-lg bg-transparent px-2 py-1.5 text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               data-testid="user-nav-button"
             >
               <div
-                className="size-5 shrink-0 rounded-full ring-1 ring-sidebar-border/50"
+                className="size-7 shrink-0 rounded-full ring-1 ring-sidebar-border/50"
                 style={{
                   background: `linear-gradient(135deg, oklch(0.35 0.08 ${addrHue(address)}), oklch(0.25 0.05 ${addrHue(address) + 40}))`,
                 }}
               />
-              <span
-                className="truncate font-mono text-[12px]"
-                data-testid="user-address"
-              >
-                {shortAddress(address)}
-              </span>
-              <ChevronUp className="ml-auto size-3.5 text-sidebar-foreground/50" />
+              <div className="flex min-w-0 flex-col leading-tight">
+                <span
+                  className="truncate font-mono text-[12px] text-sidebar-foreground/80"
+                  data-testid="user-address"
+                >
+                  {shortAddress(address)}
+                </span>
+                {email && (
+                  <span className="truncate text-[11px] text-sidebar-foreground/45">
+                    {email}
+                  </span>
+                )}
+              </div>
+              <ChevronUp className="ml-auto size-3.5 shrink-0 text-sidebar-foreground/50" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
+import { useZkLogin } from "@/components/auth/zklogin-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,9 +29,34 @@ import { fetcher } from "@/lib/utils";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const MEMORY_KEY = "audric-memory";
+const NETWORK = process.env.NEXT_PUBLIC_SUI_NETWORK ?? "mainnet";
+
+function shortAddress(a: string): string {
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+function formatExpiry(expiresAt: number | undefined): string {
+  if (!expiresAt) {
+    return "—";
+  }
+  const ms = expiresAt - Date.now();
+  if (ms <= 0) {
+    return "Expired — sign in again";
+  }
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 60) {
+    return `Expires in ${mins}m`;
+  }
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) {
+    return `Expires in ${hrs}h`;
+  }
+  return `Expires in ${Math.floor(hrs / 24)}d`;
+}
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { address, email, session } = useZkLogin();
   const { data: models } = useSWR<{ memoryEnabled?: boolean }>(
     `${BASE}/api/models`,
     fetcher,
@@ -90,6 +116,47 @@ export default function SettingsPage() {
   return (
     <Overlay onClose={() => router.push(`${BASE}/`)}>
       <h1 className="font-semibold text-foreground text-xl">Settings</h1>
+
+      {/* Passport — identity, wallet, session */}
+      {address && (
+        <Section title="Passport">
+          <p className="text-muted-foreground text-xs">
+            <strong className="text-foreground/80">
+              No seed phrase, ever.
+            </strong>{" "}
+            Your wallet is controlled by your Google sign-in (zkLogin). Sign out
+            and back in any time — your wallet and funds remain.
+          </p>
+          <div className="mt-3 space-y-2.5">
+            <InfoRow label="Wallet address">
+              <button
+                className="font-mono text-foreground/80 transition-colors hover:text-foreground"
+                onClick={() => {
+                  navigator.clipboard.writeText(address);
+                  toast.success("Address copied");
+                }}
+                title="Copy address"
+                type="button"
+              >
+                {shortAddress(address)}
+              </button>
+            </InfoRow>
+            <InfoRow label="Network">
+              <span className="text-foreground/80 capitalize">{NETWORK}</span>
+            </InfoRow>
+            {email && (
+              <InfoRow label="Sign-in email">
+                <span className="text-foreground/80">{email}</span>
+              </InfoRow>
+            )}
+            <InfoRow label="Session">
+              <span className="text-foreground/80">
+                {formatExpiry(session?.expiresAt)}
+              </span>
+            </InfoRow>
+          </div>
+        </Section>
+      )}
 
       {/* Memory */}
       <Section title="Private Memory">
@@ -190,6 +257,21 @@ export default function SettingsPage() {
         <ChevronRightIcon className="size-4 text-muted-foreground" />
       </button>
     </Overlay>
+  );
+}
+
+function InfoRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      {children}
+    </div>
   );
 }
 

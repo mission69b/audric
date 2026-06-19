@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  MessageSquareIcon,
   PanelLeftIcon,
   PenSquareIcon,
   SparklesIcon,
@@ -44,6 +43,7 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { AudricMark } from "./icons";
 
 export function AppSidebar({ user }: { user: SessionUser | undefined }) {
   const router = useRouter();
@@ -74,11 +74,18 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
               <div className="group/logo relative flex items-center justify-center">
                 <SidebarMenuButton
                   asChild
-                  className="size-8 !px-0 items-center justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
+                  className="h-8 w-fit gap-2 px-1.5 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!px-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
                   tooltip="Audric"
                 >
-                  <Link href="/" onClick={() => setOpenMobile(false)}>
-                    <MessageSquareIcon className="size-4 text-sidebar-foreground/50" />
+                  <Link
+                    className="flex items-center gap-2"
+                    href="/"
+                    onClick={() => setOpenMobile(false)}
+                  >
+                    <AudricMark size={18} />
+                    <span className="font-semibold text-[15px] text-sidebar-foreground tracking-tight group-data-[collapsible=icon]:hidden">
+                      Audric
+                    </span>
                   </Link>
                 </SidebarMenuButton>
                 <Tooltip>

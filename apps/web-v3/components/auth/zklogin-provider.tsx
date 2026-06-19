@@ -29,6 +29,8 @@ export type ZkLoginStatus =
 
 interface ZkLoginContextValue {
   address: string | null;
+  /** Verified Google email (decoded from the session id_token), if signed in. */
+  email: string | null;
   error: string | null;
   /** Called by /auth/callback — completes the flow + mints the server session. */
   handleCallback: () => Promise<void>;
@@ -37,6 +39,23 @@ interface ZkLoginContextValue {
   provingStep: ZkLoginStep | null;
   session: ZkLoginSession | null;
   status: ZkLoginStatus;
+}
+
+/** Decode the `email` claim from the Google id_token (no verification needed —
+ * the server already verified it at session mint; this is display-only). */
+function emailFromJwt(jwt: string | undefined): string | null {
+  if (!jwt) {
+    return null;
+  }
+  try {
+    const payload = jwt.split(".")[1];
+    const json = JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
+    ) as { email?: unknown };
+    return typeof json.email === "string" ? json.email : null;
+  } catch {
+    return null;
+  }
 }
 
 const ZkLoginContext = createContext<ZkLoginContextValue | null>(null);
@@ -127,6 +146,7 @@ export function ZkLoginProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       address: session?.address ?? null,
+      email: emailFromJwt(session?.jwt),
       session,
       error,
       provingStep,

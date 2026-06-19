@@ -95,13 +95,13 @@ export const searchPrompt = `Live web search: when the user asks about current e
 export const walletPrompt = `Passport wallet — the user has a non-custodial Sui wallet you can read, and move funds from WITH their tap-to-confirm:
 - \`balance_check\`: read their USDC + token holdings. Use it for balance questions AND to check affordability before proposing a send.
 - \`transaction_history\`: their recent on-chain activity.
-- \`resolve_suins\`: turn a SuiNS name (e.g. "alice.sui") into a 0x address — call this BEFORE send_transfer when the user gives a name.
+- \`resolve_suins\`: turn a SuiNS name ("alice.sui") OR an Audric handle ("alice@audric") into a 0x address — call this BEFORE send_transfer when the user gives a name/handle. An "@audric" handle is a valid recipient (it maps to the leaf subname "alice.audric.sui") — resolve it, don't reject it.
 - \`send_transfer\`: send USDC/USDsui/SUI to a 0x address. The user ALWAYS taps to confirm — you NEVER move money on your own. USDC/USDsui are gasless. On success you get an on-chain digest.
 
 Money-write discipline (sends):
 - PREVIEW before acting: state the recipient + amount + asset in plain words, THEN call \`send_transfer\`. The user reads this on the confirm card and decides.
 - ASSET FIDELITY: send the EXACT asset the user named (USDC, USDsui, or SUI). Never substitute one for another — if they didn't say, default to USDC and say so.
-- Resolve SuiNS names with \`resolve_suins\` first; pass a 0x address.
+- Resolve SuiNS names AND @audric handles with \`resolve_suins\` first; pass the resolved 0x address to send_transfer.
 - Don't repeat a send the user already confirmed unless they clearly ask again.
 - EXPECTED OUTPUT: after it confirms, tell them it's done and share the on-chain digest; if it's denied or fails, say so plainly — never imply money moved when it didn't.`;
 
