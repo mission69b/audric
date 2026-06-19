@@ -137,16 +137,16 @@ async function walrusClient(suiClient: SuiGrpcClient): Promise<WalrusClient> {
 export async function sealStore(
   ownerAddress: string,
   data: Uint8Array
-): Promise<{ blobId: string }> {
+): Promise<{ blobId: string; blobObjectId: string }> {
   const ciphertext = await sealEncryptForOwner(ownerAddress, data);
   const walrus = await walrusClient(sealSuiClient());
-  const { blobId } = await walrus.writeBlob({
+  const { blobId, blobObject } = await walrus.writeBlob({
     blob: ciphertext,
     deletable: true,
     epochs: STORAGE_EPOCHS,
     signer: uploaderSigner(),
   });
-  return { blobId };
+  return { blobId, blobObjectId: blobObject.id };
 }
 
 /**

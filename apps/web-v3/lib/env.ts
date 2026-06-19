@@ -69,6 +69,9 @@ const serverSchema = z.object({
   SEAL_API_KEY: optionalString,
   /** Published `audric_seal` package id (the `seal_approve` access policy). */
   SEAL_POLICY_PACKAGE_ID: optionalString,
+  /** Blob backend: "walrus" → Seal-encrypted Walrus storage; unset → Vercel
+   * Blob (private) / local fallback. Walrus requires Seal + the uploader key. */
+  STORAGE_BACKEND: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -98,6 +101,7 @@ const runtimeEnv = {
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   SEAL_API_KEY: process.env.SEAL_API_KEY,
   SEAL_POLICY_PACKAGE_ID: process.env.SEAL_POLICY_PACKAGE_ID,
+  STORAGE_BACKEND: process.env.STORAGE_BACKEND,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
