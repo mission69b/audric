@@ -9,12 +9,16 @@ const PAID_HOURLY = 10_000; // any paid tier → effectively unlimited
 
 export function maxMessagesPerHour(
   userType: UserType,
-  subscriptionTier?: string | null
+  opts: { subscriptionTier?: string | null; hasCredit?: boolean } = {}
 ): number {
   if (userType === "guest") {
     return GUEST_HOURLY;
   }
-  return subscriptionTier && subscriptionTier !== "free"
-    ? PAID_HOURLY
-    : FREE_HOURLY;
+  // Anyone who has PAID — an active subscription OR a positive credit balance
+  // (PAYG top-up) — is a customer, not an acquisition-funnel free user, so the
+  // hourly cap is lifted. Premium token spend is still metered by the credit gate.
+  const paid =
+    (opts.subscriptionTier && opts.subscriptionTier !== "free") ||
+    opts.hasCredit === true;
+  return paid ? PAID_HOURLY : FREE_HOURLY;
 }

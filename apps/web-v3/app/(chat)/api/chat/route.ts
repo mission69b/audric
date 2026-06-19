@@ -121,11 +121,19 @@ export async function POST(request: Request) {
     // client-side/ephemeral (sign in to save them).
     if (session?.user) {
       const userType: UserType = session.user.type;
-      // Tier-aware cap (§4b): paid plans are effectively unlimited; free authed
-      // keeps the acquisition cap. Guests never hit the DB (no row).
+      // Cap is lifted for anyone who has PAID — an active sub OR a positive
+      // credit balance (PAYG top-up); free authed keeps the acquisition cap.
+      // Guests never hit the DB (no row).
       const dbUser =
         userType === "guest" ? null : await getUserById(session.user.id);
-      const cap = maxMessagesPerHour(userType, dbUser?.subscriptionTier);
+      const creditMicros =
+        userType === "guest" || !isCreditConfigured()
+          ? 0
+          : await getCreditBalanceMicros(session.user.id);
+      const cap = maxMessagesPerHour(userType, {
+        subscriptionTier: dbUser?.subscriptionTier,
+        hasCredit: creditMicros > 0,
+      });
       const messageCount = await getMessageCountByUserId({
         id: session.user.id,
         differenceInHours: 1,
