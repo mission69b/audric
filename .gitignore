@@ -51,6 +51,9 @@ scripts/
 # but track tooling under apps/web-v2/scripts (g6 smoke verifier, etc.)
 !apps/web-v2/scripts/
 !apps/web-v2/scripts/**
+# and apps/web-v3/scripts (stripe seed + billing/identity ops scripts)
+!apps/web-v3/scripts/
+!apps/web-v3/scripts/**
 
 # pitch-deck iterations (marketing artifacts, not part of the app)
 pitch-deck.html
