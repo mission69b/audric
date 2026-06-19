@@ -19,6 +19,10 @@ export type Tier = {
   name: string;
   /** Monthly USD price; null/0 = free. */
   priceUsd: number | null;
+  /** Pre-discount list price (display-only) — drives the "beta · 50% off"
+   * strikethrough. The actual charged price stays `priceUsd` (the Stripe price),
+   * so existing subscribers are unaffected. */
+  originalPriceUsd?: number;
   /** Monthly credit included with the subscription, granted on each paid invoice. */
   includedCreditUsd?: number;
   tagline: string;
@@ -64,6 +68,7 @@ export const TIERS: Tier[] = [
     id: "pro",
     name: "Pro",
     priceUsd: 18,
+    originalPriceUsd: 36,
     includedCreditUsd: 10,
     tagline: "All the models, generous",
     features: [
@@ -78,6 +83,7 @@ export const TIERS: Tier[] = [
     id: "max",
     name: "Max",
     priceUsd: 100,
+    originalPriceUsd: 200,
     includedCreditUsd: 75,
     tagline: "Maximum everything",
     features: [

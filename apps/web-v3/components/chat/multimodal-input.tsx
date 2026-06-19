@@ -114,6 +114,17 @@ function PureMultimodalInput({
 }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
+  // Active-model capabilities — used to hint on image paste to a non-vision
+  // model (the attach button is already gated; paste bypasses it).
+  const { data: capsResponse } = useSWR<{
+    capabilities?: Record<string, { vision?: boolean }>;
+  }>(
+    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
+  );
+  const modelHasVision =
+    capsResponse?.capabilities?.[selectedModelId]?.vision ?? false;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const hasAutoFocused = useRef(false);
@@ -334,6 +345,14 @@ function PureMultimodalInput({
 
       event.preventDefault();
 
+      // The model can't see images → don't silently attach one it'll ignore.
+      if (!modelHasVision) {
+        toast.error(
+          "This model can't see images. Switch to a vision model (e.g. GPT-5.5, Gemini, or Claude) to attach one."
+        );
+        return;
+      }
+
       setUploadQueue((prev) => [...prev, "Pasted image"]);
 
       try {
@@ -360,7 +379,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile]
+    [setAttachments, uploadFile, modelHasVision]
   );
 
   useEffect(() => {

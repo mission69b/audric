@@ -268,13 +268,25 @@ export default function BillingPage() {
                   </span>
                 )}
               </div>
-              <div className="mt-1 font-semibold text-foreground text-lg tabular-nums">
-                {tier.priceUsd === 0 ? "Free" : `$${tier.priceUsd}`}
+              <div className="mt-1 flex items-baseline gap-1.5">
+                {tier.originalPriceUsd ? (
+                  <span className="text-muted-foreground/50 text-sm line-through tabular-nums">
+                    ${tier.originalPriceUsd}
+                  </span>
+                ) : null}
+                <span className="font-semibold text-foreground text-lg tabular-nums">
+                  {tier.priceUsd === 0 ? "Free" : `$${tier.priceUsd}`}
+                </span>
                 {tier.priceUsd ? (
                   <span className="text-muted-foreground text-xs">/mo</span>
                 ) : null}
               </div>
-              <p className="mt-0.5 text-muted-foreground text-xs">
+              {tier.originalPriceUsd ? (
+                <span className="mt-1 inline-block self-start rounded bg-teal-500/10 px-1.5 py-0.5 font-medium text-[10px] text-teal-600 dark:text-teal-400">
+                  Beta · 50% off
+                </span>
+              ) : null}
+              <p className="mt-1 text-muted-foreground text-xs">
                 {tier.tagline}
               </p>
               <ul className="mt-3 flex-1 space-y-1.5">

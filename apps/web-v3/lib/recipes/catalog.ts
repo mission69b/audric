@@ -180,7 +180,7 @@ export const RECIPES: Recipe[] = [
     synthesisInstruction: (inputs) =>
       `Write a "${inputs.symbol} Deep-Dive" document with createDocument (kind: text). Use ONLY the provided data. Structure it as:\n` +
       "- **Snapshot** — current price, day change (% and $), volume.\n" +
-      "- **Recent action** — the trend over the last ~2 weeks from the daily series (up/down, notable moves).\n" +
+      "- **Recent action** — the trend over the last ~2 weeks from the daily series, framed CLOSE-TO-CLOSE (compare closing prices; do NOT treat an intraday high/low as 'the peak' or report the move from a high to a close — that overstates swings). Note genuinely notable closing moves.\n" +
       "- **In the news** — 3–5 recent headlines with sources + dates.\n" +
       "- **Takeaway** — a neutral 1–2 sentence summary. NOT financial advice.\n" +
       `Do not invent data not present. If a section's data is missing, say so briefly.`,
