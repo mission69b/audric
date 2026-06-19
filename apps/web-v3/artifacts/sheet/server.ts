@@ -2,6 +2,7 @@ import { streamText } from "ai";
 import { sheetPrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocumentHandler } from "@/lib/artifacts/server";
+import { flattenContext } from "../text/server";
 
 export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   kind: "sheet",
@@ -9,25 +10,21 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
     let draftContent = "";
 
     // If the turn already fetched data (recipe / web search), build the sheet
-    // FROM that data — never fabricate rows the data doesn't contain.
-    const hasContext = (contextMessages?.length ?? 0) > 0;
+    // FROM that data — never fabricate rows. Flatten to plain text (not the raw
+    // tool-call messages, which strict providers reject → empty output).
+    const contextText = contextMessages?.length
+      ? flattenContext(contextMessages)
+      : "";
+    const useContext = contextText.trim().length > 0;
 
     const { fullStream } = streamText({
       model: getLanguageModel(modelId),
-      system: hasContext
-        ? `${sheetPrompt}\n\nUse ONLY the data already present in the conversation above (tool results, fetched figures). Do NOT invent rows, numbers, or values not in that data. Output ONLY the raw CSV data. No explanations, no markdown fences.`
+      system: useContext
+        ? `${sheetPrompt}\n\nUse ONLY the data provided below (tool results, fetched figures). Do NOT invent rows, numbers, or values not in that data. Output ONLY the raw CSV data. No explanations, no markdown fences.`
         : `${sheetPrompt}\n\nOutput ONLY the raw CSV data. No explanations, no markdown fences.`,
-      ...(hasContext && contextMessages
-        ? {
-            messages: [
-              ...contextMessages,
-              {
-                role: "user" as const,
-                content: `Create the spreadsheet "${title}" now, using only the data above.`,
-              },
-            ],
-          }
-        : { prompt: title }),
+      prompt: useContext
+        ? `Data available from this turn:\n\n${contextText}\n\nCreate the spreadsheet "${title}" now, using ONLY the data above.`
+        : title,
     });
 
     for await (const delta of fullStream) {
