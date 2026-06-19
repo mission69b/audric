@@ -21,21 +21,8 @@ type SendPart = Extract<
   { type: "tool-send_transfer" }
 >;
 
-function lastUserText(messages: ChatMessage[]): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const m = messages[i];
-    if (m.role === "user") {
-      return m.parts
-        .filter((p): p is { type: "text"; text: string } => p.type === "text")
-        .map((p) => p.text)
-        .join(" ");
-    }
-  }
-  return;
-}
-
 export function SendTransferTool({ part }: { part: SendPart }) {
-  const { addToolResult, messages } = useActiveChat();
+  const { addToolResult } = useActiveChat();
   const [pending, setPending] = useState(false);
   const { toolCallId, state } = part;
   const widthClass = "w-[min(100%,450px)]";
@@ -101,18 +88,12 @@ export function SendTransferTool({ part }: { part: SendPart }) {
   }
 
   const { to, amount } = input;
-  const asset = input.asset ?? "USDC";
 
   const onAllow = async () => {
-    // Host pre-dispatch screen (preflight + asset-intent + retry-dedup) — runs
-    // before signing. On a block we settle with the reason so the agent re-asks
-    // instead of moving money. The tap itself is the primary gate.
-    const screen = screenSend(
-      { to, amount, asset },
-      {
-        recentUserText: lastUserText(messages),
-      }
-    );
+    // Host pre-dispatch screen (preflight + retry-dedup) — runs before signing.
+    // On a block we settle with the reason so the agent re-asks instead of
+    // moving money. The tap itself is the primary gate.
+    const screen = screenSend({ to, amount });
     if (!screen.ok) {
       await settle({ error: screen.reason });
       return;
@@ -120,8 +101,8 @@ export function SendTransferTool({ part }: { part: SendPart }) {
 
     setPending(true);
     try {
-      const result = await sendTransfer({ to, amount, asset });
-      markSendDispatched({ to, amount, asset });
+      const result = await sendTransfer({ to, amount });
+      markSendDispatched({ to, amount });
       await settle(result);
     } catch (e) {
       await settle({ error: `${(e as Error).name}: ${(e as Error).message}` });
@@ -136,16 +117,12 @@ export function SendTransferTool({ part }: { part: SendPart }) {
         <ToolHeader state={state} type="tool-send_transfer" />
         <ToolContent>
           <div className="px-4 pt-3 text-sm">
-            <div className="font-medium">
-              Send {amount} {asset}
-            </div>
+            <div className="font-medium">Send {amount} USDC</div>
             <div className="mt-1 break-all text-muted-foreground text-xs">
               to {to}
             </div>
             <div className="mt-1 text-foreground">
-              {asset === "SUI"
-                ? "From your Passport (network fee applies)."
-                : "From your Passport · gasless."}
+              From your Passport · gasless.
             </div>
           </div>
           <div className="mt-3 flex items-center justify-end gap-2 border-t px-4 py-3">

@@ -19,7 +19,7 @@ const GREETINGS: { title: string; subtitle: string }[] = [
     subtitle: "Your wallet, your data, your memory — you own them.",
   },
   {
-    title: "Permissionless AI on Sui.",
+    title: "Permissionless AI.",
     subtitle: "No seed phrase, no bank, no one who can freeze it.",
   },
 ];

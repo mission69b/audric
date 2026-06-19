@@ -273,6 +273,7 @@ export async function POST(request: Request) {
             supportsTools,
             isAuthed: Boolean(session?.user),
             memoryOn,
+            walletAddress: session?.user?.id,
           }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),

@@ -4,17 +4,16 @@
  * Runs in the browser on the zkLogin Passport session key, mirroring payService:
  *   session (localStorage) → ZkLoginSigner → buildSendTx → executeTx (gasless).
  *
- * USDC/USDsui transfers are gasless at the Sui protocol level (`balance::
- * send_funds`) — no Enoki sponsorship, no SUI required. The send_transfer agent
- * tool calls this on the user's tap-to-confirm (Allow).
+ * USDC is Audric's single settlement asset. USDC transfers are gasless at the
+ * Sui protocol level (`balance::send_funds`) — no Enoki sponsorship, no SUI
+ * required. The send_transfer agent tool calls this on the user's tap-to-confirm
+ * (Allow).
  */
 
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { buildSendTx, executeTx } from "@t2000/sdk/browser";
 import { env } from "@/lib/env";
 import { isSessionExpired, loadSession, toZkLoginSigner } from "@/lib/zklogin";
-
-export type SendableAsset = "USDC" | "USDsui" | "SUI";
 
 function grpcClient(): SuiGrpcClient {
   const network =
@@ -29,7 +28,6 @@ function grpcClient(): SuiGrpcClient {
 export async function sendTransfer(opts: {
   to: string;
   amount: number;
-  asset: SendableAsset;
 }): Promise<{ digest: string }> {
   const session = loadSession();
   if (!session) {
@@ -50,7 +48,7 @@ export async function sendTransfer(opts: {
         address: signer.getAddress(),
         to: opts.to,
         amount: opts.amount,
-        asset: opts.asset,
+        asset: "USDC",
       }),
     { buildClient: client }
   );
