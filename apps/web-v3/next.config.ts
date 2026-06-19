@@ -25,6 +25,10 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   poweredByHeader: false,
   reactCompiler: true,
+  // Keep the WASM-backed Walrus packages external so they load from real
+  // node_modules (their colocated walrus_wasm_bg.wasm resolves) instead of
+  // Turbopack's virtual /ROOT bundle, which can't find the .wasm.
+  serverExternalPackages: ["@mysten/walrus", "@mysten/walrus-wasm"],
   logging: {
     fetches: {
       fullUrl: false,

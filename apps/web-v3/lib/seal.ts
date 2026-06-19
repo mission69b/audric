@@ -17,9 +17,13 @@ import "server-only";
 
 import { SealClient, SessionKey } from "@mysten/seal";
 import type { ExportedSessionKey } from "@mysten/seal";
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { fromHex } from "@mysten/sui/utils";
+// Type-only — the runtime impl is dynamically imported (see walrusClient) so the
+// heavy WASM-backed module never loads on the Seal-only / module-eval path.
+import type { WalrusClient } from "@mysten/walrus";
 import { env } from "@/lib/env";
 
 // Mainnet Seal MPC committee (5-of-8) — a single logical endpoint.
@@ -106,4 +110,55 @@ export async function sealDecryptForOwner(
   const sessionKey = SessionKey.import(exported, suiClient);
   const txBytes = await approveTxBytes(suiClient, ownerAddress);
   return await client.decrypt({ data: encrypted, sessionKey, txBytes });
+}
+
+// --- Walrus storage (decentralized blob store for the ciphertext) ---
+
+// Storage duration in Walrus epochs (~14 days each on mainnet). Tunable; blobs
+// are `deletable` so the deletion surface can purge them before expiry.
+const STORAGE_EPOCHS = 12;
+
+/** Audric's sponsored uploader — pays WAL (storage) + SUI (gas) for blobs. */
+function uploaderSigner(): Ed25519Keypair {
+  return Ed25519Keypair.fromSecretKey(
+    env.AUDRIC_PARENT_NFT_PRIVATE_KEY as string
+  );
+}
+
+async function walrusClient(suiClient: SuiGrpcClient): Promise<WalrusClient> {
+  const { WalrusClient: Walrus } = await import("@mysten/walrus");
+  return new Walrus({ network: "mainnet", suiClient });
+}
+
+/**
+ * Encrypt for the owner (Seal) then store the ciphertext on Walrus. Returns the
+ * Walrus `blobId` — persist THAT as the blob ref (Stage 3 `putBlob`).
+ */
+export async function sealStore(
+  ownerAddress: string,
+  data: Uint8Array
+): Promise<{ blobId: string }> {
+  const ciphertext = await sealEncryptForOwner(ownerAddress, data);
+  const walrus = await walrusClient(sealSuiClient());
+  const { blobId } = await walrus.writeBlob({
+    blob: ciphertext,
+    deletable: true,
+    epochs: STORAGE_EPOCHS,
+    signer: uploaderSigner(),
+  });
+  return { blobId };
+}
+
+/**
+ * Read the ciphertext from Walrus by blobId, then Seal-decrypt it with the
+ * user's session key (Stage 3 `getBlob`).
+ */
+export async function sealFetch(
+  ownerAddress: string,
+  exported: ExportedSessionKey,
+  blobId: string
+): Promise<Uint8Array> {
+  const walrus = await walrusClient(sealSuiClient());
+  const ciphertext = await walrus.readBlob({ blobId });
+  return await sealDecryptForOwner(ownerAddress, exported, ciphertext);
 }

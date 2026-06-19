@@ -85,8 +85,46 @@ export default function SealCheckPage() {
         decRes.plaintext.startsWith(encRes.expectedPrefix);
       add(
         ok
-          ? `✓✓ ROUND-TRIP OK — decrypted: "${decRes.plaintext}"`
+          ? `✓✓ SEAL ROUND-TRIP OK — decrypted: "${decRes.plaintext}"`
           : `✗ mismatch: "${decRes.plaintext}"`
+      );
+      if (!ok) {
+        return;
+      }
+
+      // --- Walrus leg (needs the funded uploader) ---
+      add("");
+      add("5. encrypt + STORE on Walrus (server)…");
+      const storeRes = await fetch("/api/seal/selftest?walrus=1").then((r) =>
+        r.json()
+      );
+      if (storeRes.error) {
+        add(`✗ walrus store: ${storeRes.error}`);
+        add("   (fund the uploader address with WAL + SUI, then retry)");
+        return;
+      }
+      add(`   ✓ stored on Walrus — blobId ${storeRes.blobId}`);
+
+      add("6. fetch from Walrus + Seal-decrypt (server)…");
+      const fetchRes = await fetch("/api/seal/selftest", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          blobId: storeRes.blobId,
+          exportedSessionKey: { ...sk.export() },
+        }),
+      }).then((r) => r.json());
+      if (fetchRes.error) {
+        add(`✗ walrus fetch: ${fetchRes.error}`);
+        return;
+      }
+      const walrusOk =
+        typeof fetchRes.plaintext === "string" &&
+        fetchRes.plaintext.startsWith(storeRes.expectedPrefix);
+      add(
+        walrusOk
+          ? `✓✓✓ WALRUS+SEAL ROUND-TRIP OK — "${fetchRes.plaintext}"`
+          : `✗ walrus mismatch: "${fetchRes.plaintext}"`
       );
     } catch (e) {
       add(`✗ ${(e as Error).name}: ${(e as Error).message}`);
