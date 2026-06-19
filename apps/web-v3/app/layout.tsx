@@ -6,10 +6,31 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
 
+const OG_TITLE = "Audric — Private, decentralized AI";
+const DESCRIPTION =
+  "Multi-model AI with a non-custodial wallet. Sign in with Google — no seed phrase, no bank. Own your data, your memory, and your money.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://audric.ai"),
-  title: "Audric",
-  description: "Private, decentralized AI — truly yours.",
+  // Tab/search title stays tight; social cards use the fuller positioning line.
+  title: {
+    default: "Audric — Private, decentralized AI",
+    template: "%s · Audric",
+  },
+  description: DESCRIPTION,
+  applicationName: "Audric",
+  openGraph: {
+    title: OG_TITLE,
+    description: DESCRIPTION,
+    siteName: "Audric",
+    url: "https://audric.ai",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: OG_TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport = {

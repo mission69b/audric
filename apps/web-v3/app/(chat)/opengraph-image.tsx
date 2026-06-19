@@ -9,15 +9,15 @@ import {
  * with the v3 positioning headline ("Private, decentralized AI — truly yours").
  */
 
-export const alt = "Audric — Private, decentralized AI on Sui";
+export const alt = "Audric — Private, decentralized AI";
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default function Image() {
   return renderAudricCard({
-    pill: "PRIVATE · SUI",
+    pill: "PRIVATE · PERMISSIONLESS",
     line1: "Private, decentralized",
     line2: "AI — truly yours.",
-    subtitle: "Multi-model AI on Sui. Own your wallet, your data, your memory.",
+    subtitle: "Multi-model AI. Own your wallet, your data, your memory.",
   });
 }

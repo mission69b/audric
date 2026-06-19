@@ -83,7 +83,7 @@ export function renderAudricCard({
   line2,
   subtitle,
   footerLeft = "audric.ai",
-  footerRight = "Gasless on Sui",
+  footerRight = "",
 }: AudricCardOptions): Promise<ImageResponse> {
   const glyphs = `audric${pill}${line1}${line2}${subtitle}${footerLeft}${footerRight}`;
   return Promise.all([
@@ -246,8 +246,12 @@ export function renderAudricCard({
             }}
           >
             <div style={{ display: "flex" }}>{footerLeft}</div>
-            <div style={{ width: 30, height: 1, background: "#444444" }} />
-            <div style={{ display: "flex" }}>{footerRight}</div>
+            {footerRight ? (
+              <div style={{ width: 30, height: 1, background: "#444444" }} />
+            ) : null}
+            {footerRight ? (
+              <div style={{ display: "flex" }}>{footerRight}</div>
+            ) : null}
           </div>
         </div>,
         {
