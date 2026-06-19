@@ -283,9 +283,15 @@ export async function POST(request: Request) {
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
         const baseModel = getLanguageModel(chatModel);
+        // withMemWal injects a recall system message MID-conversation (before the
+        // last user msg). Vertex/Gemini rejects any system message not at the
+        // start ("system messages are only supported at the beginning") → 400.
+        // Skip the recall wrap for Gemini (explicit save_memory still works);
+        // proper fix = inject recall into the base system prompt (model-agnostic).
+        const isGemini = chatModel.startsWith("google/");
         const result = streamText({
           model:
-            memoryOn && session?.user
+            memoryOn && session?.user && !isGemini
               ? withUserMemory(baseModel, session.user.id)
               : baseModel,
           system: systemPrompt({
