@@ -254,9 +254,24 @@ export async function POST(request: Request) {
     const isReasoningModel = capabilities?.reasoning === true;
     const supportsTools = capabilities?.tools === true;
 
+    // Anthropic (+ other strict providers) require tool_use ids to match
+    // ^[a-zA-Z0-9_-]+$ — a round-tripped id carrying illegal chars (./:/) is
+    // rejected ("tool_use.id: String should match pattern"). Sanitize every
+    // toolCallId deterministically: the call + its result share the id, so the
+    // same transform keeps them paired. No-op for already-valid ids.
+    const sanitizedMessages = uiMessages.map((m) => ({
+      ...m,
+      parts: m.parts.map((p) => {
+        const tid = (p as { toolCallId?: string }).toolCallId;
+        return typeof tid === "string" && /[^a-zA-Z0-9_-]/.test(tid)
+          ? ({ ...p, toolCallId: tid.replace(/[^a-zA-Z0-9_-]/g, "_") } as typeof p)
+          : p;
+      }),
+    }));
+
     // Inline private-blob image attachments as base64 so vision models receive
     // the pixels (they can't fetch our session-gated /api/files/blob URLs).
-    const inlinedMessages = await inlineImageAttachments(uiMessages);
+    const inlinedMessages = await inlineImageAttachments(sanitizedMessages);
     const modelMessages = await convertToModelMessages(inlinedMessages);
 
     const stream = createUIMessageStream({
