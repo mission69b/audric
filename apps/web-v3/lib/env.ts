@@ -57,6 +57,10 @@ const serverSchema = z.object({
   STRIPE_PRICE_PRO: optionalString,
   STRIPE_PRICE_PRO_PLUS: optionalString,
   STRIPE_PRICE_MAX: optionalString,
+  // Identity (@audric handles) — OPTIONAL: unset → handle minting off (resolve
+  // still works). The parent-NFT custody key (Bech32 suiprivkey1…) signs the
+  // gas-paid SuiNS leaf-subname mint/revoke. Server-only.
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -83,6 +87,7 @@ const runtimeEnv = {
   STRIPE_PRICE_PRO: process.env.STRIPE_PRICE_PRO,
   STRIPE_PRICE_PRO_PLUS: process.env.STRIPE_PRICE_PRO_PLUS,
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
+  AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

@@ -62,6 +62,35 @@ export async function getUserById(id: string): Promise<User | undefined> {
   return row;
 }
 
+/** Fast collision check for an @audric handle (the DB mirror of the leaf). */
+export async function getUserByUsername(
+  username: string
+): Promise<User | undefined> {
+  const [row] = await db
+    .select()
+    .from(user)
+    .where(eq(user.username, username))
+    .limit(1);
+  return row;
+}
+
+/** Persist a claimed/changed @audric handle after the on-chain leaf mint. */
+export async function setUsername(
+  userId: string,
+  username: string,
+  txDigest: string
+) {
+  await db
+    .update(user)
+    .set({
+      username,
+      usernameUpdatedAt: new Date(),
+      usernameMintTxDigest: txDigest,
+      updatedAt: new Date(),
+    })
+    .where(eq(user.id, userId));
+}
+
 /** Current credit balance in micro-USD (SUM of the append-only ledger). */
 export async function getCreditBalanceMicros(userId: string): Promise<number> {
   const [row] = await db

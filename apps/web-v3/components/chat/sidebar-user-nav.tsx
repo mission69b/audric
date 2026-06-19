@@ -56,6 +56,11 @@ export function SidebarUserNav() {
   }>(status === "authenticated" ? "/api/credit/balance" : null, fetcher, {
     revalidateOnFocus: false,
   });
+  const { data: identity } = useSWR<{ handle: string | null }>(
+    status === "authenticated" ? "/api/identity/me" : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
   const paidTier = credit?.tier && credit.tier !== "free" ? credit.tier : null;
 
   if (status === "loading") {
@@ -112,7 +117,7 @@ export function SidebarUserNav() {
                   className="truncate font-mono text-[12px] text-sidebar-foreground/80"
                   data-testid="user-address"
                 >
-                  {shortAddress(address)}
+                  {identity?.handle ?? shortAddress(address)}
                 </span>
                 {email && (
                   <span className="truncate text-[11px] text-sidebar-foreground/45">

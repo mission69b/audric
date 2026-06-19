@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
+import { HandleModal } from "@/components/chat/handle-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +58,12 @@ function formatExpiry(expiresAt: number | undefined): string {
 export default function SettingsPage() {
   const router = useRouter();
   const { address, email, session } = useZkLogin();
+  const [handleOpen, setHandleOpen] = useState(false);
+  const { data: identity, mutate: mutateIdentity } = useSWR<{
+    username: string | null;
+    handle: string | null;
+    configured: boolean;
+  }>(`${BASE}/api/identity/me`, fetcher, { revalidateOnFocus: false });
   const { data: models } = useSWR<{ memoryEnabled?: boolean }>(
     `${BASE}/api/models`,
     fetcher,
@@ -129,6 +136,32 @@ export default function SettingsPage() {
             any time; your wallet and funds remain.
           </p>
           <div className="mt-3 space-y-2.5">
+            {identity?.configured && (
+              <InfoRow label="Handle">
+                {identity.handle ? (
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-foreground/80">
+                      {identity.handle}
+                    </span>
+                    <button
+                      className="text-muted-foreground text-xs underline hover:text-foreground"
+                      onClick={() => setHandleOpen(true)}
+                      type="button"
+                    >
+                      Change
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className="rounded-md border border-border px-2.5 py-1 text-foreground/80 text-xs transition-colors hover:bg-accent"
+                    onClick={() => setHandleOpen(true)}
+                    type="button"
+                  >
+                    Claim a handle
+                  </button>
+                )}
+              </InfoRow>
+            )}
             <InfoRow label="Wallet address">
               <button
                 className="font-mono text-foreground/80 transition-colors hover:text-foreground"
@@ -257,6 +290,13 @@ export default function SettingsPage() {
         </div>
         <ChevronRightIcon className="size-4 text-muted-foreground" />
       </button>
+
+      <HandleModal
+        currentLabel={identity?.username ?? null}
+        onChanged={() => mutateIdentity()}
+        onClose={() => setHandleOpen(false)}
+        open={handleOpen}
+      />
     </Overlay>
   );
 }

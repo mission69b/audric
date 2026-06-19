@@ -26,6 +26,12 @@ export const user = pgTable("User", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   isAnonymous: boolean("isAnonymous").notNull().default(false),
+  // @audric handle (Identity) — the bare leaf label; on-chain it's
+  // `<username>.audric.sui`, displayed as `username@audric`. Unique mirror of
+  // the on-chain leaf for fast collision checks.
+  username: varchar("username", { length: 20 }).unique(),
+  usernameUpdatedAt: timestamp("usernameUpdatedAt"),
+  usernameMintTxDigest: text("usernameMintTxDigest"),
   // Credit rail (Phase 5). Balance is derived from CreditLedger (SUM), not
   // stored here. These are the funding-edge + config fields.
   stripeCustomerId: text("stripeCustomerId"),
