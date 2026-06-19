@@ -6,6 +6,7 @@ import {
   verifyGoogleJwt,
 } from "@/lib/audric-auth";
 import { upsertUser } from "@/lib/db/queries";
+import { maybeBackfillHandle } from "@/lib/identity/backfill";
 
 // Server-side cap on the session window (the client passes the zkLogin
 // `estimatedExpiration`; we never trust a client-supplied exp beyond this).
@@ -39,6 +40,9 @@ export async function POST(request: NextRequest) {
     // Upsert the user row (id = address) so Chat/Document FKs resolve + capture
     // the verified email (§6b).
     await upsertUser(address, email);
+    // Auto-adopt a returning v2 user's @audric handle (best-effort, never throws;
+    // no-op once they have a handle or if V2_DATABASE_URL is unset).
+    await maybeBackfillHandle(address);
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
