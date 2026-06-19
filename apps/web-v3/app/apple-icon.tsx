@@ -1,16 +1,14 @@
 /**
- * Favicon — the AudricMark diamond as a 32×32 PNG (Next.js metadata route).
- * Ported verbatim from web-v2's canonical geometry (viewBox 512, offset 92,
- * gap 68, cell 56 — symmetric centering) but INVERTED per brand: dark mark on a
- * white tile (v2 is white-on-dark).
+ * Apple touch icon — 180×180 AudricMark (Next.js metadata route). Same
+ * canonical geometry as the favicon, INVERTED per brand: dark mark on a white
+ * tile (iOS rounds the corners itself).
  */
 
 import { ImageResponse } from "next/og";
 
-export const size = { width: 32, height: 32 };
+export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-// Mirrors AudricMark: [row, col] of the 9-cell diamond.
 const GRID: [number, number][] = [
   [0, 2],
   [1, 1],
@@ -26,20 +24,19 @@ const OFFSET = 92;
 const GAP = 68;
 const CELL = 56;
 
-export default function Icon() {
+export default function AppleIcon() {
   return new ImageResponse(
     <div
       style={{
         width: "100%",
         height: "100%",
         background: "#ffffff",
-        borderRadius: 7,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <svg fill="#0a0a0a" height="24" viewBox="0 0 512 512" width="24">
+      <svg fill="#0a0a0a" height="120" viewBox="0 0 512 512" width="120">
         <title>Audric</title>
         {GRID.map(([row, col]) => (
           <rect
