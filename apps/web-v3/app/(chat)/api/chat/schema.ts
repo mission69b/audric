@@ -7,9 +7,13 @@ const textPartSchema = z.object({
 
 const filePartSchema = z.object({
   type: z.enum(["file"]),
-  mediaType: z.enum(["image/jpeg", "image/png"]),
+  // Match the upload route's accepted set (jpeg/png/webp/gif).
+  mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
   name: z.string().min(1).max(100),
-  url: z.string().url(),
+  // Our attachments are the session-gated in-app blob path (/api/files/blob?…),
+  // which is RELATIVE — so `.url()` (absolute-only) wrongly rejects them. Allow
+  // a relative path or an absolute/data URL; the server re-derives the blob ref.
+  url: z.string().min(1).max(2000),
 });
 
 const partSchema = z.union([textPartSchema, filePartSchema]);

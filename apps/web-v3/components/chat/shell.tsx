@@ -131,11 +131,19 @@ export function ChatShell() {
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-2 pb-16 md:px-4">
                 <Greeting />
                 <div className="w-full max-w-4xl">{composer}</div>
-                {!isReadonly &&
-                  input.length === 0 &&
-                  attachments.length === 0 && (
+                {/* Keep the chips mounted so typing fades them out WITHOUT
+                    reflowing the centered column (no composer jump). */}
+                {!isReadonly && (
+                  <div
+                    className={cn(
+                      "transition-opacity duration-200",
+                      (input.length > 0 || attachments.length > 0) &&
+                        "pointer-events-none opacity-0"
+                    )}
+                  >
                     <SuggestedActions setInput={setInput} />
-                  )}
+                  </div>
+                )}
               </div>
             ) : (
               <>
