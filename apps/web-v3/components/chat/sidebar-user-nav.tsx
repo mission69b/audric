@@ -103,7 +103,7 @@ export function SidebarUserNav() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              className="h-auto rounded-lg bg-transparent px-2 py-1.5 text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="h-auto rounded-lg bg-transparent px-2 py-1.5 text-sidebar-foreground/70 transition-colors group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-0 hover:text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               data-testid="user-nav-button"
             >
               <div
@@ -112,7 +112,7 @@ export function SidebarUserNav() {
                   background: `linear-gradient(135deg, oklch(0.35 0.08 ${addrHue(address)}), oklch(0.25 0.05 ${addrHue(address) + 40}))`,
                 }}
               />
-              <div className="flex min-w-0 flex-col leading-tight">
+              <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
                 <span
                   className="truncate font-mono text-[12px] text-sidebar-foreground/80"
                   data-testid="user-address"
@@ -125,7 +125,7 @@ export function SidebarUserNav() {
                   </span>
                 )}
               </div>
-              <ChevronUp className="ml-auto size-3.5 shrink-0 text-sidebar-foreground/50" />
+              <ChevronUp className="ml-auto size-3.5 shrink-0 text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
