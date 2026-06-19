@@ -1,16 +1,15 @@
 /**
- * Backfill @audric handles from v2 → v3 so returning users see their handle on
- * first load (no manual re-claim).
+ * One-time migration of @audric handles from v2 → v3. v2 is FROZEN, so the v2
+ * handle set is complete + permanent — loading it once into v3 covers every
+ * returning user with no runtime coupling (no V2_DATABASE_URL at runtime).
  *
  * Mapping key = ADDRESS, never email: a handle's value is its on-chain
- * leaf→address binding, and v3 derives the same zkLogin address as v2. We only
- * write when v3 has a user with the exact address the leaf targets, AND the
- * on-chain leaf actually resolves to that address (ground truth). Mislabeling is
- * impossible — mismatches are skipped, not guessed.
- *
- * Efficient: only v2 handles whose address ALSO exists in v3 (and has no handle
- * yet) are candidates — the rest are skipped without an on-chain call. The
- * candidate set is verified on-chain in parallel batches.
+ * leaf→address binding, and v3 derives the same zkLogin address as v2. Each
+ * handle is verified on-chain (the leaf must resolve to that address) before it
+ * is written — mislabeling is impossible. Users who haven't signed into v3 get
+ * an identity-only row (id + username, no email); their email is captured when
+ * they actually sign in (upsertUser). A v3 user who already set a handle is
+ * never clobbered.
  *
  * DRY-RUN by default. Review, then re-run with --apply.
  *   V2_POSTGRES_URL=<v2-url> POSTGRES_URL=<v3-url> pnpm backfill-handles
@@ -20,14 +19,36 @@
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { fullHandle, resolveSuinsViaRpc } from "@t2000/sdk";
 import dotenv from "dotenv";
-import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { user } from "../lib/db/schema";
 
 dotenv.config({ path: ".env.local" });
 
-const CONCURRENCY = 20;
+const CONCURRENCY = 12;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Resolve a handle's on-chain address with one retry, distinguishing a true
+ * wrong-address from a transient RPC failure (so throttling never masquerades
+ * as a mismatch and silently drops a legit handle).
+ */
+async function resolveWithRetry(
+  handle: string
+): Promise<{ resolved: boolean; address: string | null }> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const addr = await resolveSuinsViaRpc(handle);
+      return { resolved: true, address: addr };
+    } catch {
+      if (attempt === 0) {
+        await sleep(400);
+      }
+    }
+  }
+  return { resolved: false, address: null };
+}
 
 async function main() {
   const v2Url = process.env.V2_POSTGRES_URL;
@@ -41,65 +62,85 @@ async function main() {
   const v2 = postgres(v2Url);
   const v3db = drizzle(postgres(v3Url));
 
-  // v2 handles + ALL v3 users (id + username). v3 is small (new app).
   const v2rows = await v2<{ suiAddress: string; username: string }[]>`
     SELECT "suiAddress", "username" FROM "User" WHERE "username" IS NOT NULL`;
   const v3rows = await v3db
     .select({ id: user.id, username: user.username })
     .from(user);
-  const v3Username = new Map(v3rows.map((u) => [u.id, u.username]));
-
-  // Candidate = a v2 handle whose address is a v3 user that has no handle yet.
-  const candidates = v2rows.filter(
-    (r) => v3Username.has(r.suiAddress) && !v3Username.get(r.suiAddress)
+  const v3HasHandle = new Set(
+    v3rows.filter((u) => u.username).map((u) => u.id)
   );
 
+  // Migrate every v2 handle whose owner doesn't already have a v3 handle set
+  // (so we never clobber a handle a user picked in v3).
+  const todo = v2rows.filter((r) => !v3HasHandle.has(r.suiAddress));
+
   console.log(
-    `v2 handles: ${v2rows.length} · v3 users: ${v3rows.length} · candidates: ${candidates.length} · mode: ${apply ? "APPLY" : "DRY-RUN"}`
+    `v2 handles: ${v2rows.length} · v3 already-set: ${v3HasHandle.size} · to migrate: ${todo.length} · mode: ${apply ? "APPLY" : "DRY-RUN"}`
   );
 
   let written = 0;
-  let mismatch = 0;
+  let wrongAddr = 0; // resolved, but to a DIFFERENT address (truly stale)
+  let unresolved = 0; // RPC failed both tries OR leaf no longer exists
+  const wrongExamples: string[] = [];
+  const unresolvedExamples: string[] = [];
 
-  for (let i = 0; i < candidates.length; i += CONCURRENCY) {
-    const batch = candidates.slice(i, i + CONCURRENCY);
+  for (let i = 0; i < todo.length; i += CONCURRENCY) {
+    const batch = todo.slice(i, i + CONCURRENCY);
     const verified = await Promise.all(
       batch.map(async (r) => {
         const address = String(r.suiAddress);
         const username = String(r.username);
-        let onChain: string | null = null;
-        try {
-          onChain = await resolveSuinsViaRpc(fullHandle(username));
-        } catch {
-          // RPC hiccup — treat as unverified (skip); re-run later.
-        }
+        const { resolved, address: onChain } = await resolveWithRetry(
+          fullHandle(username)
+        );
         const ok =
           Boolean(onChain) &&
           normalizeSuiAddress(onChain as string) ===
             normalizeSuiAddress(address);
-        return { address, username, ok };
+        const status: "ok" | "wrong" | "unresolved" = ok
+          ? "ok"
+          : resolved
+            ? "wrong"
+            : "unresolved";
+        return { address, username, status };
       })
     );
 
     for (const res of verified) {
-      if (!res.ok) {
-        mismatch += 1;
-        console.log(
-          `  skip ${res.username}@audric (${res.address.slice(0, 10)}…): on-chain mismatch/unregistered`
-        );
+      if (res.status === "wrong") {
+        wrongAddr += 1;
+        if (wrongExamples.length < 10) {
+          wrongExamples.push(`${res.username}@audric`);
+        }
+        continue;
+      }
+      if (res.status === "unresolved") {
+        unresolved += 1;
+        if (unresolvedExamples.length < 10) {
+          unresolvedExamples.push(`${res.username}@audric`);
+        }
         continue;
       }
       if (apply) {
         try {
           await v3db
-            .update(user)
-            .set({
+            .insert(user)
+            .values({
+              id: res.address,
               username: res.username,
-              usernameMintTxDigest: "backfilled",
+              usernameMintTxDigest: "migrated",
               usernameUpdatedAt: new Date(),
-              updatedAt: new Date(),
             })
-            .where(eq(user.id, res.address));
+            .onConflictDoUpdate({
+              target: user.id,
+              set: {
+                username: res.username,
+                usernameMintTxDigest: "migrated",
+                usernameUpdatedAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
         } catch (e) {
           console.log(
             `  ✗ ${res.username}@audric: write failed (${(e as Error).message})`
@@ -108,15 +149,21 @@ async function main() {
         }
       }
       written += 1;
-      console.log(
-        `  ${apply ? "✓ set" : "would set"} ${res.username}@audric → ${res.address.slice(0, 10)}…`
-      );
+    }
+    if (todo.length > CONCURRENCY) {
+      console.log(`  …${Math.min(i + CONCURRENCY, todo.length)}/${todo.length}`);
     }
   }
 
   console.log(
-    `\nDone. ${apply ? "written" : "would write"}: ${written} · on-chain mismatch: ${mismatch} · skipped (no v3 user / already has handle): ${v2rows.length - candidates.length}.`
+    `\nDone. ${apply ? "migrated" : "would migrate"}: ${written} · wrong-address (stale, skipped): ${wrongAddr} · unresolved/RPC (skipped): ${unresolved} · already-set in v3 (skipped): ${v2rows.length - todo.length}.`
   );
+  if (wrongExamples.length > 0) {
+    console.log(`  wrong-address e.g.: ${wrongExamples.join(", ")}`);
+  }
+  if (unresolvedExamples.length > 0) {
+    console.log(`  unresolved e.g.: ${unresolvedExamples.join(", ")}`);
+  }
   process.exit(0);
 }
 

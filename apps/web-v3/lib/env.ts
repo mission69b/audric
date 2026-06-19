@@ -40,9 +40,6 @@ const serverSchema = z.object({
   // Private Memory (MemWal) — OPTIONAL: memory is opt-in/off-by-default, so a
   // missing value just disables the feature (no boot failure). Set all three
   // to enable. The delegate private key + account live server-side only.
-  // v2 DB (read-only) for auto-backfilling @audric handles at sign-in. OPTIONAL
-  // migration coupling — unset → no auto-backfill (drop once v2 is retired).
-  V2_DATABASE_URL: optionalString,
   /** Ed25519 delegate private key (hex) for the Audric MemWal account. */
   MEMWAL_PRIVATE_KEY: optionalString,
   /** Walrus Memory account object ID (the single Audric-owned account). */
@@ -82,7 +79,6 @@ const clientSchema = z.object({
 const runtimeEnv = {
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   AUTH_SECRET: process.env.AUTH_SECRET,
-  V2_DATABASE_URL: process.env.V2_DATABASE_URL,
   MEMWAL_PRIVATE_KEY: process.env.MEMWAL_PRIVATE_KEY,
   MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
