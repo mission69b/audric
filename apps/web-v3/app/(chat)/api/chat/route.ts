@@ -316,9 +316,16 @@ export async function POST(request: Request) {
                   ]
                 : ["web_search", "createDocument"],
           providerOptions: {
-            ...(modelConfig?.gatewayOrder && {
-              gateway: { order: modelConfig.gatewayOrder },
-            }),
+            // Zero Data Retention: route ONLY to providers contractually bound
+            // not to store or train on prompts. Privacy-by-default on every chat
+            // (the "Private · ZDR" rung). A model with no ZDR-compliant provider
+            // fails with no_providers_available → smoke-test the lineup.
+            gateway: {
+              zeroDataRetention: true,
+              ...(modelConfig?.gatewayOrder && {
+                order: modelConfig.gatewayOrder,
+              }),
+            },
             ...(modelConfig?.reasoningEffort && {
               openai: { reasoningEffort: modelConfig.reasoningEffort },
             }),

@@ -21,7 +21,11 @@ export type ModelCapabilities = {
 // NEVER overclaim "private". The `private` (zero-retention partner) + `local`
 // (self-hosted) tiers are fast-follows; the type carries them now so the badge
 // UI is forward-compatible.
-export type ModelPrivacyTier = "anon" | "private" | "local";
+// Privacy ladder (§5c). `private` = Zero Data Retention via the Gateway (ON for
+// every chat — prompts never stored/trained on). `confidential` = the coming
+// TEE rung (even the provider can't read it; verifiable). `anon` is the legacy
+// "may retain anonymized" label, kept for any model without a ZDR provider.
+export type ModelPrivacyTier = "anon" | "private" | "confidential" | "local";
 
 // `fast` = the zero-credit acquisition model (Kimi); `smart` = premium,
 // per-1k-token credit-metered (the metering itself lands in Phase 5 — here the
@@ -54,7 +58,7 @@ export const chatModels: ChatModel[] = [
     provider: "moonshotai",
     description: "Fast, uncensored open model — free",
     gatewayOrder: ["fireworks", "bedrock"],
-    privacy: "anon",
+    privacy: "private",
     tier: "fast",
     free: true,
     bestFor: "Fast & free",
@@ -65,7 +69,7 @@ export const chatModels: ChatModel[] = [
     provider: "deepseek",
     description: "Fast and capable model with tool use",
     gatewayOrder: ["bedrock", "deepinfra"],
-    privacy: "anon",
+    privacy: "private",
     tier: "smart",
     bestFor: "Capable & cheap",
   },
@@ -75,7 +79,7 @@ export const chatModels: ChatModel[] = [
     provider: "xai",
     description: "Fast non-reasoning model with tool use",
     gatewayOrder: ["xai"],
-    privacy: "anon",
+    privacy: "private",
     tier: "smart",
     bestFor: "Quick answers",
   },
@@ -86,7 +90,7 @@ export const chatModels: ChatModel[] = [
     description: "Open-source 120B reasoning model",
     gatewayOrder: ["fireworks", "bedrock"],
     reasoningEffort: "low",
-    privacy: "anon",
+    privacy: "private",
     tier: "smart",
     bestFor: "Open reasoning",
   },
@@ -95,7 +99,7 @@ export const chatModels: ChatModel[] = [
     name: "Claude Opus 4.8",
     provider: "anthropic",
     description: "Frontier model — top-tier coding & writing",
-    privacy: "anon",
+    privacy: "private",
     tier: "smart",
     frontier: true,
     bestFor: "Code & writing",
@@ -105,7 +109,7 @@ export const chatModels: ChatModel[] = [
     name: "GPT-5.5",
     provider: "openai",
     description: "Frontier all-round model with vision",
-    privacy: "anon",
+    privacy: "private",
     tier: "smart",
     frontier: true,
     bestFor: "All-round + vision",
@@ -115,7 +119,7 @@ export const chatModels: ChatModel[] = [
     name: "Gemini 3 Pro",
     provider: "google",
     description: "Frontier model — long context & multimodal",
-    privacy: "anon",
+    privacy: "private",
     tier: "smart",
     frontier: true,
     bestFor: "Long context",

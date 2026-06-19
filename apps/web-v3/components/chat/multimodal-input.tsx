@@ -650,13 +650,18 @@ const PRIVACY_BADGE: Record<
 > = {
   anon: {
     label: "Anon",
-    className: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    tip: "Upstream provider may retain anonymized prompts.",
+    className: "bg-muted text-muted-foreground",
+    tip: "Gateway-routed; upstream provider may retain anonymized prompts.",
   },
   private: {
     label: "Private",
+    className: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+    tip: "Zero data retention — your prompts are never stored or trained on.",
+  },
+  confidential: {
+    label: "Confidential",
     className: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    tip: "Zero-retention — prompts aren't stored.",
+    tip: "Coming: end-to-end TEE inference — not even the provider can read your prompt, verifiable per request.",
   },
   local: {
     label: "Local",
@@ -917,6 +922,21 @@ function PureModelSelectorCompact({
             ));
           })()}
         </ModelSelectorList>
+        <div className="border-border/40 border-t px-3 py-2">
+          <div className="flex items-center gap-1 text-[10px]">
+            <span className="text-muted-foreground/40">Anon</span>
+            <span className="text-muted-foreground/30">→</span>
+            <span className="rounded bg-teal-500/10 px-1 py-0.5 font-medium text-teal-600 dark:text-teal-400">
+              Private · ZDR
+            </span>
+            <span className="text-muted-foreground/30">→</span>
+            <span className="text-muted-foreground/40">Confidential</span>
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground/50">
+            Every chat is zero-retention. Confidential (TEE, verifiable) is
+            coming.
+          </p>
+        </div>
       </ModelSelectorContent>
     </ModelSelector>
   );
