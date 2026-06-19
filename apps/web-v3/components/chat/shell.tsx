@@ -26,6 +26,7 @@ import { Greeting } from "./greeting";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
+import { SuggestedActions } from "./suggested-actions";
 
 export function ChatShell() {
   const {
@@ -79,7 +80,6 @@ export function ChatShell() {
       chatId={chatId}
       editingMessage={editingMessage}
       input={input}
-      isLoading={isLoading}
       messages={messages}
       onCancelEdit={() => {
         setEditingMessage(null);
@@ -128,9 +128,14 @@ export function ChatShell() {
 
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background md:rounded-tl-[12px] md:border-t md:border-l md:border-border/40">
             {isEmpty ? (
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-2 pb-16 md:px-4">
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-2 pb-16 md:px-4">
                 <Greeting />
                 <div className="w-full max-w-4xl">{composer}</div>
+                {!isReadonly &&
+                  input.length === 0 &&
+                  attachments.length === 0 && (
+                    <SuggestedActions setInput={setInput} />
+                  )}
               </div>
             ) : (
               <>

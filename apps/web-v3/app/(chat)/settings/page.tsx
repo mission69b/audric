@@ -122,10 +122,11 @@ export default function SettingsPage() {
         <Section title="Passport">
           <p className="text-muted-foreground text-xs">
             <strong className="text-foreground/80">
-              No seed phrase, ever.
+              Permissionless, no seed phrase.
             </strong>{" "}
-            Your wallet is controlled by your Google sign-in (zkLogin). Sign out
-            and back in any time — your wallet and funds remain.
+            Sign in with Google and a non-custodial wallet is yours in seconds —
+            no bank, no approval, no one who can freeze it. Sign out and back in
+            any time; your wallet and funds remain.
           </p>
           <div className="mt-3 space-y-2.5">
             <InfoRow label="Wallet address">

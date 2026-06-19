@@ -11,7 +11,7 @@ import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { maxMessagesPerHour } from "@/lib/ai/entitlements";
 import {
   allowedModelIds,
   chatModels,
@@ -41,6 +41,7 @@ import {
   getCreditBalanceMicros,
   getMessageCountByUserId,
   getMessagesByChatId,
+  getUserById,
   recordCredit,
   saveChat,
   saveMessages,
@@ -119,11 +120,16 @@ export async function POST(request: Request) {
     // client-side/ephemeral (sign in to save them).
     if (session?.user) {
       const userType: UserType = session.user.type;
+      // Tier-aware cap (§4b): paid plans are effectively unlimited; free authed
+      // keeps the acquisition cap. Guests never hit the DB (no row).
+      const dbUser =
+        userType === "guest" ? null : await getUserById(session.user.id);
+      const cap = maxMessagesPerHour(userType, dbUser?.subscriptionTier);
       const messageCount = await getMessageCountByUserId({
         id: session.user.id,
         differenceInHours: 1,
       });
-      if (messageCount > entitlementsByUserType[userType].maxMessagesPerHour) {
+      if (messageCount > cap) {
         return new ChatbotError("rate_limit:chat").toResponse();
       }
 

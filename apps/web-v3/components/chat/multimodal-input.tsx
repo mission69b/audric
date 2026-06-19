@@ -62,7 +62,6 @@ import {
   SlashCommandMenu,
   slashCommands,
 } from "./slash-commands";
-import { SuggestedActions } from "./suggested-actions";
 import type { VisibilityType } from "./visibility-selector";
 
 function setCookie(name: string, value: string) {
@@ -87,7 +86,6 @@ function PureMultimodalInput({
   onModelChange,
   editingMessage,
   onCancelEdit,
-  isLoading,
 }: {
   chatId: string;
   input: string;
@@ -107,10 +105,8 @@ function PureMultimodalInput({
   onModelChange?: (modelId: string) => void;
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
-  isLoading?: boolean;
 }) {
   const router = useRouter();
-  const { status: authStatus } = useZkLogin();
   const { setTheme, resolvedTheme } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -389,17 +385,6 @@ function PureMultimodalInput({
         </div>
       )}
 
-      {!editingMessage &&
-        !isLoading &&
-        messages.length === 0 &&
-        attachments.length === 0 &&
-        uploadQueue.length === 0 && (
-          <SuggestedActions
-            isAuthed={authStatus === "authenticated"}
-            setInput={setInput}
-          />
-        )}
-
       <input
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
@@ -578,9 +563,6 @@ export const MultimodalInput = memo(
       return false;
     }
     if (prevProps.editingMessage !== nextProps.editingMessage) {
-      return false;
-    }
-    if (prevProps.isLoading !== nextProps.isLoading) {
       return false;
     }
     if (prevProps.messages.length !== nextProps.messages.length) {
