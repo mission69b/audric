@@ -20,11 +20,16 @@ export const PreviewAttachment = ({
       data-testid="input-attachment-preview"
     >
       {contentType?.startsWith("image") ? (
+        // `unoptimized` is REQUIRED: these are session-gated private blobs
+        // (/api/files/blob). Next's image optimizer fetches server-side without
+        // the user's auth cookie → 401→400. Unoptimized renders a plain <img>
+        // the browser loads directly, sending the cookie.
         <Image
           alt={name ?? "attachment"}
           className="size-full object-cover"
           height={96}
           src={url}
+          unoptimized
           width={96}
         />
       ) : (
