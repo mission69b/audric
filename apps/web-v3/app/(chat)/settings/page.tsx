@@ -163,6 +163,14 @@ export default function SettingsPage() {
           </li>
           <li>· Memories are encrypted on Walrus — yours, never sold.</li>
         </ul>
+        <div className="mt-3 flex gap-4 text-muted-foreground text-xs">
+          <a className="underline hover:text-foreground" href="/privacy">
+            Privacy Policy
+          </a>
+          <a className="underline hover:text-foreground" href="/terms">
+            Terms of Service
+          </a>
+        </div>
       </Section>
 
       {/* Billing link */}
