@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 const GREETINGS: { title: string; subtitle: string }[] = [
   {
     title: "What can I help with?",
-    subtitle: "Ask a question, write code, or explore ideas.",
+    subtitle: "Ask a question, generate an image, or explore ideas.",
   },
   {
     title: "Private by default.",
