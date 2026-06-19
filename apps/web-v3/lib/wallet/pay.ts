@@ -1,7 +1,6 @@
-// ⚠️ SHELVED (S.478) — not currently wired (generic in-chat x402 cut from MVP).
-// PRESERVED: this is the proven client-side x402 pay loop, reused by Phase 4b
-// Recipes (a Recipe = a sequence of payService calls). The same session→signer
-// bridge pattern also backs send_transfer (4a).
+// The proven client-side x402 pay loop. Generic in-chat x402 was cut from MVP
+// (S.478); this is now wired via Phase 4b Recipes (a Recipe = a sequence of
+// payService calls). The same session→signer bridge also backs send_transfer.
 /**
  * Client-side x402 pay executor (Audric v3 — the "green MPP loop").
  *
@@ -14,7 +13,7 @@
  * never blind-retry). USDC is gasless at the Sui protocol level, so there is no
  * Enoki gas sponsorship and no SUI required.
  *
- * The `mpp_call` agent tool (p4a-services) calls this on approval; the dev probe
+ * Phase 4b Recipes (`lib/recipes/run.ts`) call this per paid step; the dev probe
  * page calls it directly to validate the signer end-to-end first.
  */
 

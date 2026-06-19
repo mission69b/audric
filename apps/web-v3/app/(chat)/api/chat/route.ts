@@ -156,7 +156,8 @@ export async function POST(request: Request) {
                 (p: Record<string, unknown>) =>
                   p.state === "approval-responded" ||
                   p.state === "output-denied" ||
-                  // Client-executed tools (mpp_call) produce their result in the
+                  // Client-executed tools (send_transfer, run_recipe) produce
+                  // their result in the
                   // browser; trust the client-provided output on continuation so
                   // the agent can narrate it. Safe here — the user paid from
                   // their OWN Passport; no other party is exposed.
