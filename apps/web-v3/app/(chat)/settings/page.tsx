@@ -128,12 +128,9 @@ export default function SettingsPage() {
       {address && (
         <Section title="Passport">
           <p className="text-muted-foreground text-xs">
-            <strong className="text-foreground/80">
-              Permissionless, no seed phrase.
-            </strong>{" "}
-            Sign in with Google and a non-custodial wallet is yours in seconds —
-            no bank, no approval, no one who can freeze it. Sign out and back in
-            any time; your wallet and funds remain.
+            <strong className="text-foreground/80">No seed phrase, no bank.</strong>{" "}
+            Sign in with Google and a non-custodial wallet is yours — only you
+            control it, and it's still here whenever you sign back in.
           </p>
           <div className="mt-3 space-y-2.5">
             {identity?.configured && (
@@ -216,9 +213,8 @@ export default function SettingsPage() {
           )}
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground/60">
-          Permanent per-memory deletion is coming soon. Until then, turning
-          memory off stops Audric from recalling it, and stored memories expire
-          on their own.
+          Turning memory off stops recall, and stored memories expire on their
+          own.
         </p>
       </Section>
 
