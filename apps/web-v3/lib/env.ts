@@ -61,14 +61,6 @@ const serverSchema = z.object({
   // still works). The parent-NFT custody key (Bech32 suiprivkey1…) signs the
   // gas-paid SuiNS leaf-subname mint/revoke. Server-only.
   AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
-  // Seal (decentralized private storage) — OPTIONAL: unset → Seal encryption
-  // off (artifacts/memory stay on the current backend). The API key
-  // authenticates us to the MPC committee; the package id is our on-chain policy
-  // (audric_seal::seal_policy). Server-only.
-  /** Seal MPC committee API key (request via the Enoki dashboard). */
-  SEAL_API_KEY: optionalString,
-  /** Published `audric_seal` package id (the `seal_approve` access policy). */
-  SEAL_POLICY_PACKAGE_ID: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -96,8 +88,6 @@ const runtimeEnv = {
   STRIPE_PRICE_PRO_PLUS: process.env.STRIPE_PRICE_PRO_PLUS,
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
-  SEAL_API_KEY: process.env.SEAL_API_KEY,
-  SEAL_POLICY_PACKAGE_ID: process.env.SEAL_POLICY_PACKAGE_ID,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
