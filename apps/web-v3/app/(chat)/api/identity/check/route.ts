@@ -1,3 +1,4 @@
+import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { fullHandle, resolveSuinsViaRpc } from "@t2000/sdk";
 import { auth } from "@/app/(auth)/auth";
 import { getUserByUsername } from "@/lib/db/queries";
@@ -21,16 +22,20 @@ export async function GET(request: Request) {
   if (isReserved(v.label)) {
     return Response.json({ available: false, reason: "reserved" });
   }
-  if (await getUserByUsername(v.label)) {
+  const me = normalizeSuiAddress(session.user.id);
+  // Taken only if a DIFFERENT v3 user holds it (your own handle isn't "taken").
+  const dbHolder = await getUserByUsername(v.label);
+  if (dbHolder && dbHolder.id !== session.user.id) {
     return Response.json({ available: false, reason: "taken" });
   }
   try {
     const onChain = await resolveSuinsViaRpc(fullHandle(v.label));
-    if (onChain) {
+    // Leaf points at someone else → taken. Unregistered (null) or already
+    // targeting YOU (a v2 handle to adopt) → available.
+    if (onChain && normalizeSuiAddress(onChain) !== me) {
       return Response.json({ available: false, reason: "taken" });
     }
   } catch {
-    // On-chain verifier down — let the user proceed; claim re-checks live.
     return Response.json({ available: true, verifierDown: true });
   }
   return Response.json({ available: true });

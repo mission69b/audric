@@ -1,3 +1,4 @@
+import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { displayHandle, fullHandle, resolveSuinsViaRpc } from "@t2000/sdk";
 import { auth } from "@/app/(auth)/auth";
 import { getUserById, getUserByUsername, setUsername } from "@/lib/db/queries";
@@ -79,25 +80,30 @@ export async function POST(request: Request) {
     );
   }
 
-  if (await getUserByUsername(label)) {
+  const myAddress = normalizeSuiAddress(session.user.id);
+  const dbHolder = await getUserByUsername(label);
+  if (dbHolder && dbHolder.id !== session.user.id) {
     return Response.json(
       { error: "That handle is taken", reason: "taken" },
-      {
-        status: 409,
-      }
+      { status: 409 }
     );
   }
 
-  // Ground truth: never mint over an existing on-chain leaf.
+  // Ground truth + ADOPTION: a leaf already targeting the caller (e.g. a handle
+  // minted in v2) is theirs to adopt — record it without a re-mint. A leaf for
+  // someone else is genuinely taken.
+  let alreadyMine = false;
   try {
     const onChain = await resolveSuinsViaRpc(fullHandle(label));
     if (onChain) {
-      return Response.json(
-        { error: "That handle is taken", reason: "taken" },
-        {
-          status: 409,
-        }
-      );
+      if (normalizeSuiAddress(onChain) === myAddress) {
+        alreadyMine = true;
+      } else {
+        return Response.json(
+          { error: "That handle is taken", reason: "taken" },
+          { status: 409 }
+        );
+      }
     }
   } catch {
     return Response.json(
@@ -107,29 +113,37 @@ export async function POST(request: Request) {
   }
 
   let txDigest: string;
-  try {
-    txDigest = await setLeafHandle({
-      oldLabel,
-      newLabel: label,
-      targetAddress: session.user.id,
-    });
-  } catch (e) {
-    return Response.json(
-      { error: `Couldn't set your handle: ${(e as Error).message}` },
-      { status: 502 }
-    );
+  if (alreadyMine) {
+    // Adopt the existing on-chain leaf — no mint (and no rollback-revoke below).
+    txDigest = "adopted";
+  } else {
+    try {
+      txDigest = await setLeafHandle({
+        oldLabel,
+        newLabel: label,
+        targetAddress: session.user.id,
+      });
+    } catch (e) {
+      return Response.json(
+        { error: `Couldn't set your handle: ${(e as Error).message}` },
+        { status: 502 }
+      );
+    }
   }
 
   try {
     await setUsername(session.user.id, label, txDigest);
   } catch {
-    // Lost the DB unique race after the on-chain mint — roll the leaf back.
-    await revokeLeafHandle(label).catch(() => undefined);
-    if (oldLabel) {
-      await setLeafHandle({
-        newLabel: oldLabel,
-        targetAddress: session.user.id,
-      }).catch(() => undefined);
+    // Lost the DB unique race. Only roll back a leaf WE minted — never revoke a
+    // pre-existing/adopted leaf (that would destroy the user's v2 handle).
+    if (!alreadyMine) {
+      await revokeLeafHandle(label).catch(() => undefined);
+      if (oldLabel) {
+        await setLeafHandle({
+          newLabel: oldLabel,
+          targetAddress: session.user.id,
+        }).catch(() => undefined);
+      }
     }
     return Response.json(
       { error: "That handle was just taken", reason: "taken" },
