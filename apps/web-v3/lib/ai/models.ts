@@ -41,6 +41,10 @@ export type ChatModel = {
   tier?: ModelTier;
   /** Zero-credit model (the free acquisition tier). Only Kimi at launch. */
   free?: boolean;
+  /** Short "which model for which task" hint shown in the switcher. */
+  bestFor?: string;
+  /** Premium frontier model — gated to credit/paid tiers. */
+  frontier?: boolean;
 };
 
 export const chatModels: ChatModel[] = [
@@ -53,6 +57,7 @@ export const chatModels: ChatModel[] = [
     privacy: "anon",
     tier: "fast",
     free: true,
+    bestFor: "Fast & free",
   },
   {
     id: "deepseek/deepseek-v3.2",
@@ -62,6 +67,7 @@ export const chatModels: ChatModel[] = [
     gatewayOrder: ["bedrock", "deepinfra"],
     privacy: "anon",
     tier: "smart",
+    bestFor: "Capable & cheap",
   },
   {
     id: "xai/grok-4.1-fast-non-reasoning",
@@ -71,6 +77,7 @@ export const chatModels: ChatModel[] = [
     gatewayOrder: ["xai"],
     privacy: "anon",
     tier: "smart",
+    bestFor: "Quick answers",
   },
   {
     id: "openai/gpt-oss-120b",
@@ -81,6 +88,37 @@ export const chatModels: ChatModel[] = [
     reasoningEffort: "low",
     privacy: "anon",
     tier: "smart",
+    bestFor: "Open reasoning",
+  },
+  {
+    id: "anthropic/claude-opus-4.8",
+    name: "Claude Opus 4.8",
+    provider: "anthropic",
+    description: "Frontier model — top-tier coding & writing",
+    privacy: "anon",
+    tier: "smart",
+    frontier: true,
+    bestFor: "Code & writing",
+  },
+  {
+    id: "openai/gpt-5.5",
+    name: "GPT-5.5",
+    provider: "openai",
+    description: "Frontier all-round model with vision",
+    privacy: "anon",
+    tier: "smart",
+    frontier: true,
+    bestFor: "All-round + vision",
+  },
+  {
+    id: "google/gemini-3-pro-preview",
+    name: "Gemini 3 Pro",
+    provider: "google",
+    description: "Frontier model — long context & multimodal",
+    privacy: "anon",
+    tier: "smart",
+    frontier: true,
+    bestFor: "Long context",
   },
 ];
 

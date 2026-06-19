@@ -3,7 +3,13 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
-import { ArrowUpIcon, BrainIcon, LockIcon } from "lucide-react";
+import {
+  ArrowUpIcon,
+  BrainIcon,
+  EyeIcon,
+  LockIcon,
+  WrenchIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -657,6 +663,9 @@ function PureModelSelectorCompact({
   );
 
   const pricing: Record<string, ModelPricing> | undefined = modelsData?.pricing;
+  const capabilities:
+    | Record<string, { tools: boolean; vision: boolean; reasoning: boolean }>
+    | undefined = modelsData?.capabilities;
   const dynamicModels: ChatModel[] | undefined = modelsData?.models;
   const activeModels = dynamicModels ?? chatModels;
 
@@ -787,8 +796,40 @@ function PureModelSelectorCompact({
                       value={model.id}
                     >
                       <ModelSelectorLogo provider={logoProvider} />
-                      <ModelSelectorName>{model.name}</ModelSelectorName>
+                      <div className="flex min-w-0 flex-col">
+                        <ModelSelectorName>{model.name}</ModelSelectorName>
+                        {model.bestFor && (
+                          <span className="truncate text-[10px] text-muted-foreground/50">
+                            {model.bestFor}
+                          </span>
+                        )}
+                      </div>
                       <div className="ml-auto flex items-center gap-2 text-foreground/70">
+                        {(() => {
+                          const cap = capabilities?.[model.id];
+                          if (!cap) {
+                            return null;
+                          }
+                          return (
+                            <span className="flex items-center gap-1 text-muted-foreground/45">
+                              {cap.tools && (
+                                <WrenchIcon
+                                  aria-label="Tool use"
+                                  className="size-3"
+                                />
+                              )}
+                              {cap.vision && (
+                                <EyeIcon aria-label="Vision" className="size-3" />
+                              )}
+                              {cap.reasoning && (
+                                <BrainIcon
+                                  aria-label="Reasoning"
+                                  className="size-3"
+                                />
+                              )}
+                            </span>
+                          );
+                        })()}
                         {locked && (
                           <LockIcon className="size-3.5 text-muted-foreground/70" />
                         )}
