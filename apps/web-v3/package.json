@@ -19,6 +19,7 @@
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
     "stripe:seed": "tsx scripts/stripe-seed.ts",
+    "reset-billing": "tsx scripts/reset-billing.ts",
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {
