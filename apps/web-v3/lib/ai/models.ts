@@ -1,0 +1,235 @@
+export const DEFAULT_CHAT_MODEL = "moonshotai/kimi-k2.5";
+
+export const titleModel = {
+  id: "moonshotai/kimi-k2.5",
+  name: "Kimi K2.5",
+  provider: "moonshotai",
+  description: "Fast model for title generation",
+  gatewayOrder: ["fireworks", "bedrock"],
+};
+
+export type ModelCapabilities = {
+  tools: boolean;
+  vision: boolean;
+  reasoning: boolean;
+};
+
+// Audric v3 (SPEC_AUDRIC_V3 §5/§5c + SPEC_AUDRIC_MODEL_SWITCHER): the switcher
+// is the "privacy storefront". Every model carries an HONEST privacy badge and
+// a tier. At launch every model rides the Vercel AI Gateway, so the only honest
+// label is `anon` (gateway-routed; upstream may retain anonymized prompts) —
+// NEVER overclaim "private". The `private` (zero-retention partner) + `local`
+// (self-hosted) tiers are fast-follows; the type carries them now so the badge
+// UI is forward-compatible.
+export type ModelPrivacyTier = "anon" | "private" | "local";
+
+// `fast` = the zero-credit acquisition model (Kimi); `smart` = premium,
+// per-1k-token credit-metered (the metering itself lands in Phase 5 — here the
+// tier only drives labeling + the free/cost display).
+export type ModelTier = "fast" | "smart";
+
+export type ChatModel = {
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+  gatewayOrder?: string[];
+  reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high";
+  /** Honest privacy label shown as a badge in the switcher. */
+  privacy?: ModelPrivacyTier;
+  /** Fast (free) vs Smart (metered) — drives the free/cost display. */
+  tier?: ModelTier;
+  /** Zero-credit model (the free acquisition tier). Only Kimi at launch. */
+  free?: boolean;
+};
+
+export const chatModels: ChatModel[] = [
+  {
+    id: "moonshotai/kimi-k2.5",
+    name: "Kimi K2.5",
+    provider: "moonshotai",
+    description: "Fast, uncensored open model — free",
+    gatewayOrder: ["fireworks", "bedrock"],
+    privacy: "anon",
+    tier: "fast",
+    free: true,
+  },
+  {
+    id: "deepseek/deepseek-v3.2",
+    name: "DeepSeek V3.2",
+    provider: "deepseek",
+    description: "Fast and capable model with tool use",
+    gatewayOrder: ["bedrock", "deepinfra"],
+    privacy: "anon",
+    tier: "smart",
+  },
+  {
+    id: "xai/grok-4.1-fast-non-reasoning",
+    name: "Grok 4.1 Fast",
+    provider: "xai",
+    description: "Fast non-reasoning model with tool use",
+    gatewayOrder: ["xai"],
+    privacy: "anon",
+    tier: "smart",
+  },
+  {
+    id: "openai/gpt-oss-120b",
+    name: "GPT OSS 120B",
+    provider: "openai",
+    description: "Open-source 120B reasoning model",
+    gatewayOrder: ["fireworks", "bedrock"],
+    reasoningEffort: "low",
+    privacy: "anon",
+    tier: "smart",
+  },
+];
+
+export async function getCapabilities(): Promise<
+  Record<string, ModelCapabilities>
+> {
+  const results = await Promise.all(
+    chatModels.map(async (model) => {
+      try {
+        const res = await fetch(
+          `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
+          { next: { revalidate: 86_400 } }
+        );
+        if (!res.ok) {
+          return [model.id, { tools: false, vision: false, reasoning: false }];
+        }
+
+        const json = await res.json();
+        const endpoints = json.data?.endpoints ?? [];
+        const params = new Set(
+          endpoints.flatMap(
+            (e: { supported_parameters?: string[] }) =>
+              e.supported_parameters ?? []
+          )
+        );
+        const inputModalities = new Set(
+          json.data?.architecture?.input_modalities ?? []
+        );
+
+        return [
+          model.id,
+          {
+            tools: params.has("tools"),
+            vision: inputModalities.has("image"),
+            reasoning: params.has("reasoning"),
+          },
+        ];
+      } catch {
+        return [model.id, { tools: false, vision: false, reasoning: false }];
+      }
+    })
+  );
+
+  return Object.fromEntries(results);
+}
+
+export type ModelPricing = {
+  /** USD per 1M input tokens (Gateway `pricing.input` × 1e6). */
+  inputPer1M: number;
+  /** USD per 1M output tokens. */
+  outputPer1M: number;
+  /** Total context window (tokens) — Gateway `context_window`. */
+  contextWindow?: number;
+};
+
+/**
+ * Per-model pricing from the Gateway `/v1/models` endpoint (USD per token,
+ * normalized to per-1M). Cached 24h like the capability fetch. The switcher
+ * shows this as the honest, indicative per-1k/1M cost (§5c). Returns {} on any
+ * failure so the UI degrades to no-price — never throws.
+ */
+export async function getModelPricing(): Promise<Record<string, ModelPricing>> {
+  try {
+    const res = await fetch("https://ai-gateway.vercel.sh/v1/models", {
+      next: { revalidate: 86_400 },
+    });
+    if (!res.ok) {
+      return {};
+    }
+    const json = await res.json();
+    const out: Record<string, ModelPricing> = {};
+    for (const m of (json.data ?? []) as Array<{
+      id: string;
+      context_window?: number;
+      pricing?: { input?: string; output?: string };
+    }>) {
+      const input = Number(m.pricing?.input);
+      const output = Number(m.pricing?.output);
+      if (Number.isFinite(input) && Number.isFinite(output)) {
+        out[m.id] = {
+          inputPer1M: input * 1_000_000,
+          outputPer1M: output * 1_000_000,
+          contextWindow:
+            typeof m.context_window === "number" ? m.context_window : undefined,
+        };
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export const isDemo = process.env.IS_DEMO === "1";
+
+type GatewayModel = {
+  id: string;
+  name: string;
+  type?: string;
+  tags?: string[];
+};
+
+export type GatewayModelWithCapabilities = ChatModel & {
+  capabilities: ModelCapabilities;
+};
+
+export async function getAllGatewayModels(): Promise<
+  GatewayModelWithCapabilities[]
+> {
+  try {
+    const res = await fetch("https://ai-gateway.vercel.sh/v1/models", {
+      next: { revalidate: 86_400 },
+    });
+    if (!res.ok) {
+      return [];
+    }
+
+    const json = await res.json();
+    return (json.data ?? [])
+      .filter((m: GatewayModel) => m.type === "language")
+      .map((m: GatewayModel) => ({
+        id: m.id,
+        name: m.name,
+        provider: m.id.split("/")[0],
+        description: "",
+        capabilities: {
+          tools: m.tags?.includes("tool-use") ?? false,
+          vision: m.tags?.includes("vision") ?? false,
+          reasoning: m.tags?.includes("reasoning") ?? false,
+        },
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export function getActiveModels(): ChatModel[] {
+  return chatModels;
+}
+
+export const allowedModelIds = new Set(chatModels.map((m) => m.id));
+
+export const modelsByProvider = chatModels.reduce(
+  (acc, model) => {
+    if (!acc[model.provider]) {
+      acc[model.provider] = [];
+    }
+    acc[model.provider].push(model);
+    return acc;
+  },
+  {} as Record<string, ChatModel[]>
+);
