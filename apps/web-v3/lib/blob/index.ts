@@ -4,8 +4,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ExportedSessionKey } from "@mysten/seal";
-import { env } from "@/lib/env";
-import { sealFetch, sealStore } from "@/lib/seal";
+import { isSealConfigured, sealFetch, sealStore } from "@/lib/seal";
 
 // Private blob storage seam (SPEC_AUDRIC_V3 §6b).
 //
@@ -33,32 +32,44 @@ function isVercelBlobEnabled(): boolean {
 
 // --- Walrus+Seal backend (decentralized, owner-encrypted) ---
 //
-// A Walrus ref encodes both ids we need: `walrus:<blobId>:<blobObjectId>` —
-// blobId reads the bytes, blobObjectId deletes the (deletable) blob.
+// A Walrus ref is self-describing: `walrus:<blobId>:<blobObjectId>:<contentType>`
+// — blobId reads the bytes, blobObjectId deletes the (deletable) blob, and the
+// contentType is carried so the decrypt path needs no extra metadata.
 const WALRUS_PREFIX = "walrus:";
 
+// Walrus is the backend whenever Seal is configured (API key + policy package).
+// No separate flag: the keys we need anyway ARE the switch. Falls back to
+// Vercel/local when Seal isn't set up (dev/CI/contributors).
 function useWalrus(): boolean {
-  return env.STORAGE_BACKEND === "walrus";
+  return isSealConfigured();
 }
 
 export function isWalrusRef(ref: string): boolean {
   return ref.startsWith(WALRUS_PREFIX);
 }
 
-function makeWalrusRef(blobId: string, blobObjectId: string): string {
-  return `${WALRUS_PREFIX}${blobId}:${blobObjectId}`;
+function makeWalrusRef(
+  blobId: string,
+  blobObjectId: string,
+  contentType: string
+): string {
+  return `${WALRUS_PREFIX}${blobId}:${blobObjectId}:${contentType}`;
 }
 
-/** Parse a `walrus:<blobId>:<blobObjectId>` ref into its parts. */
+/** Parse a `walrus:<blobId>:<blobObjectId>:<contentType>` ref. */
 export function parseWalrusRef(ref: string): {
   blobId: string;
   blobObjectId: string;
+  contentType: string;
 } {
-  const rest = ref.slice(WALRUS_PREFIX.length);
-  const sep = rest.indexOf(":");
-  return sep === -1
-    ? { blobId: rest, blobObjectId: "" }
-    : { blobId: rest.slice(0, sep), blobObjectId: rest.slice(sep + 1) };
+  const [blobId, blobObjectId, ...rest] = ref
+    .slice(WALRUS_PREFIX.length)
+    .split(":");
+  return {
+    blobId: blobId ?? "",
+    blobObjectId: blobObjectId ?? "",
+    contentType: rest.join(":") || "application/octet-stream",
+  };
 }
 
 export type PutBlobResult = {
@@ -122,7 +133,7 @@ export async function putBlob(
       options.owner,
       new Uint8Array(body)
     );
-    const ref = makeWalrusRef(blobId, blobObjectId);
+    const ref = makeWalrusRef(blobId, blobObjectId, contentType);
     return { pathname: ref, url: ref, contentType };
   }
 
@@ -190,19 +201,18 @@ export async function getBlob(pathname: string): Promise<BlobReadResult> {
 
 /**
  * Read a blob, decrypting Walrus+Seal refs with the user's session key.
- * Non-walrus refs fall through to the normal getBlob. The caller supplies the
- * contentType (Walrus stores raw bytes; the type lives in the attachment row).
+ * Non-walrus refs fall through to the normal getBlob. The contentType is read
+ * from the self-describing ref (Walrus stores raw bytes).
  */
 export async function getBlobViaSeal(
   ref: string,
   owner: string,
-  exported: ExportedSessionKey,
-  contentType = "application/octet-stream"
+  exported: ExportedSessionKey
 ): Promise<BlobReadResult> {
   if (!isWalrusRef(ref)) {
     return getBlob(ref);
   }
-  const { blobId } = parseWalrusRef(ref);
+  const { blobId, contentType } = parseWalrusRef(ref);
   const bytes = await sealFetch(owner, exported, blobId);
   return { body: Buffer.from(bytes), contentType };
 }
