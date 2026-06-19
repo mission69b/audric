@@ -239,6 +239,76 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
   }
 }
 
+/**
+ * Blob pathnames referenced by a user's message attachments (Phase 6 purge).
+ * Uploaded attachments persist a blob whose ref lives in `message.attachments`
+ * (image artifacts are base64 in `document.content`, so they carry no blob).
+ * The caller deletes the blobs before/after wiping the rows.
+ */
+export async function getAttachmentPathnamesByUserId(
+  userId: string
+): Promise<string[]> {
+  const rows = await db
+    .select({ attachments: message.attachments })
+    .from(message)
+    .innerJoin(chat, eq(message.chatId, chat.id))
+    .where(eq(chat.userId, userId));
+
+  const paths: string[] = [];
+  for (const row of rows) {
+    if (!Array.isArray(row.attachments)) {
+      continue;
+    }
+    for (const att of row.attachments) {
+      const p = pathnameFromAttachment(att);
+      if (p) {
+        paths.push(p);
+      }
+    }
+  }
+  return paths;
+}
+
+/** Recover a blob pathname from a stored attachment (`pathname` or the url's query). */
+function pathnameFromAttachment(att: unknown): string | null {
+  if (!att || typeof att !== "object") {
+    return null;
+  }
+  const a = att as { pathname?: unknown; url?: unknown };
+  if (typeof a.pathname === "string" && a.pathname.length > 0) {
+    return a.pathname;
+  }
+  if (typeof a.url === "string") {
+    try {
+      return new URL(a.url, "http://local").searchParams.get("pathname");
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Delete every artifact Document (+ its suggestions) for a user (Phase 6 purge). */
+export async function deleteAllDocumentsByUserId({
+  userId,
+}: {
+  userId: string;
+}) {
+  try {
+    await db.delete(suggestion).where(eq(suggestion.userId, userId));
+    const deleted = await db
+      .delete(document)
+      .where(eq(document.userId, userId))
+      .returning({ id: document.id });
+    return { deletedCount: deleted.length };
+  } catch (_error) {
+    throw new ChatbotError(
+      "bad_request:database",
+      "Failed to delete all documents by user id"
+    );
+  }
+}
+
 export async function getChatsByUserId({
   id,
   limit,

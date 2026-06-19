@@ -153,18 +153,23 @@ export function SidebarUserNav() {
               </div>
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer text-[13px]"
+              data-testid="user-nav-item-settings"
+              onSelect={() => router.push("/settings")}
+            >
+              Settings
+            </DropdownMenuItem>
             {credit?.configured && (
-              <>
-                <DropdownMenuItem
-                  className="cursor-pointer text-[13px]"
-                  data-testid="user-nav-item-billing"
-                  onSelect={() => router.push("/settings/billing")}
-                >
-                  Top up · Billing
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
+              <DropdownMenuItem
+                className="cursor-pointer text-[13px]"
+                data-testid="user-nav-item-billing"
+                onSelect={() => router.push("/settings/billing")}
+              >
+                Top up · Billing
+              </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-[13px]"
               data-testid="user-nav-item-theme"
