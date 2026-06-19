@@ -482,7 +482,7 @@ export async function POST(request: Request) {
             "AI Gateway requires a valid credit card on file to service requests"
           )
         ) {
-          return "AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card to add a card and unlock your free credits.";
+          return "The AI service is temporarily unavailable. Please try again shortly.";
         }
         return "Oops, an error occurred!";
       },
