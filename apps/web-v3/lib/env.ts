@@ -55,7 +55,6 @@ const serverSchema = z.object({
   STRIPE_WEBHOOK_SECRET: optionalString,
   /** Recurring Price IDs for the subscription tiers (inert until set). */
   STRIPE_PRICE_PRO: optionalString,
-  STRIPE_PRICE_PRO_PLUS: optionalString,
   STRIPE_PRICE_MAX: optionalString,
   // Identity (@audric handles) — OPTIONAL: unset → handle minting off (resolve
   // still works). The parent-NFT custody key (Bech32 suiprivkey1…) signs the
@@ -85,7 +84,6 @@ const runtimeEnv = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRICE_PRO: process.env.STRIPE_PRICE_PRO,
-  STRIPE_PRICE_PRO_PLUS: process.env.STRIPE_PRICE_PRO_PLUS,
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,

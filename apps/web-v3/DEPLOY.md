@@ -40,7 +40,7 @@ The env contract is validated at boot (`lib/env.ts`) — a missing/empty
 | `MEMWAL_PRIVATE_KEY` / `MEMWAL_ACCOUNT_ID` / `MEMWAL_SERVER_URL` | Private Memory (set all three) |
 | `STRIPE_SECRET_KEY` | Credit rail. Use the **live** key for prod. |
 | `STRIPE_WEBHOOK_SECRET` | The **production** webhook secret (see §4 — NOT the local `stripe listen` value) |
-| `STRIPE_PRICE_PRO` / `_PRO_PLUS` / `_MAX` | Subscriptions (run `pnpm stripe:seed` against the live account first; inert until set) |
+| `STRIPE_PRICE_PRO` / `_MAX` | Subscriptions (run `pnpm stripe:seed` against the live account first; inert until set) |
 
 ## 3. Auth origins (zkLogin)
 

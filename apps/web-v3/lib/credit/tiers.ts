@@ -1,15 +1,18 @@
 /**
- * Subscription tiers (Phase 5, SPEC_AUDRIC_V3 §4b).
+ * Subscription tiers (SPEC_AUDRIC_V3 §4b).
  *
- * 4-tier ladder: Free / Pro / Pro+ / Max. Prices + included-credit are the
- * founder-approved launch numbers (still revisitable on usage-cost data, §4b:
- * "finalize on usage data"). Subscribe is gated on the matching `STRIPE_PRICE_*`
- * env being provisioned (the seed script creates them). The free tier + PAYG
- * top-up are the always-on path; subs add monthly included credit. Pure data;
- * safe on client + server.
+ * 3-tier ladder: Free / Pro / Max (S.485 — dropped the speculative Pro+; it
+ * re-appears when it earns a real exclusive, e.g. the decentralized E2E slice).
+ * The DB `subscriptionTier` enum still carries "proPlus" so re-adding needs no
+ * migration. Prices + included-credit are the founder-approved launch numbers
+ * (revisitable on usage-cost data, §4b). Pure data; safe on client + server.
+ *
+ * STRUCTURE: the privacy/ownership story is NOT a tier differentiator — it's
+ * what Audric IS, shared by every plan (EVERY_PLAN). The tiers differentiate on
+ * models + included credit + caps. COMING_SOON is teased, never sold.
  */
 
-export type TierId = "free" | "pro" | "proPlus" | "max";
+export type TierId = "free" | "pro" | "max";
 
 export type Tier = {
   id: TierId;
@@ -21,8 +24,29 @@ export type Tier = {
   tagline: string;
   features: string[];
   /** Which env Price ID gates this tier's subscribe (server resolves it). */
-  priceEnv?: "STRIPE_PRICE_PRO" | "STRIPE_PRICE_PRO_PLUS" | "STRIPE_PRICE_MAX";
+  priceEnv?: "STRIPE_PRICE_PRO" | "STRIPE_PRICE_MAX";
 };
+
+/**
+ * "The Audric difference" — included in EVERY plan, Free included. Benefit-led
+ * copy (what you get), not feature-led. These are real today.
+ */
+export const EVERY_PLAN: string[] = [
+  "Uncensored — open models that won't refuse you",
+  "Zero data retention — your chats are never training data",
+  "Permissionless — no account, no KYC, no seed phrase",
+  "Non-custodial wallet — your keys, your money, always",
+  "Send USDC anywhere — free, instant, gasless",
+  "Private memory & chats — encrypted, yours to delete anytime",
+  "Recipes — pay-per-use live-data flows, with your own USDC",
+];
+
+/** Teased, never sold — clearly labeled "coming". */
+export const COMING_SOON: string[] = [
+  "Private model tier — zero-retention open-weight routing",
+  "Decentralized backup — your memory, end-to-end on Walrus",
+  "Smart model routing — the right model for every task",
+];
 
 export const TIERS: Tier[] = [
   {
@@ -31,9 +55,8 @@ export const TIERS: Tier[] = [
     priceUsd: 0,
     tagline: "The private AI, on the house",
     features: [
-      "Free open model (Kimi) — uncensored, unlimited core chat",
+      "Open, uncensored models — unlimited core chat",
       "Web search + image generation",
-      "Private Memory (opt-in) + Passport wallet",
       "Pay-as-you-go top-up for premium models",
     ],
   },
@@ -42,28 +65,14 @@ export const TIERS: Tier[] = [
     name: "Pro",
     priceUsd: 18,
     includedCreditUsd: 10,
-    tagline: "Premium models, unlimited",
+    tagline: "All the models, generous",
     features: [
-      "Everything in Free",
-      "All premium models + media generation",
-      "Effectively unlimited text",
-      "$10/mo included credit · Walrus E2E backup + portable memory",
+      "All premium + frontier models",
+      "Image & media generation",
+      "Effectively unlimited chat",
+      "$10/mo credit — never expires",
     ],
     priceEnv: "STRIPE_PRICE_PRO",
-  },
-  {
-    id: "proPlus",
-    name: "Pro+",
-    priceUsd: 48,
-    includedCreditUsd: 30,
-    tagline: "For daily, serious use",
-    features: [
-      "Everything in Pro",
-      "Priority routing + higher media caps",
-      "$30/mo included credit",
-      "Higher storage limits",
-    ],
-    priceEnv: "STRIPE_PRICE_PRO_PLUS",
   },
   {
     id: "max",
@@ -72,10 +81,10 @@ export const TIERS: Tier[] = [
     includedCreditUsd: 75,
     tagline: "Maximum everything",
     features: [
-      "Everything in Pro+",
-      "Frontier models + top priority",
-      "$75/mo included credit + roll-forward",
-      "Highest limits & storage",
+      "Everything in Pro",
+      "Highest media & usage caps",
+      "$75/mo credit — never expires",
+      "First access to new features",
     ],
     priceEnv: "STRIPE_PRICE_MAX",
   },

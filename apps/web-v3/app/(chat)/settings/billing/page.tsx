@@ -3,8 +3,9 @@
 /**
  * Settings → Billing (Phase 5, SPEC_AUDRIC_TOPUP_METERING §5b). Overlay over
  * the persistent chat shell. Pay-as-you-go top-up (hosted Stripe Checkout) +
- * auto-recharge + the 4-tier plan cards (subscribe inert until prices are
- * provisioned). Closed-loop terms are accepted at the first top-up (§6b).
+ * auto-recharge + the "Audric difference" (shared, benefit-led) + the 3-tier
+ * plan cards (subscribe inert until prices are provisioned) + a "coming soon"
+ * tease. Closed-loop terms are accepted at the first top-up (§6b).
  */
 
 import { CheckIcon, XIcon } from "lucide-react";
@@ -13,7 +14,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
-import { TIERS, TOPUP_PRESETS_USD } from "@/lib/credit/tiers";
+import {
+  COMING_SOON,
+  EVERY_PLAN,
+  TIERS,
+  TOPUP_PRESETS_USD,
+} from "@/lib/credit/tiers";
 import { cn, fetcher } from "@/lib/utils";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -199,6 +205,27 @@ export default function BillingPage() {
         </Button>
       </div>
 
+      {/* The Audric difference — included in EVERY plan (the real, shared value) */}
+      <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5">
+        <h2 className="font-medium text-foreground text-sm">
+          Included in every plan
+        </h2>
+        <p className="mt-0.5 text-muted-foreground text-xs">
+          What Audric is — Free included.
+        </p>
+        <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          {EVERY_PLAN.map((f) => (
+            <li
+              className="flex items-start gap-1.5 text-muted-foreground text-xs"
+              key={f}
+            >
+              <CheckIcon className="mt-0.5 size-3 shrink-0 text-foreground/50" />
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {/* Plans (scaffold — Subscribe inert until prices are provisioned) */}
       <h2 className="mt-8 font-medium text-foreground text-sm">Plans</h2>
       <p className="mt-0.5 mb-3 text-muted-foreground text-xs">
@@ -220,7 +247,7 @@ export default function BillingPage() {
           </span>
         </label>
       ) : null}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {TIERS.map((tier) => {
           const current = (data?.tier ?? "free") === tier.id;
           return (
@@ -275,6 +302,20 @@ export default function BillingPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Coming soon — teased, not sold */}
+      <div className="mt-4 rounded-2xl border border-border/40 border-dashed p-4">
+        <div className="font-medium text-muted-foreground text-xs">
+          Coming soon
+        </div>
+        <ul className="mt-2 flex flex-col gap-1">
+          {COMING_SOON.map((f) => (
+            <li className="text-muted-foreground/70 text-xs" key={f}>
+              · {f}
+            </li>
+          ))}
+        </ul>
       </div>
     </Overlay>
   );
