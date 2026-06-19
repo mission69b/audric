@@ -20,6 +20,7 @@
     "db:up": "drizzle-kit up",
     "stripe:seed": "tsx scripts/stripe-seed.ts",
     "reset-billing": "tsx scripts/reset-billing.ts",
+    "check-billing": "tsx scripts/check-billing.ts",
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {
