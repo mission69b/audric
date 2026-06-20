@@ -71,6 +71,17 @@ export function ChatShell() {
     }
   }, [chatId, setArtifact]);
 
+  // Chips auto-send their starter prompt (Venice-style) — same path as the
+  // composer submit (push the chat URL, then send a plain user text message).
+  const sendStarter = (text: string) => {
+    window.history.pushState(
+      {},
+      "",
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
+    );
+    sendMessage({ role: "user", parts: [{ type: "text", text }] });
+  };
+
   // ChatGPT-style empty state: greeting + composer centered until the first
   // message; then the composer drops to the sticky bottom over the transcript.
   const isEmpty = messages.length === 0;
@@ -141,7 +152,7 @@ export function ChatShell() {
                         "pointer-events-none opacity-0"
                     )}
                   >
-                    <SuggestedActions setInput={setInput} />
+                    <SuggestedActions onSend={sendStarter} />
                   </div>
                 )}
               </div>

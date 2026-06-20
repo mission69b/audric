@@ -6,75 +6,37 @@ export const isTestEnvironment = Boolean(
     process.env.CI_PLAYWRIGHT
 );
 
-// Composer chips — CATEGORY chips that expand to concrete Simple/Advanced
-// example prompts (prefill-only: clicking an example injects it into the
-// composer, never auto-sends, so the user edits first). Showcases Audric's
-// breadth — research, create, image, compare, and (signed-in) the wallet —
-// instead of three generic verbs. `authed` categories are wallet/money, shown
-// only when signed in.
-export type ChipExample = { tier: "Simple" | "Advanced"; prompt: string };
-export type ChipCategory = {
+// Composer chips — flat ACTION chips (Venice-style). Clicking a chip AUTO-SENDS
+// its starter prompt; bare-intent starters ("Research a topic", "Generate an
+// image") deliberately trigger ONE clarifying question from the agent, then it
+// proceeds. `authed` chips are wallet/money, shown only when signed in.
+export type StarterChip = {
   label: string;
+  /** The message sent on click. Bare intents trigger a clarifying question;
+   *  specific ones run immediately. */
+  starterPrompt: string;
   authed?: boolean;
-  examples: ChipExample[];
 };
 
-export const chipCategories: ChipCategory[] = [
+export const starterChips: StarterChip[] = [
+  { label: "Generate image", starterPrompt: "Generate an image" },
+  { label: "Research a topic", starterPrompt: "Research a topic for me" },
   {
-    label: "Research",
-    examples: [
-      { tier: "Simple", prompt: "What happened in AI this week?" },
-      {
-        tier: "Advanced",
-        prompt:
-          "Research the AI code assistant market and recommend a positioning, with sources",
-      },
-    ],
+    label: "Surprise me",
+    starterPrompt:
+      "Surprise me — pick something genuinely interesting and run with it.",
   },
   {
-    label: "Compare",
-    examples: [
-      { tier: "Simple", prompt: "Compare the leading open LLMs right now" },
-      {
-        tier: "Advanced",
-        prompt:
-          "Compare the top open-source vector databases for RAG across performance, scaling, and licensing — with sources",
-      },
-    ],
-  },
-  {
-    label: "Create",
-    examples: [
-      { tier: "Simple", prompt: "Write a haiku about the sea" },
-      {
-        tier: "Advanced",
-        prompt:
-          "Draft a launch tweet for a privacy-first AI app, plus 3 variations",
-      },
-    ],
-  },
-  {
-    label: "Image",
-    examples: [
-      { tier: "Simple", prompt: "Generate a logo for a coffee roaster" },
-      {
-        tier: "Advanced",
-        prompt:
-          "Design a minimalist app icon: a shield with a spark, dark theme",
-      },
-    ],
-  },
-  {
-    label: "Money",
+    label: "Check my balance",
+    starterPrompt: "What's my Passport balance?",
     authed: true,
-    examples: [
-      { tier: "Simple", prompt: "What's my Passport balance?" },
-      { tier: "Advanced", prompt: "Send 5 USDC to a friend" },
-    ],
   },
 ];
 
-/** Flat list of example prompts (for the simple static preview pane). */
-export const examplePrompts = chipCategories.flatMap((c) =>
-  c.examples.map((e) => e.prompt)
-);
+/** Concrete example prompts for the static login/preview pane. */
+export const examplePrompts = [
+  "What happened in AI this week?",
+  "Generate a logo for a coffee roaster",
+  "Draft a launch tweet for a privacy-first AI app, plus 3 variations",
+  "Compare the leading open LLMs right now",
+];

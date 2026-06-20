@@ -185,6 +185,25 @@ export async function POST(request: Request) {
     const routeText =
       partsText(message?.parts as TextPart[] | undefined) ||
       lastUserText(messages as Array<{ role?: string; parts?: TextPart[] }>);
+    // Intent gates (artifacts/research) read the last 2 user messages so the
+    // intent survives ONE clarifying round-trip ("generate an image" → "of
+    // what?" → "a cat"). The router still classifies only the latest message.
+    const recentUserText = ((): string => {
+      const all = [
+        ...((messages ?? []) as Array<{ role?: string; parts?: TextPart[] }>),
+        ...(message ? [message as { role?: string; parts?: TextPart[] }] : []),
+      ];
+      const texts: string[] = [];
+      for (let i = all.length - 1; i >= 0 && texts.length < 2; i--) {
+        if (all[i]?.role === "user") {
+          const t = partsText(all[i].parts);
+          if (t) {
+            texts.push(t);
+          }
+        }
+      }
+      return texts.join(" ");
+    })();
     const routeDecision =
       selectedChatModel === AUTO_MODEL_ID
         ? await routeTurn({ userText: routeText, canUsePremium })
@@ -206,7 +225,7 @@ export async function POST(request: Request) {
     // is excluded — it matches "AI code …".)
     const isExplicitArtifact =
       /\b(write|draft|create|generate|build|make|design|implement|rewrite|draw|illustrate|spreadsheet)\b/i.test(
-        routeText
+        recentUserText
       );
 
     // Deep-research subagent (P3) — offered when a turn warrants deep, multi-
