@@ -103,18 +103,33 @@ const PurePreviewMessage = ({
   // Group the turn's "work" parts (reasoning + web_search) into the live
   // Chain-of-Thought timeline (rendered once, before the answer). Everything
   // else keeps its own rendering below. Consecutive reasoning chunks merge.
+  // The FINAL answer is the trailing text after the last "work" part (reasoning
+  // or search). Everything before it — reasoning, searches, AND the model's
+  // intermediate narration text ("let me dig deeper…") — belongs in the trace,
+  // interleaved in order (Claude-style), not dumped after the searches.
+  const allParts = message.parts ?? [];
+  let lastWorkIndex = -1;
+  allParts.forEach((p, i) => {
+    if (p.type === "reasoning" || p.type === "tool-web_search") {
+      lastWorkIndex = i;
+    }
+  });
+
   const cotItems: CotItem[] = [];
-  for (const part of message.parts ?? []) {
+  const pushNarration = (text: string) => {
+    if (!text.trim()) {
+      return;
+    }
+    const last = cotItems.at(-1);
+    if (last?.kind === "reasoning") {
+      last.text += `\n\n${text}`;
+    } else {
+      cotItems.push({ kind: "reasoning", text });
+    }
+  };
+  allParts.forEach((part, i) => {
     if (part.type === "reasoning") {
-      const text = "text" in part ? (part.text ?? "") : "";
-      if (text.trim()) {
-        const last = cotItems.at(-1);
-        if (last?.kind === "reasoning") {
-          last.text += `\n\n${text}`;
-        } else {
-          cotItems.push({ kind: "reasoning", text });
-        }
-      }
+      pushNarration("text" in part ? (part.text ?? "") : "");
     } else if (part.type === "tool-web_search") {
       cotItems.push({
         kind: "search",
@@ -128,15 +143,22 @@ const PurePreviewMessage = ({
               ? "error"
               : "active",
       });
+    } else if (part.type === "text" && i < lastWorkIndex) {
+      // Intermediate narration between searches → interleave it in the trace.
+      pushNarration(part.text ?? "");
     }
-  }
+  });
 
   const parts = message.parts?.map((part, index) => {
     const { type } = part;
     const key = `message-${message.id}-part-${index}`;
 
-    // Reasoning + web_search are rendered in the CoT timeline (above), not here.
+    // Reasoning + web_search render in the CoT timeline (above), not here. So
+    // does intermediate narration text (before the final answer).
     if (type === "reasoning" || type === "tool-web_search") {
+      return null;
+    }
+    if (type === "text" && index < lastWorkIndex) {
       return null;
     }
 
