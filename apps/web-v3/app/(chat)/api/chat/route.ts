@@ -188,6 +188,14 @@ export async function POST(request: Request) {
         ? await routeTurn({ userText: routeText, canUsePremium })
         : null;
 
+    // Recipes are a USER-INITIATED paid action — the agent must NOT spontaneously
+    // spend on one for a general question (the Recipes "Run" button seeds
+    // "Run the <Name> recipe …"; a user can also ask explicitly). Only expose
+    // `run_recipe` to the model on such turns. Deterministic + model-agnostic, so
+    // no model can surprise the user with an unprompted paid recipe card; general
+    // research questions answer via the free web_search path instead.
+    const isExplicitRecipe = /\brun\b[\s\S]*\brecipe\b/i.test(routeText);
+
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
     const requestedModel = routeDecision
@@ -418,7 +426,7 @@ export async function POST(request: Request) {
                   "transaction_history",
                   "resolve_suins",
                   "send_transfer",
-                  "run_recipe",
+                  ...(isExplicitRecipe ? (["run_recipe"] as ActiveTool[]) : []),
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                 ]
               : ["web_search", "createDocument"];
