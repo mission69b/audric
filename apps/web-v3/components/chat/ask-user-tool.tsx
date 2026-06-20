@@ -154,19 +154,42 @@ export function AskUserTool({ part }: { part: AskPart }) {
                   )}
                 </div>
               ) : (
-                <input
-                  className="rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40"
-                  onChange={(e) =>
-                    setValues((v) => ({ ...v, [q.id]: e.target.value }))
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && canSubmit && !pending) {
-                      onSubmit();
+                <div className="flex flex-col gap-2">
+                  {q.suggestions && q.suggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {q.suggestions.map((sug) => (
+                        <button
+                          className={cn(
+                            "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                            values[q.id] === sug
+                              ? "border-foreground/40 bg-accent text-foreground"
+                              : "border-border/50 text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                          )}
+                          key={sug}
+                          onClick={() =>
+                            setValues((v) => ({ ...v, [q.id]: sug }))
+                          }
+                          type="button"
+                        >
+                          {sug}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    className="rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40"
+                    onChange={(e) =>
+                      setValues((v) => ({ ...v, [q.id]: e.target.value }))
                     }
-                  }}
-                  placeholder={q.placeholder ?? "Type your answer…"}
-                  value={values[q.id] ?? ""}
-                />
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && canSubmit && !pending) {
+                        onSubmit();
+                      }
+                    }}
+                    placeholder={q.placeholder ?? "Type your answer…"}
+                    value={values[q.id] ?? ""}
+                  />
+                </div>
               )}
             </div>
           ))}

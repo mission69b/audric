@@ -48,6 +48,12 @@ export const askUser = tool({
             .string()
             .optional()
             .describe("Placeholder text for a free-text question."),
+          suggestions: z
+            .array(z.string())
+            .optional()
+            .describe(
+              "For a FREE-TEXT question (no options): 3-5 short, varied example answers shown as clickable chips — the user taps one to fill the field, or types their own. Always provide these for open questions so the user can click instead of guess."
+            ),
         })
       )
       .min(1)
