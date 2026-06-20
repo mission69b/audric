@@ -116,10 +116,14 @@ export type InvoiceRow = {
 
 export type PaymentMethodRow = {
   id: string;
+  /** Stripe PM type — "card", "link" (the 1-click wallet), etc. */
+  type: string;
   brand: string;
   last4: string;
   expMonth: number;
   expYear: number;
+  /** Link wallet email (when type === "link"). */
+  email: string | null;
   isDefault: boolean;
 };
 
@@ -160,7 +164,10 @@ export async function getBillingOverview(
         limit: 1,
       }),
       stripe.invoices.list({ customer: customerId, limit: 12 }),
-      stripe.paymentMethods.list({ customer: customerId, type: "card" }),
+      // ALL payment-method types — not just "card". Stripe Link (the 1-click
+      // wallet most Checkout users pay with) is type "link"; a "card" filter
+      // silently hid it → "no cards saved" despite an active subscription.
+      stripe.customers.listPaymentMethods(customerId, { limit: 20 }),
     ]);
 
     const defaultPm =
@@ -198,14 +205,19 @@ export async function getBillingOverview(
         hostedUrl: inv.hosted_invoice_url ?? null,
         pdfUrl: inv.invoice_pdf ?? null,
       })),
-      paymentMethods: pms.data.map((pm) => ({
-        id: pm.id,
-        brand: pm.card?.brand ?? "card",
-        last4: pm.card?.last4 ?? "••••",
-        expMonth: pm.card?.exp_month ?? 0,
-        expYear: pm.card?.exp_year ?? 0,
-        isDefault: pm.id === defaultPm || pm.id === subDefaultPm,
-      })),
+      paymentMethods: pms.data.map((pm) => {
+        const card = pm.type === "card" ? pm.card : undefined;
+        return {
+          id: pm.id,
+          type: pm.type,
+          brand: card?.brand ?? (pm.type === "link" ? "Link" : pm.type),
+          last4: card?.last4 ?? "",
+          expMonth: card?.exp_month ?? 0,
+          expYear: card?.exp_year ?? 0,
+          email: pm.type === "link" ? (pm.link?.email ?? null) : null,
+          isDefault: pm.id === defaultPm || pm.id === subDefaultPm,
+        };
+      }),
     };
   } catch (e) {
     console.error("[billing] overview failed", e);

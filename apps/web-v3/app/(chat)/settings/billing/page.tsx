@@ -44,10 +44,12 @@ type BillingOverview = {
   }[];
   paymentMethods: {
     id: string;
+    type: string;
     brand: string;
     last4: string;
     expMonth: number;
     expYear: number;
+    email: string | null;
     isDefault: boolean;
   }[];
 };
@@ -344,12 +346,22 @@ export default function BillingPage() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-medium capitalize">{pm.brand}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      •••• {pm.last4}
-                    </span>
-                    <span className="text-muted-foreground/60 text-xs tabular-nums">
-                      {pm.expMonth}/{pm.expYear}
-                    </span>
+                    {pm.type === "card" ? (
+                      <>
+                        <span className="text-muted-foreground tabular-nums">
+                          •••• {pm.last4}
+                        </span>
+                        <span className="text-muted-foreground/60 text-xs tabular-nums">
+                          {pm.expMonth}/{pm.expYear}
+                        </span>
+                      </>
+                    ) : (
+                      pm.email && (
+                        <span className="text-muted-foreground text-xs">
+                          {pm.email}
+                        </span>
+                      )
+                    )}
                     {pm.isDefault && (
                       <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
                         Default
