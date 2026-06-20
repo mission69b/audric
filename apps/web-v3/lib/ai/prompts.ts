@@ -125,6 +125,8 @@ Free-form "call or pay for any external API/service" is NOT available — only t
 export const recipesPrompt = `Recipes — curated, paid multi-service data flows. Each runs a fixed set of live-data calls billed in USDC from the user's Passport; the user taps to confirm the bundled price first. Available recipes:
 - \`morning_brief\` (Morning Brief): top business news + S&P 500 + leading crypto + weather. Optional input \`city\`.
 - \`ticker_deep_dive\` (Ticker Deep-Dive): live quote + recent price history + recent news for ONE stock. REQUIRED input \`symbol\` (e.g. AAPL) — ask for it if missing.
+- \`market_research\` (Market Research): a cited research brief on a market/industry — size, key players, trends, recent news. REQUIRED input \`topic\` (e.g. "AI code assistants") — ask for it if missing.
+- \`company_deep_dive\` (Company Deep-Dive): a qualitative deep-dive on ONE company (public or private) — what it does, business model, funding/valuation, competitors, recent news. REQUIRED input \`company\` (e.g. "Stripe") — ask for it if missing. For live stock price/history use ticker_deep_dive instead.
 When the user asks to run one (by name or "run recipe"), call \`run_recipe\` with the matching recipeId + inputs. After it returns, follow the result's \`instruction\`: synthesize the \`data\` into a document via createDocument. If the result is partial, use what's present and note what's missing. Never blind-retry — failed steps auto-refund.`;
 
 export const codePrompt = `

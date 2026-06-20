@@ -1,6 +1,6 @@
 "use client";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { BrainIcon } from "lucide-react";
+import { BrainIcon, LockIcon } from "lucide-react";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
@@ -217,7 +217,13 @@ const PurePreviewMessage = ({
         >
           <BrainIcon className="size-3.5" />
           {out.saved ? (
-            <span>Saved to memory: {out.fact}</span>
+            <span className="flex flex-wrap items-center gap-x-1.5">
+              <span>Saved to memory: {out.fact}</span>
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/60">
+                <LockIcon className="size-2.5" />
+                encrypted · yours to delete
+              </span>
+            </span>
           ) : (
             <span className="text-amber-600">
               Couldn't save to memory{out.error ? `: ${out.error}` : ""}.
