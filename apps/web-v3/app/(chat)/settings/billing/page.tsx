@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
+import { AddCard } from "@/components/chat/billing/add-card";
 import { Button } from "@/components/ui/button";
 import {
   COMING_SOON,
@@ -21,6 +22,43 @@ import {
   TOPUP_PRESETS_USD,
 } from "@/lib/credit/tiers";
 import { cn, fetcher } from "@/lib/utils";
+
+type BillingOverview = {
+  configured: boolean;
+  nativeEnabled: boolean;
+  subscription: {
+    tier: string | null;
+    status: string;
+    currentPeriodEnd: number | null;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+  invoices: {
+    id: string;
+    created: number;
+    amountPaid: number;
+    currency: string;
+    status: string | null;
+    number: string | null;
+    hostedUrl: string | null;
+    pdfUrl: string | null;
+  }[];
+  paymentMethods: {
+    id: string;
+    brand: string;
+    last4: string;
+    expMonth: number;
+    expYear: number;
+    isDefault: boolean;
+  }[];
+};
+
+function fmtDate(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -103,18 +141,35 @@ export default function BillingPage() {
     }
   }
 
-  async function manageBilling() {
+  const { data: billing, mutate: mutateBilling } = useSWR<BillingOverview>(
+    `${BASE}/api/billing`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
+  async function billingAction(
+    path: string,
+    body: Record<string, unknown>,
+    okMsg?: string
+  ) {
     setBusy(true);
     try {
-      const res = await fetch(`${BASE}/api/stripe/portal`, { method: "POST" });
-      const j = await res.json();
-      if (j.url) {
-        window.location.href = j.url;
+      const res = await fetch(`${BASE}/api/billing/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(j.error ?? "Something went wrong.");
         return;
       }
-      toast.error(j.error ?? "Couldn't open the billing portal.");
+      if (okMsg) {
+        toast.success(okMsg);
+      }
+      await Promise.all([mutateBilling(), mutate()]);
     } catch {
-      toast.error("Couldn't open the billing portal.");
+      toast.error("Something went wrong.");
     } finally {
       setBusy(false);
     }
@@ -222,31 +277,167 @@ export default function BillingPage() {
         </Button>
       </div>
 
-      {/* Manage billing — Stripe Customer Portal (invoices, payment methods,
-          cancel). Shown once there's something to manage (a saved card or a
-          paid plan). We don't rebuild any of this — Stripe hosts it. */}
-      {(data?.hasCard || (data?.tier && data.tier !== "free")) && (
+      {/* Subscription — plan, renewal/cancel state, native cancel/resume. */}
+      {billing?.subscription && (
         <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/50 bg-card/40 p-5">
           <div>
-            <div className="font-medium text-foreground text-sm">
-              Manage billing
+            <div className="font-medium text-foreground text-sm capitalize">
+              {billing.subscription.tier ?? "Subscription"} plan
             </div>
             <p className="mt-0.5 text-muted-foreground text-xs">
-              Invoices, payment methods, and plan changes — opens your secure
-              Stripe portal.
+              {billing.subscription.cancelAtPeriodEnd
+                ? `Cancels on ${billing.subscription.currentPeriodEnd ? fmtDate(billing.subscription.currentPeriodEnd) : "period end"} — you keep access until then.`
+                : `Renews${billing.subscription.currentPeriodEnd ? ` on ${fmtDate(billing.subscription.currentPeriodEnd)}` : ""}.`}
             </p>
           </div>
-          <Button
-            disabled={busy}
-            onClick={manageBilling}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Open portal
-          </Button>
+          {billing.subscription.cancelAtPeriodEnd ? (
+            <Button
+              disabled={busy}
+              onClick={() =>
+                billingAction(
+                  "subscription",
+                  { action: "resume" },
+                  "Subscription resumed."
+                )
+              }
+              size="sm"
+              type="button"
+              variant="default"
+            >
+              Resume
+            </Button>
+          ) : (
+            <Button
+              disabled={busy}
+              onClick={() =>
+                billingAction(
+                  "subscription",
+                  { action: "cancel" },
+                  "Subscription will cancel at period end."
+                )
+              }
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              Cancel plan
+            </Button>
+          )}
         </div>
       )}
+
+      {/* Payment methods — saved cards + native add (Payment Element). */}
+      {data?.configured && (
+        <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div className="flex items-center justify-between">
+            <div className="font-medium text-foreground text-sm">
+              Payment methods
+            </div>
+            <AddCard onAdded={() => mutateBilling()} />
+          </div>
+          {billing?.paymentMethods?.length ? (
+            <div className="mt-3 space-y-2">
+              {billing.paymentMethods.map((pm) => (
+                <div
+                  className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2 text-sm"
+                  key={pm.id}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium capitalize">{pm.brand}</span>
+                    <span className="text-muted-foreground tabular-nums">
+                      •••• {pm.last4}
+                    </span>
+                    <span className="text-muted-foreground/60 text-xs tabular-nums">
+                      {pm.expMonth}/{pm.expYear}
+                    </span>
+                    {pm.isDefault && (
+                      <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
+                        Default
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {!pm.isDefault && (
+                      <button
+                        className="rounded px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() =>
+                          billingAction(
+                            "payment-method",
+                            { action: "default", paymentMethodId: pm.id },
+                            "Default card updated."
+                          )
+                        }
+                        type="button"
+                      >
+                        Make default
+                      </button>
+                    )}
+                    <button
+                      className="rounded px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                      disabled={busy}
+                      onClick={() =>
+                        billingAction(
+                          "payment-method",
+                          { action: "detach", paymentMethodId: pm.id },
+                          "Card removed."
+                        )
+                      }
+                      type="button"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-muted-foreground text-xs">
+              No cards saved yet. Add one, or top up — a card you use to top up
+              is saved automatically.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Invoices — billing history with PDF/hosted links. */}
+      {billing?.invoices?.length ? (
+        <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div className="font-medium text-foreground text-sm">
+            Billing history
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {billing.invoices.map((inv) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={inv.id}
+              >
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="tabular-nums">{fmtDate(inv.created)}</span>
+                  <span className="text-foreground tabular-nums">
+                    {fmtUsd(inv.amountPaid / 100)}
+                  </span>
+                  {inv.status && inv.status !== "paid" && (
+                    <span className="text-amber-600 text-xs capitalize">
+                      {inv.status}
+                    </span>
+                  )}
+                </div>
+                {(inv.hostedUrl || inv.pdfUrl) && (
+                  <a
+                    className="text-muted-foreground text-xs underline transition-colors hover:text-foreground"
+                    href={(inv.hostedUrl ?? inv.pdfUrl) as string}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    View
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* The Audric difference — included in EVERY plan (the real, shared value) */}
       <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5">

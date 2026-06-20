@@ -90,6 +90,181 @@ export async function getOrCreateCustomer(
   return customer.id;
 }
 
+/** Native billing is available only when the publishable key is set (the
+ * embedded Payment Element needs it client-side). */
+export function isNativeBillingConfigured(): boolean {
+  return Boolean(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+}
+
+export type SubscriptionInfo = {
+  tier: TierId | null;
+  status: string;
+  currentPeriodEnd: number | null;
+  cancelAtPeriodEnd: boolean;
+} | null;
+
+export type InvoiceRow = {
+  id: string;
+  created: number;
+  amountPaid: number;
+  currency: string;
+  status: string | null;
+  number: string | null;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+};
+
+export type PaymentMethodRow = {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+};
+
+export type BillingOverview = {
+  subscription: SubscriptionInfo;
+  invoices: InvoiceRow[];
+  paymentMethods: PaymentMethodRow[];
+};
+
+/** The user's existing Stripe customer id, or null (does NOT create one). */
+async function existingCustomerId(userId: string): Promise<string | null> {
+  const u = await getUserById(userId);
+  return u?.stripeCustomerId ?? null;
+}
+
+/** Full billing snapshot for the native UI — subscription, invoices, cards. All
+ * server-side reads (no publishable key needed). Empty when there's no customer
+ * yet. Never throws. */
+export async function getBillingOverview(
+  userId: string
+): Promise<BillingOverview> {
+  const empty: BillingOverview = {
+    subscription: null,
+    invoices: [],
+    paymentMethods: [],
+  };
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return empty;
+  }
+  try {
+    const stripe = getStripe();
+    const [customer, subs, invoices, pms] = await Promise.all([
+      stripe.customers.retrieve(customerId),
+      stripe.subscriptions.list({
+        customer: customerId,
+        status: "all",
+        limit: 1,
+      }),
+      stripe.invoices.list({ customer: customerId, limit: 12 }),
+      stripe.paymentMethods.list({ customer: customerId, type: "card" }),
+    ]);
+
+    const defaultPm =
+      customer && !customer.deleted
+        ? (customer.invoice_settings?.default_payment_method as string | null)
+        : null;
+
+    const sub = subs.data[0];
+    const subscription: SubscriptionInfo = sub
+      ? {
+          tier: tierForPriceId(sub.items.data[0]?.price.id ?? ""),
+          status: sub.status,
+          currentPeriodEnd: sub.items.data[0]?.current_period_end ?? null,
+          cancelAtPeriodEnd: sub.cancel_at_period_end,
+        }
+      : null;
+
+    return {
+      subscription,
+      invoices: invoices.data.map((inv) => ({
+        id: inv.id ?? "",
+        created: inv.created,
+        amountPaid: inv.amount_paid,
+        currency: inv.currency,
+        status: inv.status,
+        number: inv.number,
+        hostedUrl: inv.hosted_invoice_url ?? null,
+        pdfUrl: inv.invoice_pdf ?? null,
+      })),
+      paymentMethods: pms.data.map((pm) => ({
+        id: pm.id,
+        brand: pm.card?.brand ?? "card",
+        last4: pm.card?.last4 ?? "••••",
+        expMonth: pm.card?.exp_month ?? 0,
+        expYear: pm.card?.exp_year ?? 0,
+        isDefault: pm.id === defaultPm,
+      })),
+    };
+  } catch (e) {
+    console.error("[billing] overview failed", e);
+    return empty;
+  }
+}
+
+/** Create a SetupIntent so the client can attach a card via the Payment Element. */
+export async function createSetupIntent(
+  userId: string,
+  email: string | null
+): Promise<{ clientSecret: string | null }> {
+  const customerId = await getOrCreateCustomer(userId, email);
+  const si = await getStripe().setupIntents.create({
+    customer: customerId,
+    payment_method_types: ["card"],
+    usage: "off_session",
+  });
+  return { clientSecret: si.client_secret };
+}
+
+/** Cancel at period end (true) or resume (false) the user's active subscription. */
+export async function setSubscriptionCancel(
+  userId: string,
+  cancel: boolean
+): Promise<boolean> {
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return false;
+  }
+  const subs = await getStripe().subscriptions.list({
+    customer: customerId,
+    status: "active",
+    limit: 1,
+  });
+  const sub = subs.data[0];
+  if (!sub) {
+    return false;
+  }
+  await getStripe().subscriptions.update(sub.id, {
+    cancel_at_period_end: cancel,
+  });
+  return true;
+}
+
+/** Set a card as the customer's default (used for invoices + auto-recharge). */
+export async function setDefaultPaymentMethod(
+  userId: string,
+  paymentMethodId: string
+): Promise<boolean> {
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return false;
+  }
+  await getStripe().customers.update(customerId, {
+    invoice_settings: { default_payment_method: paymentMethodId },
+  });
+  return true;
+}
+
+/** Detach (remove) a saved card from the customer. */
+export async function detachPaymentMethod(
+  paymentMethodId: string
+): Promise<void> {
+  await getStripe().paymentMethods.detach(paymentMethodId);
+}
+
 /**
  * The "never runs dry" fix: if auto-recharge is on and the balance dropped
  * below the threshold, charge the saved card off-session and grant credit.

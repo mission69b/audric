@@ -77,6 +77,10 @@ const clientSchema = z.object({
   NEXT_PUBLIC_ENOKI_API_KEY: requiredString,
   /** Sui network — `mainnet` | `testnet` | `devnet`. */
   NEXT_PUBLIC_SUI_NETWORK: requiredString,
+  /** Stripe publishable key (pk_…) — OPTIONAL: enables the native in-app billing
+   * UI (Payment Element for adding/updating cards). Unset → the embedded card
+   * flow is hidden; invoices/plan/cancel still work (server-side). */
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: optionalString,
 });
 
 // Literal references — required for Next's static replacement.
@@ -95,6 +99,8 @@ const runtimeEnv = {
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
 };
 
 const isServer =
