@@ -64,8 +64,19 @@ export function getDocumentTimestampByIndex(
   return documents[index].createdAt;
 }
 
+/**
+ * Strip leaked model "special" tokens that some providers emit as visible text.
+ * - `<has_function_call>` — generic tool-call sentinel.
+ * - DeepSeek tool-call delimiters (e.g. `<｜DSML｜function_calls`,
+ *   `<｜tool▁calls▁begin｜>`): DeepSeek emits these around tool calls and the
+ *   gateway provider doesn't always strip them. They use FULLWIDTH `｜` (U+FF5C)
+ *   / `▁` (U+2581) which never occur in real content, so the strip is safe. The
+ *   tool call itself works — this is purely cosmetic.
+ */
 export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
+  return text
+    .replace('<has_function_call>', '')
+    .replace(/<｜[^\s<>]*>?\s?/gu, '');
 }
 
 export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {

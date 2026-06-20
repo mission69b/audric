@@ -38,6 +38,9 @@ export const deepResearch = tool({
       stopWhen: stepCountIs(8),
       abortSignal,
     });
-    return { findings: text };
+    // Defensive: strip any leaked DeepSeek tool-call delimiter tokens so they
+    // can't pollute the brief the main model synthesizes from.
+    const findings = text.replace(/<｜[^\s<>]*>?\s?/gu, "");
+    return { findings };
   },
 });
