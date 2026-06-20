@@ -38,14 +38,22 @@ function domain(url: string): string {
 export function CotTimeline({
   items,
   isLoading,
+  startedAt,
 }: {
   items: CotItem[];
   isLoading: boolean;
+  // True turn start (ms) from message metadata — stable now (server stamps it
+  // once on start AND finish), so "Thought for Xs" reflects wall-clock (routing
+  // + model TTFT + searches), not just the visible streaming window. Falls back
+  // to mount for historical messages (metadata isn't persisted → no duration).
+  startedAt?: number;
 }) {
-  // Anchor the timer to first mount (≈ when the trace starts streaming). NOT the
-  // message's metadata.createdAt — the stream's "finish" event overwrites that
-  // with the FINISH timestamp, which made the completed timer read ~1s.
-  const startRef = useRef<number>(Date.now());
+  const startRef = useRef<number>(startedAt ?? Date.now());
+  useEffect(() => {
+    if (startedAt) {
+      startRef.current = startedAt;
+    }
+  }, [startedAt]);
   const [elapsedMs, setElapsedMs] = useState(0);
   useEffect(() => {
     if (!isLoading) {

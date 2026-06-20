@@ -134,6 +134,13 @@ export async function POST(request: Request) {
       useMemWal,
     } = requestBody;
 
+    // Turn start — stamped ONCE here (server receive, ≈ user send) and reused for
+    // the assistant message's createdAt on BOTH start and finish, so it's never
+    // clobbered to the finish time. Drives the chain-of-thought "Thought for Xs"
+    // timer — anchored to the true turn start (incl. routing + model TTFT), so it
+    // reflects wall-clock, not just the visible streaming window.
+    const turnStartedAt = new Date().toISOString();
+
     const [, session] = await Promise.all([
       checkBotId().catch(() => null),
       auth(),
@@ -679,7 +686,7 @@ export async function POST(request: Request) {
             messageMetadata: ({ part }) => {
               if (part.type === "start") {
                 return {
-                  createdAt: new Date().toISOString(),
+                  createdAt: turnStartedAt,
                   modelId: chatModel,
                   autoRouted: selectedChatModel === AUTO_MODEL_ID,
                 };
@@ -687,7 +694,7 @@ export async function POST(request: Request) {
               if (part.type === "finish") {
                 const u = part.totalUsage;
                 return {
-                  createdAt: new Date().toISOString(),
+                  createdAt: turnStartedAt,
                   modelId: chatModel,
                   autoRouted: selectedChatModel === AUTO_MODEL_ID,
                   inputTokens: u?.inputTokens,
