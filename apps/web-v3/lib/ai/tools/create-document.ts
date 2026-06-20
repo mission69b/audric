@@ -85,14 +85,21 @@ export const createDocument = ({
 
       dataStream.write({ type: "data-finish", data: null, transient: true });
 
+      // The artifact is ALREADY fully written here (onCreateDocument streamed the
+      // complete content from contextMessages). Tell the model so explicitly —
+      // the old "A document was created" wording read as "empty, needs filling",
+      // so some models (e.g. grok) chained an updateDocument call → a SECOND
+      // identical artifact. Be unambiguous: it's done; do not update it.
+      const noun =
+        kind === "code" ? "script" : kind === "image" ? "image" : "document";
       return {
         id,
         title,
         kind,
         content:
-          kind === "code"
-            ? "A script was created and is now visible to the user."
-            : "A document was created and is now visible to the user.",
+          `The ${noun} is complete and fully written from the provided data — it is now visible to the user. ` +
+          "Do NOT call updateDocument, editDocument, or createDocument again for it unless the user explicitly asks for a change. " +
+          "Reply with only a 1-2 sentence confirmation.",
       };
     },
   });
