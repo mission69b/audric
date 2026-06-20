@@ -183,25 +183,6 @@ export async function POST(request: Request) {
     const routeText =
       partsText(message?.parts as TextPart[] | undefined) ||
       lastUserText(messages as Array<{ role?: string; parts?: TextPart[] }>);
-    // Intent gates (artifacts/research) read the last 2 user messages so the
-    // intent survives ONE clarifying round-trip ("generate an image" → "of
-    // what?" → "a cat"). The router still classifies only the latest message.
-    const recentUserText = ((): string => {
-      const all = [
-        ...((messages ?? []) as Array<{ role?: string; parts?: TextPart[] }>),
-        ...(message ? [message as { role?: string; parts?: TextPart[] }] : []),
-      ];
-      const texts: string[] = [];
-      for (let i = all.length - 1; i >= 0 && texts.length < 2; i--) {
-        if (all[i]?.role === "user") {
-          const t = partsText(all[i].parts);
-          if (t) {
-            texts.push(t);
-          }
-        }
-      }
-      return texts.join(" ");
-    })();
     const routeDecision =
       selectedChatModel === AUTO_MODEL_ID
         ? await routeTurn({ userText: routeText, canUsePremium })
@@ -214,34 +195,6 @@ export async function POST(request: Request) {
     // no model can surprise the user with an unprompted paid recipe card; general
     // research questions answer via the free web_search path instead.
     const isExplicitRecipe = /\brun\b[\s\S]*\brecipe\b/i.test(routeText);
-
-    // Artifacts are now ONLY code / sheet / image (prose is always inline — there
-    // is no 'text' artifact kind). So this gate opts createDocument in only when
-    // the user shows creation intent that could map to a panel artifact. Pure
-    // prose verbs/nouns (essay/poem/haiku) are intentionally NOT here — they
-    // always answer inline. Deterministic, not model-dependent. ("code" the noun
-    // is excluded — it matches "AI code …".)
-    const isExplicitArtifact =
-      /\b(write|draft|create|generate|build|make|design|implement|rewrite|draw|illustrate|spreadsheet)\b/i.test(
-        recentUserText
-      );
-
-    // Visible main-loop research (replaces the old deep_research subagent): when
-    // a turn is research-shaped, inject the research directive + a higher step
-    // budget so the model runs several VISIBLE web_search steps (rendered live in
-    // the chain-of-thought timeline). Fires off-Auto too — explicit research
-    // intent over the last 2 user messages — so anon / explicit-model users also
-    // get the multi-step research, not just Auto.
-    const isExplicitResearch =
-      /\b(research|deep[- ]?dive|in[- ]depth)\b/i.test(recentUserText) ||
-      /\banaly[sz]e\b[\s\S]*\b(market|landscape|industry|trend)/i.test(
-        recentUserText
-      ) ||
-      /\bcompare\b[\s\S]*\b(with sources|across)/i.test(recentUserText);
-    const researchActive =
-      isExplicitResearch ||
-      routeDecision?.classification?.intent === "research" ||
-      routeDecision?.classification?.needsDeepResearch === true;
 
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
@@ -259,7 +212,9 @@ export async function POST(request: Request) {
       (isConfidentialConfigured() && isPaidTier);
     const requestedIsFree =
       chatModels.find((m) => m.id === requestedModel)?.free === true;
-    const chatModel =
+    // `let` because research turns override it to the cheap research model below
+    // (after the research gate, which needs the loaded history).
+    let chatModel =
       (session?.user || requestedIsFree) && requestedRoutable
         ? requestedModel
         : DEFAULT_CHAT_MODEL;
@@ -310,6 +265,53 @@ export async function POST(request: Request) {
         });
         titlePromise = generateTitleFromUserMessage({ message });
       }
+    }
+
+    // Intent gates read the last 2 user messages so the intent survives ONE
+    // clarifying round-trip ("generate an image" → "of what?" → "a cat"). The
+    // client sends only the new `message`; the prior user turn lives in
+    // `messagesFromDb` (authed history) — so this MUST run after it loads. The
+    // router still classifies only the latest message.
+    const priorUserText = lastUserText(
+      messagesFromDb as unknown as Array<{
+        role?: string;
+        parts?: TextPart[];
+      }>
+    );
+    const recentUserText = `${routeText} ${priorUserText}`.trim();
+
+    // Artifacts are now ONLY code / sheet / image (prose is always inline). This
+    // gate opts createDocument in only on creation intent that maps to a panel
+    // artifact. Prose verbs/nouns (essay/poem/haiku) are intentionally NOT here.
+    // ("code" the noun is excluded — it matches "AI code …".)
+    const isExplicitArtifact =
+      /\b(write|draft|create|generate|build|make|design|implement|rewrite|draw|illustrate|spreadsheet)\b/i.test(
+        recentUserText
+      );
+
+    // Visible main-loop research (replaces the old deep_research subagent): a
+    // research-shaped turn injects the research directive + a higher step budget
+    // so the model runs several VISIBLE web_search steps (rendered live in the
+    // chain-of-thought timeline). Fires off-Auto too (explicit intent over the
+    // last 2 user messages) so anon / explicit-model users get it, not just Auto.
+    const isExplicitResearch =
+      /\b(research|deep[- ]?dive|in[- ]depth)\b/i.test(recentUserText) ||
+      /\banaly[sz]e\b[\s\S]*\b(market|landscape|industry|trend)/i.test(
+        recentUserText
+      ) ||
+      /\bcompare\b[\s\S]*\b(with sources|across)/i.test(recentUserText);
+    const researchActive =
+      isExplicitResearch ||
+      routeDecision?.classification?.intent === "research" ||
+      routeDecision?.classification?.needsDeepResearch === true;
+
+    // Research runs ~12 steps — on Auto, route the loop to the cheap, reliable
+    // research model (DeepSeek) instead of a frontier pick (far cheaper across
+    // many steps). Auto only (explicit model picks are respected) + premium-
+    // entitled. This catches the chip flow's follow-up turn too, where the
+    // router classified only the topic (not "research").
+    if (routeDecision && researchActive && canUsePremium) {
+      chatModel = "deepseek/deepseek-v3.2";
     }
 
     // Keep artifacts active when this chat ALREADY has one — so refinement turns
