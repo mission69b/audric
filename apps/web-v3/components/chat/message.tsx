@@ -19,6 +19,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "../ai-elements/tool";
+import { BalanceTool } from "./balance-tool";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
@@ -133,6 +134,10 @@ const PurePreviewMessage = ({
           responseId={part.data.responseId}
         />
       );
+    }
+
+    if (type === "tool-balance_check") {
+      return <BalanceTool key={part.toolCallId} part={part} />;
     }
 
     if (type === "tool-web_search") {
@@ -336,6 +341,10 @@ const PurePreviewMessage = ({
     />
   );
 
+  // Never render a blank assistant turn (e.g. a model that finished with no text
+  // and no tool output) — surface a short, honest fallback instead of silence.
+  const isEmptyAssistant = isAssistant && !isLoading && !hasAnyContent;
+
   const content = isThinking ? (
     <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">
       <Shimmer className="font-medium" duration={1}>
@@ -345,7 +354,16 @@ const PurePreviewMessage = ({
   ) : (
     <>
       {attachments}
-      {parts}
+      {isEmptyAssistant ? (
+        <MessageContent className="text-[13px] leading-[1.65]">
+          <MessageResponse>
+            I didn't quite catch that — could you rephrase or add a bit more
+            detail?
+          </MessageResponse>
+        </MessageContent>
+      ) : (
+        parts
+      )}
       {actions}
     </>
   );

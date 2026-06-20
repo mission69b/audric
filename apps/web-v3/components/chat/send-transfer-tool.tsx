@@ -88,12 +88,13 @@ export function SendTransferTool({ part }: { part: SendPart }) {
   }
 
   const { to, amount } = input;
+  const asset = input.asset ?? "USDC";
 
   const onAllow = async () => {
     // Host pre-dispatch screen (preflight + retry-dedup) — runs before signing.
     // On a block we settle with the reason so the agent re-asks instead of
     // moving money. The tap itself is the primary gate.
-    const screen = screenSend({ to, amount });
+    const screen = screenSend({ to, amount, asset });
     if (!screen.ok) {
       await settle({ error: screen.reason });
       return;
@@ -101,8 +102,8 @@ export function SendTransferTool({ part }: { part: SendPart }) {
 
     setPending(true);
     try {
-      const result = await sendTransfer({ to, amount });
-      markSendDispatched({ to, amount });
+      const result = await sendTransfer({ to, amount, asset });
+      markSendDispatched({ to, amount, asset });
       await settle(result);
     } catch (e) {
       await settle({ error: `${(e as Error).name}: ${(e as Error).message}` });
@@ -117,7 +118,9 @@ export function SendTransferTool({ part }: { part: SendPart }) {
         <ToolHeader state={state} type="tool-send_transfer" />
         <ToolContent>
           <div className="px-4 pt-3 text-sm">
-            <div className="font-medium">Send {amount} USDC</div>
+            <div className="font-medium">
+              Send {amount} {asset}
+            </div>
             <div className="mt-1 break-all text-muted-foreground text-xs">
               to {to}
             </div>
