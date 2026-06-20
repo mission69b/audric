@@ -28,6 +28,31 @@ function domain(url: string): string {
 }
 
 /**
+ * A deterministic letter "favicon" — colored chip with the source's first
+ * letter. No external favicon fetch (which would leak every source domain the
+ * user reads to a third party — wrong for a privacy-first app); gives per-source
+ * variety vs a repeated globe icon. Color is derived from the domain.
+ */
+function SourceFavicon({ url }: { url: string }) {
+  const d = domain(url);
+  const letter = d.charAt(0).toUpperCase() || "?";
+  let hash = 0;
+  for (const ch of d) {
+    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  }
+  const hue = hash % 360;
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-4 shrink-0 items-center justify-center rounded font-semibold text-[8px] text-white"
+      style={{ backgroundColor: `hsl(${hue} 52% 45%)` }}
+    >
+      {letter}
+    </span>
+  );
+}
+
+/**
  * The live "Chain of Thought" timeline (AI Elements) — groups a turn's reasoning
  * + web_search steps into ONE collapsible block. Open while the turn is in
  * flight (so the user watches it work), auto-collapses to a "Thought for Xs · N
@@ -130,7 +155,7 @@ export function CotTimeline({
                       rel="noopener noreferrer"
                       target="_blank"
                     >
-                      <GlobeIcon className="size-3 shrink-0 opacity-50" />
+                      <SourceFavicon url={s.url} />
                       <span className="truncate">
                         {s.title || domain(s.url)}
                       </span>
