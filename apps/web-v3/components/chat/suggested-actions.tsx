@@ -1,8 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronDownIcon, SparklesIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ChevronDownIcon } from "lucide-react";
 import { type Dispatch, memo, type SetStateAction, useState } from "react";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { type ChipCategory, chipCategories } from "@/lib/constants";
@@ -17,7 +16,6 @@ type SuggestedActionsProps = {
 // can do. Prefill-only — clicking an example injects it into the composer +
 // focuses (never auto-sends), so the user can edit before sending.
 function PureSuggestedActions({ setInput }: SuggestedActionsProps) {
-  const router = useRouter();
   const { status } = useZkLogin();
   const isAuthed = status === "authenticated";
   const [open, setOpen] = useState<string | null>(null);
@@ -68,16 +66,6 @@ function PureSuggestedActions({ setInput }: SuggestedActionsProps) {
             />
           </button>
         ))}
-        {isAuthed && (
-          <button
-            className="flex items-center gap-1.5 rounded-full border border-border/60 px-3.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            onClick={() => router.push("/recipes")}
-            type="button"
-          >
-            <SparklesIcon className="size-3.5" />
-            Recipes
-          </button>
-        )}
       </div>
 
       {active && (

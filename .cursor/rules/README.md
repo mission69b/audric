@@ -1,6 +1,8 @@
 # .cursor/rules
 
-Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, `globs`, `alwaysApply` front-matter). Each `.mdc` file describes cross-cutting engineering constraints that should apply regardless of which file you're editing.
+Cursor IDE rules, auto-applied via the MDC convention (`description`, `globs`,
+`alwaysApply` front-matter). These are cross-cutting engineering constraints for
+**Audric v3** (`apps/web-v3`, the live app).
 
 ## Always-applied (every task)
 
@@ -9,35 +11,18 @@ Cursor IDE rules, auto-applied by Cursor via its MDC convention (`description`, 
 | `goal-driven-execution.mdc` | Verifiable goals, multi-step plans (Karpathy) |
 | `coding-discipline.mdc` | Think before coding, simplicity first, surgical changes (Karpathy) |
 | `env-validation-gate.mdc` | Every env var goes through `lib/env.ts` Zod schema |
-| `audric-canonical-portfolio.mdc` | All wallet/positions/pricing reads go through `getPortfolio` |
-| `safeguards-defense-in-depth.mdc` | The 6 layers between user intent and on-chain action |
-| `financial-amounts.mdc` | Always floor display amounts, never round up |
-| `usdc-only-saves.mdc` | Saves/borrows are USDC-only |
-| `design-system.mdc` | Audric Design System tokens, semantic fonts, dark/light theming |
+| `financial-amounts.mdc` | Always floor display amounts, never round up (USDC/USDsui sends) |
 
-## Glob-scoped (apply when editing matching files)
+## History
 
-| File | Scope |
-|------|---------|
-| `audric-transaction-flow.mdc` | `apps/web-v2/**/*.{ts,tsx}` — sponsored tx vs SDK direct, attemptId resume |
-| `write-tool-pending-action.mdc` | `apps/web-v2/app/chat/audric-chat-client.tsx`, `app/api/chat/**`, `app/api/transactions/**`, `components/audric/**` — pending_action protocol |
-| `web-v2-chat-route-architecture.mdc` | `app/api/chat/route.ts`, `lib/audric/**` — chat route phase map + AI SDK v6 conventions + HITL resume protocol + Vercel AI Gateway |
-| `audric-context-assembly.mdc` | `lib/audric/system-prompt.ts`, `lib/audric/memwal-*.ts`, `lib/audric/moat-context.ts` — content builders that feed each system-prompt layer (companion to `t2000/memory-injection-architecture.mdc`) |
-| `zklogin-passport-flow.mdc` | `lib/zklogin.ts`, `app/auth/**`, `app/api/user/**` — Passport flow + ephemeral keys |
-| `prisma-models-overview.mdc` | `prisma/**`, `lib/prisma.ts`, `app/api/**` — 13 models, write sites |
-| `audric-pay-flow.mdc` | `app/api/payments/**`, `app/pay/**`, `components/**Pay*.tsx`, `components/**Receive*.tsx` — Audric Pay |
-| `audric-finance-flow.mdc` | `components/audric/cards/**`, `lib/portfolio.ts` — save/borrow/swap/charts |
-| `cron-job-architecture.mdc` | `app/api/cron/**`, `lib/jobs/**` — 5 web-v2 crons + auth contract |
-| `metrics-and-monitoring.mdc` | `app/api/chat/route.ts`, `lib/audric/telemetry-integration.ts` — TurnMetrics + SessionUsage write sites (inline post-S.255) |
+The legacy **web-v2** rules (engine harness, canonical-portfolio/getPortfolio,
+composeTx + Sponsor, 6-layer safeguards, DeFi/USDC-only saves, Prisma models,
+pending_action HITL, Audric Finance/Pay flows, Geist Design System, cron/metrics,
+zkLogin v2 flow) were removed 2026-06-20 — they described the frozen `apps/web-v2`
+app, which v3 does not use (v3 = AI SDK over `@t2000/sdk`, Drizzle, client-signed
+zkLogin, no engine/DeFi). Recover any from git history if web-v2 ever needs them.
 
-## Relationship to `CLAUDE.md` and `.claude/rules/`
+## Relationship to `CLAUDE.md`
 
-- `CLAUDE.md` (repo root) is the primary spec for Claude Code sessions, auto-loaded every turn.
-- `.claude/rules/*.md` holds per-subsystem notes (engine integration, prisma, runbooks, internal API) — not auto-loaded; reference material.
-- Files here are the IDE-layer rules auto-applied by Cursor.
-
-If a rule needs to apply in both Cursor and Claude Code, prefer putting it in `CLAUDE.md` and linking to the `.mdc` from there (the root `CLAUDE.md § Key Documents` section does this).
-
-## Cross-repo references
-
-Many of these rules link to t2000-side rules (e.g. `t2000/.cursor/rules/agent-harness-spec.mdc`, `t2000/.cursor/rules/blockvision-resilience.mdc`). Read them when editing engine-adjacent code in audric/web.
+`CLAUDE.md` (repo root) is the primary spec auto-loaded every turn. If a rule
+needs to apply universally, prefer `CLAUDE.md` and link the `.mdc` from there.
