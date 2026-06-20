@@ -178,6 +178,14 @@ export async function getBillingOverview(
         }
       : null;
 
+    // Checkout sets the default PM on the SUBSCRIPTION, not the customer's
+    // invoice_settings (which stays null) — honor both so a card actually
+    // shows as "Default".
+    const subDefaultPm =
+      typeof sub?.default_payment_method === "string"
+        ? sub.default_payment_method
+        : (sub?.default_payment_method?.id ?? null);
+
     return {
       subscription,
       invoices: invoices.data.map((inv) => ({
@@ -196,7 +204,7 @@ export async function getBillingOverview(
         last4: pm.card?.last4 ?? "••••",
         expMonth: pm.card?.exp_month ?? 0,
         expYear: pm.card?.exp_year ?? 0,
-        isDefault: pm.id === defaultPm,
+        isDefault: pm.id === defaultPm || pm.id === subDefaultPm,
       })),
     };
   } catch (e) {
