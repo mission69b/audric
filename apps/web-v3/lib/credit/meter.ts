@@ -11,7 +11,13 @@
 
 import type { ModelPricing } from "@/lib/ai/models";
 
-export const CREDIT_MARGIN = 1.0;
+// 1.4 = 40% markup over the underlying Gateway cost. This is THE profitability
+// lever: at pass-through (1.0) every $1 of credit cost ~$1 of COGS, so usage
+// made $0 and any credit ≥ price lost money. At 1.4, a $1 of credit costs
+// ~$0.71 COGS, so the included-credit allowances (Pro $25 / Max $150) stay
+// margin-positive even on heavy users + breakage. Applies to top-up AND
+// subscription credit. The switcher shows the marked-up (charged) rate.
+export const CREDIT_MARGIN = 1.4;
 
 export type TurnUsage = {
   inputTokens?: number;

@@ -106,16 +106,28 @@ export async function POST(request: Request) {
       auth(),
     ]);
 
+    // Fetch the account once up front — the tier drives BOTH the Confidential
+    // gate (below) and the hourly cap (further down). Guests/anon have no row →
+    // treated as free.
+    const dbUser =
+      session?.user && session.user.type !== "guest"
+        ? await getUserById(session.user.id)
+        : null;
+    const isPaidTier =
+      dbUser?.subscriptionTier === "pro" || dbUser?.subscriptionTier === "max";
+
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
     const requestedModel = allowedModelIds.has(selectedChatModel)
       ? selectedChatModel
       : DEFAULT_CHAT_MODEL;
-    // A confidential (TEE) model is only routable when the tier is configured;
-    // otherwise it would fall through to the Gateway (which has no `phala/*`
-    // model) and 404. Degrade to the default rather than error.
+    // Confidential (TEE) models route directly to RedPill (the Gateway has no
+    // `phala/*` model) AND are a PAID perk — only routable when the tier is
+    // configured AND the user is on Pro/Max. Otherwise degrade to the default
+    // (rather than 404 / give it away free).
     const requestedRoutable =
-      !isConfidentialModel(requestedModel) || isConfidentialConfigured();
+      !isConfidentialModel(requestedModel) ||
+      (isConfidentialConfigured() && isPaidTier);
     const requestedIsFree =
       chatModels.find((m) => m.id === requestedModel)?.free === true;
     const chatModel =
@@ -141,9 +153,7 @@ export async function POST(request: Request) {
       const userType: UserType = session.user.type;
       // Cap is lifted for anyone who has PAID — an active sub OR a positive
       // credit balance (PAYG top-up); free authed keeps the acquisition cap.
-      // Guests never hit the DB (no row).
-      const dbUser =
-        userType === "guest" ? null : await getUserById(session.user.id);
+      // (dbUser was already fetched above for the Confidential gate.)
       const creditMicros =
         userType === "guest" || !isCreditConfigured()
           ? 0

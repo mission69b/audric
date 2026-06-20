@@ -9,6 +9,7 @@ import {
   getConfidentialCatalog,
   isConfidentialConfigured,
 } from "@/lib/ai/providers";
+import { CREDIT_MARGIN } from "@/lib/credit/meter";
 import { isMemoryConfigured } from "@/lib/memwal";
 
 export async function GET() {
@@ -34,7 +35,21 @@ export async function GET() {
   // they're actually routable. Caps + pricing are derived from RedPill's live
   // catalog (single source of truth).
   const capabilities = { ...curatedCapabilities, ...confidential.capabilities };
-  const pricing = { ...gatewayPricing, ...confidential.pricing };
+  // Show the CHARGED rate (Gateway list × CREDIT_MARGIN), not raw cost — so the
+  // switcher price matches what actually debits from credit (meter applies the
+  // same margin). What you see = what you pay.
+  const pricing = Object.fromEntries(
+    Object.entries({ ...gatewayPricing, ...confidential.pricing }).map(
+      ([id, p]) => [
+        id,
+        {
+          ...p,
+          inputPer1M: p.inputPer1M * CREDIT_MARGIN,
+          outputPer1M: p.outputPer1M * CREDIT_MARGIN,
+        },
+      ]
+    )
+  );
   const confidentialLineup = confidentialEnabled ? confidentialModels : [];
 
   if (isDemo) {
