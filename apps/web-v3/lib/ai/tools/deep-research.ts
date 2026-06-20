@@ -65,7 +65,7 @@ export const deepResearch = tool({
             ),
         }),
         system:
-          "You are a strict research editor. Judge the synthesis against the task ONLY on what it contains — do not require new facts. Flag uncited claims, unsupported/overconfident statements, and gaps versus the task. Be decisive; minor wording is not an issue.",
+          "You are a strict research editor. Judge the synthesis against the task ONLY on what it contains — do not require new facts. Set sound=false and list issues ONLY for MATERIAL problems (uncited key claims, unsupported/overconfident statements, real gaps versus the task). If it's sound to ship, set sound=true and leave issues EMPTY. Minor wording is never an issue.",
         prompt: `Task: ${task}\n\nSynthesis:\n${findings}`,
         abortSignal,
       });

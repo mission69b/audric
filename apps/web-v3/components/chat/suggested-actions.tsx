@@ -3,9 +3,15 @@
 import { motion } from "framer-motion";
 import { SparklesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type Dispatch, memo, type SetStateAction } from "react";
+import {
+  type Dispatch,
+  memo,
+  type SetStateAction,
+  useEffect,
+  useState,
+} from "react";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
-import { suggestions } from "@/lib/constants";
+import { pickSuggestions } from "@/lib/constants";
 import { Suggestion } from "../ai-elements/suggestion";
 
 type SuggestedActionsProps = {
@@ -19,6 +25,12 @@ function PureSuggestedActions({ setInput }: SuggestedActionsProps) {
   const router = useRouter();
   const { status } = useZkLogin();
   const isAuthed = status === "authenticated";
+  // Rotate a fresh set per empty state — set AFTER mount (not during render) so
+  // the random pick doesn't cause an SSR/CSR hydration mismatch.
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  useEffect(() => {
+    setSuggestions(pickSuggestions(isAuthed));
+  }, [isAuthed]);
 
   const focusComposer = () =>
     document

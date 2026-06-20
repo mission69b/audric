@@ -1,8 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { suggestions } from "@/lib/constants";
+import { suggestionPool } from "@/lib/constants";
 import { SparklesIcon } from "./icons";
+
+// Deterministic (no random → no hydration mismatch) preview set.
+const suggestions = suggestionPool.base.slice(0, 4);
 
 export function Preview() {
   const router = useRouter();

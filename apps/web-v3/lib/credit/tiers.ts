@@ -42,6 +42,7 @@ export const EVERY_PLAN: string[] = [
   "Non-custodial wallet — your keys, your money, always",
   "Send USDC anywhere — free, instant, gasless",
   "Private memory & chats — encrypted, yours to delete anytime",
+  "Auto — automatically picks the best model for every task",
   "Recipes — pay-per-use live-data flows, with your own USDC",
 ];
 
@@ -49,7 +50,6 @@ export const EVERY_PLAN: string[] = [
 export const COMING_SOON: string[] = [
   "Confidential AI (Pro & Max) — verifiable TEE models even the provider can't read",
   "Decentralized backup — your memory, end-to-end on Walrus",
-  "Smart model routing — the right model for every task",
 ];
 
 export const TIERS: Tier[] = [

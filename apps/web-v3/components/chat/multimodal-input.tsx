@@ -1029,8 +1029,8 @@ function PureMemoryToggle() {
       </TooltipTrigger>
       <TooltipContent className="max-w-[220px]">
         {on
-          ? "Private Memory · on — Audric remembers your preferences across chats. Encrypted, private, deletable anytime."
-          : "Private Memory · off — turn on and Audric remembers your preferences across chats. Encrypted, private, deletable anytime."}
+          ? "Private Encrypted Memory · on — remembered across chats, deletable anytime."
+          : "Private Encrypted Memory · off — remember preferences across chats; encrypted, deletable."}
       </TooltipContent>
     </Tooltip>
   );
