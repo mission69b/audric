@@ -28,6 +28,10 @@ import {
   getLanguageModel,
   isConfidentialConfigured,
 } from "@/lib/ai/providers";
+import {
+  ensureGeminiThoughtSignatures,
+  isGemini3,
+} from "@/lib/ai/thought-signatures";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
@@ -304,7 +308,15 @@ export async function POST(request: Request) {
     // Inline private-blob image attachments as base64 so vision models receive
     // the pixels (they can't fetch our session-gated /api/files/blob URLs).
     const inlinedMessages = await inlineImageAttachments(sanitizedMessages);
-    const modelMessages = await convertToModelMessages(inlinedMessages);
+    // Gemini 3 requires a thoughtSignature on replayed assistant tool-call /
+    // reasoning parts (missing → 400 on tool turns, warning otherwise). Keep the
+    // real signature when present; inject Google's sentinel where it's absent
+    // (lossy persistence / failover). No-op for every other model.
+    const modelMessages = isGemini3(chatModel)
+      ? ensureGeminiThoughtSignatures(
+          await convertToModelMessages(inlinedMessages)
+        )
+      : await convertToModelMessages(inlinedMessages);
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
