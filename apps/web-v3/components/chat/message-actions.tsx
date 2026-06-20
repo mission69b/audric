@@ -1,15 +1,43 @@
 import equal from "fast-deep-equal";
-import { memo } from "react";
+import { type MouseEvent, memo } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
+import { useArtifact } from "@/hooks/use-artifact";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
+import { generateUUID } from "@/lib/utils";
 import {
   MessageAction as Action,
   MessageActions as Actions,
 } from "../ai-elements/message";
-import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
+import {
+  CopyIcon,
+  FileIcon,
+  PencilEditIcon,
+  ThumbDownIcon,
+  ThumbUpIcon,
+} from "./icons";
+
+/** Min inline-text length before we offer "Open as document". */
+const OPEN_AS_DOCUMENT_MIN_CHARS = 400;
+
+/** Derive a short document title from the message's first meaningful line. */
+function deriveDocumentTitle(text: string): string {
+  const firstLine =
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.length > 0) ?? "Document";
+  const clean = firstLine
+    .replace(/^#+\s*/, "")
+    .replace(/[*_`>#]/g, "")
+    .trim();
+  if (!clean) {
+    return "Document";
+  }
+  return clean.length > 60 ? `${clean.slice(0, 57)}…` : clean;
+}
 
 export function PureMessageActions({
   chatId,
@@ -26,6 +54,7 @@ export function PureMessageActions({
 }) {
   const { mutate } = useSWRConfig();
   const [_, copyToClipboard] = useCopyToClipboard();
+  const { setArtifact } = useArtifact();
 
   if (isLoading) {
     return null;
@@ -45,6 +74,50 @@ export function PureMessageActions({
 
     await copyToClipboard(textFromParts);
     toast.success("Copied to clipboard!");
+  };
+
+  const canOpenAsDocument =
+    !!textFromParts && textFromParts.length >= OPEN_AS_DOCUMENT_MIN_CHARS;
+
+  const handleOpenAsDocument = (event: MouseEvent<HTMLButtonElement>) => {
+    if (!textFromParts) {
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const id = generateUUID();
+    const title = deriveDocumentTitle(textFromParts);
+
+    const promote = fetch(
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/document?id=${id}`,
+      {
+        method: "POST",
+        body: JSON.stringify({ content: textFromParts, title, kind: "text" }),
+      }
+    ).then((res) => {
+      if (!res.ok) {
+        throw new Error("Failed to create document");
+      }
+      setArtifact({
+        documentId: id,
+        title,
+        kind: "text",
+        content: textFromParts,
+        status: "idle",
+        isVisible: true,
+        boundingBox: {
+          left: rect.x,
+          top: rect.y,
+          width: rect.width,
+          height: rect.height,
+        },
+      });
+    });
+
+    toast.promise(promote, {
+      loading: "Opening as document…",
+      success: "Opened as document",
+      error: "Couldn't open as document",
+    });
   };
 
   if (message.role === "user") {
@@ -82,6 +155,17 @@ export function PureMessageActions({
       >
         <CopyIcon />
       </Action>
+
+      {canOpenAsDocument && (
+        <Action
+          className="text-muted-foreground/50 hover:text-foreground"
+          data-testid="message-open-as-document"
+          onClick={handleOpenAsDocument}
+          tooltip="Open as document"
+        >
+          <FileIcon size={16} />
+        </Action>
+      )}
 
       <Action
         className="text-muted-foreground/50 hover:text-foreground"

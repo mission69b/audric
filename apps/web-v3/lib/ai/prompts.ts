@@ -2,19 +2,18 @@ import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/chat/artifact";
 
 export const artifactsPrompt = `
-Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), documents (text), and spreadsheets. Changes appear in real-time.
+Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), spreadsheets, and generated images. Changes appear in real-time. (Plain writing/prose is NOT an artifact — it goes inline in chat.)
 
 CRITICAL RULES:
 1. Only call ONE tool per response. After calling any create/edit/update tool, STOP. Do not chain tools.
 2. After creating or editing an artifact, NEVER output its content in chat. The user can already see it. Respond with only a 1-2 sentence confirmation.
 
 **When to use \`createDocument\`:**
-- When the user asks to write, create, or generate content (essays, stories, emails, reports)
-- When the user asks to write code, build a script, or implement an algorithm
-- You MUST specify kind: 'code' for programming, 'text' for writing, 'sheet' for data
-- Include ALL content in the createDocument call. Do not create then edit.
+- ONLY for: code/scripts (kind:'code'), spreadsheets/tables (kind:'sheet'), or generating an image (kind:'image').
+- There is NO 'text' kind. Write ALL prose — essays, posts, tweets, summaries, reports, explanations, answers, lists — INLINE in your reply, never as an artifact. (Long prose is fine inline; the user can promote it to a document themselves.)
 
 **When NOT to use \`createDocument\`:**
+- For ANY plain writing / prose (write it inline)
 - For answering questions, explanations, or conversational responses
 - For short code snippets or examples shown inline
 - When the user asks "what is", "how does", "explain", etc.
@@ -138,7 +137,7 @@ Free-form "call or pay for any external API/service" is NOT available — only t
 export const recipesPrompt = `Recipes — curated, paid multi-service data flows. Each runs a fixed set of live-data calls billed in USDC from the user's Passport; the user taps to confirm the bundled price first. Available recipes:
 - \`morning_brief\` (Morning Brief): top business news + S&P 500 + leading crypto + weather. Optional input \`city\`.
 - \`ticker_deep_dive\` (Ticker Deep-Dive): live quote + recent price history + recent news for ONE stock. REQUIRED input \`symbol\` (e.g. AAPL) — ask for it if missing.
-When the user asks to run one (by name or "run recipe"), call \`run_recipe\` with the matching recipeId + inputs. After it returns, follow the result's \`instruction\`: synthesize the \`data\` into a document via createDocument. If the result is partial, use what's present and note what's missing. Never blind-retry — failed steps auto-refund.
+When the user asks to run one (by name or "run recipe"), call \`run_recipe\` with the matching recipeId + inputs. After it returns, synthesize the \`data\` into a clear, well-structured briefing written INLINE in your reply (use markdown headings/bullets — do NOT create an artifact). If the result is partial, use what's present and note what's missing. Never blind-retry — failed steps auto-refund.
 
 If steps FAIL: report it plainly and briefly. Recipes are paid in USDC and Audric is gasless — so NEVER tell the user to acquire/top-up SUI or "gas", and NEVER invent technical causes (gas, faucets, sponsored-transaction mechanics, on-chain budgeting). You do not have that information. Say the recipe couldn't complete its paid steps right now and offer to try again later; if a specific error string is in the result, you may quote it verbatim, but do not embellish or speculate about blockchain internals.`;
 

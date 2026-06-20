@@ -76,7 +76,7 @@ export type RecipeRunResult = {
   paidUsd: number;
   quotedUsd: number;
   partial: boolean;
-  /** What the agent should produce from `data` (drives createDocument). */
+  /** What the agent should produce from `data` (synthesized inline). */
   instruction: string;
 };
 

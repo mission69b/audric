@@ -3,8 +3,8 @@
  * flows over live-data x402 services the gateway exposes (news / finance /
  * crypto / weather), priced upfront, paid in USDC via the proven client-sign
  * bridge (`payService`). A Recipe = an ordered set of paid steps + a synthesis
- * instruction the agent uses to turn the collected data into a document
- * artifact.
+ * instruction the agent uses to turn the collected data into an inline
+ * markdown briefing.
  *
  * Pure data + pure functions — safe to import on client (runner, Explore page)
  * AND server (the run_recipe tool maps id → recipe). No secrets: the gateway
@@ -43,7 +43,7 @@ export type Recipe = {
   description: string;
   inputs: RecipeInputDef[];
   steps: RecipeStepDef[];
-  /** What the agent should produce from the collected data (drives createDocument). */
+  /** What the agent should produce from the collected data (synthesized inline). */
   synthesisInstruction: (inputs: Record<string, string>) => string;
 };
 
@@ -122,7 +122,7 @@ export const RECIPES: Recipe[] = [
       },
     ],
     synthesisInstruction: (inputs) =>
-      `Write a "Morning Brief" document with createDocument (kind: text). Use ONLY the provided data. Structure it as skimmable sections:\n` +
+      `Write a "Morning Brief" INLINE in your reply (markdown, NOT an artifact). Use ONLY the provided data. Structure it as skimmable sections:\n` +
       "- **Markets** — the S&P 500 (SPY) level + day change.\n" +
       "- **Crypto** — the top coins with price + 24h change.\n" +
       "- **Headlines** — 5–7 top business headlines as bullets, each with its source.\n" +
@@ -178,7 +178,7 @@ export const RECIPES: Recipe[] = [
       },
     ],
     synthesisInstruction: (inputs) =>
-      `Write a "${inputs.symbol} Deep-Dive" document with createDocument (kind: text). Use ONLY the provided data. Structure it as:\n` +
+      `Write a "${inputs.symbol} Deep-Dive" INLINE in your reply (markdown, NOT an artifact). Use ONLY the provided data. Structure it as:\n` +
       "- **Snapshot** — current price, day change (% and $), volume.\n" +
       "- **Recent action** — the trend over the last ~2 weeks from the daily series, framed CLOSE-TO-CLOSE (compare closing prices; do NOT treat an intraday high/low as 'the peak' or report the move from a high to a close — that overstates swings). Note genuinely notable closing moves.\n" +
       "- **In the news** — 3–5 recent headlines with sources + dates.\n" +

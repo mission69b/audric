@@ -198,13 +198,14 @@ export async function POST(request: Request) {
     // research questions answer via the free web_search path instead.
     const isExplicitRecipe = /\brun\b[\s\S]*\brecipe\b/i.test(routeText);
 
-    // Artifacts (side-panel docs/code/sheets/images) are likewise opt-in: only
-    // when the user shows creation intent (or a recipe synthesizes into one).
-    // A plain question → inline answer, so the model can't both write the full
-    // answer inline AND duplicate it into an artifact. Deterministic, not
-    // model-dependent. (Verb-focused; "code" excluded — it matches "AI code …".)
+    // Artifacts are now ONLY code / sheet / image (prose is always inline — there
+    // is no 'text' artifact kind). So this gate opts createDocument in only when
+    // the user shows creation intent that could map to a panel artifact. Pure
+    // prose verbs/nouns (essay/poem/haiku) are intentionally NOT here — they
+    // always answer inline. Deterministic, not model-dependent. ("code" the noun
+    // is excluded — it matches "AI code …".)
     const isExplicitArtifact =
-      /\b(write|draft|compose|create|generate|build|make|design|implement|rewrite|draw|illustrate|essay|spreadsheet|poem|haiku)\b/i.test(
+      /\b(write|draft|create|generate|build|make|design|implement|rewrite|draw|illustrate|spreadsheet)\b/i.test(
         routeText
       );
 

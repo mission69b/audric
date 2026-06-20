@@ -1,10 +1,7 @@
 import { tool, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
 import type { Session } from "@/app/(auth)/auth";
-import {
-  artifactKinds,
-  documentHandlersByArtifactKind,
-} from "@/lib/artifacts/server";
+import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 
@@ -23,7 +20,8 @@ export const createDocument = ({
 }: CreateDocumentProps) =>
   tool({
     description:
-      "Create an artifact. You MUST specify kind: 'code' for any programming/algorithm request (creates a script), 'text' for essays/writing (creates a document), 'sheet' for spreadsheets/data, 'image' to GENERATE an image from a description (the user asks to draw/generate/create a picture, logo, art, photo, etc.). " +
+      "Create a side-panel artifact for content that belongs in a panel: kind 'code' for any programming/algorithm/script, 'sheet' for spreadsheets/tabular data, 'image' to GENERATE an image from a description. " +
+      "Do NOT use this for plain writing — essays, posts, tweets, summaries, explanations, answers, lists. Write all prose INLINE in your reply (there is no 'text' kind). " +
       "To CHANGE or refine an EXISTING generated image (e.g. 'make it more modern', 'add a glow', 'warmer colors'), call updateDocument with that image's id and a SHORT instruction describing only the change — it edits the actual image and preserves it. Use createDocument with kind:'image' only for a brand-new, unrelated image.",
     inputSchema: z.object({
       title: z
@@ -32,9 +30,9 @@ export const createDocument = ({
           "The artifact title — for kind 'image' this is the image generation PROMPT (describe the image to create)."
         ),
       kind: z
-        .enum(artifactKinds)
+        .enum(["code", "sheet", "image"])
         .describe(
-          "REQUIRED. 'code' for programming/algorithms, 'text' for essays/writing, 'sheet' for spreadsheets, 'image' for image generation"
+          "REQUIRED. 'code' for programming/algorithms/scripts, 'sheet' for spreadsheets/tables/data, 'image' to generate an image. There is NO 'text' kind — write prose INLINE in your reply, never as an artifact."
         ),
     }),
     execute: async ({ title, kind }, { messages }) => {
@@ -80,7 +78,7 @@ export const createDocument = ({
         session,
         modelId,
         // The live step messages carry prior tool results (recipe/search data),
-        // so kinds like 'text' write from real data instead of the title alone.
+        // so a 'code'/'sheet' handler can write from real data, not the title alone.
         contextMessages: messages,
       });
 
@@ -92,7 +90,7 @@ export const createDocument = ({
       // so some models (e.g. grok) chained an updateDocument call → a SECOND
       // identical artifact. Be unambiguous: it's done; do not update it.
       const noun =
-        kind === "code" ? "script" : kind === "image" ? "image" : "document";
+        kind === "code" ? "script" : kind === "image" ? "image" : "spreadsheet";
       return {
         id,
         title,
