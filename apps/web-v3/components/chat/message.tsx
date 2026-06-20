@@ -8,12 +8,6 @@ import { cn, sanitizeText } from "@/lib/utils";
 import { MessageContent, MessageResponse } from "../ai-elements/message";
 import { Shimmer } from "../ai-elements/shimmer";
 import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from "../ai-elements/sources";
-import {
   Tool,
   ToolContent,
   ToolHeader,
@@ -21,6 +15,7 @@ import {
   ToolOutput,
 } from "../ai-elements/tool";
 import { BalanceTool } from "./balance-tool";
+import { type CotItem, CotTimeline } from "./cot-timeline";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
@@ -34,7 +29,6 @@ function modelDisplayName(id: string): string {
 import { useArtifact } from "@/hooks/use-artifact";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { MessageActions } from "./message-actions";
-import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { RecipeRunTool } from "./recipe-run-tool";
 import { SendTransferTool } from "./send-transfer-tool";
@@ -105,35 +99,43 @@ const PurePreviewMessage = ({
     </div>
   );
 
-  const mergedReasoning = message.parts?.reduce(
-    (acc, part) => {
-      if (part.type === "reasoning" && part.text?.trim().length > 0) {
-        return {
-          text: acc.text ? `${acc.text}\n\n${part.text}` : part.text,
-          isStreaming: "state" in part ? part.state === "streaming" : false,
-          rendered: false,
-        };
+  // Group the turn's "work" parts (reasoning + web_search) into the live
+  // Chain-of-Thought timeline (rendered once, before the answer). Everything
+  // else keeps its own rendering below. Consecutive reasoning chunks merge.
+  const cotItems: CotItem[] = [];
+  for (const part of message.parts ?? []) {
+    if (part.type === "reasoning") {
+      const text = "text" in part ? (part.text ?? "") : "";
+      if (text.trim()) {
+        const last = cotItems.at(-1);
+        if (last?.kind === "reasoning") {
+          last.text += `\n\n${text}`;
+        } else {
+          cotItems.push({ kind: "reasoning", text });
+        }
       }
-      return acc;
-    },
-    { text: "", isStreaming: false, rendered: false }
-  ) ?? { text: "", isStreaming: false, rendered: false };
+    } else if (part.type === "tool-web_search") {
+      cotItems.push({
+        kind: "search",
+        query: part.input?.query ?? "",
+        sources:
+          part.state === "output-available" ? (part.output?.sources ?? []) : [],
+        state:
+          part.state === "output-available"
+            ? "complete"
+            : part.state === "output-error"
+              ? "error"
+              : "active",
+      });
+    }
+  }
 
   const parts = message.parts?.map((part, index) => {
     const { type } = part;
     const key = `message-${message.id}-part-${index}`;
 
-    if (type === "reasoning") {
-      if (!mergedReasoning.rendered && mergedReasoning.text) {
-        mergedReasoning.rendered = true;
-        return (
-          <MessageReasoning
-            isLoading={isLoading || mergedReasoning.isStreaming}
-            key={key}
-            reasoning={mergedReasoning.text}
-          />
-        );
-      }
+    // Reasoning + web_search are rendered in the CoT timeline (above), not here.
+    if (type === "reasoning" || type === "tool-web_search") {
       return null;
     }
 
@@ -149,39 +151,6 @@ const PurePreviewMessage = ({
 
     if (type === "tool-balance_check") {
       return <BalanceTool key={part.toolCallId} part={part} />;
-    }
-
-    if (type === "tool-web_search") {
-      const { toolCallId, state } = part;
-      if (state === "output-available") {
-        const sources = part.output?.sources ?? [];
-        if (sources.length === 0) {
-          return null;
-        }
-        return (
-          <Sources key={toolCallId}>
-            <SourcesTrigger count={sources.length} />
-            <SourcesContent>
-              {sources.map((s) => (
-                <Source
-                  href={s.url}
-                  key={`${toolCallId}-${s.url}`}
-                  title={s.title}
-                />
-              ))}
-            </SourcesContent>
-          </Sources>
-        );
-      }
-      if (state === "output-error") {
-        return null;
-      }
-      // input-streaming / input-available → searching
-      return (
-        <div className="mb-2 flex items-center gap-2 text-sm" key={toolCallId}>
-          <Shimmer>Searching the web…</Shimmer>
-        </div>
-      );
     }
 
     if (type === "text") {
@@ -404,6 +373,7 @@ const PurePreviewMessage = ({
   ) : (
     <>
       {attachments}
+      {isAssistant && <CotTimeline isLoading={isLoading} items={cotItems} />}
       {isEmptyAssistant ? (
         <MessageContent className="text-[13px] leading-[1.65]">
           <MessageResponse>
