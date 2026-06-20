@@ -6,8 +6,6 @@ import {
   ChainOfThought,
   ChainOfThoughtContent,
   ChainOfThoughtHeader,
-  ChainOfThoughtSearchResult,
-  ChainOfThoughtSearchResults,
   ChainOfThoughtStep,
 } from "@/components/ai-elements/chain-of-thought";
 import { sanitizeText } from "@/lib/utils";
@@ -123,13 +121,25 @@ export function CotTimeline({
               status={item.state === "active" ? "active" : "complete"}
             >
               {item.sources.length > 0 && (
-                <ChainOfThoughtSearchResults>
-                  {item.sources.slice(0, 6).map((s) => (
-                    <ChainOfThoughtSearchResult key={s.url}>
-                      {domain(s.url)}
-                    </ChainOfThoughtSearchResult>
+                <div className="mt-1.5 flex flex-col gap-1">
+                  {item.sources.slice(0, 8).map((s) => (
+                    <a
+                      className="flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
+                      href={s.url}
+                      key={s.url}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      <GlobeIcon className="size-3 shrink-0 opacity-50" />
+                      <span className="truncate">
+                        {s.title || domain(s.url)}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground/40">
+                        {domain(s.url)}
+                      </span>
+                    </a>
                   ))}
-                </ChainOfThoughtSearchResults>
+                </div>
               )}
             </ChainOfThoughtStep>
           )

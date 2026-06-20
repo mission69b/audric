@@ -19,16 +19,24 @@ export type StarterChip = {
 };
 
 export const starterChips: StarterChip[] = [
-  { label: "Generate image", starterPrompt: "Generate an image" },
-  { label: "Research a topic", starterPrompt: "Research a topic for me" },
+  {
+    label: "Generate image",
+    starterPrompt:
+      "I'd like to generate an image. Ask me what to create if you need detail, then generate it.",
+  },
+  {
+    label: "Research a topic",
+    starterPrompt:
+      "I need you to research a topic for me. Use web search to find current, reliable information. Summarize the key findings clearly, cite your sources, and flag any conflicting information or areas where more research might be needed.",
+  },
   {
     label: "Surprise me",
     starterPrompt:
-      "Surprise me — pick something genuinely interesting and run with it.",
+      "Tell me something genuinely fascinating that most people don't know about. Pick a topic that's thought-provoking, weird, or challenges common assumptions. Explain why it matters or what makes it interesting.",
   },
   {
     label: "Check my balance",
-    starterPrompt: "What's my Passport balance?",
+    starterPrompt: "What's in my Passport wallet right now? Show my balances.",
     authed: true,
   },
 ];
