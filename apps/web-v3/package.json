@@ -18,6 +18,7 @@
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
+    "smoke:models": "tsx scripts/model-matrix-smoke.mts",
     "stripe:seed": "tsx scripts/stripe-seed.ts",
     "reset-billing": "tsx scripts/reset-billing.ts",
     "check-billing": "tsx scripts/check-billing.ts",

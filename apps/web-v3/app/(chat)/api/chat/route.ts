@@ -75,6 +75,31 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 // work (video gen, multi-step Recipes) graduates to Vercel Workflows in 4b.
 export const maxDuration = 300;
 
+type ActiveTool =
+  | "web_search"
+  | "createDocument"
+  | "editDocument"
+  | "updateDocument"
+  | "requestSuggestions"
+  | "balance_check"
+  | "transaction_history"
+  | "resolve_suins"
+  | "send_transfer"
+  | "run_recipe"
+  | "save_memory";
+
+// Artifact tools that WRITE/replace a document. A single createDocument already
+// streams the COMPLETE artifact, so once any of these has run in a turn we drop
+// them all from the active set — structurally preventing the duplicate-artifact
+// class (a model chaining createDocument → updateDocument) on EVERY model,
+// rather than relying on prompt/tool-result wording per model.
+const DOC_MUTATION_TOOLS = new Set<ActiveTool>([
+  "createDocument",
+  "updateDocument",
+  "editDocument",
+  "requestSuggestions",
+]);
+
 function getStreamContext() {
   try {
     return createResumableStreamContext({ waitUntil: after });
@@ -336,6 +361,25 @@ export async function POST(request: Request) {
           memoryOn && session?.user && recallQuery
             ? await recallMemoryBlock(session.user.id, recallQuery)
             : null;
+        const baseActiveTools: ActiveTool[] =
+          isReasoningModel && !supportsTools
+            ? []
+            : session?.user
+              ? [
+                  "web_search",
+                  "createDocument",
+                  "editDocument",
+                  "updateDocument",
+                  "requestSuggestions",
+                  "balance_check",
+                  "transaction_history",
+                  "resolve_suins",
+                  "send_transfer",
+                  "run_recipe",
+                  ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
+                ]
+              : ["web_search", "createDocument"];
+
         const result = streamText({
           model: baseModel,
           system: systemPrompt({
@@ -348,24 +392,26 @@ export async function POST(request: Request) {
           }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            isReasoningModel && !supportsTools
-              ? []
-              : session?.user
-                ? [
-                    "web_search",
-                    "createDocument",
-                    "editDocument",
-                    "updateDocument",
-                    "requestSuggestions",
-                    "balance_check",
-                    "transaction_history",
-                    "resolve_suins",
-                    "send_transfer",
-                    "run_recipe",
-                    ...(memoryOn ? ["save_memory" as const] : []),
-                  ]
-                : ["web_search", "createDocument"],
+          experimental_activeTools: baseActiveTools,
+          // Once a doc-mutation tool has run this turn, remove them all from the
+          // active set so NO model can chain a second artifact write (the
+          // duplicate-artifact class). Structural — independent of prompt wording
+          // or per-model tool-loop quirks; the model can still narrate.
+          prepareStep: ({ steps }) => {
+            const usedDocTool = steps.some((s) =>
+              s.toolCalls?.some((tc) =>
+                DOC_MUTATION_TOOLS.has(tc?.toolName as ActiveTool)
+              )
+            );
+            if (!usedDocTool) {
+              return {};
+            }
+            return {
+              activeTools: baseActiveTools.filter(
+                (t) => !DOC_MUTATION_TOOLS.has(t)
+              ),
+            };
+          },
           providerOptions: {
             // Confidential models bypass the Gateway entirely (direct to the
             // RedPill TEE), so Gateway options don't apply — the TEE itself is
