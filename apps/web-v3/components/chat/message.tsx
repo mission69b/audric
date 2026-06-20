@@ -29,6 +29,7 @@ import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { RecipeRunTool } from "./recipe-run-tool";
 import { SendTransferTool } from "./send-transfer-tool";
+import { TeeReceiptBadge } from "./tee-receipt-badge";
 
 const PurePreviewMessage = ({
   // Native AI-SDK HITL approval handler — threaded as reusable infra for any
@@ -122,6 +123,16 @@ const PurePreviewMessage = ({
         );
       }
       return null;
+    }
+
+    if (type === "data-tee-receipt") {
+      return (
+        <TeeReceiptBadge
+          key={key}
+          model={part.data.model}
+          responseId={part.data.responseId}
+        />
+      );
     }
 
     if (type === "tool-web_search") {

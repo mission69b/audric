@@ -1,9 +1,15 @@
 import {
+  CONFIDENTIAL_CAPABILITIES,
+  confidentialModels,
   getAllGatewayModels,
   getCapabilities,
   getModelPricing,
   isDemo,
 } from "@/lib/ai/models";
+import {
+  getConfidentialPricing,
+  isConfidentialConfigured,
+} from "@/lib/ai/providers";
 import { isMemoryConfigured } from "@/lib/memwal";
 
 export async function GET() {
@@ -16,27 +22,53 @@ export async function GET() {
       "public, max-age=300, s-maxage=86400, stale-while-revalidate=86400",
   };
 
-  const [curatedCapabilities, pricing] = await Promise.all([
-    getCapabilities(),
-    getModelPricing(),
-  ]);
+  const confidentialEnabled = isConfidentialConfigured();
+
+  const [curatedCapabilities, gatewayPricing, confidentialPricing] =
+    await Promise.all([
+      getCapabilities(),
+      getModelPricing(),
+      confidentialEnabled ? getConfidentialPricing() : Promise.resolve({}),
+    ]);
 
   const memoryEnabled = isMemoryConfigured();
 
+  // Merge the confidential (TEE) lineup in only when the tier is live, so the
+  // switcher surfaces those models, badges, and per-token prices exactly when
+  // they're actually routable.
+  const capabilities = confidentialEnabled
+    ? { ...curatedCapabilities, ...CONFIDENTIAL_CAPABILITIES }
+    : curatedCapabilities;
+  const pricing = { ...gatewayPricing, ...confidentialPricing };
+  const confidential = confidentialEnabled ? confidentialModels : [];
+
   if (isDemo) {
     const models = await getAllGatewayModels();
-    const capabilities = Object.fromEntries(
-      models.map((m) => [m.id, curatedCapabilities[m.id] ?? m.capabilities])
+    const demoCapabilities = Object.fromEntries(
+      models.map((m) => [m.id, capabilities[m.id] ?? m.capabilities])
     );
 
     return Response.json(
-      { capabilities, models, pricing, memoryEnabled },
+      {
+        capabilities: { ...demoCapabilities, ...CONFIDENTIAL_CAPABILITIES },
+        models: [...models, ...confidential],
+        pricing,
+        memoryEnabled,
+        confidentialEnabled,
+        confidentialModels: confidential,
+      },
       { headers }
     );
   }
 
   return Response.json(
-    { capabilities: curatedCapabilities, pricing, memoryEnabled },
+    {
+      capabilities,
+      pricing,
+      memoryEnabled,
+      confidentialEnabled,
+      confidentialModels: confidential,
+    },
     { headers }
   );
 }

@@ -661,7 +661,7 @@ const PRIVACY_BADGE: Record<
   confidential: {
     label: "Confidential",
     className: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    tip: "Coming: end-to-end TEE inference — not even the provider can read your prompt, verifiable per request.",
+    tip: "End-to-end TEE inference — not even the provider can read your prompt. Every response is TEE-signed, verifiable per request.",
   },
   local: {
     label: "Local",
@@ -691,7 +691,13 @@ function PureModelSelectorCompact({
     | Record<string, { tools: boolean; vision: boolean; reasoning: boolean }>
     | undefined = modelsData?.capabilities;
   const dynamicModels: ChatModel[] | undefined = modelsData?.models;
-  const activeModels = dynamicModels ?? chatModels;
+  // Confidential (TEE) models are only routable when the server reports the
+  // tier configured — fold them into the curated lineup exactly then.
+  const confidentialModels: ChatModel[] = modelsData?.confidentialEnabled
+    ? (modelsData.confidentialModels ?? [])
+    : [];
+  const curatedList = [...chatModels, ...confidentialModels];
+  const activeModels = dynamicModels ?? curatedList;
 
   const selectedModel =
     activeModels.find((m: ChatModel) => m.id === selectedModelId) ??
@@ -715,13 +721,13 @@ function PureModelSelectorCompact({
         <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>
           {(() => {
-            const curatedIds = new Set(chatModels.map((m) => m.id));
+            const curatedIds = new Set(curatedList.map((m) => m.id));
             const allModels = dynamicModels
               ? [
-                  ...chatModels,
+                  ...curatedList,
                   ...dynamicModels.filter((m) => !curatedIds.has(m.id)),
                 ]
-              : chatModels;
+              : curatedList;
 
             const grouped: Record<
               string,
@@ -843,7 +849,10 @@ function PureModelSelectorCompact({
                                 />
                               )}
                               {cap.vision && (
-                                <EyeIcon aria-label="Vision" className="size-3" />
+                                <EyeIcon
+                                  aria-label="Vision"
+                                  className="size-3"
+                                />
                               )}
                               {cap.reasoning && (
                                 <BrainIcon
@@ -930,11 +939,18 @@ function PureModelSelectorCompact({
               Private · ZDR
             </span>
             <span className="text-muted-foreground/30">→</span>
-            <span className="text-muted-foreground/40">Confidential</span>
+            {modelsData?.confidentialEnabled ? (
+              <span className="rounded bg-purple-500/10 px-1 py-0.5 font-medium text-purple-600 dark:text-purple-400">
+                Confidential · TEE
+              </span>
+            ) : (
+              <span className="text-muted-foreground/40">Confidential</span>
+            )}
           </div>
           <p className="mt-1 text-[10px] text-muted-foreground/50">
-            Every chat is zero-retention. Confidential (TEE, verifiable) is
-            coming.
+            {modelsData?.confidentialEnabled
+              ? "Every chat is zero-retention. Confidential models run in a TEE — verifiable, unreadable even to us."
+              : "Every chat is zero-retention. Confidential (TEE, verifiable) is coming."}
           </p>
         </div>
       </ModelSelectorContent>

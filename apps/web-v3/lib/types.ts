@@ -69,6 +69,9 @@ export type CustomUIDataTypes = {
   clear: null;
   finish: null;
   "chat-title": string;
+  // Confidential (TEE) turn → the client lazily fetches the TEE-signed receipt
+  // for this response id from /api/tee/receipt and renders the verified badge.
+  "tee-receipt": { responseId: string; model: string };
 };
 
 export type ChatMessage = UIMessage<

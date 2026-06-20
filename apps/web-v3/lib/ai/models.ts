@@ -49,6 +49,10 @@ export type ChatModel = {
   bestFor?: string;
   /** Premium frontier model — gated to credit/paid tiers. */
   frontier?: boolean;
+  /** Routes DIRECTLY to the TEE provider (RedPill/Phala), not the Gateway.
+   * Confidential models are inert until REDPILL_API_KEY is set — see
+   * `isConfidentialConfigured()` in providers.ts. */
+  confidential?: boolean;
 };
 
 export const chatModels: ChatModel[] = [
@@ -124,6 +128,73 @@ export const chatModels: ChatModel[] = [
     frontier: true,
     bestFor: "Long context",
   },
+];
+
+// Confidential (TEE) tier — the 3rd privacy rung (SPEC_AUDRIC_V3 §5c). These run
+// ENTIRELY inside a Phala GPU TEE via RedPill's OpenAI-compatible API: even the
+// provider can't read the prompt, and every response is TEE-signed (verifiable
+// per request). They route directly to RedPill — NOT the Gateway — so they're
+// inert until REDPILL_API_KEY is set (the switcher only surfaces them when the
+// /api/models route reports `confidentialEnabled`). Model ids are the live
+// RedPill catalog ids (`GET https://api.redpill.ai/v1/models`).
+export const confidentialModels: ChatModel[] = [
+  {
+    id: "phala/qwen3.5-27b",
+    name: "Qwen 3.5 27B",
+    provider: "phala",
+    description: "Runs entirely in a TEE — not even the provider can read it",
+    privacy: "confidential",
+    tier: "smart",
+    confidential: true,
+    bestFor: "Private reasoning",
+  },
+  {
+    id: "phala/qwen3-vl-30b-a3b-instruct",
+    name: "Qwen 3 VL 30B",
+    provider: "phala",
+    description: "Confidential multimodal model in a TEE",
+    privacy: "confidential",
+    tier: "smart",
+    confidential: true,
+    bestFor: "Private + vision",
+  },
+  {
+    id: "phala/glm-4.7-flash",
+    name: "GLM 4.7 Flash",
+    provider: "phala",
+    description: "Fast confidential model in a TEE",
+    privacy: "confidential",
+    tier: "smart",
+    confidential: true,
+    bestFor: "Fast & private",
+  },
+];
+
+// Static capabilities for the confidential lineup (the gateway capability probe
+// can't see RedPill models). Conservative defaults; tools/vision confirmed
+// against the RedPill catalog when the key lands.
+export const CONFIDENTIAL_CAPABILITIES: Record<string, ModelCapabilities> = {
+  "phala/qwen3.5-27b": { tools: true, vision: false, reasoning: true },
+  "phala/qwen3-vl-30b-a3b-instruct": {
+    tools: true,
+    vision: true,
+    reasoning: false,
+  },
+  "phala/glm-4.7-flash": { tools: true, vision: false, reasoning: false },
+};
+
+const confidentialModelIds = new Set(confidentialModels.map((m) => m.id));
+
+/** True when `id` is a confidential (TEE) model — routes to RedPill, not the
+ * Gateway. Pure + client-safe (no env read). */
+export function isConfidentialModel(id: string): boolean {
+  return confidentialModelIds.has(id);
+}
+
+/** Every selectable model — gateway lineup + the confidential (TEE) lineup. */
+export const allChatModels: ChatModel[] = [
+  ...chatModels,
+  ...confidentialModels,
 ];
 
 export async function getCapabilities(): Promise<
@@ -263,7 +334,7 @@ export function getActiveModels(): ChatModel[] {
   return chatModels;
 }
 
-export const allowedModelIds = new Set(chatModels.map((m) => m.id));
+export const allowedModelIds = new Set(allChatModels.map((m) => m.id));
 
 export const modelsByProvider = chatModels.reduce(
   (acc, model) => {

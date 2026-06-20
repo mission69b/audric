@@ -14,14 +14,20 @@ import { auth, type UserType } from "@/app/(auth)/auth";
 import { maxMessagesPerHour } from "@/lib/ai/entitlements";
 import { inlineImageAttachments } from "@/lib/ai/inline-attachments";
 import {
+  allChatModels,
   allowedModelIds,
   chatModels,
   DEFAULT_CHAT_MODEL,
   getCapabilities,
   getModelPricing,
+  isConfidentialModel,
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
-import { getLanguageModel } from "@/lib/ai/providers";
+import {
+  getConfidentialPricing,
+  getLanguageModel,
+  isConfidentialConfigured,
+} from "@/lib/ai/providers";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
@@ -105,10 +111,17 @@ export async function POST(request: Request) {
     const requestedModel = allowedModelIds.has(selectedChatModel)
       ? selectedChatModel
       : DEFAULT_CHAT_MODEL;
+    // A confidential (TEE) model is only routable when the tier is configured;
+    // otherwise it would fall through to the Gateway (which has no `phala/*`
+    // model) and 404. Degrade to the default rather than error.
+    const requestedRoutable =
+      !isConfidentialModel(requestedModel) || isConfidentialConfigured();
     const requestedIsFree =
       chatModels.find((m) => m.id === requestedModel)?.free === true;
     const chatModel =
-      session?.user || requestedIsFree ? requestedModel : DEFAULT_CHAT_MODEL;
+      (session?.user || requestedIsFree) && requestedRoutable
+        ? requestedModel
+        : DEFAULT_CHAT_MODEL;
 
     // IP rate-limit guards the ANONYMOUS try-before-signup surface only (no
     // account to cap). Authed users — free OR paid — are governed by the
@@ -240,7 +253,8 @@ export async function POST(request: Request) {
       session?.user && useMemWal && isMemoryConfigured()
     );
 
-    const modelConfig = chatModels.find((m) => m.id === chatModel);
+    const modelConfig = allChatModels.find((m) => m.id === chatModel);
+    const isConfidential = isConfidentialModel(chatModel);
 
     // Credit gate (Phase 5): premium (non-free) models are metered against the
     // credit balance. When the credit rail is live and the user is out of
@@ -269,7 +283,10 @@ export async function POST(request: Request) {
       parts: m.parts.map((p) => {
         const tid = (p as { toolCallId?: string }).toolCallId;
         return typeof tid === "string" && /[^a-zA-Z0-9_-]/.test(tid)
-          ? ({ ...p, toolCallId: tid.replace(/[^a-zA-Z0-9_-]/g, "_") } as typeof p)
+          ? ({
+              ...p,
+              toolCallId: tid.replace(/[^a-zA-Z0-9_-]/g, "_"),
+            } as typeof p)
           : p;
       }),
     }));
@@ -322,16 +339,22 @@ export async function POST(request: Request) {
                   ]
                 : ["web_search", "createDocument"],
           providerOptions: {
-            // Zero Data Retention: route ONLY to providers contractually bound
-            // not to store or train on prompts. Privacy-by-default on every chat
-            // (the "Private · ZDR" rung). A model with no ZDR-compliant provider
-            // fails with no_providers_available → smoke-test the lineup.
-            gateway: {
-              zeroDataRetention: true,
-              ...(modelConfig?.gatewayOrder && {
-                order: modelConfig.gatewayOrder,
-              }),
-            },
+            // Confidential models bypass the Gateway entirely (direct to the
+            // RedPill TEE), so Gateway options don't apply — the TEE itself is
+            // the privacy guarantee (stronger than ZDR). For every Gateway
+            // model: Zero Data Retention routes ONLY to providers contractually
+            // bound not to store or train on prompts (the "Private · ZDR" rung;
+            // a model with no ZDR provider fails no_providers_available).
+            ...(isConfidential
+              ? {}
+              : {
+                  gateway: {
+                    zeroDataRetention: true,
+                    ...(modelConfig?.gatewayOrder && {
+                      order: modelConfig.gatewayOrder,
+                    }),
+                  },
+                }),
             ...(modelConfig?.reasoningEffort && {
               openai: { reasoningEffort: modelConfig.reasoningEffort },
             }),
@@ -433,6 +456,23 @@ export async function POST(request: Request) {
           })
         );
 
+        // Confidential (TEE) turn → surface the response id so the client can
+        // fetch its TEE-signed receipt (the "verifiable per request" proof).
+        // Best-effort + post-merge so it never blocks or breaks the stream.
+        if (isConfidential) {
+          try {
+            const resp = await result.response;
+            if (resp?.id) {
+              dataStream.write({
+                type: "data-tee-receipt",
+                data: { responseId: resp.id, model: chatModel },
+              });
+            }
+          } catch (_) {
+            /* non-fatal — no receipt badge this turn */
+          }
+        }
+
         if (titlePromise) {
           try {
             const title = await titlePromise;
@@ -490,7 +530,9 @@ export async function POST(request: Request) {
         // per assistant turn, even if onFinish ever re-fires). Inert when the
         // credit rail isn't configured.
         if (isPremiumModel && isCreditConfigured()) {
-          const pricing = (await getModelPricing())[chatModel];
+          const pricing = isConfidential
+            ? (await getConfidentialPricing())[chatModel]
+            : (await getModelPricing())[chatModel];
           for (const m of finishedMessages) {
             if (m.role !== "assistant") {
               continue;
