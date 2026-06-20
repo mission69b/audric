@@ -21,8 +21,7 @@ export type StarterChip = {
 export const starterChips: StarterChip[] = [
   {
     label: "Generate image",
-    starterPrompt:
-      "I'd like to generate an image. Ask me what to create if you need detail, then generate it.",
+    starterPrompt: "I'd like to generate an image.",
   },
   {
     label: "Research a topic",

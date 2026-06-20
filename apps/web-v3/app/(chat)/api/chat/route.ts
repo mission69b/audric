@@ -377,6 +377,39 @@ export async function POST(request: Request) {
       ];
     }
 
+    // Resolve dangling client-executed tool calls (ask_user / send_transfer /
+    // run_recipe) the user bypassed by typing a new message instead of using the
+    // card. Left unresolved, `convertToModelMessages` throws "Tool result is
+    // missing" and the whole turn fails. Synthesize a benign "skipped" result so
+    // the conversation continues (the model treats the user's chat reply as the
+    // answer). Applies to history only — the new user message has no tool calls.
+    const CLIENT_TOOL_PART_TYPES = new Set([
+      "tool-ask_user",
+      "tool-send_transfer",
+      "tool-run_recipe",
+    ]);
+    uiMessages = uiMessages.map((m) => ({
+      ...m,
+      parts: m.parts.map((p) => {
+        const pt = p as { type?: string; state?: string };
+        if (
+          pt.type &&
+          CLIENT_TOOL_PART_TYPES.has(pt.type) &&
+          (pt.state === "input-available" || pt.state === "input-streaming")
+        ) {
+          return {
+            ...p,
+            state: "output-available",
+            output: {
+              skipped: true,
+              note: "The user responded in chat instead of using this card — use their message.",
+            },
+          } as ChatMessage["parts"][number];
+        }
+        return p;
+      }),
+    }));
+
     const { longitude, latitude, city, country } = geolocation(request);
 
     const requestHints: RequestHints = {
