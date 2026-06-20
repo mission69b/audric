@@ -1,6 +1,7 @@
 "use client";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { BrainIcon, LockIcon } from "lucide-react";
+import { allChatModels } from "@/lib/ai/models";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
@@ -24,6 +25,12 @@ import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
 import { SparklesIcon } from "./icons";
+
+const MODEL_NAMES = new Map(allChatModels.map((m) => [m.id, m.name]));
+function modelDisplayName(id: string): string {
+  return MODEL_NAMES.get(id) ?? id.split("/").pop() ?? id;
+}
+
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
@@ -336,6 +343,17 @@ const PurePreviewMessage = ({
     return null;
   });
 
+  // Surface what "Auto" chose this turn — makes the routing intelligence
+  // visible (only on Auto-routed turns; explicit picks already show in the
+  // composer switcher).
+  const modelBadge =
+    isAssistant && message.metadata?.autoRouted && message.metadata?.modelId ? (
+      <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50">
+        <SparklesIcon size={10} />
+        <span>Auto · {modelDisplayName(message.metadata.modelId)}</span>
+      </div>
+    ) : null;
+
   const actions = !isReadonly && (
     <MessageActions
       chatId={chatId}
@@ -370,6 +388,7 @@ const PurePreviewMessage = ({
       ) : (
         parts
       )}
+      {modelBadge}
       {actions}
     </>
   );

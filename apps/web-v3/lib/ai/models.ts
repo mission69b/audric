@@ -1,5 +1,19 @@
 export const DEFAULT_CHAT_MODEL = "moonshotai/kimi-k2.5";
 
+// "Auto" — the intelligent default. Not a real model: when selected, the server
+// router (lib/ai/intelligence/router.ts) classifies the turn and picks the best
+// model the user is entitled to. Kept OUT of `chatModels` so it never hits the
+// gateway capability/pricing fetches; injected into the switcher + allow-list.
+export const AUTO_MODEL_ID = "auto";
+export const AUTO_MODEL: ChatModel = {
+  id: AUTO_MODEL_ID,
+  name: "Auto",
+  provider: "audric",
+  description: "Picks the best model for each task",
+  tier: "smart",
+  bestFor: "Smartest default",
+};
+
 export const titleModel = {
   id: "moonshotai/kimi-k2.5",
   name: "Kimi K2.5",
@@ -321,7 +335,10 @@ export function getActiveModels(): ChatModel[] {
   return chatModels;
 }
 
-export const allowedModelIds = new Set(allChatModels.map((m) => m.id));
+export const allowedModelIds = new Set([
+  AUTO_MODEL_ID,
+  ...allChatModels.map((m) => m.id),
+]);
 
 export const modelsByProvider = chatModels.reduce(
   (acc, model) => {

@@ -13,7 +13,9 @@ import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import { maxMessagesPerHour } from "@/lib/ai/entitlements";
 import { inlineImageAttachments } from "@/lib/ai/inline-attachments";
+import { routeTurn } from "@/lib/ai/intelligence/router";
 import {
+  AUTO_MODEL_ID,
   allChatModels,
   allowedModelIds,
   chatModels,
@@ -145,11 +147,54 @@ export async function POST(request: Request) {
     const isPaidTier =
       dbUser?.subscriptionTier === "pro" || dbUser?.subscriptionTier === "max";
 
+    // Credit balance + premium entitlement — fetched ONCE; drives the "Auto"
+    // router (which model it may pick), the per-turn cap, and the premium gate.
+    const creditConfigured = isCreditConfigured();
+    const creditMicros =
+      session?.user && session.user.type !== "guest" && creditConfigured
+        ? await getCreditBalanceMicros(session.user.id)
+        : 0;
+    // Auto may route to premium when signed in AND (credit not configured →
+    // premium is free for all, OR a positive balance). Mirrors the premium
+    // credit gate below so the router never picks a model that would be blocked.
+    const canUsePremium =
+      Boolean(session?.user) && (!creditConfigured || creditMicros > 0);
+
+    // "Auto" → classify the turn and pick the best entitled model (router). On a
+    // tool-approval continuation (no fresh `message`), classify on the latest
+    // user message so synthesis (e.g. a recipe) still routes to a capable model.
+    type TextPart = { type?: string; text?: string };
+    const partsText = (parts: TextPart[] | undefined): string =>
+      (parts ?? [])
+        .filter((p) => p.type === "text")
+        .map((p) => p.text ?? "")
+        .join(" ")
+        .trim();
+    const lastUserText = (
+      msgs: Array<{ role?: string; parts?: TextPart[] }> | undefined
+    ): string => {
+      for (let i = (msgs?.length ?? 0) - 1; i >= 0; i--) {
+        if (msgs?.[i]?.role === "user") {
+          return partsText(msgs[i].parts);
+        }
+      }
+      return "";
+    };
+    const routeText =
+      partsText(message?.parts as TextPart[] | undefined) ||
+      lastUserText(messages as Array<{ role?: string; parts?: TextPart[] }>);
+    const routeDecision =
+      selectedChatModel === AUTO_MODEL_ID
+        ? await routeTurn({ userText: routeText, canUsePremium })
+        : null;
+
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
-    const requestedModel = allowedModelIds.has(selectedChatModel)
-      ? selectedChatModel
-      : DEFAULT_CHAT_MODEL;
+    const requestedModel = routeDecision
+      ? routeDecision.modelId
+      : allowedModelIds.has(selectedChatModel)
+        ? selectedChatModel
+        : DEFAULT_CHAT_MODEL;
     // Confidential (TEE) models route directly to RedPill (the Gateway has no
     // `phala/*` model) AND are a PAID perk — only routable when the tier is
     // configured AND the user is on Pro/Max. Otherwise degrade to the default
@@ -183,10 +228,6 @@ export async function POST(request: Request) {
       // Cap is lifted for anyone who has PAID — an active sub OR a positive
       // credit balance (PAYG top-up); free authed keeps the acquisition cap.
       // (dbUser was already fetched above for the Confidential gate.)
-      const creditMicros =
-        userType === "guest" || !isCreditConfigured()
-          ? 0
-          : await getCreditBalanceMicros(session.user.id);
       const cap = maxMessagesPerHour(userType, {
         subscriptionTier: dbUser?.subscriptionTier,
         hasCredit: creditMicros > 0,
@@ -300,11 +341,13 @@ export async function POST(request: Request) {
     // credit, block premium with a clear top-up prompt — the free model (Kimi)
     // always works. Inert when Stripe isn't configured (premium stays free).
     const isPremiumModel = modelConfig?.free !== true;
-    if (session?.user && isPremiumModel && isCreditConfigured()) {
-      const balance = await getCreditBalanceMicros(session.user.id);
-      if (balance <= 0) {
-        return new ChatbotError("bad_request:credit").toResponse();
-      }
+    if (
+      session?.user &&
+      isPremiumModel &&
+      creditConfigured &&
+      creditMicros <= 0
+    ) {
+      return new ChatbotError("bad_request:credit").toResponse();
     }
 
     const modelCapabilities = await getCapabilities();
@@ -391,7 +434,8 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
           }),
           messages: modelMessages,
-          stopWhen: stepCountIs(5),
+          // Adaptive step budget from the router (difficulty-scaled); default 5.
+          stopWhen: stepCountIs(routeDecision?.stepBudget ?? 5),
           experimental_activeTools: baseActiveTools,
           // Once a doc-mutation tool has run this turn, remove them all from the
           // active set so NO model can chain a second artifact write (the
@@ -429,8 +473,13 @@ export async function POST(request: Request) {
                     }),
                   },
                 }),
-            ...(modelConfig?.reasoningEffort && {
-              openai: { reasoningEffort: modelConfig.reasoningEffort },
+            ...((routeDecision?.reasoningEffort ??
+              modelConfig?.reasoningEffort) && {
+              openai: {
+                reasoningEffort:
+                  routeDecision?.reasoningEffort ??
+                  modelConfig?.reasoningEffort,
+              },
             }),
           },
           // createDocument works for everyone (incl. anonymous free-trial):
@@ -507,6 +556,7 @@ export async function POST(request: Request) {
                 return {
                   createdAt: new Date().toISOString(),
                   modelId: chatModel,
+                  autoRouted: selectedChatModel === AUTO_MODEL_ID,
                 };
               }
               if (part.type === "finish") {
@@ -514,6 +564,7 @@ export async function POST(request: Request) {
                 return {
                   createdAt: new Date().toISOString(),
                   modelId: chatModel,
+                  autoRouted: selectedChatModel === AUTO_MODEL_ID,
                   inputTokens: u?.inputTokens,
                   outputTokens: u?.outputTokens,
                   totalTokens: u?.totalTokens,

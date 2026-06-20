@@ -19,6 +19,9 @@ export const messageMetadataSchema = z.object({
   // usage card. All optional: only the live/just-finished turn carries them
   // (not persisted), so historical messages simply omit the card.
   modelId: z.string().optional(),
+  // True when the model was chosen by the "Auto" router this turn (drives the
+  // "Auto · <model>" badge so the routing intelligence is visible).
+  autoRouted: z.boolean().optional(),
   inputTokens: z.number().optional(),
   outputTokens: z.number().optional(),
   totalTokens: z.number().optional(),

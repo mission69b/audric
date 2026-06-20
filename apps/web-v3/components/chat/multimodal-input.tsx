@@ -8,6 +8,7 @@ import {
   BrainIcon,
   EyeIcon,
   LockIcon,
+  SparklesIcon,
   WrenchIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -43,9 +44,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  AUTO_MODEL,
+  AUTO_MODEL_ID,
   type ChatModel,
   chatModels,
-  DEFAULT_CHAT_MODEL,
   type ModelCapabilities,
   type ModelPricing,
   type ModelPrivacyTier,
@@ -704,12 +706,15 @@ function PureModelSelectorCompact({
   const confidentialModels: ChatModel[] = modelsData?.confidentialEnabled
     ? (modelsData.confidentialModels ?? [])
     : [];
-  const curatedList = [...chatModels, ...confidentialModels];
-  const activeModels = dynamicModels ?? curatedList;
+  // "Auto" leads the curated lineup — the intelligent default.
+  const curatedList = [AUTO_MODEL, ...chatModels, ...confidentialModels];
+  const activeModels = dynamicModels
+    ? [AUTO_MODEL, ...dynamicModels]
+    : curatedList;
 
   const selectedModel =
     activeModels.find((m: ChatModel) => m.id === selectedModelId) ??
-    activeModels.find((m: ChatModel) => m.id === DEFAULT_CHAT_MODEL) ??
+    activeModels.find((m: ChatModel) => m.id === AUTO_MODEL_ID) ??
     activeModels[0];
   const [provider] = selectedModel.id.split("/");
 
@@ -721,7 +726,11 @@ function PureModelSelectorCompact({
           data-testid="model-selector"
           variant="ghost"
         >
-          {provider && <ModelSelectorLogo provider={provider} />}
+          {selectedModel.id === AUTO_MODEL_ID ? (
+            <SparklesIcon className="size-4" />
+          ) : (
+            provider && <ModelSelectorLogo provider={provider} />
+          )}
           <ModelSelectorName>{selectedModel.name}</ModelSelectorName>
         </Button>
       </ModelSelectorTrigger>
@@ -800,7 +809,10 @@ function PureModelSelectorCompact({
                   // Premium models are locked for anonymous users (only the
                   // free Fast model is usable signed-out) — clicking a locked
                   // model starts the sign-in flow (Perplexity pattern).
-                  const locked = !isAuthed && model.free !== true;
+                  const locked =
+                    !isAuthed &&
+                    model.free !== true &&
+                    model.id !== AUTO_MODEL_ID;
                   return (
                     <ModelSelectorItem
                       className={cn(
@@ -833,7 +845,11 @@ function PureModelSelectorCompact({
                       }}
                       value={model.id}
                     >
-                      <ModelSelectorLogo provider={logoProvider} />
+                      {model.id === AUTO_MODEL_ID ? (
+                        <SparklesIcon className="size-4" />
+                      ) : (
+                        <ModelSelectorLogo provider={logoProvider} />
+                      )}
                       <div className="flex min-w-0 flex-col">
                         <ModelSelectorName>{model.name}</ModelSelectorName>
                         {model.bestFor && (
@@ -874,7 +890,7 @@ function PureModelSelectorCompact({
                         {locked && (
                           <LockIcon className="size-3.5 text-muted-foreground/70" />
                         )}
-                        {model.id === DEFAULT_CHAT_MODEL && (
+                        {model.id === AUTO_MODEL_ID && (
                           <span className="rounded bg-foreground/10 px-1 py-0.5 font-medium text-[9px] text-foreground/70 uppercase tracking-wide">
                             Default
                           </span>
