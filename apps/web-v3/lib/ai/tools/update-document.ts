@@ -63,13 +63,25 @@ export const updateDocument = ({
         throw new Error(`No document handler found for kind: ${document.kind}`);
       }
 
-      await documentHandler.onUpdateDocument({
-        document,
-        description,
-        dataStream,
-        session,
-        modelId,
-      });
+      try {
+        await documentHandler.onUpdateDocument({
+          document,
+          description,
+          dataStream,
+          session,
+          modelId,
+        });
+      } catch (_e) {
+        // Honest failure (e.g. the image edit model returned no image) — the
+        // original document is untouched (no new version saved). Tell the model
+        // so it asks the user to retry, instead of showing a broken card.
+        return {
+          error:
+            document.kind === "image"
+              ? "The image edit didn't go through this time — your original image is unchanged. Ask the user to try again or rephrase the change."
+              : "The update didn't go through — please try again.",
+        };
+      }
 
       dataStream.write({ type: "data-finish", data: null, transient: true });
 

@@ -17,27 +17,38 @@ const IMAGE_MODEL = "openai/gpt-image-1";
 const IMAGE_EDIT_MODEL = "google/gemini-2.5-flash-image";
 
 /** Edit `priorBase64` per `instruction` (image-to-image). Returns the edited
- *  PNG base64, or null if the model returned no image (caller falls back). */
+ *  PNG base64, or null if the model returned no image after a retry.
+ *  The instruction is wrapped to preserve the original style/composition (the
+ *  edit model occasionally over-restyles a vague ask like "make it funnier"),
+ *  and retried once because it intermittently returns text-only with no image. */
 async function editImage(
   priorBase64: string,
   instruction: string
 ): Promise<string | null> {
-  const result = await generateText({
-    model: gateway.languageModel(IMAGE_EDIT_MODEL),
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: instruction },
-          { type: "image", image: priorBase64, mediaType: "image/png" },
-        ],
-      },
-    ],
-  });
-  const img = (result.files ?? []).find((f) =>
-    f.mediaType?.startsWith("image/")
-  );
-  return img?.base64 ?? null;
+  const prompt =
+    `Edit the provided image as follows: ${instruction}.\n` +
+    "Preserve the original style, medium, composition, lighting, and the existing subjects — change ONLY what the instruction asks.";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await generateText({
+      model: gateway.languageModel(IMAGE_EDIT_MODEL),
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image", image: priorBase64, mediaType: "image/png" },
+          ],
+        },
+      ],
+    });
+    const img = (result.files ?? []).find((f) =>
+      f.mediaType?.startsWith("image/")
+    );
+    if (img?.base64) {
+      return img.base64;
+    }
+  }
+  return null;
 }
 
 // Image generation is a premium-tier capability (spec §4b: media gen = credit/
@@ -68,21 +79,16 @@ export const imageDocumentHandler = createDocumentHandler<"image">({
       throw new Error(AUTH_REQUIRED_MESSAGE);
     }
     // TRUE image-to-image edit: send the EXISTING image + the instruction so the
-    // model edits the actual logo (preserving it), not regenerate from scratch.
-    let base64 = document.content
+    // model edits the actual image (preserving it), not regenerate from scratch.
+    const base64 = document.content
       ? await editImage(document.content, description)
       : null;
     if (!base64) {
-      // Fallback (no prior image / no image returned) — regenerate from an
-      // evolved prompt so the subject isn't lost.
-      const prompt = document.title
-        ? `${document.title}\n\nRevise per this instruction: ${description}`
-        : description;
-      const { image } = await generateImage({
-        model: gateway.imageModel(IMAGE_MODEL),
-        prompt,
-      });
-      base64 = image.base64;
+      // NO silent text-regeneration fallback. When the edit model returned no
+      // image, regenerating from the prompt produced a COMPLETELY different
+      // subject + style (e.g. a cartoon instead of "the same cats, funnier").
+      // Fail honestly so the user keeps their image and can retry.
+      throw new Error("IMAGE_EDIT_NO_OUTPUT");
     }
     dataStream.write({
       type: "data-imageDelta",
