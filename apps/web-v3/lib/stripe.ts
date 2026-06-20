@@ -115,7 +115,13 @@ export type InvoiceRow = {
 };
 
 export type PaymentMethodRow = {
+  /** Representative PM id (the default one when the group has a default) — used
+   * for "make default". */
   id: string;
+  /** ALL underlying Stripe PM ids this row collapses (Stripe mints a new PM per
+   * payment for the same Link wallet / re-added card). "Remove" detaches them
+   * all so a deduped twin doesn't reappear. */
+  ids: string[];
   /** Stripe PM type — "card", "link" (the 1-click wallet), etc. */
   type: string;
   brand: string;
@@ -137,6 +143,52 @@ export type BillingOverview = {
 async function existingCustomerId(userId: string): Promise<string | null> {
   const u = await getUserById(userId);
   return u?.stripeCustomerId ?? null;
+}
+
+/**
+ * Collapse duplicate payment methods (Stripe mints a fresh PM object per payment
+ * for the same Link wallet, and re-adding a card makes a new PM with the same
+ * fingerprint). Group Link by email, cards by fingerprint → one row each, with
+ * `ids` carrying every underlying PM so "Remove" detaches the whole group. The
+ * default PM is kept as the representative so its badge stays correct.
+ */
+function dedupePaymentMethods(
+  pms: Stripe.PaymentMethod[],
+  defaultPm: string | null,
+  subDefaultPm: string | null
+): PaymentMethodRow[] {
+  const seen = new Map<string, PaymentMethodRow>();
+  for (const pm of pms) {
+    const card = pm.type === "card" ? pm.card : undefined;
+    const key =
+      pm.type === "card"
+        ? `card:${card?.fingerprint ?? pm.id}`
+        : pm.type === "link"
+          ? `link:${pm.link?.email ?? pm.id}`
+          : pm.id;
+    const isDefault = pm.id === defaultPm || pm.id === subDefaultPm;
+    const existing = seen.get(key);
+    if (existing) {
+      existing.ids.push(pm.id);
+      if (isDefault) {
+        existing.isDefault = true;
+        existing.id = pm.id;
+      }
+      continue;
+    }
+    seen.set(key, {
+      id: pm.id,
+      ids: [pm.id],
+      type: pm.type,
+      brand: card?.brand ?? (pm.type === "link" ? "Link" : pm.type),
+      last4: card?.last4 ?? "",
+      expMonth: card?.exp_month ?? 0,
+      expYear: card?.exp_year ?? 0,
+      email: pm.type === "link" ? (pm.link?.email ?? null) : null,
+      isDefault,
+    });
+  }
+  return [...seen.values()];
 }
 
 /** Full billing snapshot for the native UI — subscription, invoices, cards. All
@@ -205,19 +257,7 @@ export async function getBillingOverview(
         hostedUrl: inv.hosted_invoice_url ?? null,
         pdfUrl: inv.invoice_pdf ?? null,
       })),
-      paymentMethods: pms.data.map((pm) => {
-        const card = pm.type === "card" ? pm.card : undefined;
-        return {
-          id: pm.id,
-          type: pm.type,
-          brand: card?.brand ?? (pm.type === "link" ? "Link" : pm.type),
-          last4: card?.last4 ?? "",
-          expMonth: card?.exp_month ?? 0,
-          expYear: card?.exp_year ?? 0,
-          email: pm.type === "link" ? (pm.link?.email ?? null) : null,
-          isDefault: pm.id === defaultPm || pm.id === subDefaultPm,
-        };
-      }),
+      paymentMethods: dedupePaymentMethods(pms.data, defaultPm, subDefaultPm),
     };
   } catch (e) {
     console.error("[billing] overview failed", e);
@@ -278,11 +318,17 @@ export async function setDefaultPaymentMethod(
   return true;
 }
 
-/** Detach (remove) a saved card from the customer. */
-export async function detachPaymentMethod(
-  paymentMethodId: string
-): Promise<void> {
-  await getStripe().paymentMethods.detach(paymentMethodId);
+/** Detach (remove) saved payment methods from the customer — accepts the full
+ * deduped group so a collapsed Link/card twin doesn't reappear after removal. */
+export async function detachPaymentMethods(ids: string[]): Promise<void> {
+  const stripe = getStripe();
+  await Promise.all(
+    ids.map((id) =>
+      stripe.paymentMethods.detach(id).catch(() => {
+        // Already detached / unknown — ignore so one bad id doesn't fail the lot.
+      })
+    )
+  );
 }
 
 /**

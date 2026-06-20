@@ -44,6 +44,7 @@ type BillingOverview = {
   }[];
   paymentMethods: {
     id: string;
+    ids: string[];
     type: string;
     brand: string;
     last4: string;
@@ -391,8 +392,8 @@ export default function BillingPage() {
                       onClick={() =>
                         billingAction(
                           "payment-method",
-                          { action: "detach", paymentMethodId: pm.id },
-                          "Card removed."
+                          { action: "detach", paymentMethodIds: pm.ids },
+                          "Payment method removed."
                         )
                       }
                       type="button"

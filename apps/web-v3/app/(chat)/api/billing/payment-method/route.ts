@@ -1,14 +1,15 @@
 import { auth } from "@/app/(auth)/auth";
 import {
-  detachPaymentMethod,
+  detachPaymentMethods,
   isCreditConfigured,
   setDefaultPaymentMethod,
 } from "@/lib/stripe";
 
 /**
- * Manage saved cards — set default or remove. Body: { action: "default" |
- * "detach", paymentMethodId }. Detaching the default card just clears it; the
- * user can add another via the Payment Element.
+ * Manage saved payment methods — set default or remove. Body:
+ *   { action: "default", paymentMethodId }            — make this PM the default
+ *   { action: "detach",  paymentMethodIds: string[] } — remove the whole deduped
+ *                                                        group (all Link/card twins)
  */
 export async function POST(request: Request) {
   const session = await auth();
@@ -19,29 +20,41 @@ export async function POST(request: Request) {
     return new Response("Billing is not available.", { status: 503 });
   }
 
-  let action: string;
-  let paymentMethodId: string;
+  let body: {
+    action?: string;
+    paymentMethodId?: string;
+    paymentMethodIds?: string[];
+  };
   try {
-    const body = await request.json();
-    action = String(body?.action);
-    paymentMethodId = String(body?.paymentMethodId);
+    body = await request.json();
   } catch {
     return new Response("Bad request", { status: 400 });
   }
-  if (!paymentMethodId || (action !== "default" && action !== "detach")) {
-    return Response.json({ error: "Bad request." }, { status: 400 });
-  }
+  const action = String(body?.action);
 
   try {
     if (action === "default") {
-      await setDefaultPaymentMethod(session.user.id, paymentMethodId);
+      if (!body.paymentMethodId) {
+        return Response.json({ error: "Bad request." }, { status: 400 });
+      }
+      await setDefaultPaymentMethod(session.user.id, body.paymentMethodId);
+    } else if (action === "detach") {
+      const ids = Array.isArray(body.paymentMethodIds)
+        ? body.paymentMethodIds.filter(
+            (x): x is string => typeof x === "string"
+          )
+        : [];
+      if (ids.length === 0) {
+        return Response.json({ error: "Bad request." }, { status: 400 });
+      }
+      await detachPaymentMethods(ids);
     } else {
-      await detachPaymentMethod(paymentMethodId);
+      return Response.json({ error: "Unknown action." }, { status: 400 });
     }
     return Response.json({ ok: true });
   } catch (_e) {
     return Response.json(
-      { error: "Couldn't update the card." },
+      { error: "Couldn't update the payment method." },
       { status: 500 }
     );
   }
