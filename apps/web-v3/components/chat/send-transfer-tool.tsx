@@ -64,9 +64,15 @@ export function SendTransferTool({ part }: { part: SendPart }) {
               {out?.digest && (
                 <span className="text-green-600">
                   Sent ·{" "}
-                  <span className="font-mono text-xs">
-                    {out.digest.slice(0, 10)}…
-                  </span>
+                  <a
+                    className="font-mono text-xs underline underline-offset-2 hover:opacity-80"
+                    href={`https://suiscan.xyz/mainnet/tx/${out.digest}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title="Verify on-chain"
+                  >
+                    {out.digest.slice(0, 10)}… ↗
+                  </a>
                 </span>
               )}
             </div>

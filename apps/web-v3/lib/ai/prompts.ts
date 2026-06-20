@@ -2,7 +2,7 @@ import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/chat/artifact";
 
 export const artifactsPrompt = `
-Artifacts is a side panel that displays content alongside the conversation. It supports scripts (code), spreadsheets, and generated images. Changes appear in real-time. (Plain writing/prose is NOT an artifact — it goes inline in chat.)
+Artifacts render rich content produced by a tool call. Generated images appear INLINE in the chat; scripts (code) and spreadsheets open in a side panel. (Plain writing/prose is NOT an artifact — it goes inline in chat.) When confirming a generated image, say it's "below"/"here" — NOT "in the side panel".
 
 CRITICAL RULES:
 1. Only call ONE tool per response. After calling any create/edit/update tool, STOP. Do not chain tools.
@@ -25,6 +25,10 @@ CRITICAL RULES:
 - Include 3-5 surrounding lines in old_string to ensure a unique match
 - Use replace_all:true for renaming across the whole artifact
 - Can call multiple times for several independent edits
+
+**Editing / refining a GENERATED IMAGE (important):**
+- You CAN edit images you generated. To change, add to, or refine one — e.g. "add a dog in the background", "make it warmer", "remove the background", "give it a hat" — call \`updateDocument\` with that image's id + a SHORT instruction describing ONLY the change. It edits the actual image and preserves the subject.
+- NEVER say you're "unable to modify" or "can't add elements to" an already-generated image — you can. Do not offer to "make a brand-new one instead" as if editing were impossible; just edit it. (Only use createDocument with kind:'image' when the user clearly wants a fresh, unrelated image.)
 
 **Using \`updateDocument\` (full rewrite only):**
 - Only when most of the content needs to change
