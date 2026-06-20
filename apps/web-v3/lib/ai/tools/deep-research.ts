@@ -1,7 +1,10 @@
-import { generateText, stepCountIs, tool } from "ai";
+import { generateObject, generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { webSearch } from "./web-search";
+
+/** Strip leaked DeepSeek tool-call delimiter tokens (fullwidth ｜/▁). */
+const stripTokens = (t: string) => t.replace(/<｜[^\s<>]*>?\s?/gu, "");
 
 /**
  * deep_research — a SUBAGENT (SPEC_AUDRIC_INTELLIGENCE §3b, P3).
@@ -38,9 +41,51 @@ export const deepResearch = tool({
       stopWhen: stepCountIs(8),
       abortSignal,
     });
-    // Defensive: strip any leaked DeepSeek tool-call delimiter tokens so they
-    // can't pollute the brief the main model synthesizes from.
-    const findings = text.replace(/<｜[^\s<>]*>?\s?/gu, "");
+    let findings = stripTokens(text);
+
+    // Reflection (P4, evaluator-optimizer — SPEC §3c). A strict editor checks
+    // the synthesis for uncited/overconfident claims + gaps; if it's not sound,
+    // ONE revise pass. Lives here (not in the streamed chat) because the
+    // subagent is non-streaming, so reflection costs no UX responsiveness — it's
+    // hidden inside the "Researching in depth…" phase. Fail-open: any error
+    // keeps the draft (never block the answer on the self-check).
+    try {
+      const { object: critique } = await generateObject({
+        model: getLanguageModel(RESEARCH_MODEL),
+        schema: z.object({
+          sound: z
+            .boolean()
+            .describe(
+              "True if the synthesis answers the task, is well-supported with inline citations, balanced, and free of overconfident or uncited claims."
+            ),
+          issues: z
+            .array(z.string())
+            .describe(
+              "Specific, actionable problems to fix (uncited claims, gaps vs the task, overstated certainty). Empty when sound."
+            ),
+        }),
+        system:
+          "You are a strict research editor. Judge the synthesis against the task ONLY on what it contains — do not require new facts. Flag uncited claims, unsupported/overconfident statements, and gaps versus the task. Be decisive; minor wording is not an issue.",
+        prompt: `Task: ${task}\n\nSynthesis:\n${findings}`,
+        abortSignal,
+      });
+      if (!critique.sound && critique.issues.length > 0) {
+        const { text: revised } = await generateText({
+          model: getLanguageModel(RESEARCH_MODEL),
+          system:
+            "Improve the research synthesis by fixing the listed issues: hedge or remove overconfident/uncited claims, tighten structure, and note any gaps honestly. KEEP all valid content and inline markdown citations. Do NOT invent facts or sources — if a gap can't be closed from the existing material, state it plainly.",
+          prompt: `Task: ${task}\n\nIssues to fix:\n- ${critique.issues.join("\n- ")}\n\nCurrent synthesis:\n${findings}`,
+          abortSignal,
+        });
+        const revisedClean = stripTokens(revised);
+        if (revisedClean.trim().length > 0) {
+          findings = revisedClean;
+        }
+      }
+    } catch {
+      /* reflection failed → keep the draft; never block on the self-check */
+    }
+
     return { findings };
   },
 });
