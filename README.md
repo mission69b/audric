@@ -1,85 +1,73 @@
 # Audric
 
-**Your money, handled.**
+**Private, decentralized AI — truly yours.**
 
-Conversational finance on [Sui](https://sui.io). Save, pay, send, swap, borrow — all by talking to your AI financial agent. Non-custodial, gas sponsored, every action confirmed by a tap. Built on [t2000](https://t2000.ai) infrastructure.
+A private-by-default, permissionless, multi-model AI agent on [Sui](https://sui.io): sign in with Google → get a non-custodial zkLogin Passport wallet → chat with the best open and frontier models, search the web, generate images, do deep research, and move your own USDC — no account, no KYC, no seed phrase. Built on [t2000](https://t2000.ai) infrastructure.
 
 **Live at [audric.ai](https://audric.ai)**
 
 ---
 
-## The five products
+## What you get
 
-Audric is exactly five products — everything you can do is one of them.
-
-| Product | Description |
-|---------|-------------|
-| 🪪 **Passport** | Trust layer — sign in with Google, non-custodial Sui wallet in seconds, every write taps to confirm, gas sponsored. Wraps every other product. |
-| 🧠 **Intelligence** | The brain (the moat) — an agent that understands your finances, reasons about each decision behind safety guards, and remembers context across sessions. |
-| 💰 **Finance** | Manage your money on Sui — Save (NAVI lending, USDC/USDsui), Credit (borrow against savings with the health factor always visible), Swap (Cetus best-route across 20+ DEXs), and interactive charts — from chat. |
-| 💸 **Pay** | Send USDC to anyone, receive via payment links + QR. Free, global, instant. No bank, no borders, no fees. |
-| 🛒 **Store** | Creator marketplace at `audric.ai/username`. Sell AI-generated music, art, and ebooks in USDC. **Coming soon.** |
+- **Private & permissionless** — zero data retention by default (your chats are never training data); no KYC, no seed phrase. Sign in with Google, get a wallet in seconds.
+- **The best models, chosen for you** — open/uncensored models (Kimi, DeepSeek, Grok, GPT-OSS) and frontier models (Claude, GPT-5.5, Gemini). **Auto** picks the right one for every task automatically.
+- **A real agent** — live web search, image generation, and a **deep-research** subagent that gathers and synthesizes cited sources.
+- **Your wallet, your money** — a non-custodial Passport wallet. Send USDC + USDsui to anyone, free, instant, and gasless.
+- **Recipes** — curated, pay-per-use live-data flows (markets, tickers) paid in USDC from your Passport.
+- **Private memory** — opt-in, encrypted, deletable anytime.
 
 ## How it works
 
 1. **Sign in with Google** — no seed phrase, no keys, no downloads (zkLogin).
-2. **Fund your wallet** — deposit USDC to your Sui address.
-3. **Talk** — tell Audric what you need.
+2. **Chat** — ask anything; Audric picks the right model, searches, researches, creates, or moves money.
+3. **You decide** — every money action waits on your tap-to-confirm. Audric never moves funds on its own.
 
-Your money lives in a non-custodial wallet. Audric proposes transactions; you approve every one with a tap. Gas is sponsored, so you never need SUI to transact.
+## Audric Intelligence
 
-## Audric Intelligence — the moat
+Not a chatbot — an agent that figures out what each turn needs and does it, using the best models to their fullest:
 
-> **Not a chatbot. A financial agent.** Four systems work together to understand your money, reason about decisions, and get smarter over time. Every action still waits on your Passport tap-to-confirm.
-
-- **🎛️ Agent Harness** — 26 tools (18 read + 8 write) for balances, savings, lending, swaps, payments, payment links, on-chain analytics, and pricing. Read tools run in parallel; writes require your confirmation and execute sequentially.
-- **⚡ Reasoning Engine** — adaptive thinking effort per turn, 12 safety guards across three tiers (Safety > Financial > UX), preflight input validation, and prompt caching. Multi-step intents are guided by skills (markdown playbooks shipped from `@t2000/mcp`).
-- **🧠 Memory** — long-term facts (preferences, goals, risk tolerance, on-chain patterns) in `@mysten-incubation/memwal`, recalled each turn; plus a daily on-chain orientation snapshot. Used silently to calibrate answers — never surfaced as nudges.
-- **📓 AdviceLog** — every recommendation is logged so the agent doesn't contradict itself across sessions.
-
-Tool results render as **rich cards** (per-asset balance, savings, health, rates, swap quotes with route diagrams, receipts, payment links, analytics) and **interactive canvases** (portfolio timeline, yield projector, health simulator, and more) delivered in-chat.
+- **Auto routing** — a per-turn classifier picks the model + reasoning effort + step budget for the task (a quick reply on a fast free model; deep analysis on a frontier model), within what you're entitled to.
+- **Deep research** — for multi-faceted questions, an isolated subagent runs several searches and returns a cited synthesis, then self-reviews it.
+- **Opt-in surfaces** — artifacts (side-panel docs/code/images) and paid Recipes activate only when you ask, so a normal question gets a clean inline answer with no surprises.
 
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
-| Framework | Next.js 16 (App Router, Turbopack), React 19 |
-| AI | AI SDK v6 (`useChat`) driving `@t2000/engine`, via Vercel AI Gateway |
-| Auth | zkLogin via Enoki (Google OAuth → Sui wallet), sponsored gas |
-| Chain | `@mysten/sui` v2.x + `@mysten/payment-kit` |
-| Data | Neon Postgres (Prisma, 13 models); Upstash Redis for sessions; `@mysten-incubation/memwal` for agent memory |
-| Styling | Tailwind v4 + Geist Design System. Token primitives from `@t2000/ui/tokens`; the shadcn layer + Audric's signal accent in `app/globals.css` (guarded by `pnpm check:ads`) |
+| Framework | Next.js 16 (App Router), React 19 |
+| AI | AI SDK v6 (`ai`) over the Vercel AI Gateway — chat, web search, image, reasoning; zero-data-retention by default |
+| Auth | zkLogin Passport — `@mysten/enoki` + `@t2000/sdk` (Google → non-custodial Sui wallet, ~7-day httpOnly session) |
+| Chain | `@t2000/sdk` (gRPC) — gasless USDC/USDsui send, swap, x402 pay |
+| Data | Neon Postgres + Drizzle (chats / messages / credit ledger) |
+| Memory | `@mysten-incubation/memwal` — opt-in, off by default |
+| Storage | private blob seam (local-fs fallback today; Walrus + Seal is the post-launch decentralized swap) |
+| Billing | Stripe — card top-up → metered premium models; P2P + Recipes paid in USDC |
+| Styling | Tailwind + shadcn/ui + AI Elements |
 | Hosting | Vercel |
 
 ## Architecture
 
 ```
-audric.ai (this repo, apps/web-v2)
-├── @t2000/engine        ← Agent engine (tools, reasoning, MCP, streaming)
-├── @t2000/sdk           ← Core SDK (wallet, balance, transactions)
-├── @t2000/ui            ← Geist DS token primitives
-├── @mysten/payment-kit  ← Sui payment links / pay-URI client (USDC)
-└── @mysten/sui          ← Sui blockchain client
+audric.ai → apps/web-v3   ← the live app (this is where work happens)
+            apps/web-v2   ← legacy/frozen (legacy.audric.ai); the old finance app on @t2000/*@4.x
 
-t2000.ai (separate repo)
-└── CLI, SDK, MCP server, gateway, contracts — the infrastructure that powers Audric
+@t2000/sdk   ← wallet + payments (send / swap / x402 pay), gRPC
+t2000.ai     ← separate repo: CLI, SDK, MCP, gateway, contracts — the infra that powers Audric
 ```
 
-See [`apps/web-v2/README.md`](./apps/web-v2/README.md) for app-level docs (routes, scripts, environment).
+See [`apps/web-v3/README.md`](./apps/web-v3/README.md) for app-level docs (stack, running locally, deploy).
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev          # Start dev server (Turbo + Next.js, port 3001)
-pnpm build        # Production build
-pnpm typecheck    # TypeScript check (tsc --noEmit)
-pnpm lint         # Biome via ultracite
-pnpm check:ads    # Guard against legacy ADS-token reintroduction
-pnpm test         # Vitest
+pnpm --filter web-v3 dev          # http://localhost:3002
+pnpm --filter web-v3 exec tsc --noEmit   # typecheck
+pnpm --filter web-v3 exec biome check     # lint/format (Biome / ultracite)
 ```
 
-Copy `.env.example` to `.env.local` and fill in the required values — they're validated at boot by the Zod schema in `apps/web-v2/lib/env.ts`. See `CLAUDE.md` for the full list.
+Copy `apps/web-v3/.env.example` → `.env.local` and fill the required values — validated at boot by `apps/web-v3/lib/env.ts`.
 
 ## Brand
 
@@ -89,4 +77,4 @@ Copy `.env.example` to `.env.local` and fill in the required values — they're 
 
 ## License
 
-[AGPL-3.0](./LICENSE). Audric is open source, but its network-use copyleft means anyone who runs a modified version as a hosted service must release their changes under the same license. (The t2000 infrastructure packages are MIT.)
+[AGPL-3.0](./LICENSE). Audric is open source; its network-use copyleft means anyone running a modified version as a hosted service must release their changes under the same license. (The t2000 infrastructure packages are MIT.)
