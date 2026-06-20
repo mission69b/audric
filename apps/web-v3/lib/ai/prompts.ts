@@ -72,18 +72,24 @@ export const systemPrompt = ({
   supportsTools,
   isAuthed,
   memoryOn,
+  memoryRecall,
   walletAddress,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
   isAuthed: boolean;
   memoryOn?: boolean;
+  /** Recalled-memory `<memory_recall>` block, injected into the LEADING system
+   * prompt (model-agnostic — Gemini rejects mid-conversation system messages).
+   * See `recallMemoryBlock` in lib/memwal.ts. */
+  memoryRecall?: string | null;
   walletAddress?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
+  const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
 
   if (!supportsTools) {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}\n\n${requestPrompt}${recall}`;
   }
 
   // Wallet tools + Recipes are wallet-gated → only offer them to signed-in users.
@@ -93,7 +99,9 @@ export const systemPrompt = ({
   const wallet = isAuthed
     ? `\n\n${walletPrompt}${addrLine}\n\n${recipesPrompt}`
     : "";
-  const memory = isAuthed && memoryOn ? `\n\n${memoryPrompt}` : "";
+  // Recalled facts FIRST, then the memory instruction — so its "injected above"
+  // wording stays accurate.
+  const memory = isAuthed && memoryOn ? `${recall}\n\n${memoryPrompt}` : "";
   return `${regularPrompt}\n\n${requestPrompt}\n\n${boundariesPrompt}\n\n${artifactsPrompt}\n\n${searchPrompt}${wallet}${memory}`;
 };
 

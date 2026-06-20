@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ZkLoginProvider } from "@/components/auth/zklogin-provider";
@@ -99,6 +100,7 @@ export default function RootLayout({
             <TooltipProvider>{children}</TooltipProvider>
           </ZkLoginProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

@@ -57,7 +57,7 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
-import { isMemoryConfigured, withUserMemory } from "@/lib/memwal";
+import { isMemoryConfigured, recallMemoryBlock } from "@/lib/memwal";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import { isCreditConfigured, maybeAutoRecharge } from "@/lib/stripe";
 import type { ChatMessage } from "@/lib/types";
@@ -300,22 +300,28 @@ export async function POST(request: Request) {
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
         const baseModel = getLanguageModel(chatModel);
-        // withMemWal injects a recall system message MID-conversation (before the
-        // last user msg). Vertex/Gemini rejects any system message not at the
-        // start ("system messages are only supported at the beginning") → 400.
-        // Skip the recall wrap for Gemini (explicit save_memory still works);
-        // proper fix = inject recall into the base system prompt (model-agnostic).
-        const isGemini = chatModel.startsWith("google/");
+        // Recall this user's memories and inject them into the LEADING system
+        // prompt (model-agnostic). The withMemWal wrapper used to splice recall
+        // as a mid-conversation system message, which Vertex/Gemini rejects
+        // ("system messages are only supported at the beginning") → 400.
+        const recallQuery =
+          message?.parts
+            ?.filter((p) => p.type === "text")
+            .map((p) => p.text)
+            .join(" ")
+            .trim() ?? "";
+        const memoryRecall =
+          memoryOn && session?.user && recallQuery
+            ? await recallMemoryBlock(session.user.id, recallQuery)
+            : null;
         const result = streamText({
-          model:
-            memoryOn && session?.user && !isGemini
-              ? withUserMemory(baseModel, session.user.id)
-              : baseModel,
+          model: baseModel,
           system: systemPrompt({
             requestHints,
             supportsTools,
             isAuthed: Boolean(session?.user),
             memoryOn,
+            memoryRecall,
             walletAddress: session?.user?.id,
           }),
           messages: modelMessages,

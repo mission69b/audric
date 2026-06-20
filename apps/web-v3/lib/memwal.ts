@@ -12,8 +12,6 @@ import "server-only";
  */
 
 import { MemWal } from "@mysten-incubation/memwal";
-import { withMemWal } from "@mysten-incubation/memwal/ai";
-import type { LanguageModel } from "ai";
 import { env } from "@/lib/env";
 
 const DEFAULT_RELAYER = "https://relayer.memory.walrus.xyz";
@@ -38,20 +36,40 @@ export function getMemWal(namespace: string): MemWal {
 }
 
 /**
- * Wrap a model with recall-before-generation for one user. autoSave is OFF —
- * capture is explicit-only (the saveMemory tool), per the privacy-by-default
- * decision. The namespace scopes recall to this user's memories.
+ * Recall this user's relevant memories for `query` and format them as a
+ * `<memory_recall>` block to inject at the START of the system prompt.
+ *
+ * Why not the `withMemWal` model wrapper? It splices the recall as a system
+ * message BEFORE the last user message (mid-conversation), which Vertex/Gemini
+ * rejects ("system messages are only supported at the beginning"). Injecting
+ * into the leading system prompt instead is model-agnostic — it works for every
+ * provider in the lineup, Gemini included.
+ *
+ * autoSave stays OFF (capture is explicit-only via the saveMemory tool). The
+ * namespace scopes recall to this user. Returns null when memory is
+ * unconfigured, the query is empty, or nothing relevant is found. Never throws
+ * — a recall failure must not break the turn.
  */
-export function withUserMemory(
-  model: LanguageModel,
-  passportAddress: string
-): LanguageModel {
-  return withMemWal(model, {
-    ...memwalConfig(passportAddress),
-    autoSave: false,
-    maxMemories: 6,
-    // SDK default similarity floor (0.3). Stricter values (e.g. 0.45) drop
-    // short facts against a verbose query — too aggressive for recall.
-    minRelevance: 0.3,
-  }) as LanguageModel;
+export async function recallMemoryBlock(
+  passportAddress: string,
+  query: string
+): Promise<string | null> {
+  if (!(isMemoryConfigured() && query.trim())) {
+    return null;
+  }
+  try {
+    const { results } = await getMemWal(passportAddress).recall({
+      query,
+      topK: 6,
+      // distance = 1 − similarity; 0.7 mirrors the prior 0.3 similarity floor.
+      maxDistance: 0.7,
+    });
+    if (results.length === 0) {
+      return null;
+    }
+    const lines = results.map((m) => `- ${m.text}`).join("\n");
+    return `<memory_recall>\nKnown facts about this user, from their private memory. Use them naturally; never invent facts not listed here:\n${lines}\n</memory_recall>`;
+  } catch {
+    return null;
+  }
 }
