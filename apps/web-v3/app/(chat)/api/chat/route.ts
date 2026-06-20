@@ -196,6 +196,17 @@ export async function POST(request: Request) {
     // research questions answer via the free web_search path instead.
     const isExplicitRecipe = /\brun\b[\s\S]*\brecipe\b/i.test(routeText);
 
+    // Artifacts (side-panel docs/code/sheets/images) are likewise opt-in: only
+    // when the user shows creation intent (or a recipe synthesizes into one).
+    // A plain question → inline answer, so the model can't both write the full
+    // answer inline AND duplicate it into an artifact. Deterministic, not
+    // model-dependent. (Verb-focused; "code" excluded — it matches "AI code …".)
+    const isExplicitArtifact =
+      /\b(write|draft|compose|create|generate|build|make|design|implement|rewrite|draw|illustrate|essay|spreadsheet|poem|haiku)\b/i.test(
+        routeText
+      );
+    const artifactsActive = isExplicitArtifact || isExplicitRecipe;
+
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
     const requestedModel = routeDecision
@@ -418,18 +429,24 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
-                  "createDocument",
-                  "editDocument",
-                  "updateDocument",
-                  "requestSuggestions",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
                   "send_transfer",
+                  ...(artifactsActive
+                    ? ([
+                        "createDocument",
+                        "editDocument",
+                        "updateDocument",
+                        "requestSuggestions",
+                      ] as ActiveTool[])
+                    : []),
                   ...(isExplicitRecipe ? (["run_recipe"] as ActiveTool[]) : []),
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                 ]
-              : ["web_search", "createDocument"];
+              : isExplicitArtifact
+                ? ["web_search", "createDocument"]
+                : ["web_search"];
 
         const result = streamText({
           model: baseModel,
@@ -440,6 +457,8 @@ export async function POST(request: Request) {
             memoryOn,
             memoryRecall,
             walletAddress: session?.user?.id,
+            artifactsActive,
+            recipesActive: isExplicitRecipe,
           }),
           messages: modelMessages,
           // Adaptive step budget from the router (difficulty-scaled); default 5.

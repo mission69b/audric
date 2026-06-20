@@ -74,6 +74,8 @@ export const systemPrompt = ({
   memoryOn,
   memoryRecall,
   walletAddress,
+  artifactsActive,
+  recipesActive,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -84,6 +86,13 @@ export const systemPrompt = ({
    * See `recallMemoryBlock` in lib/memwal.ts. */
   memoryRecall?: string | null;
   walletAddress?: string;
+  /** Only advertise the artifact tools when they're actually active this turn
+   * (explicit creation intent / recipe) — otherwise the model narrates "I'll
+   * create a document" and double-outputs (inline + artifact). */
+  artifactsActive?: boolean;
+  /** Only advertise Recipes when `run_recipe` is active this turn — otherwise
+   * the model announces "I'll run the recipe" it can't actually run. */
+  recipesActive?: boolean;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -92,17 +101,21 @@ export const systemPrompt = ({
     return `${regularPrompt}\n\n${requestPrompt}${recall}`;
   }
 
+  // Artifacts are opt-in per turn — advertise them only when active (else the
+  // model treats a plain question as a "write a document" task).
+  const artifacts = artifactsActive ? `\n\n${artifactsPrompt}` : "";
+
   // Wallet tools + Recipes are wallet-gated → only offer them to signed-in users.
   const addrLine = walletAddress
     ? `\nThe user's Passport wallet address is ${walletAddress} — this is also their receive address. When they ask "what's my address" / "where do I receive", give it directly; don't tell them to look elsewhere.`
     : "";
   const wallet = isAuthed
-    ? `\n\n${walletPrompt}${addrLine}\n\n${recipesPrompt}`
+    ? `\n\n${walletPrompt}${addrLine}${recipesActive ? `\n\n${recipesPrompt}` : ""}`
     : "";
   // Recalled facts FIRST, then the memory instruction — so its "injected above"
   // wording stays accurate.
   const memory = isAuthed && memoryOn ? `${recall}\n\n${memoryPrompt}` : "";
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${boundariesPrompt}\n\n${artifactsPrompt}\n\n${searchPrompt}${wallet}${memory}`;
+  return `${regularPrompt}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}${wallet}${memory}`;
 };
 
 export const searchPrompt = `Live web search: when the user asks about current events, news, live prices, recent releases, or anything past your training data, call \`web_search\` with a clear query. Then write the answer in your OWN words using the returned results, and cite sources inline as markdown links. Never say you can't access current information — you can, via web_search.`;
