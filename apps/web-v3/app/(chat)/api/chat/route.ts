@@ -307,13 +307,14 @@ export async function POST(request: Request) {
       routeDecision?.classification?.intent === "research" ||
       routeDecision?.classification?.needsDeepResearch === true;
 
-    // Research runs ~12 steps — on Auto, route the loop to the cheap, reliable
-    // research model (DeepSeek) instead of a frontier pick (far cheaper across
-    // many steps). Auto only (explicit model picks are respected) + premium-
-    // entitled. This catches the chip flow's follow-up turn too, where the
-    // router classified only the topic (not "research").
+    // Research runs ~12 steps — on Auto, route the loop to a REASONING model
+    // (Gemini 3 Pro) so its thinking streams as reasoning parts that interleave
+    // with the searches in the chain-of-thought timeline (the "premium",
+    // Claude-like research feel) — and it does better follow-up searches. Auto
+    // only (explicit model picks are respected) + premium-entitled. Catches the
+    // chip flow's follow-up turn too, where the router classified only the topic.
     if (routeDecision && researchActive && canUsePremium) {
-      chatModel = "deepseek/deepseek-v3.2";
+      chatModel = "google/gemini-3-pro-preview";
     }
 
     // Keep artifacts active when this chat ALREADY has one — so refinement turns
