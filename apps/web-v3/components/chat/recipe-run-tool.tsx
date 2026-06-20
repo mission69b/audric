@@ -10,12 +10,15 @@
  * into a document. The user always confirms the price first — Passport "you decide".
  */
 
+import { CheckIcon, DotIcon, Loader2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
+import { ChainOfThoughtStep } from "@/components/ai-elements/chain-of-thought";
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { useActiveChat } from "@/hooks/use-active-chat";
 import { getRecipe, recipePriceUsd } from "@/lib/recipes/catalog";
 import { runRecipe, type StepStatus } from "@/lib/recipes/run";
 import type { ChatMessage } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -85,19 +88,17 @@ export function RecipeRunTool({ part }: { part: RecipePart }) {
                       </span>
                     )}
                   </div>
-                  {out.steps.map((s) => (
-                    <div
-                      className="flex items-center justify-between text-muted-foreground text-xs"
-                      key={s.label}
-                    >
-                      <span>{s.label}</span>
-                      <span
-                        className={s.ok ? "text-green-600" : "text-red-600"}
-                      >
-                        {s.ok ? "✓" : "failed"}
-                      </span>
-                    </div>
-                  ))}
+                  <div className="mt-1 space-y-3">
+                    {out.steps.map((s) => (
+                      <ChainOfThoughtStep
+                        className={cn(!s.ok && "text-red-600")}
+                        icon={s.ok ? CheckIcon : XIcon}
+                        key={s.label}
+                        label={s.label}
+                        status="complete"
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -170,35 +171,37 @@ export function RecipeRunTool({ part }: { part: RecipePart }) {
             <div className="mt-0.5 text-muted-foreground text-xs">
               {recipe.tagline}
             </div>
-            <div className="mt-3 space-y-1">
+            <div className="mt-3 space-y-3">
               {recipe.steps.map((s) => {
                 const st = stepStatus[s.key];
+                const status =
+                  st === "done"
+                    ? "complete"
+                    : st === "running"
+                      ? "active"
+                      : "pending";
+                const icon =
+                  st === "done"
+                    ? CheckIcon
+                    : st === "error"
+                      ? XIcon
+                      : st === "running"
+                        ? Loader2Icon
+                        : DotIcon;
                 return (
-                  <div
-                    className="flex items-center justify-between text-xs"
+                  <ChainOfThoughtStep
+                    className={cn(
+                      st === "error" && "text-red-600",
+                      st === "running" && "[&_svg]:animate-spin"
+                    )}
+                    description={
+                      st ? s.service : `${s.service} · ${fmtUsd(s.priceUsd)}`
+                    }
+                    icon={icon}
                     key={s.key}
-                  >
-                    <span className="text-muted-foreground">
-                      {s.label}
-                      <span className="ml-1 opacity-60">· {s.service}</span>
-                    </span>
-                    <span className="tabular-nums">
-                      {st === "running" && (
-                        <span className="text-muted-foreground">…</span>
-                      )}
-                      {st === "done" && (
-                        <span className="text-green-600">✓</span>
-                      )}
-                      {st === "error" && (
-                        <span className="text-red-600">failed</span>
-                      )}
-                      {!st && (
-                        <span className="text-muted-foreground/60">
-                          {fmtUsd(s.priceUsd)}
-                        </span>
-                      )}
-                    </span>
-                  </div>
+                    label={s.label}
+                    status={status}
+                  />
                 );
               })}
             </div>
