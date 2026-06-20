@@ -1,6 +1,7 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
 import type { ArtifactKind } from "@/components/chat/artifact";
+import type { askUser } from "./ai/tools/ask-user";
 import type { balanceCheck } from "./ai/tools/balance-check";
 import type { createDocument } from "./ai/tools/create-document";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
@@ -37,6 +38,7 @@ type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
 type webSearchTool = InferUITool<typeof webSearch>;
+type askUserTool = InferUITool<typeof askUser>;
 type balanceCheckTool = InferUITool<ReturnType<typeof balanceCheck>>;
 type transactionHistoryTool = InferUITool<
   ReturnType<typeof transactionHistory>
@@ -51,6 +53,7 @@ export type ChatTools = {
   updateDocument: updateDocumentTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
+  ask_user: askUserTool;
   balance_check: balanceCheckTool;
   transaction_history: transactionHistoryTool;
   resolve_suins: resolveSuinsTool;

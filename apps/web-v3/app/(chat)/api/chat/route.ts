@@ -34,6 +34,7 @@ import {
   ensureGeminiThoughtSignatures,
   isGemini3,
 } from "@/lib/ai/thought-signatures";
+import { askUser } from "@/lib/ai/tools/ask-user";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
@@ -79,6 +80,7 @@ export const maxDuration = 300;
 
 type ActiveTool =
   | "web_search"
+  | "ask_user"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
@@ -483,6 +485,7 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
+                  "ask_user",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -499,8 +502,8 @@ export async function POST(request: Request) {
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                 ]
               : isExplicitArtifact
-                ? ["web_search", "createDocument"]
-                : ["web_search"];
+                ? ["web_search", "ask_user", "createDocument"]
+                : ["web_search", "ask_user"];
 
         const result = streamText({
           model: baseModel,
@@ -583,6 +586,8 @@ export async function POST(request: Request) {
             // parallelSearch) were both verified to NOT synthesize on our
             // open-model roster (S.478 A/B). Available to everyone (incl. anon).
             web_search: webSearch,
+            // Client-executed clarifying-question form (no server execute).
+            ask_user: askUser,
             createDocument: createDocument({
               session,
               dataStream,
