@@ -36,6 +36,7 @@ import {
 } from "@/lib/ai/thought-signatures";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import { deepResearch } from "@/lib/ai/tools/deep-research";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
@@ -79,6 +80,7 @@ export const maxDuration = 300;
 
 type ActiveTool =
   | "web_search"
+  | "deep_research"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
@@ -206,6 +208,17 @@ export async function POST(request: Request) {
         routeText
       );
     const artifactsActive = isExplicitArtifact || isExplicitRecipe;
+
+    // Deep-research subagent (P3) — offered when a turn warrants deep, multi-
+    // source research. On Auto we trust the router's `needsDeepResearch`
+    // classification; on an explicit model pick we offer it and let the model
+    // decide. Authed-only (it spends gateway calls; anon stays on single
+    // web_search). Free to the user.
+    const deepResearchActive =
+      Boolean(session?.user) &&
+      (routeDecision
+        ? routeDecision.classification?.needsDeepResearch === true
+        : true);
 
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
@@ -429,6 +442,9 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
+                  ...(deepResearchActive
+                    ? (["deep_research"] as ActiveTool[])
+                    : []),
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -531,6 +547,9 @@ export async function POST(request: Request) {
             }),
             ...(session?.user
               ? {
+                  // Deep-research subagent (P3) — isolated multi-search loop →
+                  // cited synthesis. Authed-only; free to the user.
+                  deep_research: deepResearch,
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
                     session,
