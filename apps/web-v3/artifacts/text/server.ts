@@ -12,19 +12,21 @@ import { createDocumentHandler } from "@/lib/artifacts/server";
  * model-agnostic.
  */
 export function flattenContext(messages: ModelMessage[]): string {
+  // ONLY fetched data (tool results) — NOT plain user/assistant text. A purely
+  // creative request ("write a haiku") carries no tool data → this returns ""
+  // → the handler uses its CREATIVE prompt ("write about the topic") instead of
+  // the data-grounded "use ONLY the data, do NOT invent" prompt. (The latter,
+  // fed the user's instruction as "data", muzzled creative artifacts into blank
+  // output — there's nothing to "use" and inventing is forbidden.) Recipe / web-
+  // search synthesis still grounds correctly: their data lives in tool-results.
   const chunks: string[] = [];
   for (const m of messages) {
     const content = m.content;
     if (typeof content === "string") {
-      if (content.trim()) {
-        chunks.push(content);
-      }
       continue;
     }
     for (const part of content) {
-      if (part.type === "text" && part.text.trim()) {
-        chunks.push(part.text);
-      } else if (part.type === "tool-result") {
+      if (part.type === "tool-result") {
         const out = (part as { output?: unknown }).output;
         if (out != null) {
           chunks.push(typeof out === "string" ? out : JSON.stringify(out));
