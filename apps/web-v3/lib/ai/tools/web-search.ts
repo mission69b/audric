@@ -38,6 +38,15 @@ export const webSearch = tool({
       s.sourceType === "url" ? [{ url: s.url, title: s.title ?? s.url }] : []
     );
 
-    return { answer: text, sources: urls };
+    // Safety cap: research turns run ~12 searches; an unbounded answer could
+    // accumulate and blow the context budget. Normal Sonar answers are well
+    // under this, so the cap only catches pathological cases.
+    const MAX_ANSWER_CHARS = 4000;
+    const answer =
+      text.length > MAX_ANSWER_CHARS
+        ? `${text.slice(0, MAX_ANSWER_CHARS)}…`
+        : text;
+
+    return { answer, sources: urls };
   },
 });

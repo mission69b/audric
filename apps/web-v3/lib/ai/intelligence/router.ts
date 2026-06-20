@@ -94,7 +94,7 @@ function pickModel(complexity: string, pool: ChatModel[]): ChatModel {
 
 function stepBudgetFor(complexity: string, needsDeepResearch: boolean): number {
   if (needsDeepResearch) {
-    return 8;
+    return 12;
   }
   if (complexity === "hard") {
     return 6;
@@ -137,7 +137,14 @@ export async function routeTurn({
         "You are a routing classifier for an AI assistant. Classify ONLY the user's latest message so the system can pick the right model, effort, and step budget. Be decisive. Most everyday messages are 'standard'. Reserve 'hard' for genuine multi-step reasoning, analysis, non-trivial coding, or research. Do not answer the message.",
       prompt: text,
     });
-    const model = pickModel(object.complexity, pool);
+    // Research runs many steps — prefer the reliable, cheap smart-tier model
+    // (DeepSeek) over a frontier model (far cheaper across ~12 web_search steps,
+    // and strong at multi-search). Free-only pools fall back to the free model.
+    const model =
+      object.intent === "research"
+        ? (pool.find((m) => m.tier === "smart" && !m.frontier) ??
+          pickModel(object.complexity, pool))
+        : pickModel(object.complexity, pool);
     const reasoningEffort =
       object.complexity === "hard" && model.provider === "openai"
         ? ("high" as const)

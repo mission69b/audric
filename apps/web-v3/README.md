@@ -11,10 +11,11 @@ Part of the [t2000](https://t2000.ai) stack — consumes `@t2000/sdk`.
 - **Next.js** App Router (React 19) + **AI SDK v6** (`ai`) over the AI Gateway
   (chat, web search, image, reasoning; zero-data-retention by default)
 - **Audric Intelligence** — per-turn **Auto** model router (`lib/ai/intelligence/router.ts`:
-  classify → model + reasoning effort + step budget, entitlement-aware), a
-  **deep-research** subagent (`lib/ai/tools/deep-research.ts`: multi-search →
-  cited synthesis → self-review), and opt-in artifacts/recipes. Verify harnesses:
-  `pnpm eval:router` · `pnpm smoke:research` · `pnpm smoke:models`
+  classify → model + reasoning effort + step budget, entitlement-aware),
+  **visible multi-step research** (research-shaped turns run several live
+  `web_search` steps in the main loop → cited synthesis, rendered in a
+  chain-of-thought timeline), and opt-in artifacts/recipes. Verify harnesses:
+  `pnpm eval:router` · `pnpm smoke:models`
 - **zkLogin Passport** auth (`@mysten/enoki` + `@t2000/sdk`) — Google sign-in,
   non-custodial wallet, ~7-day httpOnly app session
 - **Drizzle ORM** + Postgres (Neon) for chats / messages / credit ledger

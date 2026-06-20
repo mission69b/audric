@@ -184,27 +184,6 @@ const PurePreviewMessage = ({
       );
     }
 
-    if (type === "tool-deep_research") {
-      const { toolCallId, state } = part;
-      if (state === "output-available" || state === "output-error") {
-        return (
-          <div
-            className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground/55"
-            key={toolCallId}
-          >
-            <SparklesIcon size={11} />
-            <span>Researched the web in depth</span>
-          </div>
-        );
-      }
-      // input-streaming / input-available → researching (multi-search subagent)
-      return (
-        <div className="mb-2 flex items-center gap-2 text-sm" key={toolCallId}>
-          <Shimmer>Researching in depth…</Shimmer>
-        </div>
-      );
-    }
-
     if (type === "text") {
       return (
         <MessageContent

@@ -36,7 +36,6 @@ import {
 } from "@/lib/ai/thought-signatures";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
-import { deepResearch } from "@/lib/ai/tools/deep-research";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
@@ -80,7 +79,6 @@ export const maxDuration = 300;
 
 type ActiveTool =
   | "web_search"
-  | "deep_research"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
@@ -228,16 +226,22 @@ export async function POST(request: Request) {
         recentUserText
       );
 
-    // Deep-research subagent (P3) — offered when a turn warrants deep, multi-
-    // source research. On Auto we trust the router's `needsDeepResearch`
-    // classification; on an explicit model pick we offer it and let the model
-    // decide. Authed-only (it spends gateway calls; anon stays on single
-    // web_search). Free to the user.
-    const deepResearchActive =
-      Boolean(session?.user) &&
-      (routeDecision
-        ? routeDecision.classification?.needsDeepResearch === true
-        : true);
+    // Visible main-loop research (replaces the old deep_research subagent): when
+    // a turn is research-shaped, inject the research directive + a higher step
+    // budget so the model runs several VISIBLE web_search steps (rendered live in
+    // the chain-of-thought timeline). Fires off-Auto too — explicit research
+    // intent over the last 2 user messages — so anon / explicit-model users also
+    // get the multi-step research, not just Auto.
+    const isExplicitResearch =
+      /\b(research|deep[- ]?dive|in[- ]depth)\b/i.test(recentUserText) ||
+      /\banaly[sz]e\b[\s\S]*\b(market|landscape|industry|trend)/i.test(
+        recentUserText
+      ) ||
+      /\bcompare\b[\s\S]*\b(with sources|across)/i.test(recentUserText);
+    const researchActive =
+      isExplicitResearch ||
+      routeDecision?.classification?.intent === "research" ||
+      routeDecision?.classification?.needsDeepResearch === true;
 
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
@@ -477,9 +481,6 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
-                  ...(deepResearchActive
-                    ? (["deep_research"] as ActiveTool[])
-                    : []),
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -510,10 +511,15 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
             artifactsActive,
             recipesActive: isExplicitRecipe,
+            researchActive,
           }),
           messages: modelMessages,
-          // Adaptive step budget from the router (difficulty-scaled); default 5.
-          stopWhen: stepCountIs(routeDecision?.stepBudget ?? 5),
+          // Step budget: research turns get a high budget for several visible
+          // web_search steps (works off-Auto too); otherwise the router's
+          // difficulty-scaled budget, default 5.
+          stopWhen: stepCountIs(
+            researchActive ? 12 : (routeDecision?.stepBudget ?? 5)
+          ),
           experimental_activeTools: baseActiveTools,
           // Once a doc-mutation tool has run this turn, remove them all from the
           // active set so NO model can chain a second artifact write (the
@@ -582,9 +588,6 @@ export async function POST(request: Request) {
             }),
             ...(session?.user
               ? {
-                  // Deep-research subagent (P3) — isolated multi-search loop →
-                  // cited synthesis. Authed-only; free to the user.
-                  deep_research: deepResearch,
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
                     session,

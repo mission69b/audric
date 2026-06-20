@@ -20,7 +20,6 @@
     "db:up": "drizzle-kit up",
     "smoke:models": "tsx scripts/model-matrix-smoke.mts",
     "eval:router": "tsx scripts/router-eval.mts",
-    "smoke:research": "tsx scripts/deep-research-smoke.mts",
     "smoke:image": "tsx scripts/image-edit-spike.mts",
     "stripe:seed": "tsx scripts/stripe-seed.ts",
     "reset-billing": "tsx scripts/reset-billing.ts",

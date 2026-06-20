@@ -79,6 +79,7 @@ export const systemPrompt = ({
   walletAddress,
   artifactsActive,
   recipesActive,
+  researchActive,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -96,6 +97,9 @@ export const systemPrompt = ({
   /** Only advertise Recipes when `run_recipe` is active this turn — otherwise
    * the model announces "I'll run the recipe" it can't actually run. */
   recipesActive?: boolean;
+  /** Research-shaped turn → inject the multi-search directive so the model runs
+   * several VISIBLE web_search steps then a cited synthesis. */
+  researchActive?: boolean;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -118,8 +122,12 @@ export const systemPrompt = ({
   // Recalled facts FIRST, then the memory instruction — so its "injected above"
   // wording stays accurate.
   const memory = isAuthed && memoryOn ? `${recall}\n\n${memoryPrompt}` : "";
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}${wallet}${memory}`;
+  const research = researchActive ? `\n\n${researchPrompt}` : "";
+  return `${regularPrompt}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}${research}${wallet}${memory}`;
 };
+
+export const researchPrompt =
+  "Research mode: the user wants a thorough, multi-source answer. Run SEVERAL focused `web_search` calls covering DIFFERENT facets of the question (not one broad search), reason briefly between them about what to look up next, then write a clear, well-structured synthesis with inline markdown citations to the sources you used. Never ask the user questions mid-research — gather and report. If sources conflict or the data is thin, say so plainly. Do NOT put the synthesis in an artifact — write it inline.";
 
 export const searchPrompt = `Live web search: when the user asks about current events, news, live prices, recent releases, or anything past your training data, call \`web_search\` with a clear query. Then write the answer in your OWN words using the returned results, and cite sources inline as markdown links. Never say you can't access current information — you can, via web_search.`;
 
