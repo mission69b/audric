@@ -24,7 +24,7 @@ export const createDocument = ({
   tool({
     description:
       "Create an artifact. You MUST specify kind: 'code' for any programming/algorithm request (creates a script), 'text' for essays/writing (creates a document), 'sheet' for spreadsheets/data, 'image' to GENERATE an image from a description (the user asks to draw/generate/create a picture, logo, art, photo, etc.). " +
-      "To CHANGE or refine an existing generated IMAGE (e.g. 'make it more modern', 'add a glow', 'warmer colors'), call createDocument AGAIN with kind:'image' and a NEW, COMPLETE prompt that restates the subject and folds in the requested change — images are regenerated, never edited in place, so do NOT use updateDocument/editDocument for images.",
+      "To CHANGE or refine an EXISTING generated image (e.g. 'make it more modern', 'add a glow', 'warmer colors'), call updateDocument with that image's id and a SHORT instruction describing only the change — it edits the actual image and preserves it. Use createDocument with kind:'image' only for a brand-new, unrelated image.",
     inputSchema: z.object({
       title: z
         .string()
