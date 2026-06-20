@@ -28,31 +28,6 @@ function domain(url: string): string {
 }
 
 /**
- * A deterministic letter "favicon" — colored chip with the source's first
- * letter. No external favicon fetch (which would leak every source domain the
- * user reads to a third party — wrong for a privacy-first app); gives per-source
- * variety vs a repeated globe icon. Color is derived from the domain.
- */
-function SourceFavicon({ url }: { url: string }) {
-  const d = domain(url);
-  const letter = d.charAt(0).toUpperCase() || "?";
-  let hash = 0;
-  for (const ch of d) {
-    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  }
-  const hue = hash % 360;
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-4 shrink-0 items-center justify-center rounded font-semibold text-[8px] text-white"
-      style={{ backgroundColor: `hsl(${hue} 52% 45%)` }}
-    >
-      {letter}
-    </span>
-  );
-}
-
-/**
  * The live "Chain of Thought" timeline (AI Elements) — groups a turn's reasoning
  * + web_search steps into ONE collapsible block. Open while the turn is in
  * flight (so the user watches it work), auto-collapses to a "Thought for Xs · N
@@ -146,20 +121,20 @@ export function CotTimeline({
               status={item.state === "active" ? "active" : "complete"}
             >
               {item.sources.length > 0 && (
-                <div className="mt-1.5 flex flex-col gap-1">
+                <div className="mt-2 flex flex-col overflow-hidden rounded-lg border border-border/40">
                   {item.sources.slice(0, 8).map((s) => (
                     <a
-                      className="flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
+                      className="flex items-center gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
                       href={s.url}
                       key={s.url}
                       rel="noopener noreferrer"
                       target="_blank"
                     >
-                      <SourceFavicon url={s.url} />
-                      <span className="truncate">
+                      <GlobeIcon className="size-3.5 shrink-0 text-muted-foreground/40" />
+                      <span className="min-w-0 flex-1 truncate text-foreground/80">
                         {s.title || domain(s.url)}
                       </span>
-                      <span className="shrink-0 text-muted-foreground/40">
+                      <span className="shrink-0 text-muted-foreground/50">
                         {domain(s.url)}
                       </span>
                     </a>
