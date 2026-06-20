@@ -24,7 +24,7 @@ import {
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import {
-  getConfidentialPricing,
+  getConfidentialCatalog,
   getLanguageModel,
   isConfidentialConfigured,
 } from "@/lib/ai/providers";
@@ -537,7 +537,7 @@ export async function POST(request: Request) {
         // credit rail isn't configured.
         if (isPremiumModel && isCreditConfigured()) {
           const pricing = isConfidential
-            ? (await getConfidentialPricing())[chatModel]
+            ? (await getConfidentialCatalog()).pricing[chatModel]
             : (await getModelPricing())[chatModel];
           for (const m of finishedMessages) {
             if (m.role !== "assistant") {

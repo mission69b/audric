@@ -5,6 +5,7 @@ import { env } from "../env";
 import {
   confidentialModels,
   isConfidentialModel,
+  type ModelCapabilities,
   type ModelPricing,
   titleModel,
 } from "./models";
@@ -71,20 +72,31 @@ export function getTitleModel() {
 type RedpillCatalogModel = {
   id: string;
   context_length?: number;
+  is_tee?: boolean;
+  input_modalities?: string[];
+  supported_parameters?: string[];
   pricing?: { prompt?: string | number; completion?: string | number };
 };
 
+export type ConfidentialCatalog = {
+  pricing: Record<string, ModelPricing>;
+  capabilities: Record<string, ModelCapabilities>;
+};
+
+const EMPTY_CATALOG: ConfidentialCatalog = { pricing: {}, capabilities: {} };
+
 /**
- * Per-token pricing for the confidential lineup, from RedPill's live catalog
- * (`GET /v1/models`, OpenAI-style `pricing.prompt`/`completion` per token →
- * normalized to per-1M). Returns {} when the tier is unconfigured or on any
- * failure — never throws, so the switcher degrades to no-price. Cached 24h.
+ * Pricing + capabilities for the confidential lineup, derived from RedPill's
+ * live catalog (`GET /v1/models`) — the single source of truth, so we never
+ * hardcode a model's modalities/tools. Pricing: OpenAI-style
+ * `pricing.prompt`/`completion` per token → per-1M. Capabilities: tools +
+ * reasoning from `supported_parameters`, vision from `input_modalities`.
+ * Returns empties when unconfigured or on any failure — never throws (the
+ * switcher degrades to no-price / no-cap-icons). Cached 24h.
  */
-export async function getConfidentialPricing(): Promise<
-  Record<string, ModelPricing>
-> {
+export async function getConfidentialCatalog(): Promise<ConfidentialCatalog> {
   if (!isConfidentialConfigured()) {
-    return {};
+    return EMPTY_CATALOG;
   }
   try {
     const res = await fetch(`${REDPILL_BASE_URL}/models`, {
@@ -92,11 +104,12 @@ export async function getConfidentialPricing(): Promise<
       next: { revalidate: 86_400 },
     });
     if (!res.ok) {
-      return {};
+      return EMPTY_CATALOG;
     }
     const json = await res.json();
     const wanted = new Set(confidentialModels.map((m) => m.id));
-    const out: Record<string, ModelPricing> = {};
+    const pricing: Record<string, ModelPricing> = {};
+    const capabilities: Record<string, ModelCapabilities> = {};
     for (const m of (json.data ?? []) as RedpillCatalogModel[]) {
       if (!wanted.has(m.id)) {
         continue;
@@ -104,17 +117,24 @@ export async function getConfidentialPricing(): Promise<
       const input = Number(m.pricing?.prompt);
       const output = Number(m.pricing?.completion);
       if (Number.isFinite(input) && Number.isFinite(output)) {
-        out[m.id] = {
+        pricing[m.id] = {
           inputPer1M: input * 1_000_000,
           outputPer1M: output * 1_000_000,
           contextWindow:
             typeof m.context_length === "number" ? m.context_length : undefined,
         };
       }
+      const params = new Set(m.supported_parameters ?? []);
+      const modalities = new Set(m.input_modalities ?? []);
+      capabilities[m.id] = {
+        tools: params.has("tools"),
+        vision: modalities.has("image"),
+        reasoning: params.has("reasoning"),
+      };
     }
-    return out;
+    return { pricing, capabilities };
   } catch {
-    return {};
+    return EMPTY_CATALOG;
   }
 }
 

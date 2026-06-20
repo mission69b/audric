@@ -1,5 +1,4 @@
 import {
-  CONFIDENTIAL_CAPABILITIES,
   confidentialModels,
   getAllGatewayModels,
   getCapabilities,
@@ -7,7 +6,7 @@ import {
   isDemo,
 } from "@/lib/ai/models";
 import {
-  getConfidentialPricing,
+  getConfidentialCatalog,
   isConfidentialConfigured,
 } from "@/lib/ai/providers";
 import { isMemoryConfigured } from "@/lib/memwal";
@@ -24,23 +23,19 @@ export async function GET() {
 
   const confidentialEnabled = isConfidentialConfigured();
 
-  const [curatedCapabilities, gatewayPricing, confidentialPricing] =
-    await Promise.all([
-      getCapabilities(),
-      getModelPricing(),
-      confidentialEnabled ? getConfidentialPricing() : Promise.resolve({}),
-    ]);
+  const [curatedCapabilities, gatewayPricing, confidential] = await Promise.all(
+    [getCapabilities(), getModelPricing(), getConfidentialCatalog()]
+  );
 
   const memoryEnabled = isMemoryConfigured();
 
   // Merge the confidential (TEE) lineup in only when the tier is live, so the
   // switcher surfaces those models, badges, and per-token prices exactly when
-  // they're actually routable.
-  const capabilities = confidentialEnabled
-    ? { ...curatedCapabilities, ...CONFIDENTIAL_CAPABILITIES }
-    : curatedCapabilities;
-  const pricing = { ...gatewayPricing, ...confidentialPricing };
-  const confidential = confidentialEnabled ? confidentialModels : [];
+  // they're actually routable. Caps + pricing are derived from RedPill's live
+  // catalog (single source of truth).
+  const capabilities = { ...curatedCapabilities, ...confidential.capabilities };
+  const pricing = { ...gatewayPricing, ...confidential.pricing };
+  const confidentialLineup = confidentialEnabled ? confidentialModels : [];
 
   if (isDemo) {
     const models = await getAllGatewayModels();
@@ -50,12 +45,12 @@ export async function GET() {
 
     return Response.json(
       {
-        capabilities: { ...demoCapabilities, ...CONFIDENTIAL_CAPABILITIES },
-        models: [...models, ...confidential],
+        capabilities: { ...demoCapabilities, ...confidential.capabilities },
+        models: [...models, ...confidentialLineup],
         pricing,
         memoryEnabled,
         confidentialEnabled,
-        confidentialModels: confidential,
+        confidentialModels: confidentialLineup,
       },
       { headers }
     );
@@ -67,7 +62,7 @@ export async function GET() {
       pricing,
       memoryEnabled,
       confidentialEnabled,
-      confidentialModels: confidential,
+      confidentialModels: confidentialLineup,
     },
     { headers }
   );

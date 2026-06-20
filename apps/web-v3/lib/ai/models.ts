@@ -142,46 +142,33 @@ export const confidentialModels: ChatModel[] = [
     id: "phala/qwen3.5-27b",
     name: "Qwen 3.5 27B",
     provider: "phala",
-    description: "Runs entirely in a TEE — not even the provider can read it",
+    description: "Capable multimodal model — runs entirely in a TEE",
     privacy: "confidential",
     tier: "smart",
     confidential: true,
-    bestFor: "Private reasoning",
-  },
-  {
-    id: "phala/qwen3-vl-30b-a3b-instruct",
-    name: "Qwen 3 VL 30B",
-    provider: "phala",
-    description: "Confidential multimodal model in a TEE",
-    privacy: "confidential",
-    tier: "smart",
-    confidential: true,
-    bestFor: "Private + vision",
+    bestFor: "Capable + vision",
   },
   {
     id: "phala/glm-4.7-flash",
     name: "GLM 4.7 Flash",
     provider: "phala",
-    description: "Fast confidential model in a TEE",
+    description: "Fast confidential model in a TEE (attestation-verified)",
     privacy: "confidential",
     tier: "smart",
     confidential: true,
     bestFor: "Fast & private",
   },
-];
-
-// Static capabilities for the confidential lineup (the gateway capability probe
-// can't see RedPill models). Conservative defaults; tools/vision confirmed
-// against the RedPill catalog when the key lands.
-export const CONFIDENTIAL_CAPABILITIES: Record<string, ModelCapabilities> = {
-  "phala/qwen3.5-27b": { tools: true, vision: false, reasoning: true },
-  "phala/qwen3-vl-30b-a3b-instruct": {
-    tools: true,
-    vision: true,
-    reasoning: false,
+  {
+    id: "phala/gpt-oss-20b",
+    name: "GPT-OSS 20B",
+    provider: "phala",
+    description: "Open reasoning model in a TEE (attestation-verified)",
+    privacy: "confidential",
+    tier: "smart",
+    confidential: true,
+    bestFor: "Open reasoning",
   },
-  "phala/glm-4.7-flash": { tools: true, vision: false, reasoning: false },
-};
+];
 
 const confidentialModelIds = new Set(confidentialModels.map((m) => m.id));
 
