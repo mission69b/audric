@@ -17,11 +17,55 @@ export type RecipeStepResult = {
   label: string;
   service: string;
   ok: boolean;
-  data?: unknown;
   error?: string;
   reference?: string;
   cost?: number;
 };
+
+/**
+ * Bound a service response for synthesis. The raw multi-service blob (Brave web
+ * + Exa + Brave news + Perplexity) is huge — a single Brave web response alone
+ * is ~150KB of mostly-irrelevant nested metadata (`mixed`/`discussions`/`faq`,
+ * per-result `meta_url`/`profile`/`thumbnail`/`extra_snippets`). Replayed in
+ * full as the tool result it overran the upstream provider's request-size limit
+ * → the Gateway 400'd ("Invalid arguments passed to the model") and synthesis
+ * failed AFTER the user had paid. We cap array length + string length (which
+ * kills the noise) while preserving the prose + citations synthesis needs.
+ * Model-agnostic and generic (no per-API coupling).
+ */
+const MAX_STR = 4000;
+const MAX_ARR = 10;
+const MAX_DEPTH = 10;
+function compactForSynthesis(value: unknown, depth = 0): unknown {
+  if (typeof value === "string") {
+    return value.length > MAX_STR
+      ? `${value.slice(0, MAX_STR)}…[+${value.length - MAX_STR}]`
+      : value;
+  }
+  if (Array.isArray(value)) {
+    if (depth >= MAX_DEPTH) {
+      return `[array(${value.length})]`;
+    }
+    const out = value
+      .slice(0, MAX_ARR)
+      .map((v) => compactForSynthesis(v, depth + 1));
+    if (value.length > MAX_ARR) {
+      out.push(`…[+${value.length - MAX_ARR} more]`);
+    }
+    return out;
+  }
+  if (value && typeof value === "object") {
+    if (depth >= MAX_DEPTH) {
+      return "[object]";
+    }
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = compactForSynthesis(v, depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
 
 export type RecipeRunResult = {
   recipeId: string;
@@ -57,14 +101,17 @@ export async function runRecipe(
         body: JSON.stringify(step.body(inputs)),
         maxPrice: step.priceUsd,
       });
-      data[step.key] = res.body;
+      // Compact each response (the model synthesizes from `data`). NOT stored on
+      // the step too — that duplicated every response in the replayed tool
+      // result (~440KB → over the provider request-size cap). The step row only
+      // needs label/ok/cost for the UI + receipt.
+      data[step.key] = compactForSynthesis(res.body);
       paidUsd += res.cost ?? step.priceUsd;
       steps.push({
         key: step.key,
         label: step.label,
         service: step.service,
         ok: true,
-        data: res.body,
         reference: res.receipt?.reference,
         cost: res.cost ?? step.priceUsd,
       });
