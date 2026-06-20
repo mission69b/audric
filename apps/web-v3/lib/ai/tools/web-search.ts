@@ -15,6 +15,26 @@ import { z } from "zod";
  * answer + source URLs), so there's NO extra API key — it's billed on the same
  * Gateway credential as the chat models.
  */
+/** Best-effort readable title from a URL slug (Sonar rarely returns titles).
+ *  Returns "" when the slug isn't human-readable (the UI falls back to domain). */
+function titleFromUrl(url: string): string {
+  try {
+    const seg = new URL(url).pathname.split("/").filter(Boolean).pop() ?? "";
+    const slug = seg
+      .replace(/\.\w+$/, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+    const letters = slug.replace(/[^a-z]/gi, "").length;
+    if (letters > 3 && !/^\d+$/.test(slug)) {
+      const t = slug.replace(/\b\w/g, (c) => c.toUpperCase());
+      return t.length > 80 ? `${t.slice(0, 77)}…` : t;
+    }
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 export const webSearch = tool({
   description:
     "Search the web for current, live, or time-sensitive information — news, " +
@@ -35,7 +55,20 @@ export const webSearch = tool({
     });
 
     const urls = (sources ?? []).flatMap((s) =>
-      s.sourceType === "url" ? [{ url: s.url, title: s.title ?? s.url }] : []
+      s.sourceType === "url"
+        ? [
+            {
+              url: s.url,
+              // Sonar usually returns URLs without page titles. Use a real title
+              // when present; otherwise derive a readable one from the URL slug
+              // (empty string → the UI shows the domain). Never the raw URL.
+              title:
+                s.title && !/^https?:\/\//.test(s.title)
+                  ? s.title
+                  : titleFromUrl(s.url),
+            },
+          ]
+        : []
     );
 
     // Safety cap: research turns run ~12 searches; an unbounded answer could

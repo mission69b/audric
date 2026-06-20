@@ -116,29 +116,41 @@ export function CotTimeline({
               label={
                 item.state === "active"
                   ? "Searching the web…"
-                  : `Searched the web for "${item.query}"`
+                  : `Searched the web for "${item.query}"${item.sources.length ? ` · ${item.sources.length} results` : ""}`
               }
               status={item.state === "active" ? "active" : "complete"}
             >
               {item.sources.length > 0 && (
                 <div className="mt-2 flex flex-col overflow-hidden rounded-lg border border-border/40">
-                  {item.sources.slice(0, 8).map((s) => (
-                    <a
-                      className="flex items-center gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
-                      href={s.url}
-                      key={s.url}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <GlobeIcon className="size-3.5 shrink-0 text-muted-foreground/40" />
-                      <span className="min-w-0 flex-1 truncate text-foreground/80">
-                        {s.title || domain(s.url)}
-                      </span>
-                      <span className="shrink-0 text-muted-foreground/50">
-                        {domain(s.url)}
-                      </span>
-                    </a>
-                  ))}
+                  {item.sources.slice(0, 8).map((s) => {
+                    const d = domain(s.url);
+                    const title = s.title && s.title !== d ? s.title : null;
+                    return (
+                      <a
+                        className="flex items-center gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
+                        href={s.url}
+                        key={s.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >
+                        <GlobeIcon className="size-3.5 shrink-0 text-muted-foreground/40" />
+                        {title ? (
+                          <>
+                            <span className="min-w-0 flex-1 truncate text-foreground/80">
+                              {title}
+                            </span>
+                            <span className="shrink-0 text-muted-foreground/50">
+                              {d}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate text-foreground/80">
+                            {d}
+                          </span>
+                        )}
+                      </a>
+                    );
+                  })}
                 </div>
               )}
             </ChainOfThoughtStep>
