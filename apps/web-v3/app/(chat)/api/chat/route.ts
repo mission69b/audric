@@ -207,7 +207,6 @@ export async function POST(request: Request) {
       /\b(write|draft|compose|create|generate|build|make|design|implement|rewrite|draw|illustrate|essay|spreadsheet|poem|haiku)\b/i.test(
         routeText
       );
-    const artifactsActive = isExplicitArtifact || isExplicitRecipe;
 
     // Deep-research subagent (P3) — offered when a turn warrants deep, multi-
     // source research. On Auto we trust the router's `needsDeepResearch`
@@ -288,6 +287,22 @@ export async function POST(request: Request) {
         titlePromise = generateTitleFromUserMessage({ message });
       }
     }
+
+    // Keep artifacts active when this chat ALREADY has one — so refinement turns
+    // WITHOUT a creation verb ("add a glow", "warmer colors", "make it sleeker")
+    // can still edit it. Otherwise the verb-only gate would disable
+    // createDocument mid-refinement and the agent couldn't change the artifact.
+    const hasExistingArtifact = messagesFromDb.some(
+      (m) =>
+        m.role === "assistant" &&
+        Array.isArray(m.parts) &&
+        (m.parts as Array<{ type?: string }>).some(
+          (p) =>
+            p.type === "tool-createDocument" || p.type === "tool-updateDocument"
+        )
+    );
+    const artifactsActive =
+      isExplicitArtifact || isExplicitRecipe || hasExistingArtifact;
 
     let uiMessages: ChatMessage[];
 

@@ -315,6 +315,21 @@ const PurePreviewMessage = ({
         );
       }
 
+      // Image updates render inline (like create) — NOT the doc-preview card,
+      // which showed the full generation prompt as a title (leak) + a faded image.
+      const updKind = part.output?.kind;
+      if (updKind === "image") {
+        return part.output?.id ? (
+          <InlineImage
+            documentId={part.output.id}
+            key={toolCallId}
+            title={part.output.title}
+          />
+        ) : (
+          <InlineImageLoading key={toolCallId} />
+        );
+      }
+
       return (
         <div className="relative" key={toolCallId}>
           <DocumentPreview
