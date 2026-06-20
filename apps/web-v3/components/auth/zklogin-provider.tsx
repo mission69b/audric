@@ -136,6 +136,11 @@ export function ZkLoginProvider({ children }: { children: ReactNode }) {
     setProvingStep(null);
     setError(null);
     setStatus("unauthenticated");
+    // Reset the model switcher to the default (free) model. A premium pick
+    // lives in the `chat-model` cookie; it must NOT survive sign-out — the next
+    // (anonymous) session has to start on Kimi, not a paid model.
+    // biome-ignore lint/suspicious/noDocumentCookie: client-side cookie reset on logout
+    document.cookie = "chat-model=; path=/; max-age=0";
     await fetch("/api/auth/session", { method: "DELETE" }).catch(
       () => undefined
     );
