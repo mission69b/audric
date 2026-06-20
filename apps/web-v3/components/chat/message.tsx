@@ -373,7 +373,17 @@ const PurePreviewMessage = ({
   ) : (
     <>
       {attachments}
-      {isAssistant && <CotTimeline isLoading={isLoading} items={cotItems} />}
+      {isAssistant && (
+        <CotTimeline
+          isLoading={isLoading}
+          items={cotItems}
+          startedAt={
+            message.metadata?.createdAt
+              ? Date.parse(message.metadata.createdAt)
+              : undefined
+          }
+        />
+      )}
       {isEmptyAssistant ? (
         <MessageContent className="text-[13px] leading-[1.65]">
           <MessageResponse>

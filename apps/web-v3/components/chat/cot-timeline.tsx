@@ -40,20 +40,29 @@ function domain(url: string): string {
 export function CotTimeline({
   items,
   isLoading,
+  startedAt,
 }: {
   items: CotItem[];
   isLoading: boolean;
+  // Turn start (ms) from the message metadata — anchors the timer to the real
+  // turn start (not component mount), so "Thought for Xs" is accurate. Absent on
+  // historical messages (metadata isn't persisted) → no duration shown.
+  startedAt?: number;
 }) {
-  const startRef = useRef<number>(Date.now());
+  const startRef = useRef<number>(startedAt ?? Date.now());
+  useEffect(() => {
+    if (startedAt) {
+      startRef.current = startedAt;
+    }
+  }, [startedAt]);
   const [elapsedMs, setElapsedMs] = useState(0);
   useEffect(() => {
     if (!isLoading) {
       return;
     }
-    const id = setInterval(
-      () => setElapsedMs(Date.now() - startRef.current),
-      500
-    );
+    const tick = () => setElapsedMs(Date.now() - startRef.current);
+    tick();
+    const id = setInterval(tick, 500);
     return () => clearInterval(id);
   }, [isLoading]);
 

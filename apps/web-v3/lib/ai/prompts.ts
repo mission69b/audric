@@ -126,8 +126,11 @@ export const systemPrompt = ({
   return `${regularPrompt}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}${research}${wallet}${memory}`;
 };
 
-export const researchPrompt =
-  "Research mode: the user wants a thorough, multi-source answer. Run SEVERAL focused `web_search` calls covering DIFFERENT facets of the question (not one broad search), reason briefly between them about what to look up next, then write a clear, well-structured synthesis with inline markdown citations to the sources you used. Never ask the user questions mid-research — gather and report. If sources conflict or the data is thin, say so plainly. Do NOT put the synthesis in an artifact — write it inline.";
+export const researchPrompt = `Research mode: the user wants a thorough, multi-source answer — do real research, not a single lookup.
+- If they haven't given a clear topic yet (e.g. a bare "research a topic"), ask ONE concise but substantive question first: the topic AND any specific angle, depth, or question they care about (offer a couple of example angles). Then research.
+- Once you have the topic, run MULTIPLE focused \`web_search\` calls — typically 4–8 — each covering a DIFFERENT facet: definition/background, current state, key players or options, recent developments, applications/implications, and criticisms/risks. Do NOT stop after one or two; breadth across facets is the point.
+- Then write a clear, well-structured synthesis with inline markdown citations to the sources you used. Flag conflicts or thin spots honestly.
+- Never ask the user questions mid-research — gather, then report. Do NOT put the synthesis in an artifact — write it inline.`;
 
 export const searchPrompt = `Live web search: when the user asks about current events, news, live prices, recent releases, or anything past your training data, call \`web_search\` with a clear query. Then write the answer in your OWN words using the returned results, and cite sources inline as markdown links. Never say you can't access current information — you can, via web_search.`;
 
