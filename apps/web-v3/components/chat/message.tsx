@@ -290,6 +290,7 @@ const PurePreviewMessage = ({
               documentId={part.output.id}
               key={toolCallId}
               title={part.output.title}
+              versionIndex={0}
             />
           );
         }
@@ -333,6 +334,7 @@ const PurePreviewMessage = ({
             documentId={part.output.id}
             key={toolCallId}
             title={part.output.title}
+            versionIndex={part.output.versionIndex}
           />
         ) : (
           <InlineImageLoading key={toolCallId} />

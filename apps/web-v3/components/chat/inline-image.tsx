@@ -30,9 +30,13 @@ export function InlineImageLoading() {
 export function InlineImage({
   documentId,
   title,
+  versionIndex,
 }: {
   documentId: string;
   title?: string;
+  // Which version this message produced (createDocument = 0; each edit = its
+  // own index). Pins history so editing doesn't mutate earlier messages.
+  versionIndex?: number;
 }) {
   const { data: documents } = useSWR<Document[]>(
     documentId
@@ -41,10 +45,11 @@ export function InlineImage({
     fetcher
   );
 
-  // Use the LATEST version — each image edit (updateDocument) saves a NEW
-  // version row, and the API returns them ascending by createdAt, so [0] is the
-  // ORIGINAL. Reading [0] made edits appear to "do nothing" (stale first image).
-  const content = documents?.at(-1)?.content;
+  // Versions come back ascending by createdAt. Render the version THIS message
+  // produced (pinned by index); fall back to the latest if no pin is given.
+  const pinned =
+    typeof versionIndex === "number" ? documents?.[versionIndex] : undefined;
+  const content = (pinned ?? documents?.at(-1))?.content;
   if (!content) {
     return (
       <div className="h-64 w-[min(100%,420px)] animate-pulse rounded-xl bg-muted" />

@@ -2,7 +2,7 @@ import { tool, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
 import type { Session } from "@/app/(auth)/auth";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
-import { getDocumentById } from "@/lib/db/queries";
+import { getDocumentById, getDocumentsById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 
 type UpdateDocumentProps = {
@@ -73,10 +73,18 @@ export const updateDocument = ({
 
       dataStream.write({ type: "data-finish", data: null, transient: true });
 
+      // The edit is saved as a NEW version under the same id. Pin THIS message to
+      // its own version so the inline render shows the edited result while the
+      // ORIGINAL createDocument message keeps showing version 0 (immutable
+      // history — otherwise every message sharing the id flips to the latest).
+      const versions = await getDocumentsById({ id });
+      const versionIndex = Math.max(0, versions.length - 1);
+
       return {
         id,
         title: document.title,
         kind: document.kind,
+        versionIndex,
         content:
           document.kind === "code"
             ? "The script has been updated successfully."
