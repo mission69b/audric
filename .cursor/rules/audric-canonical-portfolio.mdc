@@ -1,6 +1,7 @@
 ---
 description: Canonical portfolio data — every wallet/positions/pricing read goes through getPortfolio
-alwaysApply: true
+alwaysApply: false
+globs: apps/web-v2/**/*.{ts,tsx}
 ---
 
 # Canonical Portfolio Data (audric/web)

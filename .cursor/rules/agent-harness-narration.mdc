@@ -1,6 +1,7 @@
 ---
 description: Agent harness narration — card-vs-prose contract, forbidden patterns, defense layers
-alwaysApply: true
+alwaysApply: false
+globs: apps/web-v2/**/*.{ts,tsx}
 ---
 
 # Agent Harness Narration Contract

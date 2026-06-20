@@ -1,6 +1,7 @@
 ---
 description: User safeguards — six layers of defense between user intent and on-chain action
-alwaysApply: true
+alwaysApply: false
+globs: apps/web-v2/**/*.{ts,tsx}
 ---
 
 # Safeguards — Defense in Depth

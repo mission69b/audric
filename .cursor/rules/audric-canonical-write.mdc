@@ -1,6 +1,7 @@
 ---
 description: Canonical write architecture — every Audric sponsored write goes through composeTx + the Sponsor interface
-alwaysApply: true
+alwaysApply: false
+globs: apps/web-v2/**/*.{ts,tsx}
 ---
 
 # Canonical Write Architecture (audric/web-v2)

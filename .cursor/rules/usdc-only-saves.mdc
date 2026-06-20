@@ -1,6 +1,7 @@
 ---
 description: Save operations are USDC or USDsui only — every save path must use the saveable balance, not balance.cash
-alwaysApply: true
+alwaysApply: false
+globs: apps/web-v2/**/*.{ts,tsx}
 ---
 
 # Saves = USDC or USDsui
