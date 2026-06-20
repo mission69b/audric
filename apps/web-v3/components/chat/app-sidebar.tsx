@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CreditCardIcon,
   PanelLeftIcon,
   PenSquareIcon,
   SparklesIcon,
@@ -137,6 +138,21 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
                     >
                       <SparklesIcon className="size-4" />
                       <span className="font-medium">Recipes</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {!user && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      onClick={() => {
+                        setOpenMobile(false);
+                        router.push("/pricing");
+                      }}
+                      tooltip="See plans and pricing"
+                    >
+                      <CreditCardIcon className="size-4" />
+                      <span className="font-medium">See plans and pricing</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}

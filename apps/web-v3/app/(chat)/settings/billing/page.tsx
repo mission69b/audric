@@ -103,6 +103,23 @@ export default function BillingPage() {
     }
   }
 
+  async function manageBilling() {
+    setBusy(true);
+    try {
+      const res = await fetch(`${BASE}/api/stripe/portal`, { method: "POST" });
+      const j = await res.json();
+      if (j.url) {
+        window.location.href = j.url;
+        return;
+      }
+      toast.error(j.error ?? "Couldn't open the billing portal.");
+    } catch {
+      toast.error("Couldn't open the billing portal.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function setAutoRecharge(enabled: boolean) {
     try {
       const res = await fetch(`${BASE}/api/credit/auto-recharge`, {
@@ -204,6 +221,32 @@ export default function BillingPage() {
           {ar?.enabled ? "On" : "Off"}
         </Button>
       </div>
+
+      {/* Manage billing — Stripe Customer Portal (invoices, payment methods,
+          cancel). Shown once there's something to manage (a saved card or a
+          paid plan). We don't rebuild any of this — Stripe hosts it. */}
+      {(data?.hasCard || (data?.tier && data.tier !== "free")) && (
+        <div className="mt-4 flex items-center justify-between rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div>
+            <div className="font-medium text-foreground text-sm">
+              Manage billing
+            </div>
+            <p className="mt-0.5 text-muted-foreground text-xs">
+              Invoices, payment methods, and plan changes — opens your secure
+              Stripe portal.
+            </p>
+          </div>
+          <Button
+            disabled={busy}
+            onClick={manageBilling}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Open portal
+          </Button>
+        </div>
+      )}
 
       {/* The Audric difference — included in EVERY plan (the real, shared value) */}
       <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5">
