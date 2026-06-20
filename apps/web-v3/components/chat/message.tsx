@@ -31,6 +31,7 @@ function modelDisplayName(id: string): string {
   return MODEL_NAMES.get(id) ?? id.split("/").pop() ?? id;
 }
 
+import { useArtifact } from "@/hooks/use-artifact";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
@@ -69,6 +70,9 @@ const PurePreviewMessage = ({
   );
 
   useDataStream();
+  // The active artifact's kind — used as a fallback for image-update streaming,
+  // where the tool output (and its kind) isn't available yet.
+  const { artifact } = useArtifact();
 
   const isUser = message.role === "user";
   const isAssistant = message.role === "assistant";
@@ -316,8 +320,13 @@ const PurePreviewMessage = ({
       }
 
       // Image updates render inline (like create) — NOT the doc-preview card,
-      // which showed the full generation prompt as a title (leak) + a faded image.
-      const updKind = part.output?.kind;
+      // which showed the full generation prompt as a title (leak) + a faded
+      // image. During streaming the tool output (hence its kind) isn't ready and
+      // updateDocument's input carries no kind, so fall back to the active
+      // artifact's kind — otherwise an image refinement briefly flashed the
+      // doc-preview card mid-generation.
+      const updKind =
+        part.output?.kind ?? (part.output ? undefined : artifact.kind);
       if (updKind === "image") {
         return part.output?.id ? (
           <InlineImage

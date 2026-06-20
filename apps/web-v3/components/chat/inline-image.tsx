@@ -41,7 +41,10 @@ export function InlineImage({
     fetcher
   );
 
-  const content = documents?.[0]?.content;
+  // Use the LATEST version — each image edit (updateDocument) saves a NEW
+  // version row, and the API returns them ascending by createdAt, so [0] is the
+  // ORIGINAL. Reading [0] made edits appear to "do nothing" (stale first image).
+  const content = documents?.at(-1)?.content;
   if (!content) {
     return (
       <div className="h-64 w-[min(100%,420px)] animate-pulse rounded-xl bg-muted" />

@@ -45,6 +45,15 @@ export const updateDocument = ({
         transient: true,
       });
 
+      // Broadcast the kind so the active artifact reflects THIS document during
+      // the update (the inline-vs-card render decision falls back to it while the
+      // tool output isn't available yet).
+      dataStream.write({
+        type: "data-kind",
+        data: document.kind,
+        transient: true,
+      });
+
       const documentHandler = documentHandlersByArtifactKind.find(
         (documentHandlerByArtifactKind) =>
           documentHandlerByArtifactKind.kind === document.kind
