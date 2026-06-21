@@ -3,6 +3,8 @@
 > **Track:** Agentic Web · **Status:** Live in production on Sui mainnet at [audric.ai](https://audric.ai)
 > This file is the submission packet (copy into the DeepSurge fields) + a judge-facing overview.
 
+> **⚠️ Updating an existing submission (not a new one).** Audric was already submitted earlier in the window (the v2 "conversational finance" build). **Edit that existing DeepSurge project — do NOT delete + resubmit** (editing is supported; deleting forfeits the project page + any community votes for no gain). Update: **description → v3** (this packet), **demo video → v3**, **repo link → v3**, and **switch track to Agentic Web** if the platform allows editing the track. If the track is locked post-submission, keep v3 under the existing track (it's also a strong **DeFi & Payments** entry — gasless USDC/USDsui + x402 agent payments) and re-angle this packet. The v2→v3 leap IS the "substantial new in-window functionality" the rules reward.
+
 ---
 
 ## DeepSurge fields (copy-paste ready)
@@ -32,7 +34,7 @@ Two broken worlds:
 1. **AI assistants you can't trust.** Every mainstream AI logs your prompts, trains on your data, and can refuse you. Your "memory" lives on their servers — they can read it, lock it, or pull it.
 2. **Crypto wallets normal people can't use.** Seed phrases, gas tokens, bridging dust — the UX wall that keeps the agentic economy from reaching real users.
 
-No one has fused them: an **AI agent that actually holds and moves money for a normal person**, privately, without a seed phrase or a gas token. That's the gap the agentic web has to cross — and it's only crossable on Sui.
+No one's built the obvious thing: **an AI agent a normal person can actually hand money to** — private, no seed phrase, no gas token. That's the gap the agentic web has to cross — and it's only crossable on Sui.
 
 ## The solution
 
@@ -95,7 +97,7 @@ The privacy ladder ends at *provably yours*: **Anon → Private·ZDR → Confide
 > Screen-record at audric.ai. Keep it brisk; narrate in English (or subtitle). Target 4:45.
 
 **0:00–0:25 — Hook + problem**
-> "This is Audric — a private AI agent that holds and moves your money, on Sui. Today's AI logs your data and can't touch money; crypto wallets need seed phrases and gas. Audric fuses them — and only Sui makes it possible."
+> "This is Audric — a private AI agent that holds and moves your money, on Sui. Today's AI logs your data and can't touch money; crypto wallets need seed phrases and gas. Audric does both — a private AI agent that actually holds and moves your money — and only Sui makes it possible."
 
 **0:25–1:05 — zkLogin onboarding (Sui primitive #1)**
 > Click "Sign in with Google." Land in the app with a wallet.
