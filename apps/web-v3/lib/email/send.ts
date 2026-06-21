@@ -17,7 +17,7 @@ import { env } from "@/lib/env";
  *   SYSTEM  — transactional/system (receipts, low-credit, security).
  */
 export const EMAIL_FROM = {
-  founder: "funkii (Phil) from Audric <funkii@audric.ai>",
+  founder: "funkii from Audric <funkii@audric.ai>",
   system: "Audric <notifications@audric.ai>",
 } as const;
 

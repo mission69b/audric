@@ -103,7 +103,7 @@ export function EmailLayout({
                 margin: "10px 0 0",
               }}
             >
-              Audric is operated by t2000 [legal entity — TBD].
+              Audric is operated by T2000 AFI Inc.
             </Text>
             <Text style={{ margin: "12px 0 0", fontSize: 12 }}>
               <Link

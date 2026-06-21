@@ -31,6 +31,7 @@
     "@ai-sdk/openai-compatible": "^2.0.51",
     "@ai-sdk/provider": "^3.0.10",
     "@ai-sdk/react": "3.0.210",
+    "@calcom/embed-react": "^1.5.3",
     "@codemirror/lang-python": "^6.1.6",
     "@codemirror/state": "^6.5.0",
     "@codemirror/theme-one-dark": "^6.1.2",
