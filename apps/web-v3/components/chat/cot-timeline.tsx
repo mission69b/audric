@@ -27,19 +27,6 @@ function domain(url: string): string {
   }
 }
 
-/** Clean, readable URL: host + path, no protocol / query / hash / trailing slash
- * (e.g. "greycoder.com/best-privacy-ai"). The full location minus the noise. */
-function prettyUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, "");
-    const path = u.pathname.replace(/\/$/, "");
-    return path && path !== "/" ? `${host}${path}` : host;
-  } catch {
-    return url;
-  }
-}
-
 /**
  * The live "Chain of Thought" timeline (AI Elements) — groups a turn's reasoning
  * + web_search steps into ONE collapsible block. Open while the turn is in
@@ -138,7 +125,6 @@ export function CotTimeline({
                 <div className="mt-2 flex max-h-72 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border/40">
                   {item.sources.map((s) => {
                     const d = domain(s.url);
-                    const pretty = prettyUrl(s.url);
                     const title = s.title && s.title !== d ? s.title : null;
                     return (
                       <a
@@ -156,7 +142,7 @@ export function CotTimeline({
                             </span>
                           )}
                           <span className="truncate text-muted-foreground/50">
-                            {pretty}
+                            {d}
                           </span>
                         </span>
                       </a>

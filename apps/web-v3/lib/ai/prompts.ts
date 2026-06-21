@@ -71,6 +71,7 @@ export type RequestHints = {
 
 export const getRequestPromptFromHints = (requestHints: RequestHints) => `\
 About the origin of user's request:
+- current date: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} (this is TODAY — treat it as the present; phrase time-sensitive web searches with the current year, and treat web_search results as up-to-date as of now)
 - lat: ${requestHints.latitude}
 - lon: ${requestHints.longitude}
 - city: ${requestHints.city}
