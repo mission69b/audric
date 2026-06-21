@@ -326,6 +326,16 @@ export async function POST(request: Request) {
       chatModel = "google/gemini-3-pro-preview";
     }
 
+    // Recipes ALWAYS run on the free model (Kimi), overriding Auto AND explicit
+    // picks: (1) cold-start — a user with zero credits can still run a paid
+    // Recipe (the USDC pays the data service, not the model), and (2) it
+    // sidesteps a Gemini-3 tool-narration failure ("must include at least one
+    // parts field" after a tool result). Recipe narration is just formatting
+    // fetched data — it never needs a premium model.
+    if (isExplicitRecipe) {
+      chatModel = DEFAULT_CHAT_MODEL;
+    }
+
     // Keep artifacts active when this chat ALREADY has one — so refinement turns
     // WITHOUT a creation verb ("add a glow", "warmer colors", "make it sleeker")
     // can still edit it. Otherwise the verb-only gate would disable
