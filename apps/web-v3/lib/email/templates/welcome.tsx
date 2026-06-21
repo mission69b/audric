@@ -1,0 +1,108 @@
+import { Button, Section, Text } from "@react-email/components";
+import { colors as c, EmailLayout } from "../components/layout";
+
+/** Welcome email (L2) — sent once on first sign-in. Founder-from, faithful to the
+ * emails.html L2 design: greeting → privacy framing → "everything you have today"
+ * checklist → CTA → quiet Pro/Max upsell. */
+const FEATURES: [string, string][] = [
+  ["Unlimited core chat", "open, uncensored models that won't refuse you"],
+  ["Web search + image generation", "built into every chat"],
+  [
+    "A non-custodial wallet",
+    "send USDC + USDsui anywhere, instant and gasless",
+  ],
+  [
+    "Private memory & chats",
+    "encrypted on decentralized storage, yours to delete anytime",
+  ],
+  ["Recipes", "pay-per-use live-data flows, with your own USDC"],
+];
+
+export function WelcomeEmail({ name }: { name?: string }) {
+  return (
+    <EmailLayout preview="Welcome to Audric — private, uncensored AI with a wallet built in.">
+      <Section style={{ padding: "22px 32px 0" }}>
+        <Text
+          style={{
+            color: c.fg,
+            fontSize: 26,
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.18,
+            margin: 0,
+          }}
+        >
+          {name ? `Welcome to Audric, ${name}.` : "Welcome to Audric."}
+        </Text>
+        <Text
+          style={{
+            color: c.mut,
+            fontSize: 15,
+            lineHeight: 1.62,
+            margin: "14px 0 0",
+          }}
+        >
+          Audric is privacy-first, uncensored AI with a wallet built in. Your
+          chats are never training data, there's no KYC, and your keys are
+          always yours.
+        </Text>
+      </Section>
+
+      <Section style={{ padding: "24px 32px 0" }}>
+        <Text
+          style={{
+            color: c.fg,
+            fontSize: 13,
+            fontWeight: 600,
+            margin: "0 0 4px",
+          }}
+        >
+          Here's everything you have today
+        </Text>
+        {FEATURES.map(([title, desc]) => (
+          <Text
+            key={title}
+            style={{
+              color: c.fg,
+              fontSize: 14,
+              lineHeight: 1.45,
+              margin: "12px 0 0",
+            }}
+          >
+            <span style={{ color: c.sig, fontWeight: 700 }}>✓ </span>
+            <strong style={{ fontWeight: 600 }}>{title}</strong>{" "}
+            <span style={{ color: c.mut, fontWeight: 400 }}>— {desc}</span>
+          </Text>
+        ))}
+      </Section>
+
+      <Section style={{ padding: "28px 32px 0" }}>
+        <Button
+          href="https://audric.ai"
+          style={{
+            backgroundColor: c.btnbg,
+            color: c.btnfg,
+            fontSize: 14,
+            fontWeight: 600,
+            letterSpacing: "-0.011em",
+            padding: "13px 24px",
+            borderRadius: 8,
+            textDecoration: "none",
+          }}
+        >
+          Start chatting privately
+        </Button>
+      </Section>
+
+      <Section style={{ padding: "20px 32px 0" }}>
+        <Text
+          style={{ color: c.dim, fontSize: 12, lineHeight: 1.55, margin: 0 }}
+        >
+          Ready for more? <strong style={{ color: c.mut }}>Pro $18/mo</strong> ·{" "}
+          <strong style={{ color: c.mut }}>Max $100/mo</strong> unlock every
+          premium + frontier model and a monthly credit that never expires.
+        </Text>
+      </Section>
+    </EmailLayout>
+  );
+}

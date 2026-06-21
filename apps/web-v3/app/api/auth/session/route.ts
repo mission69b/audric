@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { type NextRequest, NextResponse } from "next/server";
 import {
   deriveAddress,
@@ -6,6 +7,8 @@ import {
   verifyGoogleJwt,
 } from "@/lib/audric-auth";
 import { upsertUser } from "@/lib/db/queries";
+import { EMAIL_FROM, REPLY_TO, sendEmail } from "@/lib/email/send";
+import { WelcomeEmail } from "@/lib/email/templates/welcome";
 
 // Server-side cap on the session window (the client passes the zkLogin
 // `estimatedExpiration`; we never trust a client-supplied exp beyond this).
@@ -38,7 +41,26 @@ export async function POST(request: NextRequest) {
     email = verified.emailVerified ? verified.email : null;
     // Upsert the user row (id = address) so Chat/Document FKs resolve + capture
     // the verified email (§6b).
-    await upsertUser(address, email);
+    const { isNew } = await upsertUser(address, email);
+    // Welcome email — exactly once, on first sign-in, only if we have a verified
+    // email. Fire-and-forget (waitUntil) so a slow/failed send never blocks or
+    // breaks sign-in; no-ops silently when RESEND_API_KEY is unset.
+    if (isNew && email) {
+      const to = email;
+      waitUntil(
+        sendEmail({
+          to,
+          subject: "Welcome to Audric",
+          react: WelcomeEmail({}),
+          from: EMAIL_FROM.founder,
+          replyTo: REPLY_TO,
+        }).then((r) => {
+          if (!r.sent) {
+            console.warn("[welcome email] not sent:", r.error);
+          }
+        })
+      );
+    }
   } catch {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }

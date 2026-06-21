@@ -70,6 +70,9 @@ const serverSchema = z.object({
   // date) so source rows show real page titles. Unset → falls back to the
   // keyless Gateway path (answer + URLs only, no titles). Server-only.
   PERPLEXITY_API_KEY: optionalString,
+  // Transactional + lifecycle email (Resend) — OPTIONAL: unset → email sending
+  // is a no-op (no boot failure; welcome/receipts just don't send). Server-only.
+  RESEND_API_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -102,6 +105,7 @@ const runtimeEnv = {
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   REDPILL_API_KEY: process.env.REDPILL_API_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

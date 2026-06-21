@@ -42,15 +42,23 @@ const db = drizzle(client);
  * sign-in (session mint) so the Chat/Document FKs resolve, and captures the
  * verified Google email for comms (§6b). Idempotent on re-login.
  */
-export async function upsertUser(id: string, email: string | null) {
+export async function upsertUser(
+  id: string,
+  email: string | null
+): Promise<{ isNew: boolean }> {
   try {
-    await db
+    // `xmax = 0` is true only for a freshly INSERTed row (non-zero on an UPDATE)
+    // — the canonical Postgres way to tell insert from update in an upsert, so we
+    // can fire the welcome email exactly once on first sign-in.
+    const [row] = await db
       .insert(user)
       .values({ id, email, emailVerified: email !== null })
       .onConflictDoUpdate({
         target: user.id,
         set: { email, updatedAt: new Date() },
-      });
+      })
+      .returning({ isNew: sql<boolean>`(xmax = 0)` });
+    return { isNew: row?.isNew ?? false };
   } catch (_error) {
     throw new ChatbotError("bad_request:database", "Failed to upsert user");
   }
