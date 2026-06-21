@@ -128,23 +128,27 @@ export function CotTimeline({
                     const title = s.title && s.title !== d ? s.title : null;
                     return (
                       <a
-                        className="flex items-start gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
+                        className="flex items-center gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
                         href={s.url}
                         key={s.url}
                         rel="noopener noreferrer"
                         target="_blank"
                       >
-                        <GlobeIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/40" />
-                        <span className="flex min-w-0 flex-1 flex-col">
-                          {title && (
-                            <span className="truncate text-foreground/80">
+                        <GlobeIcon className="size-3.5 shrink-0 text-muted-foreground/40" />
+                        {title ? (
+                          <>
+                            <span className="min-w-0 flex-1 truncate text-foreground/80">
                               {title}
                             </span>
-                          )}
-                          <span className="truncate text-muted-foreground/50">
+                            <span className="shrink-0 text-muted-foreground/50">
+                              {d}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="min-w-0 flex-1 truncate text-foreground/80">
                             {d}
                           </span>
-                        </span>
+                        )}
                       </a>
                     );
                   })}
