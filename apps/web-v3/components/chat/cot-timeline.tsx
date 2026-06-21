@@ -27,6 +27,19 @@ function domain(url: string): string {
   }
 }
 
+/** Clean, readable URL: host + path, no protocol / query / hash / trailing slash
+ * (e.g. "greycoder.com/best-privacy-ai"). The full location minus the noise. */
+function prettyUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    const path = u.pathname.replace(/\/$/, "");
+    return path && path !== "/" ? `${host}${path}` : host;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * The live "Chain of Thought" timeline (AI Elements) — groups a turn's reasoning
  * + web_search steps into ONE collapsible block. Open while the turn is in
@@ -122,33 +135,30 @@ export function CotTimeline({
               status={item.state === "active" ? "active" : "complete"}
             >
               {item.sources.length > 0 && (
-                <div className="mt-2 flex flex-col overflow-hidden rounded-lg border border-border/40">
-                  {item.sources.slice(0, 8).map((s) => {
+                <div className="mt-2 flex max-h-72 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border/40">
+                  {item.sources.map((s) => {
                     const d = domain(s.url);
+                    const pretty = prettyUrl(s.url);
                     const title = s.title && s.title !== d ? s.title : null;
                     return (
                       <a
-                        className="flex items-center gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
+                        className="flex items-start gap-2 border-border/30 border-b px-3 py-2 text-xs transition-colors last:border-b-0 hover:bg-accent/40"
                         href={s.url}
                         key={s.url}
                         rel="noopener noreferrer"
                         target="_blank"
                       >
-                        <GlobeIcon className="size-3.5 shrink-0 text-muted-foreground/40" />
-                        {title ? (
-                          <>
-                            <span className="min-w-0 flex-1 truncate text-foreground/80">
+                        <GlobeIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/40" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          {title && (
+                            <span className="truncate text-foreground/80">
                               {title}
                             </span>
-                            <span className="shrink-0 text-muted-foreground/50">
-                              {d}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="min-w-0 flex-1 truncate text-foreground/80">
-                            {d}
+                          )}
+                          <span className="truncate text-muted-foreground/50">
+                            {pretty}
                           </span>
-                        )}
+                        </span>
                       </a>
                     );
                   })}
