@@ -1,20 +1,96 @@
 import { gateway, generateText, tool } from "ai";
 import { z } from "zod";
+import { env } from "@/lib/env";
 
 /**
  * web_search — SDK-executed live web search (Audric v3).
  *
- * Why custom (not the Gateway's `perplexitySearch` provider tool): provider-
- * executed tools don't trigger the AI SDK's multi-step continuation, so our
- * models call the tool, get results, and stop WITHOUT synthesizing (verified:
- * finishReason 'tool-calls', no text). An SDK-executed tool (this) returns its
- * result through the normal loop, so the outer model reliably writes the answer
- * — on ANY model.
+ * Two paths, same shape out ({ answer, sources: [{ url, title }] }):
  *
- * The execute runs Perplexity Sonar through the Gateway (native search + grounded
- * answer + source URLs), so there's NO extra API key — it's billed on the same
- * Gateway credential as the chat models.
+ *  1. DIRECT Perplexity API (when PERPLEXITY_API_KEY is set) — returns
+ *     `search_results` with real page TITLES (+ url, date). The Vercel AI
+ *     Gateway's perplexity path does NOT surface titles (sources carry only a
+ *     url), so this direct call is the only non-hacky way to show titled rows.
+ *  2. GATEWAY fallback (no key) — Perplexity Sonar via the Gateway: grounded
+ *     answer + source URLs only (no titles). Keyless; bills on the Gateway
+ *     credential.
+ *
+ * Why SDK-executed (not the Gateway's provider search tool): provider-executed
+ * tools don't trigger the AI SDK's multi-step continuation — models call, get
+ * results, and stop WITHOUT synthesizing. Returning the result through the
+ * normal loop makes the outer model reliably write the cited answer.
  */
+
+const MAX_ANSWER_CHARS = 4000;
+
+type Source = { url: string; title: string };
+
+function cap(text: string): string {
+  return text.length > MAX_ANSWER_CHARS
+    ? `${text.slice(0, MAX_ANSWER_CHARS)}…`
+    : text;
+}
+
+async function searchDirect(
+  query: string,
+  apiKey: string
+): Promise<{ answer: string; sources: Source[] }> {
+  const res = await fetch("https://api.perplexity.ai/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "sonar",
+      messages: [{ role: "user", content: query }],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`perplexity ${res.status}`);
+  }
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    search_results?: { url?: string; title?: string }[];
+    citations?: string[];
+  };
+  const text = data.choices?.[0]?.message?.content ?? "";
+
+  const fromResults: Source[] = (data.search_results ?? [])
+    .filter((r): r is { url: string; title?: string } => Boolean(r.url))
+    .map((r) => ({
+      url: r.url,
+      title: typeof r.title === "string" ? r.title : "",
+    }));
+  // Fallback to bare citation URLs if the API omitted search_results.
+  const sources =
+    fromResults.length > 0
+      ? fromResults
+      : (data.citations ?? []).map((url) => ({ url, title: "" }));
+
+  return { answer: cap(text), sources };
+}
+
+async function searchGateway(
+  query: string
+): Promise<{ answer: string; sources: Source[] }> {
+  const { text, sources } = await generateText({
+    model: gateway.languageModel("perplexity/sonar"),
+    prompt: query,
+  });
+  const urls: Source[] = (sources ?? []).flatMap((s) =>
+    s.sourceType === "url"
+      ? [
+          {
+            url: s.url,
+            title: s.title && !/^https?:\/\//.test(s.title) ? s.title : "",
+          },
+        ]
+      : []
+  );
+  return { answer: cap(text), sources: urls };
+}
+
 export const webSearch = tool({
   description:
     "Search the web for current, live, or time-sensitive information — news, " +
@@ -29,37 +105,15 @@ export const webSearch = tool({
       ),
   }),
   execute: async ({ query }) => {
-    const { text, sources } = await generateText({
-      // sonar-pro: deeper, source-richer, fresher than base sonar — the quality
-      // is worth the ~3× cost (still ~$0.03/search, billed to our gateway, not
-      // the user's credit). See Perplexity pricing.
-      model: gateway.languageModel("perplexity/sonar-pro"),
-      prompt: query,
-    });
-
-    const urls = (sources ?? []).flatMap((s) =>
-      s.sourceType === "url"
-        ? [
-            {
-              url: s.url,
-              // Use a real page title only when the search API actually provides
-              // one (not the raw URL). Otherwise "" → the UI shows the clean
-              // domain. No URL-slug guessing (that produced junk like "Watch").
-              title: s.title && !/^https?:\/\//.test(s.title) ? s.title : "",
-            },
-          ]
-        : []
-    );
-
-    // Safety cap: research turns run ~12 searches; an unbounded answer could
-    // accumulate and blow the context budget. Normal Sonar answers are well
-    // under this, so the cap only catches pathological cases.
-    const MAX_ANSWER_CHARS = 4000;
-    const answer =
-      text.length > MAX_ANSWER_CHARS
-        ? `${text.slice(0, MAX_ANSWER_CHARS)}…`
-        : text;
-
-    return { answer, sources: urls };
+    const apiKey = env.PERPLEXITY_API_KEY;
+    if (apiKey) {
+      try {
+        return await searchDirect(query, apiKey);
+      } catch {
+        // Direct call failed (rate limit / outage) → degrade to the Gateway.
+        return await searchGateway(query);
+      }
+    }
+    return await searchGateway(query);
   },
 });

@@ -65,6 +65,11 @@ const serverSchema = z.object({
   // key. When set, confidential models route directly to RedPill (not the
   // Gateway) and per-turn TEE signatures are surfaced. Server-only.
   REDPILL_API_KEY: optionalString,
+  // web_search titles — OPTIONAL: a direct Perplexity API key. When set,
+  // web_search calls Perplexity directly to get `search_results` (title + url +
+  // date) so source rows show real page titles. Unset → falls back to the
+  // keyless Gateway path (answer + URLs only, no titles). Server-only.
+  PERPLEXITY_API_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -96,6 +101,7 @@ const runtimeEnv = {
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   REDPILL_API_KEY: process.env.REDPILL_API_KEY,
+  PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
