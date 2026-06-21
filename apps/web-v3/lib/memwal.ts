@@ -21,6 +21,18 @@ export function isMemoryConfigured(): boolean {
   return Boolean(env.MEMWAL_PRIVATE_KEY && env.MEMWAL_ACCOUNT_ID);
 }
 
+/**
+ * The user's memory namespace for a given "forget" epoch. Epoch 0 = the bare
+ * passport address; "Forget all my memories" bumps the epoch → `address#vN`, a
+ * fresh namespace, so prior memories are never recalled again (clean slate). The
+ * old encrypted Walrus blobs are left to expire on their own — a true on-chain
+ * erasure awaits a MemWal relayer forget op (not in the SDK yet). HONEST: this
+ * stops recall + lets storage expire; it is NOT a provable hard-delete.
+ */
+export function memoryNamespace(address: string, epoch: number): string {
+  return epoch > 0 ? `${address}#v${epoch}` : address;
+}
+
 function memwalConfig(namespace: string) {
   return {
     key: env.MEMWAL_PRIVATE_KEY as string,

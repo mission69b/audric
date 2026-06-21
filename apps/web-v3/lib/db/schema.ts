@@ -53,6 +53,11 @@ export const user = pgTable("User", {
     .default("free"),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   stripeSubscriptionId: text("stripeSubscriptionId"),
+  /** Private Memory "forget all" epoch. Recall + save use namespace
+   *  `address` (epoch 0) or `address#vN` (epoch N), so bumping it makes prior
+   *  memories un-recallable (a clean slate); the old encrypted Walrus blobs
+   *  expire on their own. (Provable on-chain erasure awaits a MemWal forget op.) */
+  memoryEpoch: integer("memoryEpoch").notNull().default(0),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

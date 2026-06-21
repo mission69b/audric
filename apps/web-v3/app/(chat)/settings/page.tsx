@@ -100,6 +100,23 @@ export default function SettingsPage() {
     }
   }
 
+  async function forgetMemory() {
+    setBusy(true);
+    try {
+      const res = await fetch(`${BASE}/api/account/forget-memory`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error("failed");
+      }
+      toast.success("Your memories were forgotten — they won't be recalled.");
+    } catch {
+      toast.error("Couldn't forget your memories.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function purgeAll() {
     setBusy(true);
     try {
@@ -128,7 +145,9 @@ export default function SettingsPage() {
       {address && (
         <Section title="Passport">
           <p className="text-muted-foreground text-xs">
-            <strong className="text-foreground/80">No seed phrase, no bank.</strong>{" "}
+            <strong className="text-foreground/80">
+              No seed phrase, no bank.
+            </strong>{" "}
             Sign in with Google and a non-custodial wallet is yours — only you
             control it, and it's still here whenever you sign back in.
           </p>
@@ -216,6 +235,24 @@ export default function SettingsPage() {
           Turning memory off stops recall, and stored memories expire on their
           own.
         </p>
+        {models?.memoryEnabled && (
+          <>
+            <div className="my-3 border-border/40 border-t" />
+            <Row
+              desc="Wipe the slate: nothing you've told Audric will be recalled again. The encrypted blobs expire from storage on their own."
+              title="Forget all my memories"
+            >
+              <ConfirmButton
+                busy={busy}
+                confirmLabel="Forget all"
+                description="Audric will stop recalling everything it has remembered about you, and start fresh. The encrypted memories expire from decentralized storage on their own. This can't be undone."
+                label="Forget all"
+                onConfirm={forgetMemory}
+                title="Forget all your memories?"
+              />
+            </Row>
+          </>
+        )}
       </Section>
 
       {/* Your data */}

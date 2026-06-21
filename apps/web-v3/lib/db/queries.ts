@@ -11,6 +11,7 @@ import {
   inArray,
   lt,
   type SQL,
+  sql,
   sum,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -89,6 +90,19 @@ export async function setUsername(
       updatedAt: new Date(),
     })
     .where(eq(user.id, userId));
+}
+
+/**
+ * "Forget all my memories" — bump the user's memory epoch so prior memories are
+ * never recalled again (a fresh namespace going forward). Returns the new epoch.
+ */
+export async function incrementMemoryEpoch(userId: string): Promise<number> {
+  const [row] = await db
+    .update(user)
+    .set({ memoryEpoch: sql`${user.memoryEpoch} + 1`, updatedAt: new Date() })
+    .where(eq(user.id, userId))
+    .returning({ memoryEpoch: user.memoryEpoch });
+  return row?.memoryEpoch ?? 0;
 }
 
 /** Current credit balance in micro-USD (SUM of the append-only ledger). */

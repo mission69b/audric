@@ -64,7 +64,11 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatbotError } from "@/lib/errors";
-import { isMemoryConfigured, recallMemoryBlock } from "@/lib/memwal";
+import {
+  isMemoryConfigured,
+  memoryNamespace,
+  recallMemoryBlock,
+} from "@/lib/memwal";
 import { checkIpRateLimit } from "@/lib/ratelimit";
 import { isCreditConfigured, maybeAutoRecharge } from "@/lib/stripe";
 import type { ChatMessage } from "@/lib/types";
@@ -516,9 +520,14 @@ export async function POST(request: Request) {
             .map((p) => p.text)
             .join(" ")
             .trim() ?? "";
+        // Namespace memory under the user's current "forget" epoch — so a
+        // "Forget all my memories" (epoch bump) makes prior memories un-recallable.
+        const memNamespace = session?.user
+          ? memoryNamespace(session.user.id, dbUser?.memoryEpoch ?? 0)
+          : "";
         const memoryRecall =
           memoryOn && session?.user && recallQuery
-            ? await recallMemoryBlock(session.user.id, recallQuery)
+            ? await recallMemoryBlock(memNamespace, recallQuery)
             : null;
         const baseActiveTools: ActiveTool[] =
           isReasoningModel && !supportsTools
@@ -662,7 +671,7 @@ export async function POST(request: Request) {
                   // Private Memory (§7c) — explicit capture; only when the user
                   // has memory ON this turn. Recall is automatic (model wrap).
                   ...(memoryOn
-                    ? { save_memory: saveMemory({ address: session.user.id }) }
+                    ? { save_memory: saveMemory({ address: memNamespace }) }
                     : {}),
                 }
               : {}),
