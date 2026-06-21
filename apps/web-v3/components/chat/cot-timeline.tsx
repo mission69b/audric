@@ -122,7 +122,7 @@ export function CotTimeline({
               status={item.state === "active" ? "active" : "complete"}
             >
               {item.sources.length > 0 && (
-                <div className="mt-2 flex max-h-72 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border/40">
+                <div className="mt-2 flex max-h-60 flex-col overflow-y-auto overflow-x-hidden rounded-lg border border-border/40">
                   {item.sources.map((s) => {
                     const d = domain(s.url);
                     const title = s.title && s.title !== d ? s.title : null;
