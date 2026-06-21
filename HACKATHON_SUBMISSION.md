@@ -3,7 +3,7 @@
 > **Track:** Agentic Web · **Status:** Live in production on Sui mainnet at [audric.ai](https://audric.ai)
 > This file is the submission packet (copy into the DeepSurge fields) + a judge-facing overview.
 
-> **⚠️ Updating an existing submission (not a new one).** Audric was already submitted earlier in the window (the v2 "conversational finance" build). **Edit that existing DeepSurge project — do NOT delete + resubmit** (editing is supported; deleting forfeits the project page + any community votes for no gain). Update: **description → v3** (this packet), **demo video → v3**, **repo link → v3**, and **switch track to Agentic Web** if the platform allows editing the track. If the track is locked post-submission, keep v3 under the existing track (it's also a strong **DeFi & Payments** entry — gasless USDC/USDsui + x402 agent payments) and re-angle this packet. The v2→v3 leap IS the "substantial new in-window functionality" the rules reward.
+> **⚠️ Updating an existing submission (not a new one).** Audric was already submitted earlier in the window (the v2 "conversational finance" build) under **Agentic Web** (track already set). **Edit that existing DeepSurge project — do NOT delete + resubmit** (editing is supported; deleting forfeits the project page + any community votes for no gain). Just update: **description → v3** (this packet), **demo video → v3**, **repo link → v3**. The v2→v3 leap IS the "substantial new in-window functionality" the rules reward — make it unmissable to a returning judge. (Solo is eligible — confirmed in the FAQ.)
 
 ---
 
@@ -22,8 +22,8 @@
 ### One-line description
 **Audric is a private, non-custodial AI agent that holds and moves your money — sign in with Google, get a Sui wallet in seconds, and let an AI agent chat, research, and pay in USDC, all gaslessly.**
 
-### Short description (≈50 words)
-Audric is a private, decentralized AI agent on Sui. Sign in with Google (zkLogin) → a non-custodial wallet in seconds, no seed phrase. Chat with the best open + frontier models, do cited multi-step research, generate images, and send USDC/USDsui gaslessly — with encrypted memory on Walrus. You own your data, money, and memory.
+### Short description (≈60 words — lead with the relaunch so returning judges see v3)
+**Now live: Audric v3 — relaunched during Overflow as a private, decentralized AI agent.** Sign in with Google (zkLogin) → a non-custodial Sui wallet in seconds, no seed phrase. Chat with the best open + frontier models, do cited multi-step research, generate images, and send USDC/USDsui gaslessly — with encrypted memory on Walrus. You own your data, money, and memory.
 
 ---
 
