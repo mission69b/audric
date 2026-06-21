@@ -34,7 +34,6 @@ import {
   ensureGeminiThoughtSignatures,
   isGemini3,
 } from "@/lib/ai/thought-signatures";
-import { askUser } from "@/lib/ai/tools/ask-user";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
@@ -84,7 +83,6 @@ export const maxDuration = 300;
 
 type ActiveTool =
   | "web_search"
-  | "ask_user"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
@@ -389,14 +387,13 @@ export async function POST(request: Request) {
       ];
     }
 
-    // Resolve dangling client-executed tool calls (ask_user / send_transfer /
+    // Resolve dangling client-executed tool calls (send_transfer /
     // run_recipe) the user bypassed by typing a new message instead of using the
     // card. Left unresolved, `convertToModelMessages` throws "Tool result is
     // missing" and the whole turn fails. Synthesize a benign "skipped" result so
     // the conversation continues (the model treats the user's chat reply as the
     // answer). Applies to history only — the new user message has no tool calls.
     const CLIENT_TOOL_PART_TYPES = new Set([
-      "tool-ask_user",
       "tool-send_transfer",
       "tool-run_recipe",
     ]);
@@ -535,7 +532,6 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
-                  "ask_user",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -552,8 +548,8 @@ export async function POST(request: Request) {
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                 ]
               : isExplicitArtifact
-                ? ["web_search", "ask_user", "createDocument"]
-                : ["web_search", "ask_user"];
+                ? ["web_search", "createDocument"]
+                : ["web_search"];
 
         const result = streamText({
           model: baseModel,
@@ -636,8 +632,6 @@ export async function POST(request: Request) {
             // parallelSearch) were both verified to NOT synthesize on our
             // open-model roster (S.478 A/B). Available to everyone (incl. anon).
             web_search: webSearch,
-            // Client-executed clarifying-question form (no server execute).
-            ask_user: askUser,
             createDocument: createDocument({
               session,
               dataStream,

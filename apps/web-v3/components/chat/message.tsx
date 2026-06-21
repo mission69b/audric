@@ -14,7 +14,6 @@ import {
   ToolInput,
   ToolOutput,
 } from "../ai-elements/tool";
-import { AskUserTool } from "./ask-user-tool";
 import { BalanceTool } from "./balance-tool";
 import { type CotItem, CotTimeline } from "./cot-timeline";
 import { useDataStream } from "./data-stream-provider";
@@ -170,10 +169,6 @@ const PurePreviewMessage = ({
           responseId={part.data.responseId}
         />
       );
-    }
-
-    if (type === "tool-ask_user") {
-      return <AskUserTool key={part.toolCallId} part={part} />;
     }
 
     if (type === "tool-balance_check") {
