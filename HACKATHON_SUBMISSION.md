@@ -101,20 +101,26 @@ The privacy ladder ends at *provably yours*: **Anon → Private·ZDR → Confide
 
 **0:25–1:05 — zkLogin onboarding (Sui primitive #1)**
 > Click "Sign in with Google." Land in the app with a wallet.
+
 > "I just signed in with Google and got a real, non-custodial Sui wallet — no seed phrase, no extension, in about three seconds. That's zkLogin via Enoki."
 
 **1:05–2:05 — The agent: research + Auto (the wow)**
 > Type: *"Research the top privacy-focused AI apps in 2025."* Show Auto routing + the **live Chain-of-Thought timeline** running several web searches with cited sources → synthesis.
-> "Audric picks the best model per turn, then does visible, cited multi-step research — you watch it work, every claim sourced. It also generates images and reasons, all on one rail, no API keys."
+
+> "Audric picks the best model per turn, then does visible, cited multi-step research — you watch it work, every claim sourced. It also generates images and reasons — all private by default (your prompts are never stored or trained on), and the open model is free."
 
 **2:05–3:05 — It holds and moves money (Sui primitives #2 + #4)**
 > Show balance. Send USDC to a `@handle` / address → tap-to-confirm → show the receipt's **clickable Sui-explorer link**.
+
 > "I just sent USDC — gaslessly. No SUI, no gas token. I signed it in my browser; the server never holds my keys, and the transaction's verifiable by anyone."
+
 > Run a **Recipe** (e.g., Morning Brief) → confirm the USDC charge.
+
 > "And the agent pays for live-data services itself, per-run in USDC, over x402 — machine payments. Payment is the API key."
 
 **3:05–4:05 — Private + yours (Walrus — Sui primitive #3)**
 > Ask it to remember a preference → it confirms the save. Open Settings → show Private Memory + "Forget all" + ZDR/encrypted/Walrus panel.
+
 > "Audric's memory is encrypted on Walrus — decentralized storage, not our servers. It's off by default, and one tap wipes it. Every chat is zero-data-retention; your files are never public. You own your data, your money, and your memory."
 
 **4:05–4:45 — Why Sui + traction + close**
