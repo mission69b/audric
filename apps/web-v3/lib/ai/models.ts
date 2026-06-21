@@ -117,6 +117,9 @@ export const chatModels: ChatModel[] = [
     name: "Claude Opus 4.8",
     provider: "anthropic",
     description: "Frontier model — top-tier coding & writing",
+    // Cross-provider fallback (gateway `order`): if Anthropic errors/rate-limits,
+    // the gateway retries the same model on Bedrock. Resilience, not a bandaid.
+    gatewayOrder: ["anthropic", "bedrock"],
     privacy: "private",
     tier: "smart",
     frontier: true,
@@ -137,6 +140,10 @@ export const chatModels: ChatModel[] = [
     name: "Gemini 3 Pro",
     provider: "google",
     description: "Frontier model — long context & multimodal",
+    // Cross-provider fallback (gateway `order`): prefer Google AI Studio, fall
+    // back to Vertex on error/rate-limit. (Google-first also sidesteps Vertex's
+    // stricter request validation — the empty-parts class — as a bonus.)
+    gatewayOrder: ["google", "vertex"],
     privacy: "private",
     tier: "smart",
     frontier: true,
