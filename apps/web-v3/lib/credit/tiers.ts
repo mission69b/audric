@@ -40,8 +40,9 @@ export const EVERY_PLAN: string[] = [
   "Zero data retention — your chats are never training data",
   "Permissionless — no account, no KYC, no seed phrase",
   "Non-custodial wallet — your keys, your money, always",
-  "Send USDC anywhere — free, instant, gasless",
-  "Private memory, chats & files — encrypted, never public, yours to delete",
+  "Send USDC + USDsui anywhere — free, instant, gasless",
+  "Decentralized memory — encrypted on Walrus, off by default, yours to wipe",
+  "Private chats & files — encrypted at rest, never public",
   "Auto — automatically picks the best model for every task",
   "Recipes — pay-per-use live-data flows, with your own USDC",
 ];
@@ -61,7 +62,7 @@ export const TIERS: Tier[] = [
     tagline: "The private AI, on the house",
     features: [
       "Open, uncensored models — unlimited core chat",
-      "Web search + image generation",
+      "Web search, image generation & cited multi-step research",
       "Pay-as-you-go top-up for premium models",
     ],
   },
