@@ -59,3 +59,6 @@ scripts/
 pitch-deck.html
 pitch-deck-v*.html
 PORTFOLIO_REGRESSION_MATRIX.md
+
+# Hackathon submission packet — internal working doc (lives in t2000/spec/active)
+HACKATHON_SUBMISSION.md
