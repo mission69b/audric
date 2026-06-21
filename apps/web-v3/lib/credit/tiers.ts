@@ -41,7 +41,7 @@ export const EVERY_PLAN: string[] = [
   "Permissionless — no account, no KYC, no seed phrase",
   "Non-custodial wallet — your keys, your money, always",
   "Send USDC anywhere — free, instant, gasless",
-  "Private memory & chats — encrypted, yours to delete anytime",
+  "Private memory, chats & files — encrypted, never public, yours to delete",
   "Auto — automatically picks the best model for every task",
   "Recipes — pay-per-use live-data flows, with your own USDC",
 ];

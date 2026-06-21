@@ -213,8 +213,10 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted-foreground text-xs">
             When on, Audric remembers your preferences across chats —{" "}
-            <strong>encrypted, private, off by default</strong>. Turn it off any
-            time to stop recall.
+            <strong>
+              encrypted on decentralized storage, private, off by default
+            </strong>
+            . Turn it off any time to stop recall.
           </p>
           {models?.memoryEnabled ? (
             <Button
@@ -293,9 +295,13 @@ export default function SettingsPage() {
             · Models run through a zero-data-retention gateway by default.
           </li>
           <li>
-            · Chats and artifacts are stored privately (encrypted at rest).
+            · Chats and files are private — encrypted at rest, never served from
+            a public link.
           </li>
-          <li>· Memories are encrypted on Walrus — yours, never sold.</li>
+          <li>
+            · Memories are encrypted on Walrus decentralized storage — yours,
+            never sold.
+          </li>
         </ul>
         <div className="mt-3 flex gap-4 text-muted-foreground text-xs">
           <a className="underline hover:text-foreground" href="/privacy">

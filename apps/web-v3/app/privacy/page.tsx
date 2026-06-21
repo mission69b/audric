@@ -35,8 +35,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Memory (optional):</strong> only if you turn Private Memory
-          on. Memories are encrypted and stored on Walrus; they are off by
-          default.
+          on. Memories are encrypted and stored on{" "}
+          <strong>Walrus, a decentralized storage network</strong> — not on our
+          own servers. Memory is off by default.
         </li>
         <li>
           <strong>Payments:</strong> if you add credit or subscribe, Stripe
@@ -70,8 +71,8 @@ export default function PrivacyPage() {
       <p>
         Service providers that operate Audric: Google (sign-in), Stripe
         (payments), our AI gateway and model providers (inference), Walrus /
-        Mysten (encrypted memory storage), and our database/hosting providers.
-        We do not sell your personal data.
+        Mysten (encrypted memory on decentralized storage), and our
+        database/hosting providers. We do not sell your personal data.
       </p>
 
       <H>Retention & your controls</H>
@@ -86,9 +87,11 @@ export default function PrivacyPage() {
 
       <H>Security</H>
       <p>
-        Data is encrypted in transit and at rest. Sessions use signed, HTTP-only
-        cookies. Because your wallet is non-custodial, we never hold the keys to
-        your funds.
+        Data is encrypted in transit and at rest. Files and artifacts you
+        generate are <strong>private</strong> — served only to you through
+        authenticated requests, never from a public URL. Sessions use signed,
+        HTTP-only cookies. Because your wallet is non-custodial, we never hold
+        the keys to your funds.
       </p>
 
       <H>Children</H>
