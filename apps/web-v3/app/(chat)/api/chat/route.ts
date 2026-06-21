@@ -316,14 +316,16 @@ export async function POST(request: Request) {
       routeDecision?.classification?.intent === "research" ||
       routeDecision?.classification?.needsDeepResearch === true;
 
-    // Research runs ~12 steps — on Auto, route the loop to a REASONING model
-    // (Gemini 3 Pro) so its thinking streams as reasoning parts that interleave
-    // with the searches in the chain-of-thought timeline (the "premium",
-    // Claude-like research feel) — and it does better follow-up searches. Auto
-    // only (explicit model picks are respected) + premium-entitled. Catches the
-    // chip flow's follow-up turn too, where the router classified only the topic.
-    if (routeDecision && researchActive && canUsePremium) {
-      chatModel = "google/gemini-3-pro-preview";
+    // Research runs ~12 tool steps in one loop. Gemini-3 is unreliable on long
+    // multi-step tool loops (intermittent stream failures — the upgrade fixed the
+    // simple 1-tool case, not this), so on Auto we route research to the free,
+    // RELIABLE model (Kimi): visible cited searches that always complete, free
+    // for everyone (no cold-start). This is the ONLY Auto path that used Gemini —
+    // so Auto now never routes to Gemini (it stays a manual pick for chat, where
+    // it works). Premium interleaved-reasoning research could route to Opus here
+    // instead — never Gemini.
+    if (routeDecision && researchActive) {
+      chatModel = DEFAULT_CHAT_MODEL;
     }
 
     // Recipes ALWAYS run on the free model (Kimi), overriding Auto AND explicit
