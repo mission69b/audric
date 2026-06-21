@@ -30,7 +30,10 @@ export const webSearch = tool({
   }),
   execute: async ({ query }) => {
     const { text, sources } = await generateText({
-      model: gateway.languageModel("perplexity/sonar"),
+      // sonar-pro: deeper, source-richer, fresher than base sonar — the quality
+      // is worth the ~3× cost (still ~$0.03/search, billed to our gateway, not
+      // the user's credit). See Perplexity pricing.
+      model: gateway.languageModel("perplexity/sonar-pro"),
       prompt: query,
     });
 
