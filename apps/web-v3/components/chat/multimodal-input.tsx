@@ -350,7 +350,7 @@ function PureMultimodalInput({
       // The model can't see images → don't silently attach one it'll ignore.
       if (!modelHasVision) {
         toast.error(
-          "This model can't see images. Switch to a vision model (e.g. GPT-5.5, Gemini, or Claude) to attach one."
+          "This model can't see images. Switch to a vision model (e.g. GPT-5.5 or Claude) to attach one."
         );
         return;
       }

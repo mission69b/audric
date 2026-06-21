@@ -135,20 +135,12 @@ export const chatModels: ChatModel[] = [
     frontier: true,
     bestFor: "All-round + vision",
   },
-  {
-    id: "google/gemini-3-pro-preview",
-    name: "Gemini 3 Pro",
-    provider: "google",
-    description: "Frontier model — long context & multimodal",
-    // Cross-provider fallback (gateway `order`): prefer Google AI Studio, fall
-    // back to Vertex on error/rate-limit. (Google-first also sidesteps Vertex's
-    // stricter request validation — the empty-parts class — as a bonus.)
-    gatewayOrder: ["google", "vertex"],
-    privacy: "private",
-    tier: "smart",
-    frontier: true,
-    bestFor: "Long context",
-  },
+  // Gemini 3 Pro removed from the chat lineup: unreliable on multi-step / multi-
+  // turn TOOL conversations on this stack (intermittent "empty parts" stream
+  // crashes after a tool result, esp. on replayed history) despite the ai@6.0.208
+  // upgrade + thought-signature handling + provider fallback. Opus + GPT-5.5
+  // cover the frontier tier. (The separate google/gemini-2.5-flash-image model
+  // used for image editing is unaffected — different model, works fine.)
 ];
 
 // Confidential (TEE) tier — the 3rd privacy rung (SPEC_AUDRIC_V3 §5c). These run
