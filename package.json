@@ -19,9 +19,6 @@
   "pnpm": {
     "overrides": {
       "@mysten/sui": "^2.17.0"
-    },
-    "patchedDependencies": {
-      "@naviprotocol/lending@1.4.0": "patches/@naviprotocol__lending@1.4.0.patch"
     }
   }
 }
