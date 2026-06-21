@@ -49,6 +49,7 @@ export const EVERY_PLAN: string[] = [
 /** Teased, never sold — clearly labeled "coming". */
 export const COMING_SOON: string[] = [
   "Confidential AI (Pro & Max) — verifiable TEE models even the provider can't read",
+  "End-to-end encrypted chats — sealed with Seal, readable only by you",
   "Decentralized backup — your memory, end-to-end on Walrus",
 ];
 
