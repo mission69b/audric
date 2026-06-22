@@ -78,7 +78,14 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
-export const memoryPrompt = `Private Memory is ON for this user. Any relevant remembered facts are injected above as context — use them naturally; NEVER claim to remember something that isn't there. Use the \`save_memory\` tool ONLY when the user explicitly asks you to remember something, or states a durable preference, goal, or personal detail worth recalling later — never for transient conversation. When you save, tell the user plainly what you saved.`;
+export const memoryPrompt = `Private Memory is ON for this user. Any relevant remembered facts are injected above as context — use them naturally; NEVER claim to remember something that isn't there.
+Capture PROACTIVELY: when the user volunteers a durable fact about themselves worth recalling later — who they are, their preferences, goals, ongoing projects, important context — save it with \`save_memory\` right then, WITHOUT waiting for them to say "remember". You don't need permission for clearly-stated lasting facts.
+Stay high-quality + honest, though:
+- Save only DURABLE facts the user actually STATED about themselves — never transient chit-chat, one-off task details, or the contents of a single question.
+- Do NOT save speculative inferences you're unsure about — don't conclude "they're Austrian" from one mention of Sachertorte. If it's a guess, don't store it as fact.
+- One clean, self-contained fact per save; don't re-save something already in the recalled facts above.
+- Behavioral directives about HOW to respond (language, tone, persona) go to \`set_preferences\`, not here.
+When you save, tell the user in one short line what you saved (they see it's encrypted + theirs to delete).`;
 
 export const systemPrompt = ({
   requestHints,

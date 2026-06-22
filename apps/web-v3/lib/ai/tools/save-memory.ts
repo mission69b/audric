@@ -3,11 +3,13 @@ import { z } from "zod";
 import { getMemWal } from "@/lib/memwal";
 
 /**
- * save_memory — explicitly remember a durable fact about the user (Private
- * Memory, SPEC_AUDRIC_V3 §7c). EXPLICIT capture only (autoSave is off): call
- * this when the user says "remember that…" or states a lasting preference/goal,
- * NOT for transient chit-chat. Stored in the user's own memory namespace
- * (encrypted on Walrus); recalled automatically on future turns.
+ * save_memory — remember a durable fact about the user (Private Memory,
+ * SPEC_AUDRIC_V3 §7c). PROACTIVE capture: call it whenever the user volunteers a
+ * lasting fact about themselves (preference, goal, ongoing project, personal
+ * detail) — NOT only when they say "remember". Skip transient chit-chat + guesses
+ * you're unsure about. Stored in the user's own memory namespace (encrypted on
+ * Walrus); recalled automatically on future turns. (autoSave stays off — this
+ * tool is the capture path; the model decides when to call it.)
  *
  * `address` = the user's Passport address (their memory namespace). Authed-only.
  */
@@ -15,7 +17,8 @@ export const saveMemory = ({ address }: { address: string }) =>
   tool({
     description:
       "Save a durable fact about the user to their private memory (encrypted, recalled on future chats). " +
-      "Use ONLY when the user asks to remember something or states a lasting preference, goal, or personal detail — never for transient conversation. State plainly what you saved.",
+      "Capture PROACTIVELY — call this whenever the user volunteers a lasting fact about themselves (a preference, goal, ongoing project, or personal detail), without waiting for them to say 'remember'. " +
+      "Skip transient conversation, one-off task details, and speculative inferences you're not sure about. State plainly what you saved.",
     inputSchema: z.object({
       fact: z
         .string()
