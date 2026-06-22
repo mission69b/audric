@@ -64,7 +64,7 @@ function CheckoutInner() {
     : "Pay-as-you-go — credit never expires.";
 
   return (
-    <div className="min-h-dvh w-full bg-white text-neutral-900">
+    <div className="min-h-dvh w-full bg-neutral-100 text-neutral-900">
       <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-10 px-5 py-10 md:grid-cols-2 md:py-16">
         {/* Personalized summary */}
         <div className="flex flex-col">

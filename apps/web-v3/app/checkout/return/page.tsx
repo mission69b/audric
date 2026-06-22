@@ -126,7 +126,7 @@ function Actions() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh w-full bg-white">
+    <div className="min-h-dvh w-full bg-neutral-100">
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
         {children}
       </div>

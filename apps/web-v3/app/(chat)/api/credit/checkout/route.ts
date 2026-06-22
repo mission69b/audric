@@ -66,8 +66,8 @@ export async function POST(request: Request) {
       ui_mode: "embedded_page",
       mode: "payment",
       customer: customerId,
-      // White panel so the embedded checkout blends with the page (no grey canvas).
-      branding_settings: { background_color: "#ffffff" },
+      // Audric shell surface (bg-sidebar) so the embedded panel matches the page.
+      branding_settings: { background_color: "#f5f5f5" },
       line_items: [
         {
           quantity: 1,
