@@ -15,6 +15,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 
+// Checkout is forced light (fixed colors, not theme tokens) so it blends with
+// Stripe's light embedded panel regardless of the app's dark/light theme.
 function CheckoutInner() {
   const params = useSearchParams();
   const router = useRouter();
@@ -44,7 +46,6 @@ function CheckoutInner() {
     return j.clientSecret as string;
   }, [isSub, plan, topup]);
 
-  // Nothing valid to buy → back to billing (in an effect, not during render).
   const invalid = !(isSub || (topup && topup > 0)) || !stripePromise;
   useEffect(() => {
     if (invalid) {
@@ -63,82 +64,82 @@ function CheckoutInner() {
     : "Pay-as-you-go — credit never expires.";
 
   return (
-    <div className="mx-auto grid min-h-dvh w-full max-w-5xl grid-cols-1 gap-10 px-5 py-10 md:grid-cols-2 md:py-16">
-      {/* Personalized summary */}
-      <div className="flex flex-col">
-        <Link
-          className="mb-8 inline-flex w-fit items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground"
-          href={`${BASE}/settings/billing`}
-        >
-          <ArrowLeftIcon className="size-4" /> Back
-        </Link>
+    <div className="min-h-dvh w-full bg-white text-neutral-900">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-10 px-5 py-10 md:grid-cols-2 md:py-16">
+        {/* Personalized summary */}
+        <div className="flex flex-col">
+          <Link
+            className="mb-8 inline-flex w-fit items-center gap-1.5 text-neutral-500 text-sm transition-colors hover:text-neutral-900"
+            href={`${BASE}/settings/billing`}
+          >
+            <ArrowLeftIcon className="size-4" /> Back
+          </Link>
 
-        <h1 className="font-semibold text-2xl text-foreground tracking-tight">
-          {title}
-        </h1>
-        <p className="mt-1 text-muted-foreground text-sm">{subtitle}</p>
+          <h1 className="font-semibold text-2xl tracking-tight">{title}</h1>
+          <p className="mt-1 text-neutral-500 text-sm">{subtitle}</p>
 
-        {isSub && tier && (
-          <div className="mt-6">
-            <div className="font-semibold text-3xl text-foreground tabular-nums">
-              ${tier.priceUsd}
-              <span className="ml-1 font-medium text-base text-muted-foreground">
-                /mo
-              </span>
-              {tier.originalPriceUsd ? (
-                <span className="ml-2 text-base text-muted-foreground/60 line-through">
-                  ${tier.originalPriceUsd}
+          {isSub && tier && (
+            <div className="mt-6">
+              <div className="font-semibold text-3xl tabular-nums">
+                ${tier.priceUsd}
+                <span className="ml-1 font-medium text-base text-neutral-500">
+                  /mo
                 </span>
-              ) : null}
+                {tier.originalPriceUsd ? (
+                  <span className="ml-2 text-base text-neutral-400 line-through">
+                    ${tier.originalPriceUsd}
+                  </span>
+                ) : null}
+              </div>
+              <ul className="mt-5 space-y-2.5">
+                {tier.features.map((f) => (
+                  <li className="flex gap-2 text-neutral-700 text-sm" key={f}>
+                    <span className="text-signal">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="mt-5 space-y-2.5">
-              {tier.features.map((f) => (
-                <li className="flex gap-2 text-foreground/80 text-sm" key={f}>
-                  <span className="text-signal">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+          )}
 
-        {!isSub && topup ? (
-          <div className="mt-6 font-semibold text-3xl text-foreground tabular-nums">
-            ${topup.toFixed(2)}
-          </div>
-        ) : null}
+          {!isSub && topup ? (
+            <div className="mt-6 font-semibold text-3xl tabular-nums">
+              ${topup.toFixed(2)}
+            </div>
+          ) : null}
 
-        {/* Founder note (Zinc-style personal touch) */}
-        <div className="mt-auto flex items-center gap-3 pt-10">
-          {/* biome-ignore lint/performance/noImgElement: tiny static avatar */}
-          <img
-            alt="funkii"
-            className="size-9 rounded-full object-cover"
-            src="/founder.png"
-          />
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Thanks for backing Audric — it means a lot.
-            <br />
-            Questions? Reply to any email or grab time with me.
-            <br />
-            <span className="text-foreground/70">— funkii, founder</span>
+          {/* Founder note (Zinc-style personal touch) */}
+          <div className="mt-auto flex items-center gap-3 pt-10">
+            {/* biome-ignore lint/performance/noImgElement: tiny static avatar */}
+            <img
+              alt="funkii"
+              className="size-9 rounded-full object-cover"
+              src="/founder.png"
+            />
+            <p className="text-neutral-500 text-xs leading-relaxed">
+              Thanks for backing Audric — it means a lot.
+              <br />
+              Questions? Reply to any email or grab time with me.
+              <br />
+              <span className="text-neutral-700">— funkii, founder</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Stripe Embedded Checkout (Link / saved cards / one-click intact) */}
+        <div className="md:pt-1">
+          <EmbeddedCheckoutProvider
+            options={{ fetchClientSecret }}
+            stripe={stripePromise}
+          >
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+          <p className="mt-4 text-[11px] text-neutral-400 leading-relaxed">
+            By continuing you agree to Audric's closed-loop credit terms —
+            credit is non-refundable, non-withdrawable, and non-transferable.
+            Operated by T2000 AFI Inc.
           </p>
         </div>
-      </div>
-
-      {/* Stripe Embedded Checkout (Link / saved cards / one-click intact) */}
-      <div className="md:pt-1">
-        <EmbeddedCheckoutProvider
-          options={{ fetchClientSecret }}
-          stripe={stripePromise}
-        >
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
-        <p className="mt-4 text-[11px] text-muted-foreground/60 leading-relaxed">
-          By continuing you agree to Audric's closed-loop credit terms — credit
-          is non-refundable, non-withdrawable, and non-transferable. Operated by
-          T2000 AFI Inc.
-        </p>
       </div>
     </div>
   );
