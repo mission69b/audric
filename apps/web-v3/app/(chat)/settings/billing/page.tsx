@@ -94,54 +94,23 @@ export default function BillingPage() {
 
   const needsTerms = data?.configured && !data?.acceptedTerms;
 
-  async function topUp(amountUsd: number) {
+  // Both flows now go to the in-app embedded /checkout page (on audric.ai),
+  // which mounts Stripe Embedded Checkout (Link / saved cards / one-click intact)
+  // + the personalized wrapper. Keep the terms gate before navigating.
+  function topUp(amountUsd: number) {
     if (needsTerms && !terms) {
       toast.error("Please accept the credit terms first.");
       return;
     }
-    setBusy(true);
-    try {
-      const res = await fetch(`${BASE}/api/credit/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountUsd, acceptedTerms: terms }),
-      });
-      const j = await res.json();
-      if (j.url) {
-        window.location.href = j.url;
-        return;
-      }
-      toast.error(j.error ?? "Couldn't start checkout.");
-    } catch {
-      toast.error("Couldn't start checkout.");
-    } finally {
-      setBusy(false);
-    }
+    router.push(`${BASE}/checkout?topup=${amountUsd}`);
   }
 
-  async function subscribe(tier: string) {
+  function subscribe(tier: string) {
     if (needsTerms && !terms) {
       toast.error("Please accept the credit terms first.");
       return;
     }
-    setBusy(true);
-    try {
-      const res = await fetch(`${BASE}/api/credit/subscribe`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier, acceptedTerms: terms }),
-      });
-      const j = await res.json();
-      if (j.url) {
-        window.location.href = j.url;
-        return;
-      }
-      toast.error(j.error ?? "Couldn't start checkout.");
-    } catch {
-      toast.error("Couldn't start checkout.");
-    } finally {
-      setBusy(false);
-    }
+    router.push(`${BASE}/checkout?plan=${tier}`);
   }
 
   const { data: billing, mutate: mutateBilling } = useSWR<BillingOverview>(

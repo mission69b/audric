@@ -60,15 +60,18 @@ export async function POST(request: Request) {
     session.user.email ?? null
   );
 
+  // Embedded checkout (in-app, on audric.ai) — returns a client_secret the
+  // /checkout page mounts. Stripe Link / saved cards / wallets / one-click all
+  // come along (same Checkout engine as the hosted page).
   const checkout = await getStripe().checkout.sessions.create({
+    ui_mode: "embedded_page",
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     subscription_data: { metadata: { userId: session.user.id, tier } },
     metadata: { userId: session.user.id, kind: "subscribe", tier },
-    success_url: `${origin}/?subscribe=success`,
-    cancel_url: `${origin}/settings/billing?subscribe=cancel`,
+    return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
   });
 
-  return Response.json({ url: checkout.url });
+  return Response.json({ clientSecret: checkout.client_secret });
 }

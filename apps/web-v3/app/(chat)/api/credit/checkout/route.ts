@@ -60,7 +60,9 @@ export async function POST(request: Request) {
     session.user.email ?? null
   );
 
+  // Embedded checkout (in-app) — see subscribe route. Returns a client_secret.
   const checkout = await getStripe().checkout.sessions.create({
+    ui_mode: "embedded_page",
     mode: "payment",
     customer: customerId,
     line_items: [
@@ -84,9 +86,8 @@ export async function POST(request: Request) {
       kind: "topup",
       amountUsd: String(amountUsd),
     },
-    success_url: `${origin}/?topup=success`,
-    cancel_url: `${origin}/?topup=cancel`,
+    return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
   });
 
-  return Response.json({ url: checkout.url });
+  return Response.json({ clientSecret: checkout.client_secret });
 }
