@@ -69,6 +69,12 @@ export const user = pgTable("User", {
    *  "never welcomed", so a missed/failed send self-heals on the next sign-in
    *  (the `isNew` insert-vs-update flag couldn't — it only ever fires once). */
   welcomeEmailSentAt: timestamp("welcomeEmailSentAt"),
+  /** This user's own referral code (lazily generated); shared as
+   *  `audric.ai/?ref=<code>`. Unique short code, not the @audric handle. */
+  referralCode: varchar("referralCode", { length: 12 }).unique(),
+  /** The referrer's user.id, captured once at signup from a `?ref=` cookie.
+   *  Immutable after set; drives the referral reward on first paid action. */
+  referredBy: text("referredBy"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
@@ -88,7 +94,15 @@ export const creditLedger = pgTable(
       .references(() => user.id),
     amountMicros: bigint("amountMicros", { mode: "number" }).notNull(),
     type: varchar("type", {
-      enum: ["topup", "debit", "recharge", "grant", "refund", "adjustment"],
+      enum: [
+        "topup",
+        "debit",
+        "recharge",
+        "grant",
+        "refund",
+        "adjustment",
+        "referral",
+      ],
     }).notNull(),
     description: text("description"),
     ref: text("ref"),
@@ -101,6 +115,37 @@ export const creditLedger = pgTable(
 );
 
 export type CreditLedger = InferSelectModel<typeof creditLedger>;
+
+// Referral tracking ("Give $X, Get $X"). One row per referred signup; status
+// flips pending -> rewarded on the referee's first qualifying PAID action
+// (handled in the Stripe webhook). The reward credits themselves are
+// `CreditLedger` rows (type "referral", ref-unique) — this table tracks the
+// relationship + reward state. See SPEC_AUDRIC_REFERRALS.md.
+export const referral = pgTable(
+  "Referral",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    referrerId: text("referrerId")
+      .notNull()
+      .references(() => user.id),
+    refereeId: text("refereeId")
+      .notNull()
+      .references(() => user.id),
+    code: text("code").notNull(),
+    status: varchar("status", { enum: ["pending", "rewarded", "rejected"] })
+      .notNull()
+      .default("pending"),
+    rewardedAt: timestamp("rewardedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    // One referral relationship per referee — a user can be referred only once.
+    refereeUnique: uniqueIndex("Referral_referee_unique").on(t.refereeId),
+    referrerIdx: index("Referral_referrer_idx").on(t.referrerId),
+  })
+);
+
+export type Referral = InferSelectModel<typeof referral>;
 
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

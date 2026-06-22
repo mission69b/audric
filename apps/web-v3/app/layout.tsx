@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ZkLoginProvider } from "@/components/auth/zklogin-provider";
+import { ReferralCapture } from "@/components/referral-capture";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -101,6 +102,7 @@ export default function RootLayout({
           </ZkLoginProvider>
         </ThemeProvider>
         <Analytics />
+        <ReferralCapture />
       </body>
     </html>
   );

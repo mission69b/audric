@@ -82,6 +82,39 @@ export default function SettingsPage() {
   const [instructions, setInstructions] = useState("");
   const [ciSaving, setCiSaving] = useState(false);
 
+  const { data: refData } = useSWR<{
+    code: string;
+    rewardUsd: number;
+    total: number;
+    rewarded: number;
+    earnedUsd: number;
+  }>(address ? `${BASE}/api/referral` : null, fetcher, {
+    revalidateOnFocus: false,
+  });
+  const referralLink = refData?.code
+    ? `https://audric.ai/?ref=${refData.code}`
+    : "";
+
+  async function shareReferral() {
+    if (!referralLink) {
+      return;
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Audric",
+          text: `Try Audric — private, decentralized AI. Get $${refData?.rewardUsd} in credits.`,
+          url: referralLink,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(referralLink);
+      toast.success("Referral link copied.");
+    } catch {
+      // user cancelled share — no-op
+    }
+  }
+
   useEffect(() => {
     setMemoryOn(window.localStorage.getItem(MEMORY_KEY) === "1");
   }, []);
@@ -289,6 +322,43 @@ export default function SettingsPage() {
             </Row>
           </>
         )}
+      </Section>
+
+      {/* Refer & earn */}
+      <Section title="Refer & earn">
+        <p className="text-muted-foreground text-xs">
+          Give ${refData?.rewardUsd ?? 10}, get ${refData?.rewardUsd ?? 10}.
+          Share your link — when a friend joins and makes their first purchase,
+          you <strong>both</strong> get ${refData?.rewardUsd ?? 10} in credits.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            className="min-w-0 flex-1 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-muted-foreground text-xs"
+            placeholder="Generating your link…"
+            readOnly
+            value={referralLink}
+          />
+          <Button
+            disabled={!referralLink}
+            onClick={shareReferral}
+            size="sm"
+            type="button"
+          >
+            Share
+          </Button>
+        </div>
+        <div className="mt-3 flex gap-8">
+          <div>
+            <div className="font-semibold text-sm">{refData?.total ?? 0}</div>
+            <div className="text-[11px] text-muted-foreground">Referrals</div>
+          </div>
+          <div>
+            <div className="font-semibold text-sm">
+              ${(refData?.earnedUsd ?? 0).toFixed(0)}
+            </div>
+            <div className="text-[11px] text-muted-foreground">Earned</div>
+          </div>
+        </div>
       </Section>
 
       {/* Custom instructions */}

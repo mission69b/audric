@@ -6,9 +6,14 @@ import {
   SESSION_COOKIE,
   verifyGoogleJwt,
 } from "@/lib/audric-auth";
-import { markWelcomeSent, upsertUser } from "@/lib/db/queries";
+import {
+  attributeReferral,
+  markWelcomeSent,
+  upsertUser,
+} from "@/lib/db/queries";
 import { EMAIL_FROM, REPLY_TO, sendEmail } from "@/lib/email/send";
 import { WelcomeEmail } from "@/lib/email/templates/welcome";
+import { REFERRAL_COOKIE } from "@/lib/referral/constants";
 
 // Server-side cap on the session window (the client passes the zkLogin
 // `estimatedExpiration`; we never trust a client-supplied exp beyond this).
@@ -41,7 +46,20 @@ export async function POST(request: NextRequest) {
     email = verified.emailVerified ? verified.email : null;
     // Upsert the user row (id = address) so Chat/Document FKs resolve + capture
     // the verified email (§6b).
-    const { welcomeEmailSentAt } = await upsertUser(address, email);
+    const { isNew, welcomeEmailSentAt } = await upsertUser(address, email);
+    // Referral attribution — brand-new users only. The `?ref=` code rode in via
+    // a cookie (set by <ReferralCapture/>); attribute now, clear the cookie on
+    // the response below. Fire-and-forget so it never blocks/breaks sign-in;
+    // the reward only fires later, on the referee's first paid action.
+    const refCode = request.cookies.get(REFERRAL_COOKIE)?.value;
+    if (isNew && refCode) {
+      const refereeId = address;
+      waitUntil(
+        attributeReferral(refereeId, refCode).catch((e) =>
+          console.warn("[referral] attribution failed:", e)
+        )
+      );
+    }
     // Welcome email — exactly once per user, gated on welcomeEmailSentAt (NOT
     // `isNew`): a pre-existing row that was never welcomed (migration /
     // pre-feature sign-in / a previously-failed send) still gets one, and we
@@ -87,6 +105,8 @@ export async function POST(request: NextRequest) {
     path: "/",
     expires: new Date(expiresAt),
   });
+  // Clear the referral cookie now that attribution has run.
+  res.cookies.set(REFERRAL_COOKIE, "", { path: "/", maxAge: 0 });
   return res;
 }
 

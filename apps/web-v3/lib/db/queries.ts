@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
 import {
   and,
   asc,
@@ -19,6 +20,10 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
+import {
+  REFERRAL_REWARD_USD,
+  REFERRER_CAP_30D,
+} from "@/lib/referral/constants";
 import { ChatbotError } from "../errors";
 import {
   type Chat,
@@ -27,6 +32,7 @@ import {
   type DBMessage,
   document,
   message,
+  referral,
   type Suggestion,
   stream,
   suggestion,
@@ -149,7 +155,14 @@ export async function getCreditBalanceMicros(userId: string): Promise<number> {
 export async function recordCredit(entry: {
   userId: string;
   amountMicros: number;
-  type: "topup" | "debit" | "recharge" | "grant" | "refund" | "adjustment";
+  type:
+    | "topup"
+    | "debit"
+    | "recharge"
+    | "grant"
+    | "refund"
+    | "adjustment"
+    | "referral";
   description?: string;
   ref?: string;
 }): Promise<boolean> {
@@ -174,6 +187,170 @@ export async function listCreditLedger(userId: string, limit = 50) {
     .where(eq(creditLedger.userId, userId))
     .orderBy(desc(creditLedger.createdAt))
     .limit(limit);
+}
+
+// ── Referrals ("Give $X, Get $X") ───────────────────────────────────────────
+
+// No-ambiguous-character alphabet (no 0/O/1/I/L) for human-shareable codes.
+const REFERRAL_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const REFERRAL_CODE_LEN = 7;
+
+function generateReferralCode(): string {
+  const bytes = randomBytes(REFERRAL_CODE_LEN);
+  let code = "";
+  for (let i = 0; i < REFERRAL_CODE_LEN; i++) {
+    code += REFERRAL_ALPHABET[bytes[i] % REFERRAL_ALPHABET.length];
+  }
+  return code;
+}
+
+/** Return the user's referral code, lazily generating + persisting one. */
+export async function getOrCreateReferralCode(userId: string): Promise<string> {
+  const existing = await getUserById(userId);
+  if (existing?.referralCode) {
+    return existing.referralCode;
+  }
+  // Retry on the (rare) unique collision.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateReferralCode();
+    try {
+      const [row] = await db
+        .update(user)
+        .set({ referralCode: code, updatedAt: new Date() })
+        .where(and(eq(user.id, userId), isNull(user.referralCode)))
+        .returning({ referralCode: user.referralCode });
+      if (row?.referralCode) {
+        return row.referralCode;
+      }
+      // Someone set it concurrently — re-read.
+      const fresh = await getUserById(userId);
+      if (fresh?.referralCode) {
+        return fresh.referralCode;
+      }
+    } catch {
+      // unique collision on the code — loop and try a new one
+    }
+  }
+  throw new ChatbotError(
+    "bad_request:database",
+    "Failed to generate referral code"
+  );
+}
+
+/** Attribute a new signup to a referrer (idempotent; self/dup-safe). Call only
+ *  for brand-new users, with the `?ref=` code from the cookie. */
+export async function attributeReferral(
+  refereeId: string,
+  code: string
+): Promise<void> {
+  const normalized = code.trim().toUpperCase();
+  if (!normalized) {
+    return;
+  }
+  const [referrer] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.referralCode, normalized))
+    .limit(1);
+  // No such code, or self-referral → ignore.
+  if (!referrer || referrer.id === refereeId) {
+    return;
+  }
+  // Set referredBy only if not already set.
+  await db
+    .update(user)
+    .set({ referredBy: referrer.id, updatedAt: new Date() })
+    .where(and(eq(user.id, refereeId), isNull(user.referredBy)));
+  // One referral row per referee (unique index makes this idempotent).
+  await db
+    .insert(referral)
+    .values({ referrerId: referrer.id, refereeId, code: normalized })
+    .onConflictDoNothing({ target: referral.refereeId });
+}
+
+/** Reward a referral on the referee's first qualifying PAID action. Atomic
+ *  claim (status pending→rewarded) so a double webhook can't double-pay; grants
+ *  both sides via the ref-unique ledger; enforces the per-referrer 30d cap. */
+export async function rewardReferralOnPaidAction(
+  refereeId: string
+): Promise<{ rewarded: boolean }> {
+  const [claimed] = await db
+    .update(referral)
+    .set({ status: "rewarded", rewardedAt: new Date() })
+    .where(
+      and(eq(referral.refereeId, refereeId), eq(referral.status, "pending"))
+    )
+    .returning({ referrerId: referral.referrerId });
+  if (!claimed) {
+    return { rewarded: false };
+  }
+
+  // Cap: count this referrer's rewarded referrals in the last 30 days (this row
+  // is now counted). Over cap → revert + skip the grant.
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [capRow] = await db
+    .select({ c: count() })
+    .from(referral)
+    .where(
+      and(
+        eq(referral.referrerId, claimed.referrerId),
+        eq(referral.status, "rewarded"),
+        gt(referral.rewardedAt, since)
+      )
+    );
+  if (Number(capRow?.c ?? 0) > REFERRER_CAP_30D) {
+    await db
+      .update(referral)
+      .set({ status: "rejected", rewardedAt: null })
+      .where(eq(referral.refereeId, refereeId));
+    return { rewarded: false };
+  }
+
+  const rewardMicros = REFERRAL_REWARD_USD * 1_000_000;
+  await recordCredit({
+    userId: claimed.referrerId,
+    amountMicros: rewardMicros,
+    type: "referral",
+    description: "Referral reward — your friend joined Audric",
+    ref: `referral-referrer:${refereeId}`,
+  });
+  await recordCredit({
+    userId: refereeId,
+    amountMicros: rewardMicros,
+    type: "referral",
+    description: "Referral bonus — welcome to Audric",
+    ref: `referral-referee:${refereeId}`,
+  });
+  return { rewarded: true };
+}
+
+/** Referrer-facing stats for the settings panel. */
+export async function getReferralStats(referrerId: string): Promise<{
+  total: number;
+  rewarded: number;
+  earnedMicros: number;
+}> {
+  const [totals] = await db
+    .select({
+      total: count(),
+      rewarded: sql<number>`count(*) filter (where ${referral.status} = 'rewarded')`,
+    })
+    .from(referral)
+    .where(eq(referral.referrerId, referrerId));
+  const [earned] = await db
+    .select({ total: sum(creditLedger.amountMicros) })
+    .from(creditLedger)
+    .where(
+      and(
+        eq(creditLedger.userId, referrerId),
+        eq(creditLedger.type, "referral")
+      )
+    );
+  return {
+    total: Number(totals?.total ?? 0),
+    rewarded: Number(totals?.rewarded ?? 0),
+    earnedMicros: earned?.total ? Number(earned.total) : 0,
+  };
 }
 
 export async function setStripeCustomerId(userId: string, customerId: string) {

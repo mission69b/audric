@@ -2,10 +2,12 @@ import type Stripe from "stripe";
 import type { TierId } from "@/lib/credit/tiers";
 import {
   recordCredit,
+  rewardReferralOnPaidAction,
   setDefaultPaymentMethod,
   setSubscription,
 } from "@/lib/db/queries";
 import { env } from "@/lib/env";
+import { REFERRAL_TOPUP_FLOOR_USD } from "@/lib/referral/constants";
 import {
   getStripe,
   includedCreditUsdForTier,
@@ -75,6 +77,17 @@ async function handleEvent(event: Stripe.Event) {
   }
 }
 
+// Reward a pending referral on the user's first qualifying paid action.
+// Non-fatal + idempotent: a failure here must never block the credit grant or
+// trigger endless Stripe retries (the grant already happened).
+async function rewardReferral(userId: string) {
+  try {
+    await rewardReferralOnPaidAction(userId);
+  } catch (e) {
+    console.error("[stripe webhook] referral reward failed", e);
+  }
+}
+
 async function handleCheckoutCompleted(s: Stripe.Checkout.Session) {
   const userId = s.metadata?.userId;
   if (!userId) {
@@ -92,6 +105,10 @@ async function handleCheckoutCompleted(s: Stripe.Checkout.Session) {
         description: `Top-up $${amountUsd}`,
         ref: s.id,
       });
+    }
+    // A top-up at/above the floor is a qualifying referral conversion.
+    if (amountUsd >= REFERRAL_TOPUP_FLOOR_USD) {
+      await rewardReferral(userId);
     }
   } else if (kind === "subscribe") {
     // Activate immediately + grant the first month's included credit. Renewals
@@ -114,6 +131,8 @@ async function handleCheckoutCompleted(s: Stripe.Checkout.Session) {
         ref: `sub_grant_${s.id}`,
       });
     }
+    // A paid subscription is a qualifying referral conversion (any tier).
+    await rewardReferral(userId);
   }
 
   // Save the card for off-session auto-recharge (non-fatal).
