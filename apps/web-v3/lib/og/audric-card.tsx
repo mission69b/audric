@@ -3,19 +3,21 @@ import { ImageResponse } from "next/og";
 /**
  * Shared Open Graph / Twitter card renderer for audric.ai (v3).
  *
- * Ported from web-v2's canonical card so the brand stays identical across
- * surfaces. #0A0A0A canvas, 16px inset hairline, AudricMark + "audric"
+ * Light canvas (#FAFAFA) so OG/Twitter share images read light across
+ * surfaces. 16px inset hairline, AudricMark + "audric"
  * wordmark top-left, a teal status pill, a two-line Geist headline, a Geist
  * subtitle, and a Geist Mono footer with a divider. Fonts load from Google
  * Fonts at render time (`loadGoogleFont`), so nothing is vendored.
  */
 
-const ACCENT = "#0ac7b4"; // Audric signal (= --ds-teal-900 / mpp accent)
-const INK = "#ededed";
-const MUTE = "#888888";
-const SUB = "#999999";
-const FOOT = "#666666";
-const BG = "#0a0a0a";
+// Light card (matches the app's light surface) — inverted from the original
+// dark palette so OG/Twitter share images read light.
+const ACCENT = "#0a7d71"; // Audric signal — light-variant teal (readable on light)
+const INK = "#0a0a0a";
+const MUTE = "#71717a";
+const SUB = "#52525b";
+const FOOT = "#8a8a8e";
+const BG = "#fafafa";
 
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 export const OG_CONTENT_TYPE = "image/png";
@@ -118,7 +120,7 @@ export function renderAudricCard({
               top: 16,
               right: 16,
               bottom: 16,
-              border: "1px solid rgba(255,255,255,0.06)",
+              border: "1px solid rgba(0,0,0,0.06)",
             }}
           />
 
@@ -254,7 +256,7 @@ export function renderAudricCard({
           >
             <div style={{ display: "flex" }}>{footerLeft}</div>
             {footerRight ? (
-              <div style={{ width: 30, height: 1, background: "#444444" }} />
+              <div style={{ width: 30, height: 1, background: "#d4d4d4" }} />
             ) : null}
             {footerRight ? (
               <div style={{ display: "flex" }}>{footerRight}</div>
