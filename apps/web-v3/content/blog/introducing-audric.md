@@ -19,7 +19,7 @@ Three things, in one place:
 - **A real agent** — it searches the web, runs cited research, generates images, and pays for live data on your behalf.
 - **A wallet** — non-custodial, gasless, created from your Google sign-in.
 
-The idea tying them together is **self-sovereignty**: own your AI, your data, your memory, and your money. None of it has to pass through us to be useful.
+The thread tying them together is **ownership** — none of it has to pass through us to be useful.
 
 ## Own it, don't rent it
 
@@ -44,7 +44,7 @@ So: your **chats** live in your private, encrypted history; your **memory** (if 
 
 ## Every model — and the right one, automatically
 
-Audric isn't one model behind a brand. Open and uncensored models (Kimi, DeepSeek, Grok, GPT-OSS) sit next to the frontier (Claude, GPT-5.5, Gemini). Switch between any of them mid-conversation, and the open models **won't refuse you**.
+Audric isn't one model behind a brand. Open and uncensored models (Kimi, DeepSeek, Grok, GPT-OSS) sit next to the frontier (Claude Opus 4.8, GPT-5.5). Switch between any of them mid-conversation, and the open models **won't refuse you**.
 
 Don't want to think about it? **Auto** picks the model — plus the right reasoning effort — for each task: a quick reply on a fast model, deep analysis on a frontier one. The model switcher shows each model's privacy posture and real cost, so you're never guessing what you're using.
 
@@ -55,7 +55,7 @@ Audric acts, not just chats:
 - **Live web search** with sources you can click.
 - **Cited, multi-step research** — for bigger questions it runs several searches step by step, shown in a Chain-of-Thought timeline, then a synthesis with sources. Transparent, not a black box.
 - **Image generation** inline.
-- **Recipes** — curated, pay-per-run flows for live data (markets, tickers, company deep-dives). The agent pays per call from *your own* USDC, and the output is grounded in the real fetched data, not made up.
+- **Recipes** — curated, pay-per-run flows for live data (markets, tickers, company deep-dives). The agent pays per call from *your own* USDC, and the output is grounded in the real fetched data, not invented.
 
 ## Your wallet, your money
 
@@ -79,7 +79,7 @@ Not "trust us" — *verify*. Privacy you can check.
 
 ## Pricing, in a line
 
-**Free** keeps the open model always on, with web search, image generation, and cited research — no card. **Pro ($18/mo)** and **Max ($100/mo)** add every premium and frontier model with monthly credit that never expires (it's more than the same dollar topped up). Pay-as-you-go works on any plan.
+**Free** keeps the open model always on, with web search, image generation, and cited research — no card. **Pro ($18/mo)** and **Max ($100/mo)** add every premium and frontier model, with monthly credit that never expires and stretches further than pay-as-you-go. Pay-as-you-go works on any plan.
 
 ## Get started
 
