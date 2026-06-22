@@ -177,15 +177,16 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
         <SidebarFooter className="border-t border-sidebar-border pt-2 pb-3">
           {user && (
             <button
-              className="mb-1 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 text-left transition-colors duration-150 hover:bg-sidebar-accent"
+              className="mb-1 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 text-left transition-colors duration-150 hover:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0"
               onClick={() => {
                 setOpenMobile(false);
                 router.push("/settings");
               }}
+              title="Invite & earn — give $10, get $10"
               type="button"
             >
               <GiftIcon className="size-4 shrink-0 text-sidebar-foreground/70" />
-              <div className="min-w-0">
+              <div className="min-w-0 group-data-[collapsible=icon]:hidden">
                 <div className="font-medium text-[13px] text-sidebar-foreground">
                   Invite &amp; earn
                 </div>
