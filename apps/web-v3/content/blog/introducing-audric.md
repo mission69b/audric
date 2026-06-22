@@ -1,95 +1,89 @@
 ---
 title: Introducing Audric
 date: 2026-06-22
-description: Private, decentralized AI — now truly yours. Any model, zero data retention, and a wallet built in. Sign in with Google; no seed phrase, no KYC.
+description: A private, multi-model AI with a wallet built in — and it's yours. Own your data, your memory, and your money. Sign in with Google; no seed phrase, no KYC.
 author: funkii
 ---
 
-Every AI app today asks for the same trade: hand over your prompts, your data, and your identity, and in return you get something useful. We never understood why those two things had to be connected.
+Most AI is something you rent. Your chats, your history, and your account live on someone else's servers, on their terms — and your conversations quietly become their training data.
 
-Today we're introducing **Audric** — a private, decentralized AI agent with a wallet built in. Any model, zero data retention, and an account that's yours, not ours. Sign in with Google and, in about three seconds, you have a private AI assistant and a non-custodial wallet. No seed phrase. No KYC. No catch.
+Audric is something you **own**. It's a private, multi-model AI assistant with a non-custodial wallet built in. Sign in with Google and, in about three seconds, you have the best open and frontier models, a wallet, and an account where the data is yours — not ours.
 
 ![Audric — private, decentralized AI. Now truly yours.](/blog/truly-yours.png)
 
-## Private AI, with a wallet
+## What Audric is
 
-Audric is three things most apps make you choose between, in one place:
+Three things, in one place:
 
-- **A private assistant** — every model, none of your data retained or trained on.
-- **A real agent** — it searches the web, runs multi-step research, generates images, and pays for live data on your behalf.
+- **A private assistant** — every model, with your conversations never used to train them.
+- **A real agent** — it searches the web, runs cited research, generates images, and pays for live data on your behalf.
 - **A wallet** — non-custodial, gasless, created from your Google sign-in.
 
-The thread that ties them together is **ownership**. Your chats are yours. Your memory is yours. Your money is yours. We built Audric so that none of it has to pass through us to be useful.
+The idea tying them together is **self-sovereignty**: own your AI, your data, your memory, and your money. None of it has to pass through us to be useful.
 
-## Why we built it
+## Own it, don't rent it
 
-The biggest AI products are, underneath, data businesses. Your conversations are the asset — logged, retained, and folded back into the next model. The better the assistant gets, the more of you it holds.
+When a company hosts your AI, they hold the leverage. They can change the model, lock the context you've built up, read your chats, or train on them. You're a tenant.
 
-We think that's backwards. An assistant you trust with your money, your plans, and your half-formed thoughts shouldn't also be the thing quietly monetizing them. So we started from the opposite constraint: **what would an AI look like if you owned every part of it?** Audric is the answer — and privacy isn't a setting inside it, it's the shape of the whole thing.
+Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are. It's built for people who'd rather own the thing they rely on than rent it.
 
-![Why Audric — 0 chats stored, 5+ models in one chat, $0 KYC or seed phrase, 0.4s to send USDC.](/blog/why-audric.png)
+![Why Audric — 0 chats stored by model providers, every model in one chat, no KYC or seed phrase, instant USDC.](/blog/why-audric.png)
 
-## Private by default
+## How your privacy actually works
 
-Privacy in Audric isn't a toggle you find later. It's the default, enforced at every layer.
+Privacy claims are cheap, so here's plainly how Audric handles your data — and what each piece means.
 
-- **Zero data retention.** Every model request runs through a ZDR gateway, so your prompts and responses are never stored by model providers or used to train them.
-- **Encrypted, private storage.** Your chats and any files you generate are encrypted at rest and served **only to you** through authenticated requests — never from a public URL.
-- **Decentralized memory.** Optional Private Memory is encrypted and stored on **Walrus**, a decentralized network — not our servers. It's off by default, recalled only when relevant, and wiped anytime with one tap.
-- **Yours to delete.** Delete a chat, delete all of them, or purge everything — chats, messages, and files — from Settings, whenever you want.
+- **Your chats.** Saved to *your* private history so you can pick up where you left off — encrypted at rest, readable only by you, and deletable anytime (one chat, all chats, or everything). They're stored so you have a history; they are never sold and never used to train models.
+- **Zero data retention (ZDR).** Every message runs through a gateway that tells the model provider to process your prompt and forget it. Nothing is retained on their side, and nothing is trained on. This is on for every chat, by default.
+- **Memory** — *separate from your chats, and off by default.* Memory is a small set of durable facts you let Audric keep (your preferences, goals, context) so it feels less like starting over each time. When you turn it on, those facts are **encrypted and stored on Walrus** — a decentralized network, not our servers — and recalled automatically when they're relevant. You don't browse a list; you just get a sharper assistant. Turn it off and recall stops; wipe it anytime.
+- **Your files.** Anything you generate is encrypted and private — served only to you through an authenticated request, never from a public URL.
 
-![Audric chat: "Is this conversation saved anywhere?" — "No. Zero retention — this chat is never stored or trained on. Delete it and it's gone."](/blog/private-zero-retention.png)
+So: your **chats** live in your private, encrypted history; your **memory** (if you turn it on) lives encrypted on Walrus. Two different things — and both are yours to delete.
 
-## Privacy, all the way down
+![Audric chat: "Is this conversation saved anywhere?" — "Your history is private to you and encrypted; model providers never retain or train on it. Delete it anytime."](/blog/private-zero-retention.png)
 
-The headline features are the easy part. The harder, quieter work is everything around them — and that's where most "private" apps quietly leak.
+## Every model — and the right one, automatically
 
-- **No marketing trackers, no ad pixels, no data brokers.** We don't wire your identity into the analytics and growth tooling most apps take for granted. We don't sell or share your data, because we never collect it to begin with.
-- **Anonymized metrics only.** We measure aggregate health — counts, latency, cost — never your prompts or responses as identifiable telemetry.
-- **Send-only email.** Lifecycle email goes out through a locked-down, send-only pipeline. You're not enrolled in a marketing automation platform that profiles your behavior.
-- **Permissionless.** No KYC, no phone number, no identity to harvest. Sign in with Google and you're in.
+Audric isn't one model behind a brand. Open and uncensored models (Kimi, DeepSeek, Grok, GPT-OSS) sit next to the frontier (Claude, GPT-5.5, Gemini). Switch between any of them mid-conversation, and the open models **won't refuse you**.
 
-Privacy isn't a feature we bolted on. It's the constraint we designed every part of Audric around — down to deliberately *not* installing the things that would have made our jobs easier and your data cheaper.
-
-## The best models, chosen for you
-
-Audric isn't one model behind a brand. It's all of them.
-
-Open and uncensored models — Kimi, DeepSeek, Grok, GPT-OSS — sit alongside the frontier: Claude, GPT-5.x, Gemini. The open models **won't refuse you**, and you can switch between any of them mid-conversation.
-
-You don't have to think about which to use. **Auto** picks the right model — plus the right reasoning effort and step budget — for each task: a quick reply on a fast model, deep analysis on a frontier one. You just talk.
+Don't want to think about it? **Auto** picks the model — plus the right reasoning effort — for each task: a quick reply on a fast model, deep analysis on a frontier one. The model switcher shows each model's privacy posture and real cost, so you're never guessing what you're using.
 
 ## A real agent
 
-Audric doesn't only chat. It acts.
+Audric acts, not just chats:
 
-- **Live web search** with results you can see and click.
-- **Visible, cited research** — for bigger questions it runs several live searches step by step, in a Chain-of-Thought timeline, then returns a synthesis with sources. Transparent, not a black box.
+- **Live web search** with sources you can click.
+- **Cited, multi-step research** — for bigger questions it runs several searches step by step, shown in a Chain-of-Thought timeline, then a synthesis with sources. Transparent, not a black box.
 - **Image generation** inline.
-- **Recipes** — curated, pay-per-run flows for live data (markets, tickers). The agent pays per call from **your own USDC**, on your rules. No subscription to a data vendor you'll forget about.
+- **Recipes** — curated, pay-per-run flows for live data (markets, tickers, company deep-dives). The agent pays per call from *your own* USDC, and the output is grounded in the real fetched data, not made up.
 
 ## Your wallet, your money
 
-Every Audric account is an **Audric Passport** — a non-custodial wallet created from your Google sign-in via zkLogin. There's no seed phrase to write down and no keys for us to hold.
+Every account is an **Audric Passport** — a non-custodial wallet created from your Google sign-in via zkLogin. No seed phrase to write down, no keys for us to hold.
 
-- **Send USDC and USDsui** to anyone — free, instant, and gasless. We sponsor the network fees, so you never need to hold a separate gas token.
-- **You decide.** Audric never moves money on its own. Every transaction waits on your tap-to-confirm.
-- **Yours, on-chain.** Every move settles on Sui mainnet, verifiable by anyone, forever. Non-custodial means exactly that: we *cannot* touch your funds.
+- **Send USDC and USDsui** to anyone — free, instant, and gasless. We sponsor the network fees, so you never hold a separate gas token.
+- **You decide.** Audric never moves money on its own; every transaction waits on your tap-to-confirm.
+- **Verifiable.** Every move settles on Sui mainnet, signed by you, checkable by anyone. Non-custodial means we *cannot* touch your funds.
 
-Money in Audric works the way the rest of it does — capable, instant, and entirely yours.
+![Audric chat: "Send $50 to alice@audric" — "Done. $50 USDC sent, gasless. Tap to view on-chain."](/blog/send-usdc.png)
 
-![Audric chat: "Send $50 to alice@audric" — "Done. $50 USDC sent in 0.4s, gasless."](/blog/send-usdc.png)
+## The privacy ladder
 
-## What's next
+Privacy isn't one switch — it's a ladder, and Audric is climbing it in the open:
 
-We're just getting started. Coming soon:
+1. **Anonymous** — try it with no account.
+2. **Private · ZDR** — today's default: never retained, never trained on.
+3. **Confidential (TEE)** — *coming:* open models running in secure enclaves, where even the provider can't read your prompt, with a per-request proof.
+4. **Sealed** — *coming:* end-to-end encrypted chats, readable only by you, with decentralized backup on Walrus.
 
-- **Confidential AI** — verifiable models running in secure enclaves (TEEs) that even we can't read. Privacy you can check, not trust.
-- **End-to-end encrypted chats** — sealed with Seal, readable only by you.
-- **Decentralized backup** — your memory, end-to-end on Walrus.
+The goal is simple: not "trust us," but **verify** — privacy and control you can check.
+
+## Pricing, in a line
+
+**Free** keeps the open model always on, with web search, image generation, and cited research — no card. **Pro ($18/mo)** and **Max ($100/mo)** add every premium and frontier model with monthly credit that never expires (it's more than the same dollar topped up). Pay-as-you-go works on any plan.
 
 ## Get started
 
 Audric is live at [audric.ai](https://audric.ai). Sign in with Google — no card, no seed phrase — and you have a private AI and a wallet in seconds.
 
-Private, decentralized AI. Now truly yours.
+Own your AI, your data, and your money. That's the whole idea.

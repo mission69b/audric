@@ -132,8 +132,15 @@ export function renderAudricCard({
               gap: 22,
             }}
           >
-            <svg height="53" viewBox="0 0 53 53" width="53">
-              <title>Audric</title>
+            {/* NO <title> here — Satori renders an SVG <title> as visible
+                (fuzzy) text over the mark. Keep this SVG title-less. */}
+            <svg
+              aria-label="Audric"
+              height="53"
+              role="img"
+              viewBox="0 0 53 53"
+              width="53"
+            >
               {CELLS.map((c) => (
                 <rect
                   fill={INK}
