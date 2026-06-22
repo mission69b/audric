@@ -27,5 +27,5 @@ next-env.d.ts
 tsconfig.tsbuildinfo
 # local dev blob store (private-blob seam fallback when no BLOB_READ_WRITE_TOKEN)
 .blob-store/
-# one-off announcement send log (idempotency state; never commit)
-scripts/.announcement-sent.json
+# one-off welcome-blast send log (idempotency state; never commit)
+scripts/.welcome-blast-sent.json

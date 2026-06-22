@@ -1,24 +1,28 @@
 /**
- * One-off launch announcement send to existing Audric users.
+ * One-off Welcome-email blast to existing Audric users.
+ *
+ * The Welcome email (sent automatically on first sign-in) is our strongest
+ * intro and already links the "Introducing Audric" post — so for the existing
+ * base we send that same email rather than a separate announcement.
  *
  * Audience: non-anonymous users with an email (deduped, oldest first).
- * Founder-from, links the "Introducing Audric" post. Renders the real
- * AnnouncementEmail template through Resend.
+ * Founder-from, renders the real WelcomeEmail template through Resend.
  *
  * SAFE BY DEFAULT — a bare run is a DRY RUN (prints the audience, sends nothing).
- * Idempotent: every successful send is recorded in scripts/.announcement-sent.json
- * and skipped on re-run, so an interrupted run resumes cleanly.
+ * Idempotent: every successful send is recorded in scripts/.welcome-blast-sent.json
+ * and skipped on re-run, so an interrupted run resumes cleanly. (New users who
+ * sign up after this runs already get the Welcome on sign-in — don't re-blast.)
  *
  * Run with prod creds in .env.local (POSTGRES_URL + RESEND_API_KEY):
  *
  *   # 1) Dry run — see who would get it:
- *   npx tsx --env-file=.env.local scripts/send-announcement.mts
+ *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts
  *
  *   # 2) Test to one real inbox first:
- *   npx tsx --env-file=.env.local scripts/send-announcement.mts --only you@example.com --send
+ *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts --only you@example.com --send
  *
  *   # 3) Send for real (optionally cap with --limit N while ramping):
- *   npx tsx --env-file=.env.local scripts/send-announcement.mts --send
+ *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts --send
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -27,20 +31,20 @@ import type { ReactElement } from "react";
 import { Resend } from "resend";
 // This package is CommonJS, so tsx compiles the .tsx template to CJS and the
 // named export lands on the default (module.exports) namespace — default-import
-// then destructure (a bare `{ AnnouncementEmail }` import fails to resolve).
-import announcementTemplate from "../lib/email/templates/announcement";
+// then destructure (a bare `{ WelcomeEmail }` import fails to resolve).
+import welcomeTemplate from "../lib/email/templates/welcome";
 
-const { AnnouncementEmail } = announcementTemplate as unknown as {
-  AnnouncementEmail: (props: { name?: string }) => ReactElement;
+const { WelcomeEmail } = welcomeTemplate as unknown as {
+  WelcomeEmail: (props: { name?: string }) => ReactElement;
 };
 
 const FROM = "Audric <hello@audric.ai>";
 const REPLY_TO = "hello@audric.ai";
-const SUBJECT = "Why we built Audric — and what's new";
+const SUBJECT = "Welcome to Audric";
 const THROTTLE_MS = 600; // ~1.6/s — under Resend's default rate limit
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SENT_LOG = join(HERE, ".announcement-sent.json");
+const SENT_LOG = join(HERE, ".welcome-blast-sent.json");
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const firstName = (name?: string | null) =>
@@ -107,7 +111,7 @@ async function main() {
     recipients = recipients.slice(0, limit);
   }
 
-  console.log(`\n📣 Announcement — "${SUBJECT}"`);
+  console.log(`\n📣 Welcome blast — "${SUBJECT}"`);
   console.log(`   from: ${FROM}`);
   console.log(
     `   audience: ${recipients.length} to send` +
@@ -145,7 +149,7 @@ async function main() {
       to: r.email,
       subject: SUBJECT,
       replyTo: REPLY_TO,
-      react: AnnouncementEmail({ name: firstName(r.name) }),
+      react: WelcomeEmail({ name: firstName(r.name) }),
     });
     if (error) {
       fail++;
