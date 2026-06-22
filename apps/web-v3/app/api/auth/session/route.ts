@@ -6,7 +6,7 @@ import {
   SESSION_COOKIE,
   verifyGoogleJwt,
 } from "@/lib/audric-auth";
-import { upsertUser } from "@/lib/db/queries";
+import { markWelcomeSent, upsertUser } from "@/lib/db/queries";
 import { EMAIL_FROM, REPLY_TO, sendEmail } from "@/lib/email/send";
 import { WelcomeEmail } from "@/lib/email/templates/welcome";
 
@@ -41,12 +41,16 @@ export async function POST(request: NextRequest) {
     email = verified.emailVerified ? verified.email : null;
     // Upsert the user row (id = address) so Chat/Document FKs resolve + capture
     // the verified email (§6b).
-    const { isNew } = await upsertUser(address, email);
-    // Welcome email — exactly once, on first sign-in, only if we have a verified
-    // email. Fire-and-forget (waitUntil) so a slow/failed send never blocks or
-    // breaks sign-in; no-ops silently when RESEND_API_KEY is unset.
-    if (isNew && email) {
+    const { welcomeEmailSentAt } = await upsertUser(address, email);
+    // Welcome email — exactly once per user, gated on welcomeEmailSentAt (NOT
+    // `isNew`): a pre-existing row that was never welcomed (migration /
+    // pre-feature sign-in / a previously-failed send) still gets one, and we
+    // only stamp the timestamp once the send succeeds, so transient failures
+    // self-heal on the next sign-in. Fire-and-forget (waitUntil) so a slow/
+    // failed send never blocks sign-in; no-ops when RESEND_API_KEY is unset.
+    if (email && !welcomeEmailSentAt) {
       const to = email;
+      const userId = address;
       waitUntil(
         sendEmail({
           to,
@@ -55,9 +59,10 @@ export async function POST(request: NextRequest) {
           from: EMAIL_FROM.founder,
           replyTo: REPLY_TO,
         }).then((r) => {
-          if (!r.sent) {
-            console.warn("[welcome email] not sent:", r.error);
+          if (r.sent) {
+            return markWelcomeSent(userId);
           }
+          console.warn("[welcome email] not sent:", r.error);
         })
       );
     }

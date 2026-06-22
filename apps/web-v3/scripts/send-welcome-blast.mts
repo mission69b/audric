@@ -1,19 +1,26 @@
 /**
- * One-off Welcome-email blast to existing Audric users.
+ * One-off / periodic Welcome-email blast to users who were never welcomed.
  *
  * The Welcome email (sent automatically on first sign-in) is our strongest
  * intro and already links the "Introducing Audric" post — so for the existing
  * base we send that same email rather than a separate announcement.
  *
- * Audience: non-anonymous users with an email (deduped, oldest first).
- * Founder-from, renders the real WelcomeEmail template through Resend.
+ * DEDUPE IS THE DB, NOT A LOCAL FILE. Audience = non-anonymous users with an
+ * email AND `welcomeEmailSentAt IS NULL`; a successful send stamps that column,
+ * so a user is welcomed at most once across this script + the auto-send on
+ * sign-in (`app/api/auth/session/route.ts`). Re-run anytime — it only ever
+ * targets the genuinely-unwelcomed (e.g. v2 users who signed into v3 but whose
+ * auto-welcome never fired), never double-sending.
  *
  * SAFE BY DEFAULT — a bare run is a DRY RUN (prints the audience, sends nothing).
- * Idempotent: every successful send is recorded in scripts/.welcome-blast-sent.json
- * and skipped on re-run, so an interrupted run resumes cleanly. (New users who
- * sign up after this runs already get the Welcome on sign-in — don't re-blast.)
+ * Each run also appends a local audit log under scripts/.welcome-blast-runs/.
  *
  * Run with prod creds in .env.local (POSTGRES_URL + RESEND_API_KEY):
+ *
+ *   # ONE-TIME after the welcomeEmailSentAt migration — stamp everyone the
+ *   # 2026-06-22 blast already reached (from .welcome-blast-sent.json) so they
+ *   # aren't re-sent:
+ *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts --backfill
  *
  *   # 1) Dry run — see who would get it:
  *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts
@@ -24,15 +31,10 @@
  *   # 3) Send for real (optionally cap with --limit N while ramping):
  *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts --send
  */
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import postgres from "postgres";
 import type { ReactElement } from "react";
 import { Resend } from "resend";
 // This package is CommonJS, so tsx compiles the .tsx template to CJS and the
@@ -50,7 +52,7 @@ const SUBJECT = "Welcome to Audric";
 const THROTTLE_MS = 600; // ~1.6/s — under Resend's default rate limit
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SENT_LOG = join(HERE, ".welcome-blast-sent.json");
+const SENT_LOG = join(HERE, ".welcome-blast-sent.json"); // legacy — read for --backfill only
 const RUNS_DIR = join(HERE, ".welcome-blast-runs");
 const RUN_LOG = join(RUNS_DIR, `${new Date().toISOString().slice(0, 10)}.log`);
 
@@ -65,29 +67,22 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const firstName = (name?: string | null) =>
   name?.trim().split(/\s+/)[0] || undefined;
 
-function loadSent(): Set<string> {
-  if (!existsSync(SENT_LOG)) {
-    return new Set();
+let _sql: ReturnType<typeof postgres> | null = null;
+function getSql(): ReturnType<typeof postgres> {
+  if (!_sql) {
+    _sql = postgres(process.env.POSTGRES_URL ?? "", { max: 1 });
   }
-  try {
-    return new Set(JSON.parse(readFileSync(SENT_LOG, "utf8")) as string[]);
-  } catch {
-    return new Set();
-  }
-}
-function persistSent(sent: Set<string>) {
-  writeFileSync(SENT_LOG, JSON.stringify([...sent], null, 2));
+  return _sql;
 }
 
 async function audience(): Promise<{ email: string; name: string | null }[]> {
-  const postgres = (await import("postgres")).default;
-  const sql = postgres(process.env.POSTGRES_URL ?? "", { max: 1 });
-  const rows = await sql<{ email: string | null; name: string | null }[]>`
+  const rows = await getSql()<{ email: string | null; name: string | null }[]>`
     select email, name
     from "User"
-    where email is not null and "isAnonymous" = false
+    where email is not null
+      and "isAnonymous" = false
+      and "welcomeEmailSentAt" is null
     order by "createdAt" asc`;
-  await sql.end();
 
   // Dedupe by lowercased email (a person may have re-signed in).
   const seen = new Set<string>();
@@ -107,8 +102,42 @@ async function audience(): Promise<{ email: string; name: string | null }[]> {
   return out;
 }
 
+/** Stamp welcomeEmailSentAt for one email (idempotent — only when still null). */
+async function markSent(email: string) {
+  await getSql()`
+    update "User" set "welcomeEmailSentAt" = now()
+    where lower(email) = ${email.toLowerCase()} and "welcomeEmailSentAt" is null`;
+}
+
+/** ONE-TIME: stamp everyone already reached by the pre-migration blast, read
+ *  from the legacy .welcome-blast-sent.json, so they aren't re-sent. */
+async function backfill(): Promise<number> {
+  if (!existsSync(SENT_LOG)) {
+    console.log("No .welcome-blast-sent.json — nothing to backfill.");
+    return 0;
+  }
+  const emails = (JSON.parse(readFileSync(SENT_LOG, "utf8")) as string[]).map(
+    (e) => e.toLowerCase()
+  );
+  if (emails.length === 0) {
+    return 0;
+  }
+  const res = await getSql()`
+    update "User" set "welcomeEmailSentAt" = now()
+    where lower(email) = any(${emails}) and "welcomeEmailSentAt" is null`;
+  return res.count;
+}
+
 async function main() {
   const args = process.argv.slice(2);
+
+  if (args.includes("--backfill")) {
+    const n = await backfill();
+    console.log(`\n✅ Backfill: stamped welcomeEmailSentAt on ${n} user(s).\n`);
+    await getSql().end();
+    return;
+  }
+
   const send = args.includes("--send");
   const onlyIdx = args.indexOf("--only");
   const only = onlyIdx > -1 ? args[onlyIdx + 1] : null;
@@ -118,10 +147,6 @@ async function main() {
   let recipients = only
     ? [{ email: only, name: null as string | null }]
     : await audience();
-
-  const sent = loadSent();
-  const already = recipients.filter((r) => sent.has(r.email.toLowerCase()));
-  recipients = recipients.filter((r) => !sent.has(r.email.toLowerCase()));
   if (limit != null && Number.isFinite(limit)) {
     recipients = recipients.slice(0, limit);
   }
@@ -129,9 +154,7 @@ async function main() {
   console.log(`\n📣 Welcome blast — "${SUBJECT}"`);
   console.log(`   from: ${FROM}`);
   console.log(
-    `   audience: ${recipients.length} to send` +
-      (already.length ? ` · ${already.length} already sent (skipped)` : "") +
-      (only ? " · (--only override)" : "")
+    `   audience: ${recipients.length} unwelcomed${only ? " · (--only override)" : ""}`
   );
   console.log(
     "   sample:",
@@ -145,6 +168,7 @@ async function main() {
     console.log(
       "\n🅳🆁🆈 run — nothing sent. Add --send to deliver (try --only you@example.com --send first).\n"
     );
+    await _sql?.end();
     return;
   }
   if (!process.env.RESEND_API_KEY) {
@@ -152,6 +176,7 @@ async function main() {
   }
   if (recipients.length === 0) {
     console.log("\nNothing to send.\n");
+    await _sql?.end();
     return;
   }
 
@@ -175,8 +200,9 @@ async function main() {
       appendRun(`FAIL ${r.email} — ${error.message}`);
     } else {
       ok++;
-      sent.add(r.email.toLowerCase());
-      persistSent(sent);
+      // Only mark after a real send (not for --only one-off test addresses that
+      // may not be a user row — the update is a no-op then).
+      await markSent(r.email);
       console.log(`  ✓ ${r.email} — ${data?.id}`);
       appendRun(`${r.email} — ${data?.id}`);
     }
@@ -184,6 +210,7 @@ async function main() {
   }
   appendRun(`# done: sent ${ok}, failed ${fail}`);
   console.log(`\nDone. sent ${ok}, failed ${fail}.\n`);
+  await getSql().end();
 }
 
 main().catch((e) => {

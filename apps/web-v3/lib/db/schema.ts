@@ -58,6 +58,11 @@ export const user = pgTable("User", {
    *  memories un-recallable (a clean slate); the old encrypted Walrus blobs
    *  expire on their own. (Provable on-chain erasure awaits a MemWal forget op.) */
   memoryEpoch: integer("memoryEpoch").notNull().default(0),
+  /** When the welcome email was sent (auto on first sign-in OR the one-off
+   *  blast). Gates the welcome to exactly once across both paths; null means
+   *  "never welcomed", so a missed/failed send self-heals on the next sign-in
+   *  (the `isNew` insert-vs-update flag couldn't — it only ever fires once). */
+  welcomeEmailSentAt: timestamp("welcomeEmailSentAt"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

@@ -9,6 +9,7 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
   type SQL,
   sql,
@@ -45,11 +46,13 @@ const db = drizzle(client);
 export async function upsertUser(
   id: string,
   email: string | null
-): Promise<{ isNew: boolean }> {
+): Promise<{ isNew: boolean; welcomeEmailSentAt: Date | null }> {
   try {
     // `xmax = 0` is true only for a freshly INSERTed row (non-zero on an UPDATE)
-    // — the canonical Postgres way to tell insert from update in an upsert, so we
-    // can fire the welcome email exactly once on first sign-in.
+    // — the canonical Postgres way to tell insert from update in an upsert.
+    // `welcomeEmailSentAt` is the real welcome gate (see markWelcomeSent): a row
+    // can pre-exist (migration / pre-feature sign-in / failed send) yet never
+    // have been welcomed, so the caller checks the timestamp, not `isNew`.
     const [row] = await db
       .insert(user)
       .values({ id, email, emailVerified: email !== null })
@@ -57,11 +60,27 @@ export async function upsertUser(
         target: user.id,
         set: { email, updatedAt: new Date() },
       })
-      .returning({ isNew: sql<boolean>`(xmax = 0)` });
-    return { isNew: row?.isNew ?? false };
+      .returning({
+        isNew: sql<boolean>`(xmax = 0)`,
+        welcomeEmailSentAt: user.welcomeEmailSentAt,
+      });
+    return {
+      isNew: row?.isNew ?? false,
+      welcomeEmailSentAt: row?.welcomeEmailSentAt ?? null,
+    };
   } catch (_error) {
     throw new ChatbotError("bad_request:database", "Failed to upsert user");
   }
+}
+
+/** Stamp the welcome-sent timestamp exactly once (no-op if already set). Called
+ *  after a welcome email actually sends — from the sign-in path and the one-off
+ *  blast — so the welcome is sent at most once per user across both. */
+export async function markWelcomeSent(userId: string): Promise<void> {
+  await db
+    .update(user)
+    .set({ welcomeEmailSentAt: new Date() })
+    .where(and(eq(user.id, userId), isNull(user.welcomeEmailSentAt)));
 }
 
 // ── Credit rail (Phase 5) ────────────────────────────────────────────────

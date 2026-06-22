@@ -15,6 +15,13 @@
       "when": 1782006790733,
       "tag": "0001_smiling_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782129429539,
+      "tag": "0002_romantic_puck",
+      "breakpoints": true
     }
   ]
 }
