@@ -14,7 +14,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { AddCard } from "@/components/chat/billing/add-card";
-import { FounderCallCard } from "@/components/chat/founder-call-card";
 import { Button } from "@/components/ui/button";
 import {
   COMING_SOON,
@@ -329,9 +328,6 @@ export default function BillingPage() {
           )}
         </div>
       )}
-
-      {/* Founder personal touch — scoped to billing (high-intent / post-sub). */}
-      <FounderCallCard />
 
       {/* Payment methods — saved cards + native add (Payment Element). */}
       {data?.configured && (
