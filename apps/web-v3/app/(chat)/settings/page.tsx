@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { fetcher } from "@/lib/utils";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -73,9 +74,45 @@ export default function SettingsPage() {
   const [memoryOn, setMemoryOn] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const { data: ci, mutate: mutateCi } = useSWR<{ instructions: string }>(
+    address ? `${BASE}/api/account/custom-instructions` : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  const [instructions, setInstructions] = useState("");
+  const [ciSaving, setCiSaving] = useState(false);
+
   useEffect(() => {
     setMemoryOn(window.localStorage.getItem(MEMORY_KEY) === "1");
   }, []);
+
+  useEffect(() => {
+    if (ci?.instructions !== undefined) {
+      setInstructions(ci.instructions);
+    }
+  }, [ci?.instructions]);
+
+  async function saveInstructions() {
+    setCiSaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/account/custom-instructions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instructions }),
+      });
+      if (!res.ok) {
+        throw new Error("failed");
+      }
+      const j = await res.json();
+      setInstructions(j.instructions ?? "");
+      mutateCi({ instructions: j.instructions ?? "" }, { revalidate: false });
+      toast.success("Custom instructions saved.");
+    } catch {
+      toast.error("Couldn't save instructions.");
+    } finally {
+      setCiSaving(false);
+    }
+  }
 
   function toggleMemory() {
     const next = !memoryOn;
@@ -252,6 +289,41 @@ export default function SettingsPage() {
             </Row>
           </>
         )}
+      </Section>
+
+      {/* Custom instructions */}
+      <Section title="Custom instructions">
+        <p className="text-muted-foreground text-xs">
+          Standing directions Audric follows in <strong>every</strong> reply —
+          the language to answer in, tone, what to call you, format. Unlike
+          memory, these always apply (even on an unrelated message). You can
+          also just tell Audric in chat ("always reply in German").
+        </p>
+        <Textarea
+          className="mt-3 min-h-24 text-sm"
+          maxLength={2000}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder={
+            "e.g. Always respond in German.\nBe concise. Call me Phil."
+          }
+          value={instructions}
+        />
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground/60">
+            {instructions.length}/2000
+          </span>
+          <Button
+            disabled={
+              ciSaving ||
+              instructions.trim() === (ci?.instructions ?? "").trim()
+            }
+            onClick={saveInstructions}
+            size="sm"
+            type="button"
+          >
+            {ciSaving ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </Section>
 
       {/* Your data */}

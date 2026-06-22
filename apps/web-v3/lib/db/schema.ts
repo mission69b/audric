@@ -58,6 +58,12 @@ export const user = pgTable("User", {
    *  memories un-recallable (a clean slate); the old encrypted Walrus blobs
    *  expire on their own. (Provable on-chain erasure awaits a MemWal forget op.) */
   memoryEpoch: integer("memoryEpoch").notNull().default(0),
+  /** Standing "custom instructions" — always injected into the system prompt,
+   *  EVERY turn (unlike relevance-recalled Private Memory). Holds behavioral
+   *  directives the user sets explicitly: language to respond in, tone, persona,
+   *  what to call them, response format. Separate from memory by design (memory
+   *  = facts recalled when relevant; this = behavior applied unconditionally). */
+  customInstructions: text("customInstructions"),
   /** When the welcome email was sent (auto on first sign-in OR the one-off
    *  blast). Gates the welcome to exactly once across both paths; null means
    *  "never welcomed", so a missed/failed send self-heals on the next sign-in

@@ -183,6 +183,17 @@ export async function setStripeCustomerId(userId: string, customerId: string) {
     .where(eq(user.id, userId));
 }
 
+/** Set (or clear, with null) the user's standing custom instructions. */
+export async function setCustomInstructions(
+  userId: string,
+  instructions: string | null
+) {
+  await db
+    .update(user)
+    .set({ customInstructions: instructions, updatedAt: new Date() })
+    .where(eq(user.id, userId));
+}
+
 export async function setDefaultPaymentMethod(userId: string, pmId: string) {
   await db
     .update(user)

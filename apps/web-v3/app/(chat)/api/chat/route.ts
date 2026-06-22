@@ -42,6 +42,7 @@ import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
 import { runRecipeTool } from "@/lib/ai/tools/run-recipe";
 import { saveMemory } from "@/lib/ai/tools/save-memory";
 import { sendTransfer } from "@/lib/ai/tools/send-transfer";
+import { setPreferences } from "@/lib/ai/tools/set-preferences";
 import { transactionHistory } from "@/lib/ai/tools/transaction-history";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { webSearch } from "@/lib/ai/tools/web-search";
@@ -93,7 +94,8 @@ type ActiveTool =
   | "resolve_suins"
   | "send_transfer"
   | "run_recipe"
-  | "save_memory";
+  | "save_memory"
+  | "set_preferences";
 
 // Artifact tools that WRITE/replace a document. A single createDocument already
 // streams the COMPLETE artifact, so once any of these has run in a turn we drop
@@ -559,6 +561,7 @@ export async function POST(request: Request) {
                     : []),
                   ...(isExplicitRecipe ? (["run_recipe"] as ActiveTool[]) : []),
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
+                  "set_preferences",
                 ]
               : isExplicitArtifact
                 ? ["web_search", "createDocument"]
@@ -572,6 +575,7 @@ export async function POST(request: Request) {
             isAuthed: Boolean(session?.user),
             memoryOn,
             memoryRecall,
+            customInstructions: dbUser?.customInstructions,
             walletAddress: session?.user?.id,
             artifactsActive,
             recipesActive: isExplicitRecipe,
@@ -680,6 +684,10 @@ export async function POST(request: Request) {
                   ...(memoryOn
                     ? { save_memory: saveMemory({ address: memNamespace }) }
                     : {}),
+                  // Standing custom instructions — NOT memory-gated (it's a
+                  // profile directive, not relevance-recalled memory). Lets the
+                  // agent persist "always respond in German" etc.
+                  set_preferences: setPreferences({ userId: session.user.id }),
                 }
               : {}),
           },
