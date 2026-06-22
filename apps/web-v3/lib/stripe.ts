@@ -80,7 +80,17 @@ export async function getOrCreateCustomer(
 ): Promise<string> {
   const u = await getUserById(userId);
   if (u?.stripeCustomerId) {
-    return u.stripeCustomerId;
+    // Verify the stored id still exists in the CURRENT Stripe account/mode — a
+    // customer from another mode (live↔test) or a deleted one 404s on use. If so,
+    // fall through and create a fresh one (self-heal).
+    try {
+      const existing = await getStripe().customers.retrieve(u.stripeCustomerId);
+      if (!existing.deleted) {
+        return u.stripeCustomerId;
+      }
+    } catch {
+      // missing/invalid → create + repoint below
+    }
   }
   const customer = await getStripe().customers.create({
     email: email ?? undefined,

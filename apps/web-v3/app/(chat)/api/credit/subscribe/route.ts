@@ -63,15 +63,21 @@ export async function POST(request: Request) {
   // Embedded checkout (in-app, on audric.ai) — returns a client_secret the
   // /checkout page mounts. Stripe Link / saved cards / wallets / one-click all
   // come along (same Checkout engine as the hosted page).
-  const checkout = await getStripe().checkout.sessions.create({
-    ui_mode: "embedded_page",
-    mode: "subscription",
-    customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
-    subscription_data: { metadata: { userId: session.user.id, tier } },
-    metadata: { userId: session.user.id, kind: "subscribe", tier },
-    return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
-  });
-
-  return Response.json({ clientSecret: checkout.client_secret });
+  try {
+    const checkout = await getStripe().checkout.sessions.create({
+      ui_mode: "embedded_page",
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: priceId, quantity: 1 }],
+      subscription_data: { metadata: { userId: session.user.id, tier } },
+      metadata: { userId: session.user.id, kind: "subscribe", tier },
+      return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
+    });
+    return Response.json({ clientSecret: checkout.client_secret });
+  } catch (e) {
+    return Response.json(
+      { error: e instanceof Error ? e.message : "Couldn't start checkout." },
+      { status: 500 }
+    );
+  }
 }

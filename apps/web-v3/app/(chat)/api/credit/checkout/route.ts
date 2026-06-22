@@ -61,33 +61,39 @@ export async function POST(request: Request) {
   );
 
   // Embedded checkout (in-app) — see subscribe route. Returns a client_secret.
-  const checkout = await getStripe().checkout.sessions.create({
-    ui_mode: "embedded_page",
-    mode: "payment",
-    customer: customerId,
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: amountUsd * 100,
-          product_data: {
-            name: "Audric credit",
-            description:
-              "Closed-loop service credit — non-refundable, non-withdrawable, non-transferable.",
+  try {
+    const checkout = await getStripe().checkout.sessions.create({
+      ui_mode: "embedded_page",
+      mode: "payment",
+      customer: customerId,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: amountUsd * 100,
+            product_data: {
+              name: "Audric credit",
+              description:
+                "Closed-loop service credit — non-refundable, non-withdrawable, non-transferable.",
+            },
           },
         },
+      ],
+      // Save the card so auto-recharge can charge off-session later.
+      payment_intent_data: { setup_future_usage: "off_session" },
+      metadata: {
+        userId: session.user.id,
+        kind: "topup",
+        amountUsd: String(amountUsd),
       },
-    ],
-    // Save the card so auto-recharge can charge off-session later.
-    payment_intent_data: { setup_future_usage: "off_session" },
-    metadata: {
-      userId: session.user.id,
-      kind: "topup",
-      amountUsd: String(amountUsd),
-    },
-    return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
-  });
-
-  return Response.json({ clientSecret: checkout.client_secret });
+      return_url: `${origin}/checkout/return?session_id={CHECKOUT_SESSION_ID}`,
+    });
+    return Response.json({ clientSecret: checkout.client_secret });
+  } catch (e) {
+    return Response.json(
+      { error: e instanceof Error ? e.message : "Couldn't start checkout." },
+      { status: 500 }
+    );
+  }
 }
