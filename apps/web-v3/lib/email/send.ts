@@ -18,13 +18,14 @@ import { env } from "@/lib/env";
  */
 export const EMAIL_FROM = {
   // Brand-only display name everywhere (clean in the inbox, scales to all email
-  // types). The founder warmth lives in the email body (pfp + signature), and the
-  // founder address/reply-to means replies still reach the founder inbox.
-  founder: "Audric <funkii@audric.ai>",
+  // types). hello@ is the universal, warm, reusable address (coherent with the
+  // "Audric" display); the founder warmth lives in the email body (pfp +
+  // signature). Replies route to hello@ → the Audric inbox.
+  founder: "Audric <hello@audric.ai>",
   system: "Audric <notifications@audric.ai>",
 } as const;
 
-export const REPLY_TO = "funkii@audric.ai";
+export const REPLY_TO = "hello@audric.ai";
 
 let client: Resend | null = null;
 function getResend(): Resend | null {
