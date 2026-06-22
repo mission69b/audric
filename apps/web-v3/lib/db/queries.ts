@@ -11,6 +11,7 @@ import {
   gte,
   inArray,
   isNull,
+  like,
   lt,
   type SQL,
   sql,
@@ -268,47 +269,53 @@ export async function attributeReferral(
     .onConflictDoNothing({ target: referral.refereeId });
 }
 
-/** Reward a referral on the referee's first qualifying PAID action. Atomic
- *  claim (status pending→rewarded) so a double webhook can't double-pay; grants
- *  both sides via the ref-unique ledger; enforces the per-referrer 30d cap. */
+/** Reward a referral on the referee's first qualifying PAID action.
+ *  Idempotency comes from the ref-unique ledger rows (NOT the status), so the
+ *  order is: grant BOTH sides, THEN mark rewarded. If a grant throws, status
+ *  stays `pending` and the Stripe retry re-runs this safely (the grant that
+ *  already landed is a ref-unique no-op) → self-healing, no partial payout.
+ *  Enforces the per-referrer rolling-30d cap. */
 export async function rewardReferralOnPaidAction(
   refereeId: string
 ): Promise<{ rewarded: boolean }> {
-  const [claimed] = await db
-    .update(referral)
-    .set({ status: "rewarded", rewardedAt: new Date() })
+  const [pending] = await db
+    .select({ referrerId: referral.referrerId })
+    .from(referral)
     .where(
       and(eq(referral.refereeId, refereeId), eq(referral.status, "pending"))
     )
-    .returning({ referrerId: referral.referrerId });
-  if (!claimed) {
+    .limit(1);
+  if (!pending) {
     return { rewarded: false };
   }
 
-  // Cap: count this referrer's rewarded referrals in the last 30 days (this row
-  // is now counted). Over cap → revert + skip the grant.
+  // Anti-abuse cap: this referrer's ALREADY-rewarded referrals in the last 30d
+  // (this row is still pending, so it isn't counted). At/over cap → reject.
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [capRow] = await db
     .select({ c: count() })
     .from(referral)
     .where(
       and(
-        eq(referral.referrerId, claimed.referrerId),
+        eq(referral.referrerId, pending.referrerId),
         eq(referral.status, "rewarded"),
         gt(referral.rewardedAt, since)
       )
     );
-  if (Number(capRow?.c ?? 0) > REFERRER_CAP_30D) {
+  if (Number(capRow?.c ?? 0) >= REFERRER_CAP_30D) {
     await db
       .update(referral)
-      .set({ status: "rejected", rewardedAt: null })
-      .where(eq(referral.refereeId, refereeId));
+      .set({ status: "rejected" })
+      .where(
+        and(eq(referral.refereeId, refereeId), eq(referral.status, "pending"))
+      );
     return { rewarded: false };
   }
 
+  // Grants first (idempotent via the unique `ref`), then flip status.
   const rewardMicros = REFERRAL_REWARD_USD * 1_000_000;
   await recordCredit({
-    userId: claimed.referrerId,
+    userId: pending.referrerId,
     amountMicros: rewardMicros,
     type: "referral",
     description: "Referral reward — your friend joined Audric",
@@ -321,14 +328,24 @@ export async function rewardReferralOnPaidAction(
     description: "Referral bonus — welcome to Audric",
     ref: `referral-referee:${refereeId}`,
   });
+  await db
+    .update(referral)
+    .set({ status: "rewarded", rewardedAt: new Date() })
+    .where(
+      and(eq(referral.refereeId, refereeId), eq(referral.status, "pending"))
+    );
   return { rewarded: true };
 }
 
-/** Referrer-facing stats for the settings panel. */
+/** Referrer-facing stats for the settings panel. `earned` counts ONLY rewards
+ *  earned BY referring (the `referral-referrer:` ledger rows) — not the user's
+ *  own welcome bonus. `rank` is their position among referrers by rewarded
+ *  count (null until they have ≥1 rewarded referral). */
 export async function getReferralStats(referrerId: string): Promise<{
   total: number;
   rewarded: number;
   earnedMicros: number;
+  rank: number | null;
 }> {
   const [totals] = await db
     .select({
@@ -343,13 +360,33 @@ export async function getReferralStats(referrerId: string): Promise<{
     .where(
       and(
         eq(creditLedger.userId, referrerId),
-        eq(creditLedger.type, "referral")
+        eq(creditLedger.type, "referral"),
+        like(creditLedger.ref, "referral-referrer:%")
       )
     );
+
+  const rewarded = Number(totals?.rewarded ?? 0);
+  let rank: number | null = null;
+  if (rewarded > 0) {
+    // Count referrers with MORE rewarded referrals than me; rank = that + 1.
+    const perReferrer = db
+      .select({ c: count().as("c") })
+      .from(referral)
+      .where(eq(referral.status, "rewarded"))
+      .groupBy(referral.referrerId)
+      .as("perReferrer");
+    const [above] = await db
+      .select({ n: count() })
+      .from(perReferrer)
+      .where(gt(perReferrer.c, rewarded));
+    rank = Number(above?.n ?? 0) + 1;
+  }
+
   return {
     total: Number(totals?.total ?? 0),
-    rewarded: Number(totals?.rewarded ?? 0),
+    rewarded,
     earnedMicros: earned?.total ? Number(earned.total) : 0,
+    rank,
   };
 }
 

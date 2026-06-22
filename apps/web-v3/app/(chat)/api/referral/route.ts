@@ -17,5 +17,6 @@ export async function GET() {
     total: stats.total,
     rewarded: stats.rewarded,
     earnedUsd: stats.earnedMicros / 1_000_000,
+    rank: stats.rank,
   });
 }

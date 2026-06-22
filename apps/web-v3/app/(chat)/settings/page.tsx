@@ -88,6 +88,7 @@ export default function SettingsPage() {
     total: number;
     rewarded: number;
     earnedUsd: number;
+    rank: number | null;
   }>(address ? `${BASE}/api/referral` : null, fetcher, {
     revalidateOnFocus: false,
   });
@@ -357,6 +358,12 @@ export default function SettingsPage() {
               ${(refData?.earnedUsd ?? 0).toFixed(0)}
             </div>
             <div className="text-[11px] text-muted-foreground">Earned</div>
+          </div>
+          <div>
+            <div className="font-semibold text-sm">
+              {refData?.rank ? `#${refData.rank}` : "—"}
+            </div>
+            <div className="text-[11px] text-muted-foreground">Rank</div>
           </div>
         </div>
       </Section>
