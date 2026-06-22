@@ -5,7 +5,7 @@ description: A private, multi-model AI with a wallet built in — and it's yours
 author: funkii
 ---
 
-Most AI is something you rent. Your chats, your history, and your account live on someone else's servers, on their terms — and your conversations quietly become their training data.
+Most AI is something you rent. Your chats, your history, and your account live on someone else's servers, on their terms — and your conversations can become their training data.
 
 Audric is something you **own**. It's a private, multi-model AI assistant with a non-custodial wallet built in. Sign in with Google and, in about three seconds, you have the best open and frontier models, a wallet, and an account where the data is yours — not ours.
 
@@ -19,7 +19,7 @@ Three things, in one place:
 - **A real agent** — it searches the web, runs cited research, generates images, and pays for live data on your behalf.
 - **A wallet** — non-custodial, gasless, created from your Google sign-in.
 
-The thread tying them together is **ownership** — none of it has to pass through us to be useful.
+What ties them together is **ownership** — none of it has to pass through us to be useful.
 
 ## Why ownership matters
 
@@ -27,7 +27,7 @@ When a company hosts your AI, they hold the leverage. They can change or remove 
 
 With Audric, you own the model access, the wallet, and the memory, and the parts that can be decentralized are. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
 
-## How your privacy actually works
+## How your privacy works
 
 Here's exactly how your data is handled.
 
@@ -44,13 +44,13 @@ So: your **chats** live in your private, encrypted history; your **memory** (if 
 
 Audric isn't one model behind a brand. Open and uncensored models (Kimi, DeepSeek, Grok, GPT-OSS) sit next to the frontier (Claude Opus 4.8, GPT-5.5). Switch between any of them mid-conversation, and the open models **won't refuse you**.
 
-Don't want to think about it? **Auto** picks the model — plus the right reasoning effort — for each task: a quick reply on a fast model, deep analysis on a frontier one. Every model in the switcher carries an honest privacy badge and its real cost, so you always know what you're using.
+**Auto** picks the model and the right reasoning effort for each task: a quick reply on a fast model, deep analysis on a frontier one. Every model in the switcher shows a privacy badge and its real cost, so you always know what you're using.
 
-![Audric's model picker — every model with an honest privacy badge, and Auto on by default.](/blog/model-picker.png)
+![Audric's model picker — every model with a privacy badge and its real cost, and Auto on by default.](/blog/model-picker.png)
 
-## It acts, not just answers
+## What the agent can do
 
-Audric is an agent — it does the work, not just talks about it:
+Audric is an agent, not just a chatbot:
 
 - **Web search** — current, time- and date-aware results with sources you can click.
 - **Multi-step research** — for bigger questions it runs a sequence of searches, shows each step as it works, and finishes with a synthesis that cites every source.
@@ -58,7 +58,7 @@ Audric is an agent — it does the work, not just talks about it:
 
 ![Audric running several live web searches with clickable sources, then a cited synthesis.](/blog/research.mp4)
 
-It can spend, too — not just search. **Recipes** are curated, pay-per-run flows over live data: markets, tickers, company deep-dives. Under the hood they settle over **x402**, an open standard for machine payments ([suimpp.dev](https://suimpp.dev)) — the agent pays each API per call, in USDC, straight from your wallet. Confirm the bundled price once; every call is metered against data that was actually fetched, so the answer is grounded in what came back, not invented.
+**Recipes** let the agent pay for live data, not just search for it — curated, pay-per-run flows over markets, tickers, and company deep-dives. They settle over **x402**, an open standard for machine payments ([suimpp.dev](https://suimpp.dev)): the agent pays each API per call, in USDC, straight from your wallet. Confirm the bundled price once; every call is metered against data that was actually fetched, so the answer is grounded in what came back, not invented.
 
 ![Running a Recipe — confirm the price, then it pays per call and returns a synthesized brief.](/blog/recipe.mp4)
 
@@ -72,19 +72,17 @@ Every account is an **Audric Passport** — a non-custodial wallet created from 
 
 ![Sending USDC in chat — tap to confirm, gasless, then verifiable on-chain.](/blog/send.mp4)
 
-## The privacy ladder
+## Where privacy goes next
 
-Privacy isn't one switch — it's a ladder, and Audric is climbing it in the open:
+Today's default is already strong. From here, each step adds privacy you can verify rather than take on trust:
 
 1. **Private · ZDR** — today's default: never retained, never trained on.
 2. **Confidential (TEE)** — *coming:* open models in secure enclaves, where even the provider can't read your prompt, with a per-request proof.
 3. **Sealed** — *coming:* end-to-end encrypted chats, readable only by you, backed up on Walrus.
 
-Not "trust us" — *verify*. Privacy you can check.
-
 ## Under the hood
 
-None of this is magic — it's a specific stack, chosen so privacy and ownership are structural, not promises. Here's how a request flows:
+It's a specific stack, chosen so privacy and ownership are structural rather than promises. Here's how a request flows:
 
 ![Audric architecture — your request routes through Auto and a zero-retention gateway to the models; opt-in memory is encrypted on Walrus; money settles gaslessly on Sui.](/blog/uth-arch.png)
 
@@ -104,7 +102,7 @@ None of this is magic — it's a specific stack, chosen so privacy and ownership
 
 ![The four layers — Identity (zkLogin, signing key in your browser), Models (Auto routing through a zero-retention gateway), Memory (encrypted on Walrus), Money (stablecoin transfers on Sui).](/blog/uth-layers.png)
 
-The result is the thesis made concrete: when the model access, the money, the identity, and the memory are all yours — encrypted, and where possible on storage no one else controls — none of it can be pulled out from under you.
+Put together: when the model access, the money, the identity, and the memory are all yours — encrypted, and where possible on storage no one else controls — none of it can be taken away from you.
 
 ## Pricing
 
@@ -117,4 +115,4 @@ Pay-as-you-go works on any plan. Full breakdown on the [pricing page](https://au
 
 Audric is live at [audric.ai](https://audric.ai). Try it before you even sign in — or sign in with Google (no card, no seed phrase) and have a private AI and a wallet in seconds.
 
-Own your AI, your data, and your money. That's the whole idea.
+Own your AI, your data, and your money.
