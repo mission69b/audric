@@ -145,11 +145,9 @@ export default function SettingsPage() {
       {address && (
         <Section title="Passport">
           <p className="text-muted-foreground text-xs">
-            <strong className="text-foreground/80">
-              No seed phrase, no bank.
-            </strong>{" "}
-            Your wallet is created from your Google sign-in — non-custodial, so
-            only you can move your money. We can't touch it.
+            <strong className="text-foreground/80">No seed phrase.</strong> Your
+            wallet is created from your Google sign-in — non-custodial, so only
+            you can move your money. We can't touch it.
           </p>
           <div className="mt-3 space-y-2.5">
             {identity?.configured && (
