@@ -229,14 +229,10 @@ export async function getBillingOverview(
       }),
       // Billing history = ALL successful payments (subscription renewals,
       // Checkout top-ups, AND off-session auto-recharge), not just invoices —
-      // payment-mode top-ups don't always produce an invoice. Expand the linked
-      // invoice so we can still surface the PDF/hosted page when one exists,
-      // falling back to the charge's receipt_url otherwise.
-      stripe.charges.list({
-        customer: customerId,
-        limit: 12,
-        expand: ["data.invoice"],
-      }),
+      // payment-mode top-ups don't always produce an invoice. Each charge's
+      // receipt_url is the branded hosted receipt (which itself links to the
+      // invoice + PDF when the payment was invoiced).
+      stripe.charges.list({ customer: customerId, limit: 12 }),
       // ALL payment-method types — not just "card". Stripe Link (the 1-click
       // wallet most Checkout users pay with) is type "link"; a "card" filter
       // silently hid it → "no cards saved" despite an active subscription.
@@ -270,21 +266,17 @@ export async function getBillingOverview(
       subscription,
       invoices: charges.data
         .filter((c) => c.status === "succeeded")
-        .map((c) => {
-          const inv =
-            typeof c.invoice === "object" && c.invoice ? c.invoice : null;
-          return {
-            id: c.id,
-            created: c.created,
-            amountPaid: c.amount,
-            currency: c.currency,
-            status: "paid",
-            number: inv?.number ?? null,
-            hostedUrl: inv?.hosted_invoice_url ?? null,
-            pdfUrl: inv?.invoice_pdf ?? null,
-            receiptUrl: c.receipt_url ?? null,
-          };
-        }),
+        .map((c) => ({
+          id: c.id,
+          created: c.created,
+          amountPaid: c.amount,
+          currency: c.currency,
+          status: "paid",
+          number: null,
+          hostedUrl: null,
+          pdfUrl: null,
+          receiptUrl: c.receipt_url ?? null,
+        })),
       paymentMethods: dedupePaymentMethods(pms.data, defaultPm, subDefaultPm),
     };
   } catch (e) {
