@@ -18,18 +18,21 @@ import type { ReactNode } from "react";
  * forward, parent entity in the fine print (Anthropic > Claude model).
  */
 
+// Light theme (email-safe + matches the X/marketing look; the emails.html
+// data-theme="light" palette). Light renders far more consistently across email
+// clients than a dark background.
 export const colors = {
-  page: "#e6e6e6",
-  ebg: "#0A0A0A",
-  ebd: "#1f1f1f",
-  fg: "#EDEDED",
-  mut: "#9b9b9b",
-  faint: "#777",
-  dim: "#5f5f5f",
-  sig: "#0AC7B4",
-  eb: "#1f1f1f",
-  btnbg: "#EDEDED",
-  btnfg: "#0A0A0A",
+  page: "#f1f0ee",
+  ebg: "#ffffff",
+  ebd: "#eaeaea",
+  fg: "#0A0A0A",
+  mut: "#5b5b5b",
+  faint: "#8a8a8a",
+  dim: "#9b9b9b",
+  sig: "#0A9683",
+  eb: "#efefef",
+  btnbg: "#0A0A0A",
+  btnfg: "#ffffff",
 } as const;
 
 export function EmailLayout({
