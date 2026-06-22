@@ -3,6 +3,7 @@ import {
   Column,
   Hr,
   Img,
+  Link,
   Row,
   Section,
   Text,
@@ -145,7 +146,13 @@ export function WelcomeEmail({ name }: { name?: string }) {
             margin: "14px 0 0",
           }}
         >
-          Reply anytime — I read every email.
+          Reply anytime — I read every email. Or grab 15 minutes:{" "}
+          <Link
+            href="https://cal.com/funkii/15min"
+            style={{ color: c.sig, textDecoration: "none" }}
+          >
+            cal.com/funkii/15min
+          </Link>
         </Text>
       </Section>
     </EmailLayout>

@@ -1,10 +1,13 @@
 import {
   Body,
+  Column,
   Container,
   Head,
   Html,
+  Img,
   Link,
   Preview,
+  Row,
   Section,
   Text,
 } from "@react-email/components";
@@ -66,17 +69,32 @@ export function EmailLayout({
           }}
         >
           <Section style={{ padding: "28px 32px 0" }}>
-            <Text
-              style={{
-                margin: 0,
-                color: colors.fg,
-                fontSize: 17,
-                fontWeight: 600,
-                letterSpacing: "-0.022em",
-              }}
-            >
-              audric
-            </Text>
+            <Row>
+              <Column style={{ width: 34, verticalAlign: "middle" }}>
+                {/* Brand mark — the live favicon (audric.ai/icon). Swap to
+                    /audric-mark.png if a crisper/transparent asset is added. */}
+                <Img
+                  alt=""
+                  height={26}
+                  src="https://audric.ai/icon"
+                  style={{ borderRadius: 6, display: "block" }}
+                  width={26}
+                />
+              </Column>
+              <Column style={{ verticalAlign: "middle" }}>
+                <Text
+                  style={{
+                    margin: 0,
+                    color: colors.fg,
+                    fontSize: 17,
+                    fontWeight: 600,
+                    letterSpacing: "-0.022em",
+                  }}
+                >
+                  audric
+                </Text>
+              </Column>
+            </Row>
           </Section>
 
           {children}
