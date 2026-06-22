@@ -5,9 +5,9 @@ description: A private, multi-model AI with a wallet built in — and it's yours
 author: funkii
 ---
 
-Most AI is something you rent. Your chats, your history, and your account live on someone else's servers, on their terms — and your conversations can become their training data.
+With most AI, your chats, history, and account live on someone else's servers, under their terms — and your conversations can become training data.
 
-Audric is something you **own**. It's a private, multi-model AI assistant with a non-custodial wallet built in. Sign in with Google and, in about three seconds, you have the best open and frontier models, a wallet, and an account where the data is yours — not ours.
+Audric is a private, multi-model AI assistant with a non-custodial wallet built in. Sign in with Google and, in about three seconds, you have the best open and frontier models, a wallet, and an account where your data stays yours — encrypted, never sold, and never used to train models.
 
 ![The Audric chat — private by default, with zero data retention.](/blog/empty-state.png)
 
