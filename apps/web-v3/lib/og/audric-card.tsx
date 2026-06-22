@@ -3,21 +3,22 @@ import { ImageResponse } from "next/og";
 /**
  * Shared Open Graph / Twitter card renderer for audric.ai (v3).
  *
- * Light canvas (#FAFAFA) so OG/Twitter share images read light across
+ * Light canvas (#FFFFFF) so OG/Twitter share images read light across
  * surfaces. 16px inset hairline, AudricMark + "audric"
  * wordmark top-left, a teal status pill, a two-line Geist headline, a Geist
  * subtitle, and a Geist Mono footer with a divider. Fonts load from Google
  * Fonts at render time (`loadGoogleFont`), so nothing is vendored.
  */
 
-// Light card (matches the app's light surface) — inverted from the original
-// dark palette so OG/Twitter share images read light.
-const ACCENT = "#0a7d71"; // Audric signal — light-variant teal (readable on light)
+// Light card aligned to og-audric-light.svg (the canonical reference).
+const ACCENT = "#0ac7b4"; // bright teal — pill dot
+const PILL_TEXT = "#0a9486"; // pill label teal
 const INK = "#0a0a0a";
-const MUTE = "#71717a";
-const SUB = "#52525b";
-const FOOT = "#8a8a8e";
-const BG = "#fafafa";
+const MUTE = "#999999";
+const SUB = "#666666";
+const FOOT = "#999999";
+const BG = "#ffffff";
+const DIVIDER = "#cccccc";
 
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 export const OG_CONTENT_TYPE = "image/png";
@@ -77,6 +78,9 @@ type AudricCardOptions = {
   pill: string;
   /** Supporting line under the headline. */
   subtitle: string;
+  /** Emphasize line 2 (ink) over line 1 (muted) — for the marketing headline
+   * where the payoff sits on line 2. Default: line 1 ink, line 2 muted. */
+  emphasizeLine2?: boolean;
 };
 
 export function renderAudricCard({
@@ -86,6 +90,7 @@ export function renderAudricCard({
   subtitle,
   footerLeft = "audric.ai",
   footerRight = "",
+  emphasizeLine2 = false,
 }: AudricCardOptions): Promise<ImageResponse> {
   const glyphs = `audric${pill}${line1}${line2}${subtitle}${footerLeft}${footerRight}`;
   return Promise.all([
@@ -108,19 +113,11 @@ export function renderAudricCard({
           <div
             style={{
               position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(ellipse 520px 300px at 360px 300px, rgba(10,199,180,0.16) 0%, rgba(10,199,180,0) 70%)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
               left: 16,
               top: 16,
               right: 16,
               bottom: 16,
-              border: "1px solid rgba(0,0,0,0.06)",
+              border: "1px solid rgba(0,0,0,0.08)",
             }}
           />
 
@@ -182,7 +179,7 @@ export function renderAudricCard({
               paddingRight: 16,
               borderRadius: 14,
               background: "rgba(10,199,180,0.10)",
-              border: "1px solid rgba(10,199,180,0.30)",
+              border: "1px solid rgba(10,199,180,0.35)",
             }}
           >
             <div
@@ -198,7 +195,7 @@ export function renderAudricCard({
                 display: "flex",
                 fontFamily: "Geist Mono",
                 fontSize: 11,
-                color: ACCENT,
+                color: PILL_TEXT,
                 letterSpacing: "1.5px",
               }}
             >
@@ -220,8 +217,16 @@ export function renderAudricCard({
               letterSpacing: "-3px",
             }}
           >
-            <div style={{ display: "flex", color: INK }}>{line1}</div>
-            <div style={{ display: "flex", color: MUTE }}>{line2}</div>
+            <div
+              style={{ display: "flex", color: emphasizeLine2 ? MUTE : INK }}
+            >
+              {line1}
+            </div>
+            <div
+              style={{ display: "flex", color: emphasizeLine2 ? INK : MUTE }}
+            >
+              {line2}
+            </div>
           </div>
 
           <div
@@ -256,7 +261,7 @@ export function renderAudricCard({
           >
             <div style={{ display: "flex" }}>{footerLeft}</div>
             {footerRight ? (
-              <div style={{ width: 30, height: 1, background: "#d4d4d4" }} />
+              <div style={{ width: 30, height: 1, background: DIVIDER }} />
             ) : null}
             {footerRight ? (
               <div style={{ display: "flex" }}>{footerRight}</div>

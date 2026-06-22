@@ -15,9 +15,11 @@ export const contentType = OG_CONTENT_TYPE;
 
 export default function Image() {
   return renderAudricCard({
-    pill: "PRIVATE · PERMISSIONLESS",
+    pill: "PRIVATE · SUI",
     line1: "Private, decentralized",
     line2: "AI — truly yours.",
-    subtitle: "Multi-model AI. Own your wallet, your data, your memory.",
+    subtitle: "Multi-model AI on Sui. Own your wallet, your data, your memory.",
+    footerRight: "Multi-model · Non-custodial",
+    emphasizeLine2: true,
   });
 }
