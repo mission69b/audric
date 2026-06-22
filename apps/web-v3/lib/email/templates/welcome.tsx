@@ -16,10 +16,7 @@ import { colors as c, EmailLayout } from "../components/layout";
 const FEATURES: [string, string][] = [
   ["Unlimited core chat", "open, uncensored models that won't refuse you"],
   ["Web search + image generation", "built into every chat"],
-  [
-    "A non-custodial wallet",
-    "send USDC + USDsui anywhere, instant and gasless",
-  ],
+  ["A non-custodial wallet", "send USDC anywhere, instant and gasless"],
   [
     "Private memory & chats",
     "encrypted on decentralized storage, yours to delete anytime",
