@@ -1,6 +1,5 @@
 // TODO(legal): reasonable boilerplate reflecting how Audric actually works —
-// NOT vetted legal text. Founder/counsel must review before public launch.
-// Contact email + entity name are placeholders.
+// NOT vetted legal text. Counsel should review before relying on it.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -10,13 +9,14 @@ export const metadata: Metadata = {
   description: "The terms governing your use of Audric.",
 };
 
-const UPDATED = "June 19, 2026";
+const UPDATED = "June 22, 2026";
 
 export default function TermsPage() {
   return (
     <LegalLayout title="Terms of Service" updated={UPDATED}>
       <p>
-        Welcome to Audric. By accessing or using Audric (the “Service”), you
+        Welcome to Audric. Audric (the “Service”) is operated by{" "}
+        <strong>T2000 AFI Inc.</strong> By accessing or using the Service, you
         agree to these Terms of Service. If you do not agree, do not use the
         Service.
       </p>
@@ -98,7 +98,7 @@ export default function TermsPage() {
       <H>10. Contact</H>
       <p>
         Questions about these Terms:{" "}
-        <a href="mailto:support@audric.ai">support@audric.ai</a>.
+        <a href="mailto:hello@audric.ai">hello@audric.ai</a>.
       </p>
 
       <p className="mt-8 text-muted-foreground text-xs">

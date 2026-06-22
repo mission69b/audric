@@ -1,6 +1,5 @@
 // TODO(legal): reasonable boilerplate reflecting how Audric actually handles
-// data — NOT vetted legal text. Founder/counsel must review before public
-// launch. Contact email + entity name are placeholders.
+// data — NOT vetted legal text. Counsel should review before relying on it.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -10,15 +9,17 @@ export const metadata: Metadata = {
   description: "How Audric handles your data.",
 };
 
-const UPDATED = "June 19, 2026";
+const UPDATED = "June 22, 2026";
 
 export default function PrivacyPage() {
   return (
     <LegalLayout title="Privacy Policy" updated={UPDATED}>
       <p>
-        Audric is built privacy-first. This policy explains what we collect,
-        why, and the controls you have. We aim to collect the minimum needed to
-        run the Service.
+        Privacy isn't a setting at Audric — it's how the product is built. We
+        collect the minimum needed to run the Service, route every AI request
+        through a zero-retention gateway, encrypt your data, and keep what we
+        can on decentralized storage you control. This policy explains what we
+        collect, why, and the controls you have.
       </p>
 
       <H>What we collect</H>
@@ -79,10 +80,11 @@ export default function PrivacyPage() {
       <p>
         You can delete individual chats, <strong>delete all chats</strong>, or{" "}
         <strong>purge all your data</strong> (chats, messages, and generated
-        artifacts) from Settings. Turning Private Memory off stops recall;
-        stored memories are encrypted and expire over time. On-chain
-        transactions are public and permanent on the Sui blockchain by nature
-        and cannot be deleted by us.
+        artifacts) from Settings. For Private Memory, turn it off to stop recall
+        or use <strong>“Forget all”</strong> to wipe every stored memory;
+        encrypted memories also expire from decentralized storage on their own.
+        On-chain transactions are public and permanent on the Sui blockchain by
+        nature and cannot be deleted by us.
       </p>
 
       <H>Security</H>
@@ -108,8 +110,8 @@ export default function PrivacyPage() {
 
       <H>Contact</H>
       <p>
-        Privacy questions:{" "}
-        <a href="mailto:support@audric.ai">support@audric.ai</a>.
+        Audric is operated by T2000 AFI Inc. Privacy questions:{" "}
+        <a href="mailto:hello@audric.ai">hello@audric.ai</a>.
       </p>
 
       <p className="mt-8 text-muted-foreground text-xs">
