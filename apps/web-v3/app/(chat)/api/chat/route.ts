@@ -62,6 +62,7 @@ import {
   updateMessage,
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
+import { maybeLowCreditWarning } from "@/lib/email/low-credit";
 import { ChatbotError } from "@/lib/errors";
 import {
   isMemoryConfigured,
@@ -838,6 +839,8 @@ export async function POST(request: Request) {
           }
           // Top the card back up if this debit dropped them below threshold.
           await maybeAutoRecharge(session.user.id);
+          // Else (no auto-recharge), warn once if they've dropped low on credit.
+          await maybeLowCreditWarning(session.user.id);
         }
       },
       onError: (error) => {
