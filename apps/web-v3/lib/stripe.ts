@@ -79,18 +79,13 @@ export async function getOrCreateCustomer(
   email: string | null
 ): Promise<string> {
   const u = await getUserById(userId);
+  // NEVER re-verify/recreate a stored customer id here. The DB stores ONE id, but
+  // Stripe test + live are separate accounts — so "recreate if it 404s" would
+  // CLOBBER the live customer (card + subscription pointer) whenever this runs in
+  // test mode on the shared DB (it did, once — funkiirabu). To test in test mode,
+  // use accounts with no stored live customer (fresh / `reset-stripe.mts`).
   if (u?.stripeCustomerId) {
-    // Verify the stored id still exists in the CURRENT Stripe account/mode — a
-    // customer from another mode (live↔test) or a deleted one 404s on use. If so,
-    // fall through and create a fresh one (self-heal).
-    try {
-      const existing = await getStripe().customers.retrieve(u.stripeCustomerId);
-      if (!existing.deleted) {
-        return u.stripeCustomerId;
-      }
-    } catch {
-      // missing/invalid → create + repoint below
-    }
+    return u.stripeCustomerId;
   }
   const customer = await getStripe().customers.create({
     email: email ?? undefined,
