@@ -84,19 +84,17 @@ Not "trust us" — *verify*. Privacy you can check.
 
 ## Under the hood
 
-None of this is magic — it's a specific stack, chosen so privacy and ownership are structural, not promises.
+None of this is magic — it's a specific stack, chosen so privacy and ownership are structural, not promises. Here's how a request actually flows:
 
-**Sign-in & wallet — zkLogin.** Signing in with Google derives a Sui wallet through a zero-knowledge proof. The signing key is created in your browser and never leaves it, so the wallet is genuinely non-custodial — we couldn't move your money even if we wanted to.
+![Audric architecture — your request routes through Auto and a zero-retention gateway to the models; opt-in memory is encrypted on Walrus; money settles gaslessly on Sui.](/blog/uth-arch.png)
 
-**The zero-retention gateway.** Every model request goes through one gateway configured for zero retention: the provider answers your prompt and forgets it — nothing stored, nothing trained on. It's also what lets Audric put every model behind a single interface.
+Every prompt takes the same path, and the gateway is configured so nothing is kept:
 
-**Auto — orchestration without the overhead.** A small classifier reads each turn and routes it to the right model, reasoning effort, and step budget. One endpoint, many models; you never wire it up. Open models for everyday work, a frontier model when the problem is hard.
+![A prompt's lifecycle — source → Auto classify → zero-retention gateway → the model answers → back to you. Nothing stored, nothing trained on.](/blog/uth-lifecycle.png)
 
-**Memory on Walrus.** When you opt in, memory is encrypted and stored as blobs spread across Walrus — a decentralized network no single company owns. It can't be quietly locked or pulled, it's recalled only when relevant, and "Forget all" wipes it.
+Four layers make it work — identity, models, memory, and money — each built so the private, decentralized parts are genuinely yours:
 
-**Money on Sui.** Sends are plain stablecoin transfers — no gas token to hold, because gas is sponsored at the protocol level. Every move is signed by you and settles on a public ledger anyone can verify.
-
-**Encryption everywhere else.** Chats are encrypted at rest; files you generate are served only to you through an authenticated request, never a public URL.
+![The four layers — Identity (zkLogin, signing key in your browser), Models (Auto routing through a zero-retention gateway), Memory (encrypted on Walrus), Money (stablecoin transfers on Sui).](/blog/uth-layers.png)
 
 The result is the thesis made concrete: when the model access, the money, the identity, and the memory are all yours — encrypted, and where possible on storage no one else controls — none of it can be pulled out from under you.
 
