@@ -86,16 +86,6 @@ Not "trust us" — *verify*. Privacy you can check.
 
 None of this is magic — it's a specific stack, chosen so privacy and ownership are structural, not promises.
 
-```mermaid
-flowchart LR
-  U["You"] --> A["Auto router"]
-  A --> G["Zero-retention gateway"]
-  G --> M["Open + frontier models"]
-  U -. opt-in .-> W["Encrypted memory · Walrus"]
-  U --> P["Passport wallet · zkLogin"]
-  P --> C["Gasless, on-chain"]
-```
-
 **Sign-in & wallet — zkLogin.** Signing in with Google derives a Sui wallet through a zero-knowledge proof. The signing key is created in your browser and never leaves it, so the wallet is genuinely non-custodial — we couldn't move your money even if we wanted to.
 
 **The zero-retention gateway.** Every model request goes through one gateway configured for zero retention: the provider answers your prompt and forgets it — nothing stored, nothing trained on. It's also what lets Audric put every model behind a single interface.
