@@ -23,9 +23,9 @@ The thread tying them together is **ownership** — none of it has to pass throu
 
 ## Own it, don't rent it
 
-When a company hosts your AI, they hold the leverage. They can change the model, lock the context you've built up, read your chats, or train on them. You're a tenant.
+When a company hosts your AI, they hold the leverage. They can change the model, lock the context you've built up, read your chats, train on them — or pull your access overnight. You're a tenant.
 
-Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are.
+Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are. Ownership here isn't ideology, it's resilience: what you actually own can't be quietly changed, read, or taken away.
 
 ## How your privacy actually works
 
@@ -81,6 +81,34 @@ Privacy isn't one switch — it's a ladder, and Audric is climbing it in the ope
 3. **Sealed** — *coming:* end-to-end encrypted chats, readable only by you, backed up on Walrus.
 
 Not "trust us" — *verify*. Privacy you can check.
+
+## Under the hood
+
+None of this is magic — it's a specific stack, chosen so privacy and ownership are structural, not promises.
+
+```mermaid
+flowchart LR
+  U["You"] --> A["Auto router"]
+  A --> G["Zero-retention gateway"]
+  G --> M["Open + frontier models"]
+  U -. opt-in .-> W["Encrypted memory · Walrus"]
+  U --> P["Passport wallet · zkLogin"]
+  P --> C["Gasless, on-chain"]
+```
+
+**Sign-in & wallet — zkLogin.** Signing in with Google derives a Sui wallet through a zero-knowledge proof. The signing key is created in your browser and never leaves it, so the wallet is genuinely non-custodial — we couldn't move your money even if we wanted to.
+
+**The zero-retention gateway.** Every model request goes through one gateway configured for zero retention: the provider answers your prompt and forgets it — nothing stored, nothing trained on. It's also what lets Audric put every model behind a single interface.
+
+**Auto — orchestration without the overhead.** A small classifier reads each turn and routes it to the right model, reasoning effort, and step budget. One endpoint, many models; you never wire it up. Open models for everyday work, a frontier model when the problem is hard.
+
+**Memory on Walrus.** When you opt in, memory is encrypted and stored as blobs spread across Walrus — a decentralized network no single company owns. It can't be quietly locked or pulled, it's recalled only when relevant, and "Forget all" wipes it.
+
+**Money on Sui.** Sends are plain stablecoin transfers — no gas token to hold, because gas is sponsored at the protocol level. Every move is signed by you and settles on a public ledger anyone can verify.
+
+**Encryption everywhere else.** Chats are encrypted at rest; files you generate are served only to you through an authenticated request, never a public URL.
+
+The result is the thesis made concrete: when the model access, the money, the identity, and the memory are all yours — encrypted, and where possible on storage no one else controls — none of it can be pulled out from under you.
 
 ## Pricing, in a line
 
