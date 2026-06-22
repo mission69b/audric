@@ -2,6 +2,8 @@ import { auth } from "@/app/(auth)/auth";
 import type { TierId } from "@/lib/credit/tiers";
 import { acceptClosedLoopTerms, getUserById } from "@/lib/db/queries";
 import {
+  CHECKOUT_PANEL_BG,
+  type CheckoutTheme,
   getOrCreateCustomer,
   getStripe,
   isCreditConfigured,
@@ -25,10 +27,12 @@ export async function POST(request: Request) {
 
   let tier: string;
   let acceptedTerms = false;
+  let theme: CheckoutTheme = "light";
   try {
     const body = await request.json();
     tier = String(body?.tier);
     acceptedTerms = body?.acceptedTerms === true;
+    theme = body?.theme === "dark" ? "dark" : "light";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -68,8 +72,9 @@ export async function POST(request: Request) {
       ui_mode: "embedded_page",
       mode: "subscription",
       customer: customerId,
-      // Audric shell surface (bg-sidebar) so the embedded panel matches the page.
-      branding_settings: { background_color: "#f5f5f5" },
+      // Audric shell surface (bg-sidebar) so the embedded panel matches the
+      // page in the user's light/dark theme.
+      branding_settings: { background_color: CHECKOUT_PANEL_BG[theme] },
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: { metadata: { userId: session.user.id, tier } },
       metadata: { userId: session.user.id, kind: "subscribe", tier },

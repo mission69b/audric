@@ -35,10 +35,10 @@ function ReturnInner() {
   if (failed || state?.status === "expired") {
     return (
       <Shell>
-        <h1 className="font-semibold text-neutral-900 text-xl">
+        <h1 className="font-semibold text-foreground text-xl">
           Checkout didn't complete
         </h1>
-        <p className="mt-2 text-neutral-500 text-sm">
+        <p className="mt-2 text-muted-foreground text-sm">
           No charge was made. You can try again from Billing.
         </p>
         <Actions />
@@ -49,8 +49,8 @@ function ReturnInner() {
   if (state?.status !== "complete") {
     return (
       <Shell>
-        <Loader2Icon className="size-6 animate-spin text-neutral-400" />
-        <p className="mt-3 text-neutral-500 text-sm">
+        <Loader2Icon className="size-6 animate-spin text-muted-foreground" />
+        <p className="mt-3 text-muted-foreground text-sm">
           Finishing up your payment…
         </p>
       </Shell>
@@ -67,23 +67,23 @@ function ReturnInner() {
       <span className="flex size-11 items-center justify-center rounded-full bg-signal text-white">
         <CheckIcon className="size-6" />
       </span>
-      <h1 className="mt-5 font-semibold text-2xl text-neutral-900 tracking-tight">
+      <h1 className="mt-5 font-semibold text-2xl text-foreground tracking-tight">
         {headline}
       </h1>
-      <p className="mt-2 text-neutral-500 text-sm">
+      <p className="mt-2 text-muted-foreground text-sm">
         You're all set — your credit never expires, and the free model is always
         on.
       </p>
 
       {/* Founder touch + sticker teaser (the claim-stickers flow lands here later) */}
-      <div className="mt-6 flex items-center gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+      <div className="mt-6 flex items-center gap-3 rounded-2xl border border-border bg-background p-4">
         {/* biome-ignore lint/performance/noImgElement: tiny static avatar */}
         <img
           alt="funkii"
           className="size-9 rounded-full object-cover"
           src="/founder.png"
         />
-        <p className="text-neutral-500 text-xs leading-relaxed">
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Thanks for backing Audric. Want to chat?{" "}
           <button
             className="text-signal underline-offset-2 hover:underline"
@@ -94,7 +94,7 @@ function ReturnInner() {
             Grab 15 min with me
           </button>
           .<br />
-          <span className="text-neutral-400">
+          <span className="text-muted-foreground/70">
             Audric merch + stickers — coming soon.
           </span>
         </p>
@@ -109,13 +109,13 @@ function Actions() {
   return (
     <div className="mt-7 flex gap-3">
       <Link
-        className="rounded-lg bg-neutral-900 px-4 py-2 font-medium text-sm text-white transition-opacity hover:opacity-90"
+        className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90"
         href={`${BASE}/`}
       >
         Start using Audric
       </Link>
       <Link
-        className="rounded-lg border border-neutral-200 px-4 py-2 text-neutral-900 text-sm transition-colors hover:bg-neutral-50"
+        className="rounded-lg border border-border px-4 py-2 text-foreground text-sm transition-colors hover:bg-accent"
         href={`${BASE}/settings/billing`}
       >
         Billing
@@ -126,7 +126,7 @@ function Actions() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh w-full bg-neutral-100">
+    <div className="min-h-dvh w-full bg-sidebar text-foreground">
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
         {children}
       </div>

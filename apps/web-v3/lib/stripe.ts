@@ -95,6 +95,12 @@ export async function getOrCreateCustomer(
   return customer.id;
 }
 
+/** Embedded checkout panel background — matches the app shell (bg-sidebar
+ * token: light #f5f5f5 / dark #101010) so the Stripe panel adopts the user's
+ * theme. Keyed by the resolved theme the client sends. */
+export const CHECKOUT_PANEL_BG = { light: "#f5f5f5", dark: "#101010" } as const;
+export type CheckoutTheme = keyof typeof CHECKOUT_PANEL_BG;
+
 /** Native billing is available only when the publishable key is set (the
  * embedded Payment Element needs it client-side). */
 export function isNativeBillingConfigured(): boolean {
