@@ -34,7 +34,9 @@ interface ZkLoginContextValue {
   error: string | null;
   /** Called by /auth/callback — completes the flow + mints the server session. */
   handleCallback: () => Promise<void>;
-  login: () => Promise<void>;
+  /** Start Google sign-in. Pass a same-origin path to return to after auth
+   * (defaults to "/"); used e.g. by the pricing → checkout funnel. */
+  login: (returnTo?: string) => Promise<void>;
   logout: () => Promise<void>;
   provingStep: ZkLoginStep | null;
   session: ZkLoginSession | null;
@@ -92,9 +94,16 @@ export function ZkLoginProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id);
   }, [session, status]);
 
-  const login = useCallback(async () => {
+  const login = useCallback(async (returnTo?: string) => {
     try {
       setError(null);
+      if (returnTo) {
+        try {
+          sessionStorage.setItem("audric:return-to", returnTo);
+        } catch {
+          // ignore storage failures — falls back to "/" after auth
+        }
+      }
       setStatus("redirecting");
       await startLogin();
     } catch (e) {

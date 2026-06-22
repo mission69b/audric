@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import useSWR from "swr";
@@ -86,11 +86,13 @@ export function SidebarUserNav() {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton
-            className="h-8 rounded-lg bg-sidebar-accent px-2 text-[13px] text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/80"
+            className="h-8 rounded-lg bg-sidebar-accent px-2 text-[13px] text-sidebar-accent-foreground transition-colors hover:bg-sidebar-accent/80 group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-0"
             data-testid="login-button"
             onClick={() => login()}
+            tooltip="Log in"
           >
-            Log in
+            <LogIn className="size-4 shrink-0" />
+            <span className="group-data-[collapsible=icon]:hidden">Log in</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

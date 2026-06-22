@@ -27,7 +27,18 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/");
+      let dest = "/";
+      try {
+        const rt = sessionStorage.getItem("audric:return-to");
+        // Same-origin paths only; never bounce back into the auth flow.
+        if (rt?.startsWith("/") && !rt.startsWith("/auth")) {
+          dest = rt;
+        }
+        sessionStorage.removeItem("audric:return-to");
+      } catch {
+        // ignore — defaults to "/"
+      }
+      router.replace(dest);
     }
   }, [status, router]);
 

@@ -9,7 +9,14 @@ import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { TIERS, TOPUP_PERKS } from "@/lib/credit/tiers";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -23,6 +30,7 @@ function CheckoutInner() {
   const params = useSearchParams();
   const router = useRouter();
   const { resolvedTheme } = useTheme();
+  const { status: authStatus, login } = useZkLogin();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const theme = resolvedTheme === "dark" ? "dark" : "light";
@@ -68,6 +76,46 @@ function CheckoutInner() {
   const subtitle = isSub
     ? (tier?.tagline ?? "All the models, generous")
     : "Pay-as-you-go — credit never expires.";
+
+  let panel: ReactNode;
+  if (authStatus === "loading" || !mounted) {
+    panel = (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  } else if (authStatus === "authenticated") {
+    panel = (
+      <EmbeddedCheckoutProvider
+        key={theme}
+        options={{ fetchClientSecret }}
+        stripe={stripePromise}
+      >
+        <EmbeddedCheckout />
+      </EmbeddedCheckoutProvider>
+    );
+  } else {
+    panel = (
+      <div className="rounded-2xl border border-border/60 bg-background p-6">
+        <h2 className="font-semibold text-foreground text-lg">
+          Sign in to continue
+        </h2>
+        <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
+          Create your Passport wallet with Google — no seed phrase, no card to
+          start. You'll come right back here to finish.
+        </p>
+        <button
+          className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary px-4 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+          onClick={() =>
+            login(window.location.pathname + window.location.search)
+          }
+          type="button"
+        >
+          Continue with Google
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh w-full bg-sidebar text-foreground">
@@ -142,21 +190,10 @@ function CheckoutInner() {
           </div>
         </div>
 
-        {/* Stripe Embedded Checkout (Link / saved cards / one-click intact) */}
+        {/* Stripe Embedded Checkout (Link / saved cards / one-click intact),
+            gated behind sign-in for anon users (e.g. from the pricing page). */}
         <div className="md:pt-1">
-          {mounted ? (
-            <EmbeddedCheckoutProvider
-              key={theme}
-              options={{ fetchClientSecret }}
-              stripe={stripePromise}
-            >
-              <EmbeddedCheckout />
-            </EmbeddedCheckoutProvider>
-          ) : (
-            <div className="flex h-96 items-center justify-center">
-              <Loader2Icon className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
+          {panel}
           <p className="mt-4 text-[11px] text-muted-foreground leading-relaxed">
             By continuing you agree to Audric's closed-loop credit terms —
             credit is non-refundable, non-withdrawable, and non-transferable.

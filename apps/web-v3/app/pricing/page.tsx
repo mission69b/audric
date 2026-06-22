@@ -115,7 +115,7 @@ export default function PricingPage() {
                     ? "bg-primary text-primary-foreground hover:bg-primary/90"
                     : "border border-border/60 text-foreground hover:bg-muted"
                 )}
-                href="/"
+                href={tier.priceUsd === 0 ? "/" : `/checkout?plan=${tier.id}`}
               >
                 {tier.priceUsd === 0 ? "Start free" : `Get ${tier.name}`}
               </Link>
