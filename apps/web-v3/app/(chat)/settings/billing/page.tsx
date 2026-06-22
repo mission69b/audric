@@ -41,6 +41,7 @@ type BillingOverview = {
     number: string | null;
     hostedUrl: string | null;
     pdfUrl: string | null;
+    receiptUrl: string | null;
   }[];
   paymentMethods: {
     id: string;
@@ -405,10 +406,12 @@ export default function BillingPage() {
                     </span>
                   )}
                 </div>
-                {(inv.hostedUrl || inv.pdfUrl) && (
+                {(inv.hostedUrl || inv.pdfUrl || inv.receiptUrl) && (
                   <a
                     className="text-muted-foreground text-xs underline transition-colors hover:text-foreground"
-                    href={(inv.hostedUrl ?? inv.pdfUrl) as string}
+                    href={
+                      (inv.hostedUrl ?? inv.pdfUrl ?? inv.receiptUrl) as string
+                    }
                     rel="noreferrer"
                     target="_blank"
                   >

@@ -74,6 +74,10 @@ function ReturnInner() {
         You're all set — your credit never expires, and the free model is always
         on.
       </p>
+      <p className="mt-3 text-muted-foreground text-xs">
+        New here? Try live web research, generating an image, or running a
+        market Recipe.
+      </p>
 
       {/* Founder touch + sticker teaser (the claim-stickers flow lands here later) */}
       <div className="mt-6 flex items-center gap-3 rounded-2xl border border-border bg-background p-4">

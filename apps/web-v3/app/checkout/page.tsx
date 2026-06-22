@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { TIERS } from "@/lib/credit/tiers";
+import { TIERS, TOPUP_PERKS } from "@/lib/credit/tiers";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -109,8 +109,18 @@ function CheckoutInner() {
           )}
 
           {!isSub && topup ? (
-            <div className="mt-6 font-semibold text-3xl tabular-nums">
-              ${topup.toFixed(2)}
+            <div className="mt-6">
+              <div className="font-semibold text-3xl tabular-nums">
+                ${topup.toFixed(2)}
+              </div>
+              <ul className="mt-5 space-y-2.5">
+                {TOPUP_PERKS.map((f) => (
+                  <li className="flex gap-2 text-foreground/80 text-sm" key={f}>
+                    <span className="text-signal">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
 
