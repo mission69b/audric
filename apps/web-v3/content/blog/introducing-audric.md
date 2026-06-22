@@ -25,13 +25,13 @@ The idea tying them together is **self-sovereignty**: own your AI, your data, yo
 
 When a company hosts your AI, they hold the leverage. They can change the model, lock the context you've built up, read your chats, or train on them. You're a tenant.
 
-Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are. It's built for people who'd rather own the thing they rely on than rent it.
+Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are.
 
 ![Why Audric — 0 chats stored by model providers, every model in one chat, no KYC or seed phrase, instant USDC.](/blog/why-audric.png)
 
 ## How your privacy actually works
 
-Privacy claims are cheap, so here's plainly how Audric handles your data — and what each piece means.
+Here's exactly how your data is handled.
 
 - **Your chats.** Saved to *your* private history so you can pick up where you left off — encrypted at rest, readable only by you, and deletable anytime (one chat, all chats, or everything). They're stored so you have a history; they are never sold and never used to train models.
 - **Zero data retention (ZDR).** Every message runs through a gateway that tells the model provider to process your prompt and forget it. Nothing is retained on their side, and nothing is trained on. This is on for every chat, by default.
@@ -71,12 +71,11 @@ Every account is an **Audric Passport** — a non-custodial wallet created from 
 
 Privacy isn't one switch — it's a ladder, and Audric is climbing it in the open:
 
-1. **Anonymous** — try it with no account.
-2. **Private · ZDR** — today's default: never retained, never trained on.
-3. **Confidential (TEE)** — *coming:* open models running in secure enclaves, where even the provider can't read your prompt, with a per-request proof.
-4. **Sealed** — *coming:* end-to-end encrypted chats, readable only by you, with decentralized backup on Walrus.
+1. **Private · ZDR** — today's default: never retained, never trained on.
+2. **Confidential (TEE)** — *coming:* open models in secure enclaves, where even the provider can't read your prompt, with a per-request proof.
+3. **Sealed** — *coming:* end-to-end encrypted chats, readable only by you, backed up on Walrus.
 
-The goal is simple: not "trust us," but **verify** — privacy and control you can check.
+Not "trust us" — *verify*. Privacy you can check.
 
 ## Pricing, in a line
 
@@ -84,6 +83,6 @@ The goal is simple: not "trust us," but **verify** — privacy and control you c
 
 ## Get started
 
-Audric is live at [audric.ai](https://audric.ai). Sign in with Google — no card, no seed phrase — and you have a private AI and a wallet in seconds.
+Audric is live at [audric.ai](https://audric.ai). Try it before you even sign in — or sign in with Google (no card, no seed phrase) and have a private AI and a wallet in seconds.
 
 Own your AI, your data, and your money. That's the whole idea.
