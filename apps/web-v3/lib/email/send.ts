@@ -17,7 +17,10 @@ import { env } from "@/lib/env";
  *   SYSTEM  — transactional/system (receipts, low-credit, security).
  */
 export const EMAIL_FROM = {
-  founder: "funkii from Audric <funkii@audric.ai>",
+  // Brand-only display name everywhere (clean in the inbox, scales to all email
+  // types). The founder warmth lives in the email body (pfp + signature), and the
+  // founder address/reply-to means replies still reach the founder inbox.
+  founder: "Audric <funkii@audric.ai>",
   system: "Audric <notifications@audric.ai>",
 } as const;
 
