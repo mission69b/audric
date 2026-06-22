@@ -9,7 +9,12 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { LanguageModelUsage } from "ai";
-import { type ComponentProps, createContext, useContext } from "react";
+import {
+  type ComponentProps,
+  createContext,
+  useContext,
+  useState,
+} from "react";
 import { getUsage } from "tokenlens";
 
 const PERCENT_MAX = 100;
@@ -25,6 +30,9 @@ type ContextSchema = {
   maxTokens: number;
   usage?: LanguageModelUsage;
   modelId?: ModelId;
+  /** Toggle the card open — used to make the trigger tappable on touch devices
+   *  (Radix HoverCard only responds to hover/focus, never touch). */
+  toggleOpen?: () => void;
 };
 
 const ContextContext = createContext<ContextSchema | null>(null);
@@ -47,18 +55,31 @@ export const Context = ({
   usage,
   modelId,
   ...props
-}: ContextProps) => (
-  <ContextContext.Provider
-    value={{
-      usedTokens,
-      maxTokens,
-      usage,
-      modelId,
-    }}
-  >
-    <HoverCard closeDelay={0} openDelay={0} {...props} />
-  </ContextContext.Provider>
-);
+}: ContextProps) => {
+  // Controlled so a touch tap can open/close it (hover drives onOpenChange on
+  // desktop; touch devices get no hover events, so the trigger toggles this).
+  const [open, setOpen] = useState(false);
+
+  return (
+    <ContextContext.Provider
+      value={{
+        usedTokens,
+        maxTokens,
+        usage,
+        modelId,
+        toggleOpen: () => setOpen((o) => !o),
+      }}
+    >
+      <HoverCard
+        closeDelay={0}
+        onOpenChange={setOpen}
+        open={open}
+        openDelay={0}
+        {...props}
+      />
+    </ContextContext.Provider>
+  );
+};
 
 const ContextIcon = () => {
   const { usedTokens, maxTokens } = useContextValue();
@@ -104,7 +125,7 @@ const ContextIcon = () => {
 export type ContextTriggerProps = ComponentProps<typeof Button>;
 
 export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
-  const { usedTokens, maxTokens } = useContextValue();
+  const { usedTokens, maxTokens, toggleOpen } = useContextValue();
   const usedPercent = usedTokens / maxTokens;
   const renderedPercent = new Intl.NumberFormat("en-US", {
     style: "percent",
@@ -114,7 +135,18 @@ export const ContextTrigger = ({ children, ...props }: ContextTriggerProps) => {
   return (
     <HoverCardTrigger asChild>
       {children ?? (
-        <Button type="button" variant="ghost" {...props}>
+        <Button
+          onPointerDown={(e) => {
+            // Touch devices get no hover, so Radix never opens the card — toggle
+            // it here. Mouse/pen keep the native hover behavior untouched.
+            if (e.pointerType === "touch") {
+              toggleOpen?.();
+            }
+          }}
+          type="button"
+          variant="ghost"
+          {...props}
+        >
           <span className="font-medium text-muted-foreground">
             {renderedPercent}
           </span>
