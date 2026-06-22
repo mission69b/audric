@@ -46,7 +46,7 @@ if (!process.env.AI_GATEWAY_API_KEY) {
   }
 }
 
-// MIRRORS lib/ai/models.ts (the 7 gateway chat models; confidential/TEE excluded
+// MIRRORS lib/ai/models.ts (the gateway chat models; confidential/TEE excluded
 // — they route to RedPill, not the gateway).
 const MODEL_IDS = [
   "moonshotai/kimi-k2.5",
@@ -55,7 +55,6 @@ const MODEL_IDS = [
   "openai/gpt-oss-120b",
   "anthropic/claude-opus-4.8",
   "openai/gpt-5.5",
-  "google/gemini-3-pro-preview",
 ];
 
 // MIRRORS route.ts DOC_MUTATION_TOOLS + the prepareStep guard.
