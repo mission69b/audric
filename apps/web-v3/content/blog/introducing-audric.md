@@ -9,7 +9,7 @@ Most AI is something you rent. Your chats, your history, and your account live o
 
 Audric is something you **own**. It's a private, multi-model AI assistant with a non-custodial wallet built in. Sign in with Google and, in about three seconds, you have the best open and frontier models, a wallet, and an account where the data is yours — not ours.
 
-![Audric — private, decentralized AI. Now truly yours.](/blog/truly-yours.png)
+![The Audric chat — private by default, with zero data retention.](/blog/empty-state.png)
 
 ## What Audric is
 
@@ -27,8 +27,6 @@ When a company hosts your AI, they hold the leverage. They can change the model,
 
 Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are.
 
-![Why Audric — 0 chats stored by model providers, every model in one chat, no KYC or seed phrase, instant USDC.](/blog/why-audric.png)
-
 ## How your privacy actually works
 
 Here's exactly how your data is handled.
@@ -40,13 +38,15 @@ Here's exactly how your data is handled.
 
 So: your **chats** live in your private, encrypted history; your **memory** (if you turn it on) lives encrypted on Walrus. Two different things — and both are yours to delete.
 
-![Audric chat: "Is this conversation saved anywhere?" — "Your history is private to you and encrypted; model providers never retain or train on it. Delete it anytime."](/blog/private-zero-retention.png)
+![Audric's Privacy and storage settings — zero data retention, encrypted private chats and files, and decentralized Walrus memory.](/blog/privacy-storage.png)
 
 ## Every model — and the right one, automatically
 
 Audric isn't one model behind a brand. Open and uncensored models (Kimi, DeepSeek, Grok, GPT-OSS) sit next to the frontier (Claude Opus 4.8, GPT-5.5). Switch between any of them mid-conversation, and the open models **won't refuse you**.
 
-Don't want to think about it? **Auto** picks the model — plus the right reasoning effort — for each task: a quick reply on a fast model, deep analysis on a frontier one. The model switcher shows each model's privacy posture and real cost, so you're never guessing what you're using.
+Don't want to think about it? **Auto** picks the model — plus the right reasoning effort — for each task: a quick reply on a fast model, deep analysis on a frontier one. Every model in the switcher carries an honest privacy badge and its real cost, so you always know what you're using.
+
+![Audric's model picker — every model with an honest privacy badge, and Auto on by default.](/blog/model-picker.png)
 
 ## A real agent
 
@@ -55,7 +55,12 @@ Audric acts, not just chats:
 - **Live web search** with sources you can click.
 - **Cited, multi-step research** — for bigger questions it runs several searches step by step, shown in a Chain-of-Thought timeline, then a synthesis with sources. Transparent, not a black box.
 - **Image generation** inline.
-- **Recipes** — curated, pay-per-run flows for live data (markets, tickers, company deep-dives). The agent pays per call from *your own* USDC, and the output is grounded in the real fetched data, not invented.
+
+![Audric running several live web searches with clickable sources, then a cited synthesis.](/blog/research.mp4)
+
+**Recipes** turn your wallet into a research budget: curated, pay-per-run flows over live data — markets, tickers, company deep-dives. Confirm the bundled price once, and the agent pays per call from *your own* USDC, with the output grounded in the real fetched data, not invented.
+
+![Running a Recipe — confirm the price, then it pays per call and returns a synthesized brief.](/blog/recipe.mp4)
 
 ## Your wallet, your money
 
@@ -65,7 +70,7 @@ Every account is an **Audric Passport** — a non-custodial wallet created from 
 - **You decide.** Audric never moves money on its own; every transaction waits on your tap-to-confirm.
 - **Verifiable.** Every move settles on Sui mainnet, signed by you, checkable by anyone. Non-custodial means we *cannot* touch your funds.
 
-![Audric chat: "Send $50 to alice@audric" — "Done. $50 USDC sent, gasless. Tap to view on-chain."](/blog/send-usdc.png)
+![Sending USDC in chat — tap to confirm, gasless, then verifiable on-chain.](/blog/send.mp4)
 
 ## The privacy ladder
 
