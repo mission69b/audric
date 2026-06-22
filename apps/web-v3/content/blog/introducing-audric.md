@@ -48,17 +48,17 @@ Don't want to think about it? **Auto** picks the model — plus the right reason
 
 ![Audric's model picker — every model with an honest privacy badge, and Auto on by default.](/blog/model-picker.png)
 
-## A real agent
+## It acts, not just answers
 
-Audric acts, not just chats:
+Audric is an agent — it does the work, not just talks about it:
 
-- **Live web search** with sources you can click.
-- **Cited, multi-step research** — for bigger questions it runs several searches step by step, shown in a Chain-of-Thought timeline, then a synthesis with sources. Transparent, not a black box.
-- **Image generation** inline.
+- **Web search** — current, time- and date-aware results with sources you can click.
+- **Multi-step research** — for bigger questions it runs a sequence of searches, shows each step as it works, and finishes with a synthesis that cites every source.
+- **Image generation** — inline, in the conversation.
 
 ![Audric running several live web searches with clickable sources, then a cited synthesis.](/blog/research.mp4)
 
-**Recipes** turn your wallet into a research budget: curated, pay-per-run flows over live data — markets, tickers, company deep-dives. Confirm the bundled price once, and the agent pays per call from *your own* USDC, with the output grounded in the real fetched data, not invented.
+It can spend, too — not just search. **Recipes** are curated, pay-per-run flows over live data: markets, tickers, company deep-dives. Under the hood they settle over **x402**, an open standard for machine payments ([suimpp.dev](https://suimpp.dev)) — the agent pays each API per call, in USDC, straight from your wallet. Confirm the bundled price once; every call is metered against data that was actually fetched, so the answer is grounded in what came back, not invented.
 
 ![Running a Recipe — confirm the price, then it pays per call and returns a synthesized brief.](/blog/recipe.mp4)
 
@@ -106,9 +106,12 @@ None of this is magic — it's a specific stack, chosen so privacy and ownership
 
 The result is the thesis made concrete: when the model access, the money, the identity, and the memory are all yours — encrypted, and where possible on storage no one else controls — none of it can be pulled out from under you.
 
-## Pricing, in a line
+## Pricing
 
-**Free** keeps the open model always on, with web search, image generation, and cited research — no card. **Pro ($18/mo)** and **Max ($100/mo)** add every premium and frontier model, with monthly credit that never expires and stretches further than pay-as-you-go. Pay-as-you-go works on any plan.
+- **Free** — the open model, web search, image generation, and research. No card.
+- **Pro ($18/mo)** and **Max ($100/mo)** — add every premium and frontier model, plus monthly credit that rolls over month to month.
+
+Pay-as-you-go works on any plan. Full breakdown on the [pricing page](https://audric.ai/pricing).
 
 ## Get started
 
