@@ -148,8 +148,8 @@ export default function SettingsPage() {
             <strong className="text-foreground/80">
               No seed phrase, no bank.
             </strong>{" "}
-            Sign in with Google and a non-custodial wallet is yours — only you
-            control it, and it's still here whenever you sign back in.
+            Your wallet is created from your Google sign-in — non-custodial, so
+            only you can move your money. We can't touch it.
           </p>
           <div className="mt-3 space-y-2.5">
             {identity?.configured && (
@@ -212,11 +212,8 @@ export default function SettingsPage() {
       <Section title="Private Memory">
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted-foreground text-xs">
-            When on, Audric remembers your preferences across chats —{" "}
-            <strong>
-              encrypted on decentralized storage, private, off by default
-            </strong>
-            . Turn it off any time to stop recall.
+            Remembers your preferences across chats so it doesn't start over —{" "}
+            <strong>encrypted on Walrus, off by default</strong>.
           </p>
           {models?.memoryEnabled ? (
             <Button
@@ -234,14 +231,13 @@ export default function SettingsPage() {
           )}
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground/60">
-          Turning memory off stops recall, and stored memories expire on their
-          own.
+          Off stops recall; stored memories expire on their own.
         </p>
         {models?.memoryEnabled && (
           <>
             <div className="my-3 border-border/40 border-t" />
             <Row
-              desc="Wipe the slate: nothing you've told Audric will be recalled again. The encrypted blobs expire from storage on their own."
+              desc="Stop all recall and start fresh. Encrypted memories expire from storage on their own."
               title="Forget all my memories"
             >
               <ConfirmButton
@@ -260,7 +256,7 @@ export default function SettingsPage() {
       {/* Your data */}
       <Section title="Your data">
         <Row
-          desc="Remove every chat and its messages. This can't be undone."
+          desc="Permanently remove every chat and message."
           title="Delete all chats"
         >
           <ConfirmButton
@@ -274,7 +270,7 @@ export default function SettingsPage() {
         </Row>
         <div className="my-3 border-border/40 border-t" />
         <Row
-          desc="Wipe all chats, messages, and generated artifacts (and their files). Your account, plan, and credit balance are kept."
+          desc="Wipe every chat, message, and file. Your account, plan, and credit are kept."
           title="Purge all my data"
         >
           <ConfirmButton
@@ -292,15 +288,15 @@ export default function SettingsPage() {
       <Section title="Privacy & storage">
         <ul className="space-y-1.5 text-muted-foreground text-xs">
           <li>
-            · Models run through a zero-data-retention gateway by default.
+            · Zero data retention — providers never store or train on your
+            chats.
           </li>
           <li>
-            · Chats and files are private — encrypted at rest, never served from
-            a public link.
+            · Chats and files encrypted at rest, never public — only you can
+            read them.
           </li>
           <li>
-            · Memories are encrypted on Walrus decentralized storage — yours,
-            never sold.
+            · Memory encrypted on Walrus (decentralized) — yours, never sold.
           </li>
         </ul>
         <div className="mt-3 flex gap-4 text-muted-foreground text-xs">
