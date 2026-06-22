@@ -89,6 +89,17 @@ export async function POST(request: Request) {
       ],
       // Save the card so auto-recharge can charge off-session later.
       payment_intent_data: { setup_future_usage: "off_session" },
+      // Generate a proper invoice (+ downloadable PDF + invoice number) for the
+      // top-up, matching the professional receipt subscriptions already get.
+      invoice_creation: {
+        enabled: true,
+        invoice_data: {
+          description: "Audric service credit",
+          footer:
+            "Audric credit is closed-loop: non-refundable, non-withdrawable, and non-transferable. Audric is operated by T2000 AFI Inc.",
+          metadata: { userId: session.user.id, kind: "topup" },
+        },
+      },
       metadata: {
         userId: session.user.id,
         kind: "topup",
