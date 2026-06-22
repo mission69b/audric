@@ -1,4 +1,12 @@
-import { Button, Section, Text } from "@react-email/components";
+import {
+  Button,
+  Column,
+  Hr,
+  Img,
+  Row,
+  Section,
+  Text,
+} from "@react-email/components";
 import { colors as c, EmailLayout } from "../components/layout";
 
 /** Welcome email (L2) — sent once on first sign-in. Founder-from, faithful to the
@@ -101,6 +109,43 @@ export function WelcomeEmail({ name }: { name?: string }) {
           Ready for more? <strong style={{ color: c.mut }}>Pro $18/mo</strong> ·{" "}
           <strong style={{ color: c.mut }}>Max $100/mo</strong> unlock every
           premium + frontier model and a monthly credit that never expires.
+        </Text>
+      </Section>
+
+      {/* Founder sign-off — pfp + name; "reply anytime" leverages the founder
+          reply-to inbox (funkii@audric.ai). */}
+      <Section style={{ padding: "28px 32px 0" }}>
+        <Hr style={{ borderColor: c.eb, margin: "0 0 20px" }} />
+        <Row>
+          <Column style={{ width: 52, verticalAlign: "middle" }}>
+            <Img
+              alt="funkii"
+              height={40}
+              src="https://audric.ai/founder.png"
+              style={{ borderRadius: 999, display: "block" }}
+              width={40}
+            />
+          </Column>
+          <Column style={{ verticalAlign: "middle" }}>
+            <Text
+              style={{ color: c.fg, fontSize: 14, fontWeight: 600, margin: 0 }}
+            >
+              funkii
+            </Text>
+            <Text style={{ color: c.mut, fontSize: 12, margin: "2px 0 0" }}>
+              Founder, Audric
+            </Text>
+          </Column>
+        </Row>
+        <Text
+          style={{
+            color: c.mut,
+            fontSize: 13,
+            lineHeight: 1.55,
+            margin: "14px 0 0",
+          }}
+        >
+          Reply anytime — I read every email.
         </Text>
       </Section>
     </EmailLayout>
