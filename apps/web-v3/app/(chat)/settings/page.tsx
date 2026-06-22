@@ -211,7 +211,10 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted-foreground text-xs">
             Remembers your preferences across chats so it doesn't start over —{" "}
-            <strong>encrypted on Walrus, off by default</strong>.
+            <strong>
+              encrypted on Walrus (decentralized storage), off by default
+            </strong>
+            .
           </p>
           {models?.memoryEnabled ? (
             <Button
