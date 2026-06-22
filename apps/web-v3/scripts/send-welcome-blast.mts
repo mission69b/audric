@@ -24,7 +24,13 @@
  *   # 3) Send for real (optionally cap with --limit N while ramping):
  *   npx tsx --env-file=.env.local scripts/send-welcome-blast.mts --send
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ReactElement } from "react";
@@ -45,6 +51,15 @@ const THROTTLE_MS = 600; // ~1.6/s — under Resend's default rate limit
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SENT_LOG = join(HERE, ".welcome-blast-sent.json");
+const RUNS_DIR = join(HERE, ".welcome-blast-runs");
+const RUN_LOG = join(RUNS_DIR, `${new Date().toISOString().slice(0, 10)}.log`);
+
+function appendRun(line: string) {
+  if (!existsSync(RUNS_DIR)) {
+    mkdirSync(RUNS_DIR, { recursive: true });
+  }
+  appendFileSync(RUN_LOG, `${line}\n`);
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const firstName = (name?: string | null) =>
@@ -141,6 +156,9 @@ async function main() {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
+  appendRun(
+    `# run ${new Date().toISOString()} — "${SUBJECT}" — ${recipients.length} recipients`
+  );
   let ok = 0;
   let fail = 0;
   for (const r of recipients) {
@@ -154,14 +172,17 @@ async function main() {
     if (error) {
       fail++;
       console.log(`  ✗ ${r.email} — ${error.message}`);
+      appendRun(`FAIL ${r.email} — ${error.message}`);
     } else {
       ok++;
       sent.add(r.email.toLowerCase());
       persistSent(sent);
       console.log(`  ✓ ${r.email} — ${data?.id}`);
+      appendRun(`${r.email} — ${data?.id}`);
     }
     await sleep(THROTTLE_MS);
   }
+  appendRun(`# done: sent ${ok}, failed ${fail}`);
   console.log(`\nDone. sent ${ok}, failed ${fail}.\n`);
 }
 
