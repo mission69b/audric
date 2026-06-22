@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronUp, LogIn } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import useSWR from "swr";
@@ -97,6 +98,31 @@ export function SidebarUserNav() {
             <LogIn className="size-4 shrink-0" />
             <span className="group-data-[collapsible=icon]:hidden">Log in</span>
           </SidebarMenuButton>
+        </SidebarMenuItem>
+        {/* Public links — reachable before sign-in (legal + discovery). */}
+        <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 pt-1.5 text-[11px] text-sidebar-foreground/40">
+            <Link
+              className="transition-colors hover:text-sidebar-foreground/70"
+              href="/blog"
+            >
+              Blog
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              className="transition-colors hover:text-sidebar-foreground/70"
+              href="/privacy"
+            >
+              Privacy
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              className="transition-colors hover:text-sidebar-foreground/70"
+              href="/terms"
+            >
+              Terms
+            </Link>
+          </div>
         </SidebarMenuItem>
       </SidebarMenu>
     );
