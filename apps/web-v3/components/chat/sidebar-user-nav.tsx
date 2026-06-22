@@ -10,6 +10,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -180,7 +183,7 @@ export function SidebarUserNav() {
                 data-testid="user-nav-item-billing"
                 onSelect={() => router.push("/settings/billing")}
               >
-                Top up · Billing
+                {paidTier ? "Manage plan" : "Upgrade plan"}
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
@@ -193,6 +196,40 @@ export function SidebarUserNav() {
             >
               {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="text-[13px]">
+                Help
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="rounded-lg border border-border/60 bg-card/95 shadow-[var(--shadow-float)] backdrop-blur-xl">
+                <DropdownMenuItem
+                  className="cursor-pointer text-[13px]"
+                  onSelect={() => router.push("/blog")}
+                >
+                  Blog
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer text-[13px]"
+                  onSelect={() => router.push("/privacy")}
+                >
+                  Privacy Policy
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer text-[13px]"
+                  onSelect={() => router.push("/terms")}
+                >
+                  Terms of Service
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer text-[13px]"
+                >
+                  <a href="mailto:hello@audric.ai?subject=Bug%20report">
+                    Report a bug
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button

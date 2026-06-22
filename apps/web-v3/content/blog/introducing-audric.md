@@ -9,6 +9,8 @@ Every AI app today asks for the same trade: hand over your prompts, your data, a
 
 Today we're introducing **Audric** — a private, decentralized AI agent with a wallet built in. Any model, zero data retention, and an account that's yours, not ours. Sign in with Google and, in about three seconds, you have a private AI assistant and a non-custodial wallet. No seed phrase. No KYC. No catch.
 
+![Audric — private, decentralized AI. Now truly yours.](/blog/truly-yours.png)
+
 ## Private AI, with a wallet
 
 Audric is three things most apps make you choose between, in one place:
@@ -25,6 +27,8 @@ The biggest AI products are, underneath, data businesses. Your conversations are
 
 We think that's backwards. An assistant you trust with your money, your plans, and your half-formed thoughts shouldn't also be the thing quietly monetizing them. So we started from the opposite constraint: **what would an AI look like if you owned every part of it?** Audric is the answer — and privacy isn't a setting inside it, it's the shape of the whole thing.
 
+![Why Audric — 0 chats stored, 5+ models in one chat, $0 KYC or seed phrase, 0.4s to send USDC.](/blog/why-audric.png)
+
 ## Private by default
 
 Privacy in Audric isn't a toggle you find later. It's the default, enforced at every layer.
@@ -33,6 +37,8 @@ Privacy in Audric isn't a toggle you find later. It's the default, enforced at e
 - **Encrypted, private storage.** Your chats and any files you generate are encrypted at rest and served **only to you** through authenticated requests — never from a public URL.
 - **Decentralized memory.** Optional Private Memory is encrypted and stored on **Walrus**, a decentralized network — not our servers. It's off by default, recalled only when relevant, and wiped anytime with one tap.
 - **Yours to delete.** Delete a chat, delete all of them, or purge everything — chats, messages, and files — from Settings, whenever you want.
+
+![Audric chat: "Is this conversation saved anywhere?" — "No. Zero retention — this chat is never stored or trained on. Delete it and it's gone."](/blog/private-zero-retention.png)
 
 ## Privacy, all the way down
 
@@ -71,6 +77,8 @@ Every Audric account is an **Audric Passport** — a non-custodial wallet create
 - **Yours, on-chain.** Every move settles on Sui mainnet, verifiable by anyone, forever. Non-custodial means exactly that: we *cannot* touch your funds.
 
 Money in Audric works the way the rest of it does — capable, instant, and entirely yours.
+
+![Audric chat: "Send $50 to alice@audric" — "Done. $50 USDC sent in 0.4s, gasless."](/blog/send-usdc.png)
 
 ## What's next
 

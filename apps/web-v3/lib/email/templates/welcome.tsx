@@ -52,6 +52,22 @@ export function WelcomeEmail({ name }: { name?: string }) {
           chats are never training data, there's no KYC, and your keys are
           always yours.
         </Text>
+        <Text
+          style={{
+            color: c.mut,
+            fontSize: 14,
+            lineHeight: 1.55,
+            margin: "12px 0 0",
+          }}
+        >
+          New here?{" "}
+          <Link
+            href="https://audric.ai/blog/introducing-audric"
+            style={{ color: c.sig, textDecoration: "none" }}
+          >
+            Read why we built Audric →
+          </Link>
+        </Text>
       </Section>
 
       <Section style={{ padding: "24px 32px 0" }}>
