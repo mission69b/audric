@@ -21,11 +21,11 @@ Three things, in one place:
 
 The thread tying them together is **ownership** — none of it has to pass through us to be useful.
 
-## Own it, don't rent it
+## Why ownership matters
 
-When a company hosts your AI, they hold the leverage. They can change the model, lock the context you've built up, read your chats, train on them — or pull your access overnight. You're a tenant.
+When a company hosts your AI, they hold the leverage. They can change or remove the model, lock the context you've built up, read your chats, train on them, or revoke your access at any time.
 
-Audric flips that. You own the model access, the wallet, and the memory — and the parts that can be decentralized, are. Ownership here isn't ideology, it's resilience: what you actually own can't be quietly changed, read, or taken away.
+With Audric, you own the model access, the wallet, and the memory, and the parts that can be decentralized are. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
 
 ## How your privacy actually works
 
