@@ -841,6 +841,23 @@ function PureModelSelectorCompact({
     activeModels[0];
   const [provider] = selectedModel.id.split("/");
 
+  // If the persisted selection (restored from the chat-model cookie) is a
+  // premium model the user can no longer afford — had credit, selected it, then
+  // ran out — silently fall back to Auto so the composer never dead-ends on
+  // send. Only fires once credit is KNOWN depleted (canUsePremium is optimistic
+  // while loading), so it never disturbs a paying user. The switcher still shows
+  // the premium model locked with a top-up affordance.
+  useEffect(() => {
+    if (
+      !canUsePremium &&
+      selectedModel.id !== AUTO_MODEL_ID &&
+      selectedModel.free !== true
+    ) {
+      onModelChange?.(AUTO_MODEL_ID);
+      setCookie("chat-model", AUTO_MODEL_ID);
+    }
+  }, [canUsePremium, selectedModel, onModelChange]);
+
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
       <ModelSelectorTrigger asChild>
