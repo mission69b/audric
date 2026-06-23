@@ -36,33 +36,53 @@ const CELLS: { x: number; y: number }[] = [
   { x: 22, y: 44 },
 ];
 
+// Module-level cache so repeated crawls of the same page don't re-fetch.
+const fontCache = new Map<string, ArrayBuffer>();
+
+/**
+ * Best-effort Google Font load. Returns null on ANY failure (timeout, network,
+ * parse) — the OG image then renders with Satori's default font instead of
+ * 500ing. The Google Fonts fetch was timing out (fonts.googleapis.com) and
+ * breaking the share card (X showed no image); never let it crash the render.
+ */
 async function loadGoogleFont(
   family: string,
   weight: number,
   text: string
-): Promise<ArrayBuffer> {
-  const url =
-    `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, "+")}` +
-    `:wght@${weight}&text=${encodeURIComponent(text)}`;
-  const css = await (
-    await fetch(url, {
+): Promise<ArrayBuffer | null> {
+  const cacheKey = `${family}:${weight}:${text}`;
+  const cached = fontCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  try {
+    const url =
+      `https://fonts.googleapis.com/css2?family=${family.replace(/ /g, "+")}` +
+      `:wght@${weight}&text=${encodeURIComponent(text)}`;
+    const cssRes = await fetch(url, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
       },
-    })
-  ).text();
-  const match = css.match(
-    /src:\s*url\((.+?)\)\s+format\('(opentype|truetype|woff)'\)/
-  );
-  if (!match) {
-    throw new Error(`Font ${family}@${weight}: font URL not found in CSS`);
+      signal: AbortSignal.timeout(3000),
+    });
+    const css = await cssRes.text();
+    const match = css.match(
+      /src:\s*url\((.+?)\)\s+format\('(opentype|truetype|woff)'\)/
+    );
+    if (!match) {
+      return null;
+    }
+    const font = await fetch(match[1], { signal: AbortSignal.timeout(3000) });
+    if (!font.ok) {
+      return null;
+    }
+    const data = await font.arrayBuffer();
+    fontCache.set(cacheKey, data);
+    return data;
+  } catch {
+    return null;
   }
-  const font = await fetch(match[1]);
-  if (!font.ok) {
-    throw new Error(`Font ${family}@${weight}: HTTP ${font.status}`);
-  }
-  return await font.arrayBuffer();
 }
 
 type AudricCardOptions = {
@@ -97,185 +117,195 @@ export function renderAudricCard({
     loadGoogleFont("Geist", 400, glyphs),
     loadGoogleFont("Geist", 600, glyphs),
     loadGoogleFont("Geist Mono", 400, glyphs),
-  ]).then(
-    ([sans400, sans600, mono400]) =>
-      new ImageResponse(
+  ]).then(([sans400, sans600, mono400]) => {
+    // Only pass fonts that actually loaded; if all timed out, render with the
+    // default font rather than 500ing the share card.
+    const fonts = [
+      sans400 && {
+        name: "Geist",
+        data: sans400,
+        weight: 400 as const,
+        style: "normal" as const,
+      },
+      sans600 && {
+        name: "Geist",
+        data: sans600,
+        weight: 600 as const,
+        style: "normal" as const,
+      },
+      mono400 && {
+        name: "Geist Mono",
+        data: mono400,
+        weight: 400 as const,
+        style: "normal" as const,
+      },
+    ].filter((f): f is NonNullable<typeof f> => Boolean(f));
+    return new ImageResponse(
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          background: BG,
+          position: "relative",
+          display: "flex",
+          fontFamily: "Geist",
+        }}
+      >
         <div
           style={{
-            width: "100%",
-            height: "100%",
-            background: BG,
-            position: "relative",
+            position: "absolute",
+            left: 16,
+            top: 16,
+            right: 16,
+            bottom: 16,
+            border: "1px solid rgba(0,0,0,0.08)",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 76,
             display: "flex",
-            fontFamily: "Geist",
+            alignItems: "center",
+            gap: 22,
+          }}
+        >
+          {/* NO <title> here — Satori renders an SVG <title> as visible
+                (fuzzy) text over the mark. Keep this SVG title-less. */}
+          <svg
+            aria-label="Audric"
+            height="53"
+            role="img"
+            viewBox="0 0 53 53"
+            width="53"
+          >
+            {CELLS.map((c) => (
+              <rect
+                fill={INK}
+                height={9}
+                key={`${c.x}-${c.y}`}
+                rx={2}
+                width={9}
+                x={c.x}
+                y={c.y}
+              />
+            ))}
+          </svg>
+          <div
+            style={{
+              display: "flex",
+              fontFamily: "Geist",
+              fontWeight: 600,
+              fontSize: 30,
+              color: INK,
+              letterSpacing: "-1px",
+            }}
+          >
+            audric
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 250,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            height: 28,
+            paddingLeft: 14,
+            paddingRight: 16,
+            borderRadius: 14,
+            background: "rgba(10,199,180,0.10)",
+            border: "1px solid rgba(10,199,180,0.35)",
           }}
         >
           <div
             style={{
-              position: "absolute",
-              left: 16,
-              top: 16,
-              right: 16,
-              bottom: 16,
-              border: "1px solid rgba(0,0,0,0.08)",
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              background: ACCENT,
             }}
           />
-
           <div
             style={{
-              position: "absolute",
-              left: 80,
-              top: 76,
               display: "flex",
-              alignItems: "center",
-              gap: 22,
-            }}
-          >
-            {/* NO <title> here — Satori renders an SVG <title> as visible
-                (fuzzy) text over the mark. Keep this SVG title-less. */}
-            <svg
-              aria-label="Audric"
-              height="53"
-              role="img"
-              viewBox="0 0 53 53"
-              width="53"
-            >
-              {CELLS.map((c) => (
-                <rect
-                  fill={INK}
-                  height={9}
-                  key={`${c.x}-${c.y}`}
-                  rx={2}
-                  width={9}
-                  x={c.x}
-                  y={c.y}
-                />
-              ))}
-            </svg>
-            <div
-              style={{
-                display: "flex",
-                fontFamily: "Geist",
-                fontWeight: 600,
-                fontSize: 30,
-                color: INK,
-                letterSpacing: "-1px",
-              }}
-            >
-              audric
-            </div>
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 80,
-              top: 250,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              height: 28,
-              paddingLeft: 14,
-              paddingRight: 16,
-              borderRadius: 14,
-              background: "rgba(10,199,180,0.10)",
-              border: "1px solid rgba(10,199,180,0.35)",
-            }}
-          >
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                background: ACCENT,
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                fontFamily: "Geist Mono",
-                fontSize: 11,
-                color: PILL_TEXT,
-                letterSpacing: "1.5px",
-              }}
-            >
-              {pill}
-            </div>
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 80,
-              top: 300,
-              display: "flex",
-              flexDirection: "column",
-              fontFamily: "Geist",
-              fontWeight: 600,
-              fontSize: 72,
-              lineHeight: 1.0,
-              letterSpacing: "-3px",
-            }}
-          >
-            <div
-              style={{ display: "flex", color: emphasizeLine2 ? MUTE : INK }}
-            >
-              {line1}
-            </div>
-            <div
-              style={{ display: "flex", color: emphasizeLine2 ? INK : MUTE }}
-            >
-              {line2}
-            </div>
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 80,
-              top: 476,
-              display: "flex",
-              maxWidth: 1000,
-              fontFamily: "Geist",
-              fontSize: 21,
-              color: SUB,
-              letterSpacing: "-0.4px",
-            }}
-          >
-            {subtitle}
-          </div>
-
-          <div
-            style={{
-              position: "absolute",
-              left: 80,
-              top: 548,
-              display: "flex",
-              alignItems: "center",
-              gap: 20,
               fontFamily: "Geist Mono",
-              fontSize: 16,
-              color: FOOT,
-              letterSpacing: "0.5px",
+              fontSize: 11,
+              color: PILL_TEXT,
+              letterSpacing: "1.5px",
             }}
           >
-            <div style={{ display: "flex" }}>{footerLeft}</div>
-            {footerRight ? (
-              <div style={{ width: 30, height: 1, background: DIVIDER }} />
-            ) : null}
-            {footerRight ? (
-              <div style={{ display: "flex" }}>{footerRight}</div>
-            ) : null}
+            {pill}
           </div>
-        </div>,
-        {
-          ...OG_SIZE,
-          fonts: [
-            { name: "Geist", data: sans400, weight: 400, style: "normal" },
-            { name: "Geist", data: sans600, weight: 600, style: "normal" },
-            { name: "Geist Mono", data: mono400, weight: 400, style: "normal" },
-          ],
-        }
-      )
-  );
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 300,
+            display: "flex",
+            flexDirection: "column",
+            fontFamily: "Geist",
+            fontWeight: 600,
+            fontSize: 72,
+            lineHeight: 1.0,
+            letterSpacing: "-3px",
+          }}
+        >
+          <div style={{ display: "flex", color: emphasizeLine2 ? MUTE : INK }}>
+            {line1}
+          </div>
+          <div style={{ display: "flex", color: emphasizeLine2 ? INK : MUTE }}>
+            {line2}
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 476,
+            display: "flex",
+            maxWidth: 1000,
+            fontFamily: "Geist",
+            fontSize: 21,
+            color: SUB,
+            letterSpacing: "-0.4px",
+          }}
+        >
+          {subtitle}
+        </div>
+
+        <div
+          style={{
+            position: "absolute",
+            left: 80,
+            top: 548,
+            display: "flex",
+            alignItems: "center",
+            gap: 20,
+            fontFamily: "Geist Mono",
+            fontSize: 16,
+            color: FOOT,
+            letterSpacing: "0.5px",
+          }}
+        >
+          <div style={{ display: "flex" }}>{footerLeft}</div>
+          {footerRight ? (
+            <div style={{ width: 30, height: 1, background: DIVIDER }} />
+          ) : null}
+          {footerRight ? (
+            <div style={{ display: "flex" }}>{footerRight}</div>
+          ) : null}
+        </div>
+      </div>,
+      { ...OG_SIZE, fonts }
+    );
+  });
 }

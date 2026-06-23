@@ -182,7 +182,13 @@ export function PureMessageActions({
                 type: "up",
               }),
             }
-          );
+          ).then((res) => {
+            // Anon (no account) → 401: don't show a fake success.
+            if (!res.ok) {
+              throw new Error("vote failed");
+            }
+            return res;
+          });
 
           toast.promise(upvote, {
             loading: "Upvoting Response...",
@@ -212,7 +218,7 @@ export function PureMessageActions({
 
               return "Upvoted Response!";
             },
-            error: "Failed to upvote response.",
+            error: "Sign in to vote on responses.",
           });
         }}
         tooltip="Upvote Response"
@@ -235,7 +241,12 @@ export function PureMessageActions({
                 type: "down",
               }),
             }
-          );
+          ).then((res) => {
+            if (!res.ok) {
+              throw new Error("vote failed");
+            }
+            return res;
+          });
 
           toast.promise(downvote, {
             loading: "Downvoting Response...",
@@ -265,7 +276,7 @@ export function PureMessageActions({
 
               return "Downvoted Response!";
             },
-            error: "Failed to downvote response.",
+            error: "Sign in to vote on responses.",
           });
         }}
         tooltip="Downvote Response"

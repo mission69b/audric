@@ -6,6 +6,17 @@ import {
 import { DEFAULT_IMAGE_MODEL } from "@/lib/ai/image-models";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 
+// Most Gateway image models (gpt-image-2, recraft, …) take `size`, NOT
+// `aspectRatio` (which they warn-and-ignore → square output). Map the requested
+// ratio to a widely-supported pixel size so portrait/landscape actually apply.
+const RATIO_TO_SIZE: Record<string, `${number}x${number}`> = {
+  "1:1": "1024x1024",
+  "16:9": "1536x1024",
+  "9:16": "1024x1536",
+  "4:3": "1536x1024",
+  "3:4": "1024x1536",
+};
+
 // IMAGE-TO-IMAGE edit model — Gemini 2.5 Flash Image ("Nano Banana") edits the
 // EXISTING image (preserves the subject) instead of regenerating from text. It
 // runs THROUGH the Gateway via the multimodal chat path (image-in → image-out),
@@ -68,12 +79,11 @@ export const imageDocumentHandler = createDocumentHandler<"image">({
     if (!session?.user) {
       throw new Error(AUTH_REQUIRED_MESSAGE);
     }
+    const size = aspectRatio ? RATIO_TO_SIZE[aspectRatio] : undefined;
     const { image } = await generateImage({
       model: gateway.imageModel(imageModel ?? DEFAULT_IMAGE_MODEL),
       prompt: title,
-      ...(aspectRatio
-        ? { aspectRatio: aspectRatio as `${number}:${number}` }
-        : {}),
+      ...(size ? { size } : {}),
     });
     dataStream.write({
       type: "data-imageDelta",
