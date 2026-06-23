@@ -21,7 +21,8 @@ export const IMAGE_EDIT_MODEL = "google/gemini-2.5-flash-image";
  *  and retried once because it intermittently returns text-only with no image. */
 export async function editImageBytes(
   priorBase64: string,
-  instruction: string
+  instruction: string,
+  mediaType = "image/png"
 ): Promise<string | null> {
   const prompt =
     `Edit the provided image as follows: ${instruction}.\n` +
@@ -34,7 +35,7 @@ export async function editImageBytes(
           role: "user",
           content: [
             { type: "text", text: prompt },
-            { type: "image", image: priorBase64, mediaType: "image/png" },
+            { type: "image", image: priorBase64, mediaType },
           ],
         },
       ],

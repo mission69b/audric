@@ -4,6 +4,7 @@ import type { ArtifactKind } from "@/components/chat/artifact";
 import type { balanceCheck } from "./ai/tools/balance-check";
 import type { createDocument } from "./ai/tools/create-document";
 import type { editImage } from "./ai/tools/edit-image";
+import type { generateFromReference } from "./ai/tools/generate-from-reference";
 import type { generateImage } from "./ai/tools/generate-image";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
@@ -49,12 +50,16 @@ type runRecipeToolType = InferUITool<typeof runRecipeTool>;
 type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
 type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
 type editImageTool = InferUITool<ReturnType<typeof editImage>>;
+type generateFromReferenceTool = InferUITool<
+  ReturnType<typeof generateFromReference>
+>;
 
 export type ChatTools = {
   createDocument: createDocumentTool;
   updateDocument: updateDocumentTool;
   generate_image: generateImageTool;
   edit_image: editImageTool;
+  generate_from_reference: generateFromReferenceTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
   balance_check: balanceCheckTool;
