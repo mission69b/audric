@@ -12,14 +12,14 @@ import { createDocumentHandler } from "@/lib/artifacts/server";
 // so it stays ZDR-consistent with no extra API key (the `/v1/images/edits`
 // endpoint isn't proxied by the Gateway; this path is). Verified by
 // scripts/image-edit-spike.mts.
-const IMAGE_EDIT_MODEL = "google/gemini-2.5-flash-image";
+export const IMAGE_EDIT_MODEL = "google/gemini-2.5-flash-image";
 
 /** Edit `priorBase64` per `instruction` (image-to-image). Returns the edited
  *  PNG base64, or null if the model returned no image after a retry.
  *  The instruction is wrapped to preserve the original style/composition (the
  *  edit model occasionally over-restyles a vague ask like "make it funnier"),
  *  and retried once because it intermittently returns text-only with no image. */
-async function editImage(
+export async function editImageBytes(
   priorBase64: string,
   instruction: string
 ): Promise<string | null> {
@@ -88,7 +88,7 @@ export const imageDocumentHandler = createDocumentHandler<"image">({
     // TRUE image-to-image edit: send the EXISTING image + the instruction so the
     // model edits the actual image (preserving it), not regenerate from scratch.
     const base64 = document.content
-      ? await editImage(document.content, description)
+      ? await editImageBytes(document.content, description)
       : null;
     if (!base64) {
       // NO silent text-regeneration fallback. When the edit model returned no

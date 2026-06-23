@@ -208,9 +208,31 @@ export async function POST(request: Request) {
     // extracted to text and work on any model.
     const hasImageAttachment = (
       (message?.parts as Array<{ type?: string; mediaType?: string }>) ?? []
-    ).some(
-      (p) => p.type === "file" && p.mediaType?.startsWith("image/")
-    );
+    ).some((p) => p.type === "file" && p.mediaType?.startsWith("image/"));
+    // The latest image the user UPLOADED this turn → its blob pathname, so
+    // edit_image can transform it (Path B: edit/restyle/likeness from a photo).
+    const uploadedImagePathname = (() => {
+      const parts =
+        (message?.parts as Array<{
+          type?: string;
+          mediaType?: string;
+          url?: string;
+        }>) ?? [];
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i];
+        if (
+          p.type === "file" &&
+          p.mediaType?.startsWith("image/") &&
+          typeof p.url === "string"
+        ) {
+          const m = p.url.match(/[?&]pathname=([^&]+)/);
+          if (m?.[1]) {
+            return decodeURIComponent(m[1]);
+          }
+        }
+      }
+      return;
+    })();
     // PDFs in this turn are extracted to text server-side (prepareAttachments).
     // Surface that as a Venice-style "Parsed <name>" step in the CoT timeline.
     const parsedPdfNames = (
@@ -723,7 +745,12 @@ export async function POST(request: Request) {
             }),
             ...(session?.user
               ? {
-                  edit_image: editImage({ session, dataStream, canUsePremium }),
+                  edit_image: editImage({
+                    session,
+                    dataStream,
+                    canUsePremium,
+                    uploadedImagePathname,
+                  }),
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
                     session,
