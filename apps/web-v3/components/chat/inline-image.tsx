@@ -123,26 +123,33 @@ export function InlineImage({
         </button>
       </div>
 
-      <DialogContent className="max-w-[96vw] gap-0 overflow-hidden border-border/40 p-0 sm:max-w-[1120px]">
+      <DialogContent className="flex max-h-[92vh] max-w-[96vw] flex-col gap-0 overflow-hidden border-border/40 p-0 sm:max-w-[1120px]">
         <DialogTitle className="sr-only">
           {title ?? "Generated image"}
         </DialogTitle>
         {/* biome-ignore lint/performance/noImgElement: base64 data URL, not a remote asset */}
         <img
           alt={title ?? "Generated image"}
-          className="max-h-[84vh] w-full bg-muted/30 object-contain"
+          className="min-h-0 w-full flex-1 bg-muted/30 object-contain"
           src={dataUrl}
         />
-        <div className="flex items-center justify-between gap-2 border-border/30 border-t px-3 py-2">
-          <button
-            className="flex items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
-            onClick={() => setShowDetails((v) => !v)}
-            type="button"
-          >
-            <InfoIcon className="size-3.5" />
-            Details
-          </button>
-          <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-border/30 border-t px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              className="flex shrink-0 items-center gap-1.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
+              onClick={() => setShowDetails((v) => !v)}
+              type="button"
+            >
+              <InfoIcon className="size-3.5" />
+              Details
+            </button>
+            {model && (
+              <span className="truncate rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                {model}
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
             <button
               aria-label="Copy image"
               className={iconBtn}
@@ -162,15 +169,15 @@ export function InlineImage({
           </div>
         </div>
         {showDetails && (
-          <div className="space-y-1 border-border/30 border-t px-3 py-2 text-xs">
-            <div className="text-muted-foreground">
-              <span className="text-foreground/70">Prompt:</span> {title}
-            </div>
+          <div className="max-h-[28vh] shrink-0 space-y-1 overflow-y-auto border-border/30 border-t px-3 py-2 text-xs">
             {model && (
               <div className="text-muted-foreground">
                 <span className="text-foreground/70">Model:</span> {model}
               </div>
             )}
+            <div className="text-muted-foreground">
+              <span className="text-foreground/70">Prompt:</span> {title}
+            </div>
           </div>
         )}
       </DialogContent>
