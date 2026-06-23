@@ -1,3 +1,4 @@
+import { FileTextIcon } from "lucide-react";
 import Image from "next/image";
 import type { Attachment } from "@/lib/types";
 import { Spinner } from "../ui/spinner";
@@ -33,8 +34,11 @@ export const PreviewAttachment = ({
           width={96}
         />
       ) : (
-        <div className="flex size-full items-center justify-center text-muted-foreground text-xs">
-          File
+        <div className="flex size-full flex-col items-center justify-center gap-1 p-1.5 text-center">
+          <FileTextIcon className="size-6 text-muted-foreground/70" />
+          <span className="line-clamp-2 break-all text-[9px] text-muted-foreground leading-tight">
+            {(name ?? "file").split("/").pop()}
+          </span>
         </div>
       )}
 

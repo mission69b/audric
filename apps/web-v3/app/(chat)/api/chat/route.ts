@@ -12,7 +12,7 @@ import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import { maxMessagesPerHour } from "@/lib/ai/entitlements";
-import { inlineImageAttachments } from "@/lib/ai/inline-attachments";
+import { prepareAttachments } from "@/lib/ai/inline-attachments";
 import { routeTurn } from "@/lib/ai/intelligence/router";
 import {
   AUTO_MODEL_ID,
@@ -505,9 +505,10 @@ export async function POST(request: Request) {
       }),
     }));
 
-    // Inline private-blob image attachments as base64 so vision models receive
-    // the pixels (they can't fetch our session-gated /api/files/blob URLs).
-    const inlinedMessages = await inlineImageAttachments(sanitizedMessages);
+    // Prepare private-blob attachments for the model: images → base64 (vision
+    // models can't fetch our session-gated /api/files/blob URLs); PDFs →
+    // extracted text (so every model, incl. free open ones, can use the doc).
+    const inlinedMessages = await prepareAttachments(sanitizedMessages);
     // Gemini 3 requires a thoughtSignature on replayed assistant tool-call /
     // reasoning parts (missing → 400 on tool turns, warning otherwise). Keep the
     // real signature when present; inject Google's sentinel where it's absent
