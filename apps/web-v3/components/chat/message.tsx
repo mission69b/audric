@@ -249,6 +249,70 @@ const PurePreviewMessage = ({
       );
     }
 
+    if (type === "tool-generate_image") {
+      const { toolCallId } = part;
+      const out = part.output;
+      if (out && "error" in out) {
+        return (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 text-sm dark:bg-red-950/50"
+            key={toolCallId}
+          >
+            {String(out.error)}
+          </div>
+        );
+      }
+      if (out && "signInRequired" in out) {
+        return (
+          <div
+            className="rounded-lg border border-border/40 bg-muted/40 p-4 text-muted-foreground text-sm"
+            key={toolCallId}
+          >
+            {out.message}
+          </div>
+        );
+      }
+      if (out && "id" in out) {
+        return (
+          <InlineImage
+            documentId={out.id}
+            key={toolCallId}
+            model={out.model}
+            title={out.prompt}
+            versionIndex={0}
+          />
+        );
+      }
+      return <InlineImageLoading key={toolCallId} />;
+    }
+
+    if (type === "tool-edit_image") {
+      const { toolCallId } = part;
+      const out = part.output;
+      if (out && "error" in out) {
+        return (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 text-sm dark:bg-red-950/50"
+            key={toolCallId}
+          >
+            {String(out.error)}
+          </div>
+        );
+      }
+      if (out && "id" in out) {
+        return (
+          <InlineImage
+            documentId={out.id}
+            key={toolCallId}
+            model={out.model}
+            title={out.prompt}
+            versionIndex={out.versionIndex}
+          />
+        );
+      }
+      return <InlineImageLoading key={toolCallId} />;
+    }
+
     if (type === "tool-createDocument") {
       const { toolCallId } = part;
 
@@ -263,10 +327,10 @@ const PurePreviewMessage = ({
         );
       }
 
-      // Generated images render inline (ChatGPT-style) instead of the doc-
-      // preview card — a clean "Creating image…" placeholder while generating,
-      // the inline image once ready. Other kinds keep the artifact preview.
-      const docKind = part.output?.kind ?? part.input?.kind;
+      // Backwards-compat: createDocument is now code/sheet only, but OLD chats
+      // have createDocument(kind:'image') parts — keep rendering those inline.
+      // (New images use tool-generate_image above.)
+      const docKind = (part.output?.kind ?? part.input?.kind) as string;
       if (docKind === "image") {
         if (part.output?.id) {
           return (

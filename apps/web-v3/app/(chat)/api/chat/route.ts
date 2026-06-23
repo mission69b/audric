@@ -37,6 +37,8 @@ import {
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
+import { editImage } from "@/lib/ai/tools/edit-image";
+import { generateImage } from "@/lib/ai/tools/generate-image";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
 import { runRecipeTool } from "@/lib/ai/tools/run-recipe";
@@ -88,6 +90,8 @@ type ActiveTool =
   | "createDocument"
   | "editDocument"
   | "updateDocument"
+  | "generate_image"
+  | "edit_image"
   | "requestSuggestions"
   | "balance_check"
   | "transaction_history"
@@ -107,6 +111,8 @@ const DOC_MUTATION_TOOLS = new Set<ActiveTool>([
   "updateDocument",
   "editDocument",
   "requestSuggestions",
+  "generate_image",
+  "edit_image",
 ]);
 
 function getStreamContext() {
@@ -334,22 +340,9 @@ export async function POST(request: Request) {
         recentUserText
       );
 
-    // Image generation is frequently a RAW prompt with NO verb (a pasted
-    // Midjourney/DALL·E-style description: "Photorealistic wide-angle photograph
-    // of …"). The verb-gate above misses those, so createDocument never turns on
-    // and the model dead-ends ("image generation isn't available to me"). Detect
-    // image intent from the router's classifier OR image-prompt cues so the tool
-    // is available. (No new cost path — image gen already works via verbs; this
-    // just adds the verb-less entry point.)
-    const isImageIntent =
-      routeDecision?.classification?.intent === "image" ||
-      /\b(draw|illustrate|render|paint)\b/i.test(recentUserText) ||
-      /\b(generate|create|make|design)\b[\s\S]{0,40}\b(image|images|photo|photograph|picture|illustration|art|artwork|logo|wallpaper|render|portrait|poster|sticker|icon|scene|avatar)\b/i.test(
-        recentUserText
-      ) ||
-      /\b(photorealistic|hyper-?realistic|cinematic|wide-angle|shot on|in the style of|digital art|oil painting|3d render|octane|unreal engine|volumetric|bokeh|depth of field|aspect ratio)\b/i.test(
-        recentUserText
-      );
+    // Image generation is now a first-class always-on tool (`generate_image`),
+    // not a heuristic gate on createDocument — so a raw verb-less image prompt
+    // just works (no dead-end). createDocument is code/sheet only now.
 
     // Visible main-loop research (replaces the old deep_research subagent): a
     // research-shaped turn injects the research directive + a higher step budget
@@ -403,10 +396,7 @@ export async function POST(request: Request) {
         )
     );
     const artifactsActive =
-      isExplicitArtifact ||
-      isImageIntent ||
-      isExplicitRecipe ||
-      hasExistingArtifact;
+      isExplicitArtifact || isExplicitRecipe || hasExistingArtifact;
 
     let uiMessages: ChatMessage[];
 
@@ -603,6 +593,10 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
+                  // Image generation/edit are first-class + always available to
+                  // signed-in users (no heuristic gate → no dead-ends).
+                  "generate_image",
+                  "edit_image",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -619,9 +613,9 @@ export async function POST(request: Request) {
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                   "set_preferences",
                 ]
-              : isExplicitArtifact || isImageIntent
-                ? ["web_search", "createDocument"]
-                : ["web_search"];
+              : isExplicitArtifact
+                ? ["web_search", "generate_image", "createDocument"]
+                : ["web_search", "generate_image"];
 
         const result = streamText({
           model: baseModel,
@@ -705,6 +699,9 @@ export async function POST(request: Request) {
             // parallelSearch) were both verified to NOT synthesize on our
             // open-model roster (S.478 A/B). Available to everyone (incl. anon).
             web_search: webSearch,
+            // Image generation is always available (anon → sign-in gate inside
+            // the tool, never a dead-end). First-class, not via createDocument.
+            generate_image: generateImage({ session, dataStream }),
             createDocument: createDocument({
               session,
               dataStream,
@@ -712,6 +709,7 @@ export async function POST(request: Request) {
             }),
             ...(session?.user
               ? {
+                  edit_image: editImage({ session, dataStream }),
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
                     session,

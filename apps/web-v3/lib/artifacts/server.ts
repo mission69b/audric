@@ -28,6 +28,10 @@ export type CreateDocumentCallbackProps = {
   // results (run_recipe / web_search) so the doc is written from REAL fetched
   // data, not hallucinated from the title alone. Absent → title-only fallback.
   contextMessages?: ModelMessage[];
+  // kind:'image' only — the selected image model + aspect ratio (set by the
+  // generate_image tool's auto-select). Ignored by code/sheet/text.
+  imageModel?: string;
+  aspectRatio?: string;
 };
 
 export type UpdateDocumentCallbackProps = {
@@ -59,6 +63,8 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         session: args.session,
         modelId: args.modelId,
         contextMessages: args.contextMessages,
+        imageModel: args.imageModel,
+        aspectRatio: args.aspectRatio,
       });
 
       if (args.session?.user?.id) {
@@ -68,6 +74,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
+          model: args.imageModel,
         });
       }
 
@@ -89,6 +96,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           content: draftContent,
           kind: config.kind,
           userId: args.session.user.id,
+          model: args.document.model ?? undefined,
         });
       }
 

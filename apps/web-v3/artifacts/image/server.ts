@@ -3,10 +3,8 @@ import {
   experimental_generateImage as generateImage,
   generateText,
 } from "ai";
+import { DEFAULT_IMAGE_MODEL } from "@/lib/ai/image-models";
 import { createDocumentHandler } from "@/lib/artifacts/server";
-
-// New-image (text→image) model (Gateway). gpt-image-1 = reliable + high quality.
-const IMAGE_MODEL = "openai/gpt-image-1";
 
 // IMAGE-TO-IMAGE edit model — Gemini 2.5 Flash Image ("Nano Banana") edits the
 // EXISTING image (preserves the subject) instead of regenerating from text. It
@@ -59,13 +57,22 @@ const AUTH_REQUIRED_MESSAGE =
 
 export const imageDocumentHandler = createDocumentHandler<"image">({
   kind: "image",
-  onCreateDocument: async ({ title, dataStream, session }) => {
+  onCreateDocument: async ({
+    title,
+    dataStream,
+    session,
+    imageModel,
+    aspectRatio,
+  }) => {
     if (!session?.user) {
       throw new Error(AUTH_REQUIRED_MESSAGE);
     }
     const { image } = await generateImage({
-      model: gateway.imageModel(IMAGE_MODEL),
+      model: gateway.imageModel(imageModel ?? DEFAULT_IMAGE_MODEL),
       prompt: title,
+      ...(aspectRatio
+        ? { aspectRatio: aspectRatio as `${number}:${number}` }
+        : {}),
     });
     dataStream.write({
       type: "data-imageDelta",

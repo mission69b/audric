@@ -796,12 +796,15 @@ export async function saveDocument({
   kind,
   content,
   userId,
+  model,
 }: {
   id: string;
   title: string;
   kind: ArtifactKind;
   content: string;
   userId: string;
+  // For kind:'image' — the image model used (lightbox Details + audit).
+  model?: string;
 }) {
   try {
     return await db
@@ -812,6 +815,7 @@ export async function saveDocument({
         kind,
         content,
         userId,
+        model,
         createdAt: new Date(),
       })
       .returning();

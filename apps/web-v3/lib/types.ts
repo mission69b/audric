@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { balanceCheck } from "./ai/tools/balance-check";
 import type { createDocument } from "./ai/tools/create-document";
+import type { editImage } from "./ai/tools/edit-image";
+import type { generateImage } from "./ai/tools/generate-image";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
 import type { runRecipeTool } from "./ai/tools/run-recipe";
@@ -45,10 +47,14 @@ type resolveSuinsTool = InferUITool<typeof resolveSuins>;
 type sendTransferTool = InferUITool<typeof sendTransfer>;
 type runRecipeToolType = InferUITool<typeof runRecipeTool>;
 type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
+type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
+type editImageTool = InferUITool<ReturnType<typeof editImage>>;
 
 export type ChatTools = {
   createDocument: createDocumentTool;
   updateDocument: updateDocumentTool;
+  generate_image: generateImageTool;
+  edit_image: editImageTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
   balance_check: balanceCheckTool;

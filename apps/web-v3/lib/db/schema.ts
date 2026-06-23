@@ -202,12 +202,21 @@ export const document = pgTable(
     kind: varchar("text", { enum: ["text", "code", "image", "sheet"] })
       .notNull()
       .default("text"),
+    // For kind:'image' — which image model produced it (lightbox "Details" +
+    // audit). Null for non-image / pre-existing docs.
+    model: text("model"),
     userId: text("userId")
       .notNull()
       .references(() => user.id),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.createdAt] }),
+    // Powers the daily free-image count (COUNT image docs / user / day).
+    userKindCreatedIdx: index("Document_userId_kind_createdAt_idx").on(
+      table.userId,
+      table.kind,
+      table.createdAt
+    ),
   })
 );
 

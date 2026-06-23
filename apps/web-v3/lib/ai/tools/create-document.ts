@@ -20,19 +20,15 @@ export const createDocument = ({
 }: CreateDocumentProps) =>
   tool({
     description:
-      "Create a side-panel artifact for content that belongs in a panel: kind 'code' for any programming/algorithm/script, 'sheet' for spreadsheets/tabular data, 'image' to GENERATE an image from a description. " +
+      "Create a side-panel artifact for content that belongs in a panel: kind 'code' for any programming/algorithm/script, 'sheet' for spreadsheets/tabular data. " +
       "Do NOT use this for plain writing — essays, posts, tweets, summaries, explanations, answers, lists. Write all prose INLINE in your reply (there is no 'text' kind). " +
-      "To CHANGE or refine an EXISTING generated image (e.g. 'make it more modern', 'add a glow', 'warmer colors'), call updateDocument with that image's id and a SHORT instruction describing only the change — it edits the actual image and preserves it. Use createDocument with kind:'image' only for a brand-new, unrelated image.",
+      "For IMAGES, do NOT use this tool — use generate_image (new image) or edit_image (refine an existing one).",
     inputSchema: z.object({
-      title: z
-        .string()
-        .describe(
-          "The artifact title — for kind 'image' this is the image generation PROMPT (describe the image to create)."
-        ),
+      title: z.string().describe("The artifact title."),
       kind: z
-        .enum(["code", "sheet", "image"])
+        .enum(["code", "sheet"])
         .describe(
-          "REQUIRED. 'code' for programming/algorithms/scripts, 'sheet' for spreadsheets/tables/data, 'image' to generate an image. There is NO 'text' kind — write prose INLINE in your reply, never as an artifact."
+          "REQUIRED. 'code' for programming/algorithms/scripts, 'sheet' for spreadsheets/tables/data. Images use generate_image, NOT this tool. There is NO 'text' kind — write prose INLINE."
         ),
     }),
     execute: async ({ title, kind }, { messages }) => {
@@ -89,8 +85,7 @@ export const createDocument = ({
       // the old "A document was created" wording read as "empty, needs filling",
       // so some models (e.g. grok) chained an updateDocument call → a SECOND
       // identical artifact. Be unambiguous: it's done; do not update it.
-      const noun =
-        kind === "code" ? "script" : kind === "image" ? "image" : "spreadsheet";
+      const noun = kind === "code" ? "script" : "spreadsheet";
       return {
         id,
         title,
