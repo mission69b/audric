@@ -11,7 +11,7 @@ import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
-import { maxMessagesPerHour } from "@/lib/ai/entitlements";
+import { FREE_DAILY_TEXT_LIMIT, maxMessagesPerHour } from "@/lib/ai/entitlements";
 import { prepareAttachments } from "@/lib/ai/inline-attachments";
 import { routeTurn } from "@/lib/ai/intelligence/router";
 import {
@@ -321,6 +321,21 @@ export async function POST(request: Request) {
       });
       if (messageCount > cap) {
         return new ChatbotError("rate_limit:chat").toResponse();
+      }
+
+      // Free-tier DAILY text cap (authed, unpaid) — bounds worst-case free-model
+      // burn; paid tiers (sub OR positive credit) exempt. 3× Venice's 10/day.
+      const isPaidUser =
+        (dbUser?.subscriptionTier && dbUser.subscriptionTier !== "free") ||
+        creditMicros > 0;
+      if (!isPaidUser) {
+        const dailyCount = await getMessageCountByUserId({
+          id: session.user.id,
+          differenceInHours: 24,
+        });
+        if (dailyCount > FREE_DAILY_TEXT_LIMIT) {
+          return new ChatbotError("rate_limit:chat").toResponse();
+        }
       }
 
       const chat = await getChatById({ id });

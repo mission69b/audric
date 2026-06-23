@@ -94,7 +94,7 @@ export const DEFAULT_IMAGE_MODEL = "openai/gpt-image-2";
 
 /** Free-tier images/day (signed-in, no credits). Derived from image Documents;
  * resets at UTC midnight. Paid/credit users are not capped here. */
-export const FREE_DAILY_IMAGE_LIMIT = 10;
+export const FREE_DAILY_IMAGE_LIMIT = 15;
 
 export function getImageModel(id?: string): ImageModel | undefined {
   return id ? IMAGE_MODELS.find((m) => m.id === id) : undefined;
