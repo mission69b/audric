@@ -77,6 +77,11 @@ function setCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}`;
 }
 
+// Files at/under this go through the serverless route (works tokenless in dev);
+// larger ones must upload browser→Blob directly (Vercel caps function bodies at
+// ~4.5MB → 413). 4MB stays safely under that cap.
+const SERVER_UPLOAD_LIMIT = 4 * 1024 * 1024;
+
 function PureMultimodalInput({
   chatId,
   input,
@@ -283,35 +288,56 @@ function PureMultimodalInput({
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/files/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      // Files over the serverless request-body cap (~4.5MB on Vercel) CAN'T go
+      // through the server route — it 413s before our handler runs. Send those
+      // browser→Blob directly (private, authorized by the token route). Small
+      // files keep the server route so tokenless local/CI dev still works.
+      if (file.size > SERVER_UPLOAD_LIMIT) {
+        const { upload } = await import("@vercel/blob/client");
+        const blob = await upload(file.name, file, {
+          access: "private",
+          handleUploadUrl: `${base}/api/files/upload-token`,
+          contentType: file.type || undefined,
+          multipart: file.size > 50 * 1024 * 1024,
+        });
+        return {
+          // In-app authed read URL (never the raw vendor URL); resolved
+          // server-side via the pathname, same as the server-route path.
+          url: `${base}/api/files/blob?pathname=${encodeURIComponent(blob.pathname)}`,
+          name: file.name,
+          contentType: file.type || blob.contentType,
+        };
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`${base}/api/files/upload`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (response.ok) {
         const data = await response.json();
         const { url, pathname, contentType, name } = data;
-
         return {
-          url,
-          // Clean, sanitized original filename for display (chip + "Parsed
-          // <name>" step). The blob is resolved server-side via `url`, so this
-          // is display-only — fall back to the pathname if absent.
+          // Original filename for display (chip + "Parsed <name>" step). The
+          // blob is resolved server-side via `url`, so this is display-only.
           name: name ?? pathname,
+          url,
           contentType,
         };
       }
       const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
+      toast.error(error ?? "Upload failed");
+    } catch (error) {
+      // Surface the real reason (size/type/auth) instead of a generic message.
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to upload file, please try again!"
+      );
     }
   }, []);
 
