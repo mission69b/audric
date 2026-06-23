@@ -48,7 +48,6 @@ import {
   AUTO_MODEL_ID,
   type ChatModel,
   chatModels,
-  type ModelCapabilities,
   type ModelPricing,
   type ModelPrivacyTier,
 } from "@/lib/ai/models";
@@ -127,6 +126,11 @@ function PureMultimodalInput({
   );
   const modelHasVision =
     capsResponse?.capabilities?.[selectedModelId]?.vision ?? false;
+  // On Auto, an image attachment routes to a vision model server-side, so the
+  // composer treats Auto as image-capable. PDFs work on every model (extracted
+  // to text), so they're never blocked here.
+  const isAuto = selectedModelId === AUTO_MODEL_ID;
+  const canAttachImages = modelHasVision || isAuto;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const hasAutoFocused = useRef(false);
@@ -306,7 +310,28 @@ function PureMultimodalInput({
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
+      const picked = Array.from(event.target.files || []);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      // Images need a vision model (or Auto, which routes to one). PDFs work
+      // everywhere. Drop images the current model can't see — never silently
+      // attach one it'll ignore.
+      const files = picked.filter((file) => {
+        if (file.type.startsWith("image/") && !canAttachImages) {
+          return false;
+        }
+        return true;
+      });
+      if (files.length < picked.length) {
+        toast.error(
+          "This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)"
+        );
+      }
+      if (files.length === 0) {
+        return;
+      }
 
       setUploadQueue(files.map((file) => file.name));
 
@@ -327,7 +352,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile]
+    [setAttachments, uploadFile, canAttachImages]
   );
 
   const handlePaste = useCallback(
@@ -348,9 +373,10 @@ function PureMultimodalInput({
       event.preventDefault();
 
       // The model can't see images → don't silently attach one it'll ignore.
-      if (!modelHasVision) {
+      // (Auto routes images to a vision model, so it's allowed.)
+      if (!canAttachImages) {
         toast.error(
-          "This model can't see images. Switch to a vision model (e.g. GPT-5.5 or Claude) to attach one."
+          "This model can't see images. Switch to a vision model or Auto to attach one."
         );
         return;
       }
@@ -381,7 +407,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile, modelHasVision]
+    [setAttachments, uploadFile, canAttachImages]
   );
 
   useEffect(() => {
@@ -532,11 +558,7 @@ function PureMultimodalInput({
         />
         <PromptInputFooter className="px-3 pb-3">
           <PromptInputTools>
-            <AttachmentsButton
-              fileInputRef={fileInputRef}
-              selectedModelId={selectedModelId}
-              status={status}
-            />
+            <AttachmentsButton fileInputRef={fileInputRef} status={status} />
             <ModelSelectorCompact
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
@@ -612,36 +634,22 @@ export const MultimodalInput = memo(
 function PureAttachmentsButton({
   fileInputRef,
   status,
-  selectedModelId,
 }: {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   status: UseChatHelpers<ChatMessage>["status"];
-  selectedModelId: string;
 }) {
-  const { data: modelsResponse } = useSWR(
-    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
-    (url: string) => fetch(url).then((r) => r.json()),
-    { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
-  );
-
-  const caps: Record<string, ModelCapabilities> | undefined =
-    modelsResponse?.capabilities ?? modelsResponse;
-  const hasVision = caps?.[selectedModelId]?.vision ?? false;
-
+  // Always enabled — PDFs work on every model (extracted to text), and image
+  // attachments are guarded at file-pick time (vision models / Auto only).
   return (
     <Button
-      className={cn(
-        "h-7 w-7 rounded-lg border border-border/40 p-1 transition-colors",
-        hasVision
-          ? "text-foreground hover:border-border hover:text-foreground"
-          : "text-muted-foreground/30 cursor-not-allowed"
-      )}
+      className="h-7 w-7 rounded-lg border border-border/40 p-1 text-foreground transition-colors hover:border-border hover:text-foreground"
       data-testid="attachments-button"
-      disabled={status !== "ready" || !hasVision}
+      disabled={status !== "ready"}
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();
       }}
+      title="Attach an image or PDF"
       variant="ghost"
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />

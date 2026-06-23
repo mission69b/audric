@@ -95,48 +95,61 @@ export async function prepareAttachments(
           }
           const pathname = pathnameFromUrl(filePart.url);
           if (!pathname) {
+            // External (non-blob) URL — leave it for the model to fetch.
             return part;
           }
+          const name = filePart.filename ?? filePart.name ?? "file";
 
-          // PDF → extract text, inject as a text part.
-          if (filePart.mediaType === PDF_MEDIA_TYPE) {
-            try {
-              const blob = await getBlob(pathname);
-              if (!blob) {
-                return part;
-              }
-              const name = filePart.filename ?? filePart.name ?? "document.pdf";
-              const text = await extractPdfText(
-                pathname,
-                new Uint8Array(blob.body)
-              );
-              const body = text.trim()
-                ? `The user attached a PDF ("${name}"). Extracted text follows — use it to answer their question.\n\n<pdf name="${name}">\n${text}\n</pdf>`
-                : `The user attached a PDF ("${name}"), but no text could be extracted — it is likely a scanned/image-only PDF. Tell them you couldn't read it and suggest a text-based PDF or pasting the relevant text.`;
-              return { type: "text" as const, text: body };
-            } catch {
-              return part;
-            }
-          }
-
-          // Image → inline as base64.
+          // Image → inline as base64 (vision models can't fetch our private URL).
           if (filePart.mediaType?.startsWith("image/")) {
             try {
               const blob = await getBlob(pathname);
-              if (!blob) {
-                return part;
+              if (blob) {
+                const base64 = blob.body.toString("base64");
+                return {
+                  ...part,
+                  url: `data:${blob.contentType};base64,${base64}`,
+                };
               }
-              const base64 = blob.body.toString("base64");
-              return {
-                ...part,
-                url: `data:${blob.contentType};base64,${base64}`,
-              };
             } catch {
-              return part;
+              // fall through to the note below — never leak a raw private URL
             }
+            return {
+              type: "text" as const,
+              text: `[The user attached an image ("${name}") but it couldn't be loaded.]`,
+            };
           }
 
-          return part;
+          // PDF → extract text → text part. ALWAYS returns text (extracted, or a
+          // note on failure) — a raw application/pdf file part to the gateway
+          // 500s on the open models, so we NEVER let one through. Detect by
+          // mediaType OR a .pdf url/name (defensive against odd content types).
+          const isPdf =
+            filePart.mediaType === PDF_MEDIA_TYPE ||
+            /\.pdf(\?|$)/i.test(filePart.url) ||
+            /\.pdf$/i.test(name);
+          if (isPdf) {
+            let text = "";
+            try {
+              const blob = await getBlob(pathname);
+              if (blob) {
+                text = await extractPdfText(pathname, new Uint8Array(blob.body));
+              }
+            } catch {
+              text = "";
+            }
+            const body = text.trim()
+              ? `The user attached a PDF ("${name}"). Extracted text follows — use it to answer their question.\n\n<pdf name="${name}">\n${text}\n</pdf>`
+              : `The user attached a PDF ("${name}"), but no text could be extracted — it is likely a scanned/image-only PDF. Tell them you couldn't read it and suggest a text-based PDF or pasting the relevant text.`;
+            return { type: "text" as const, text: body };
+          }
+
+          // Any other private-blob file type the model can't fetch → a text note
+          // (never leak a non-fetchable file part — it errors the gateway).
+          return {
+            type: "text" as const,
+            text: `[The user attached a file ("${name}", ${filePart.mediaType ?? "unknown type"}) that can't be read here.]`,
+          };
         })
       );
       return { ...message, parts: parts as ChatMessage["parts"] };

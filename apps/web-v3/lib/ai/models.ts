@@ -67,6 +67,10 @@ export type ChatModel = {
    * Confidential models are inert until REDPILL_API_KEY is set — see
    * `isConfidentialConfigured()` in providers.ts. */
   confidential?: boolean;
+  /** Reads images. Used by the router to send image attachments to a capable
+   * model on Auto, and by the composer to gate image (not PDF) uploads.
+   * (Live capabilities are fetched from the Gateway; this is the routing hint.) */
+  vision?: boolean;
 };
 
 export const chatModels: ChatModel[] = [
@@ -123,6 +127,7 @@ export const chatModels: ChatModel[] = [
     privacy: "private",
     tier: "smart",
     frontier: true,
+    vision: true,
     bestFor: "Code & writing",
   },
   {
@@ -133,6 +138,7 @@ export const chatModels: ChatModel[] = [
     privacy: "private",
     tier: "smart",
     frontier: true,
+    vision: true,
     bestFor: "All-round + vision",
   },
   // Gemini 3 Pro removed from the chat lineup: unreliable on multi-step / multi-

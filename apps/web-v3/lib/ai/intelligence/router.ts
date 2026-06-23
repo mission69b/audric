@@ -108,12 +108,26 @@ function stepBudgetFor(complexity: string, needsDeepResearch: boolean): number {
 export async function routeTurn({
   userText,
   canUsePremium,
+  hasImage,
 }: {
   userText: string;
   canUsePremium: boolean;
+  /** The turn includes an image attachment → must route to a vision model. */
+  hasImage?: boolean;
 }): Promise<RouteDecision> {
   const pool = candidatePool(canUsePremium);
   const free = pool.find((m) => m.free) ?? pool[0];
+
+  // Image attached → route to a vision-capable model regardless of the text
+  // (the classifier reads text only). If none is available to this user
+  // (free/anon — vision models are premium), fall through; the composer warns
+  // and the image arrives as a note via prepareAttachments.
+  if (hasImage) {
+    const vision = pool.find((m) => m.vision);
+    if (vision) {
+      return { modelId: vision.id, stepBudget: 5, routed: true };
+    }
+  }
 
   // Single candidate (anon / free-no-credit) → no classify (no cost / latency).
   if (pool.length <= 1) {

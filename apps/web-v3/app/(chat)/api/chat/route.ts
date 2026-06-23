@@ -197,9 +197,21 @@ export async function POST(request: Request) {
     const routeText =
       partsText(message?.parts as TextPart[] | undefined) ||
       lastUserText(messages as Array<{ role?: string; parts?: TextPart[] }>);
+    // Does this turn carry an image attachment? On Auto that forces a vision
+    // model (the classifier only reads text). PDFs don't need this — they're
+    // extracted to text and work on any model.
+    const hasImageAttachment = (
+      (message?.parts as Array<{ type?: string; mediaType?: string }>) ?? []
+    ).some(
+      (p) => p.type === "file" && p.mediaType?.startsWith("image/")
+    );
     const routeDecision =
       selectedChatModel === AUTO_MODEL_ID
-        ? await routeTurn({ userText: routeText, canUsePremium })
+        ? await routeTurn({
+            userText: routeText,
+            canUsePremium,
+            hasImage: hasImageAttachment,
+          })
         : null;
 
     // Recipes are a USER-INITIATED paid action — the agent must NOT spontaneously
