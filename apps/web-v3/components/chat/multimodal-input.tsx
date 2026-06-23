@@ -119,7 +119,37 @@ function PureMultimodalInput({
   onCancelEdit?: () => void;
 }) {
   const router = useRouter();
+  const { status: authStatus } = useZkLogin();
+  const isAuthed = authStatus === "authenticated";
   const { setTheme, resolvedTheme } = useTheme();
+  // Credit state mirrors the server premium gate (chat/route.ts). When a
+  // signed-in user is out of credit AND has a premium model selected, show a
+  // Venice-style upsell banner above the composer (Buy Credits / Upgrade Plan /
+  // switch to a free model) rather than dead-ending on send. Optimistic while
+  // the balance loads, so a paying user never sees a flash of the banner.
+  const { data: credit } = useSWR<{
+    configured: boolean;
+    balanceUsd: number | null;
+  }>(
+    isAuthed
+      ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/credit/balance`
+      : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false }
+  );
+  const canUsePremium =
+    isAuthed &&
+    (credit === undefined ||
+      credit.configured === false ||
+      credit.balanceUsd === null ||
+      credit.balanceUsd > 0);
+  // Auto always routes to a free model for a no-credit user; only an explicit
+  // premium pick triggers the banner. (Free flags come from the curated list,
+  // matching the server's requestedIsFree check.)
+  const selectedIsFree =
+    selectedModelId === AUTO_MODEL_ID ||
+    chatModels.find((m) => m.id === selectedModelId)?.free === true;
+  const showCreditBanner = isAuthed && !canUsePremium && !selectedIsFree;
   // Active-model capabilities — used to hint on image paste to a non-vision
   // model (the attach button is already gated; paste bypasses it).
   const { data: capsResponse } = useSWR<{
@@ -552,6 +582,50 @@ function PureMultimodalInput({
         )}
       </div>
 
+      {showCreditBanner && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-card/70 px-3 py-2 text-[12px]">
+          <span className="text-muted-foreground">
+            Upgrade your plan, buy more credits, or{" "}
+            <button
+              className="font-medium text-foreground underline underline-offset-2 transition-opacity hover:opacity-80"
+              onClick={() => {
+                onModelChange?.(AUTO_MODEL_ID);
+                setCookie("chat-model", AUTO_MODEL_ID);
+              }}
+              type="button"
+            >
+              switch to a free model
+            </button>{" "}
+            to continue.
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Button
+              className="h-7 rounded-lg px-2.5 text-[12px]"
+              onClick={() =>
+                router.push(
+                  `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/settings/billing`
+                )
+              }
+              size="sm"
+              variant="outline"
+            >
+              Buy Credits
+            </Button>
+            <Button
+              className="h-7 rounded-lg px-2.5 text-[12px]"
+              onClick={() =>
+                router.push(
+                  `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/settings/billing`
+                )
+              }
+              size="sm"
+            >
+              Upgrade Plan
+            </Button>
+          </div>
+        </div>
+      )}
+
       <PromptInput
         className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
         onSubmit={() => {
@@ -792,32 +866,11 @@ function PureModelSelectorCompact({
   const [open, setOpen] = useState(false);
   const { status: authStatus, login } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
-  const router = useRouter();
   const { data: modelsData } = useSWR(
     `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
     (url: string) => fetch(url).then((r) => r.json()),
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );
-  // Credit state mirrors the server premium gate (chat/route.ts): premium models
-  // are usable when the credit rail is OFF, or the user has a positive balance.
-  // Authed-only fetch; anon never has credit.
-  const { data: credit } = useSWR<{
-    configured: boolean;
-    balanceUsd: number | null;
-  }>(
-    isAuthed ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/credit/balance` : null,
-    (url: string) => fetch(url).then((r) => r.json()),
-    { revalidateOnFocus: false }
-  );
-  // Optimistic on every uncertain case (loading / rail-off / balance unknown) so
-  // a paying user NEVER sees a lock flicker — only lock when we're sure the
-  // balance is depleted. The server stays the hard backstop either way.
-  const canUsePremium =
-    isAuthed &&
-    (credit === undefined ||
-      credit.configured === false ||
-      credit.balanceUsd === null ||
-      credit.balanceUsd > 0);
 
   const pricing: Record<string, ModelPricing> | undefined = modelsData?.pricing;
   const capabilities:
@@ -840,23 +893,6 @@ function PureModelSelectorCompact({
     activeModels.find((m: ChatModel) => m.id === AUTO_MODEL_ID) ??
     activeModels[0];
   const [provider] = selectedModel.id.split("/");
-
-  // If the persisted selection (restored from the chat-model cookie) is a
-  // premium model the user can no longer afford — had credit, selected it, then
-  // ran out — silently fall back to Auto so the composer never dead-ends on
-  // send. Only fires once credit is KNOWN depleted (canUsePremium is optimistic
-  // while loading), so it never disturbs a paying user. The switcher still shows
-  // the premium model locked with a top-up affordance.
-  useEffect(() => {
-    if (
-      !canUsePremium &&
-      selectedModel.id !== AUTO_MODEL_ID &&
-      selectedModel.free !== true
-    ) {
-      onModelChange?.(AUTO_MODEL_ID);
-      setCookie("chat-model", AUTO_MODEL_ID);
-    }
-  }, [canUsePremium, selectedModel, onModelChange]);
 
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
@@ -946,13 +982,13 @@ function PureModelSelectorCompact({
               >
                 {grouped[key].map(({ model, curated }) => {
                   const logoProvider = model.id.split("/")[0];
-                  // Premium models are locked for anyone who can't pay for them:
-                  // anonymous users (sign-in flow) AND signed-in users out of
-                  // credit (top-up flow). Mirrors the server gate, so the
-                  // switcher never offers a model that would dead-end on send.
-                  // Free models + Auto are always selectable. (Perplexity pattern.)
+                  // Premium models are locked for anonymous users (only the
+                  // free Fast model is usable signed-out) — clicking a locked
+                  // model starts the sign-in flow (Perplexity pattern). Signed-in
+                  // users out of credit can still SELECT premium (Venice pattern)
+                  // — the composer shows an upsell banner instead of locking.
                   const locked =
-                    !canUsePremium &&
+                    !isAuthed &&
                     model.free !== true &&
                     model.id !== AUTO_MODEL_ID;
                   return (
@@ -971,14 +1007,7 @@ function PureModelSelectorCompact({
                         }
                         if (locked) {
                           setOpen(false);
-                          if (isAuthed) {
-                            // Out of credit → send them to top up, not sign-in.
-                            router.push(
-                              `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/settings/billing`
-                            );
-                          } else {
-                            login();
-                          }
+                          login();
                           return;
                         }
                         onModelChange?.(model.id);
@@ -1042,9 +1071,7 @@ function PureModelSelectorCompact({
                               <LockIcon className="size-3.5 text-muted-foreground/70" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              {isAuthed
-                                ? "Out of credit — top up to use premium models"
-                                : "Sign in to use premium models"}
+                              Sign in to use premium models
                             </TooltipContent>
                           </Tooltip>
                         )}
