@@ -34,6 +34,24 @@ import { RecipeRunTool } from "./recipe-run-tool";
 import { SendTransferTool } from "./send-transfer-tool";
 import { TeeReceiptBadge } from "./tee-receipt-badge";
 
+/** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
+function ImageLimitCard({ message }: { message: string }) {
+  return (
+    <div className="flex w-[min(100%,420px)] flex-col gap-3 rounded-xl border border-border/40 bg-gradient-to-br from-secondary to-muted p-4">
+      <div className="flex items-start gap-2.5">
+        <SparklesIcon size={16} />
+        <p className="text-[13px] text-foreground leading-relaxed">{message}</p>
+      </div>
+      <a
+        className="inline-flex w-fit items-center justify-center rounded-lg bg-foreground px-3.5 py-1.5 font-medium text-[13px] text-background transition-opacity hover:opacity-90"
+        href="/pricing"
+      >
+        Upgrade
+      </a>
+    </div>
+  );
+}
+
 const PurePreviewMessage = ({
   // Native AI-SDK HITL approval handler — threaded as reusable infra for any
   // future server tool with `needsApproval` (no current consumer).
@@ -272,6 +290,17 @@ const PurePreviewMessage = ({
           </div>
         );
       }
+      if (out && "limitReached" in out) {
+        return (
+          <ImageLimitCard
+            key={toolCallId}
+            message={
+              out.message ??
+              "You've reached today's free image limit. Add credits or upgrade for more."
+            }
+          />
+        );
+      }
       if (out && "id" in out) {
         return (
           <InlineImage
@@ -297,6 +326,17 @@ const PurePreviewMessage = ({
           >
             {String(out.error)}
           </div>
+        );
+      }
+      if (out && "limitReached" in out) {
+        return (
+          <ImageLimitCard
+            key={toolCallId}
+            message={
+              out.message ??
+              "You've reached today's free image limit. Add credits or upgrade for more."
+            }
+          />
         );
       }
       if (out && "id" in out) {

@@ -2,10 +2,12 @@ import { tool, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
 import type { Session } from "@/app/(auth)/auth";
 import {
+  FREE_DAILY_IMAGE_LIMIT,
   resolveAspectRatio,
   selectImageModel,
 } from "@/lib/ai/image-models";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
+import { countUserImagesToday } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 
@@ -13,6 +15,8 @@ type GenerateImageProps = {
   // Nullable: anon users get a sign-in gate (no generation).
   session: Session | null;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  // Credit/Pro user → no daily cap. Free (signed-in, no credits) → 10/day.
+  canUsePremium: boolean;
 };
 
 /**
@@ -21,7 +25,11 @@ type GenerateImageProps = {
  * calls this whenever the user wants an image, including a raw verb-less prompt.
  * Reuses the existing image backend via the image document handler.
  */
-export const generateImage = ({ session, dataStream }: GenerateImageProps) =>
+export const generateImage = ({
+  session,
+  dataStream,
+  canUsePremium,
+}: GenerateImageProps) =>
   tool({
     description:
       "Generate an image from a text description. Use this WHENEVER the user wants an image / photo / illustration / logo / art — INCLUDING when they paste a raw descriptive image prompt with no command verb (e.g. 'Photorealistic wide-angle photograph of …'). Put the full visual description in `prompt`. If the request is too vague to picture (e.g. a bare 'make me something'), ask ONE short clarifying question instead of calling this. To tweak an image you already made, use edit_image (not this).",
@@ -47,6 +55,18 @@ export const generateImage = ({ session, dataStream }: GenerateImageProps) =>
           message:
             "Generating images needs a (free) Audric account — sign in and I'll create it right away.",
         };
+      }
+
+      // Free tier (signed-in, no credits): 10 images/day, derived from the
+      // image Documents already written (no counter). Paid/credit users: no cap.
+      if (!canUsePremium) {
+        const usedToday = await countUserImagesToday(session.user.id);
+        if (usedToday >= FREE_DAILY_IMAGE_LIMIT) {
+          return {
+            limitReached: true as const,
+            message: `You've used all ${FREE_DAILY_IMAGE_LIMIT} free images for today. Add credits or upgrade to Pro for more — your free allowance resets at midnight UTC.`,
+          };
+        }
       }
 
       const selected = selectImageModel({ prompt, hint: model });

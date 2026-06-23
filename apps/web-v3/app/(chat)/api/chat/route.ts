@@ -711,7 +711,11 @@ export async function POST(request: Request) {
             web_search: webSearch,
             // Image generation is always available (anon → sign-in gate inside
             // the tool, never a dead-end). First-class, not via createDocument.
-            generate_image: generateImage({ session, dataStream }),
+            generate_image: generateImage({
+              session,
+              dataStream,
+              canUsePremium,
+            }),
             createDocument: createDocument({
               session,
               dataStream,
@@ -719,7 +723,7 @@ export async function POST(request: Request) {
             }),
             ...(session?.user
               ? {
-                  edit_image: editImage({ session, dataStream }),
+                  edit_image: editImage({ session, dataStream, canUsePremium }),
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
                     session,

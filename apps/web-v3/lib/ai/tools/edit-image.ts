@@ -1,13 +1,20 @@
 import { tool, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
 import type { Session } from "@/app/(auth)/auth";
+import { FREE_DAILY_IMAGE_LIMIT } from "@/lib/ai/image-models";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
-import { getDocumentById, getDocumentsById } from "@/lib/db/queries";
+import {
+  countUserImagesToday,
+  getDocumentById,
+  getDocumentsById,
+} from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 
 type EditImageProps = {
   session: Session;
   dataStream: UIMessageStreamWriter<ChatMessage>;
+  // Credit/Pro user → no daily cap. Free → edits count toward the 10/day.
+  canUsePremium: boolean;
 };
 
 /**
@@ -15,7 +22,11 @@ type EditImageProps = {
  * Thin wrapper over the existing image document handler's onUpdateDocument
  * (Gemini Nano Banana). Phase 1 — SFW only.
  */
-export const editImage = ({ session, dataStream }: EditImageProps) =>
+export const editImage = ({
+  session,
+  dataStream,
+  canUsePremium,
+}: EditImageProps) =>
   tool({
     description:
       "Edit/refine an EXISTING generated image — e.g. 'add a glow', 'make it warmer', 'remove the background', 'give them a hat'. Pass the image's id (from the prior generate_image result) + a SHORT instruction describing ONLY the change. It edits the actual image and preserves it. Use generate_image for a brand-new, unrelated image.",
@@ -37,6 +48,17 @@ export const editImage = ({ session, dataStream }: EditImageProps) =>
       }
       if (document.kind !== "image") {
         return { error: "That item isn't an image." };
+      }
+
+      // Free tier: edits count toward the 10/day image cap (they cost too).
+      if (!canUsePremium) {
+        const usedToday = await countUserImagesToday(session.user.id);
+        if (usedToday >= FREE_DAILY_IMAGE_LIMIT) {
+          return {
+            limitReached: true as const,
+            message: `You've used all ${FREE_DAILY_IMAGE_LIMIT} free images for today (generations + edits). Add credits or upgrade to Pro for more — resets at midnight UTC.`,
+          };
+        }
       }
 
       dataStream.write({ type: "data-clear", data: null, transient: true });

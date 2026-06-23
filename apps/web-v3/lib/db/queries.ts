@@ -824,6 +824,33 @@ export async function saveDocument({
   }
 }
 
+/**
+ * Images this user has generated/edited since UTC midnight — the free-tier daily
+ * cap derives from the Documents we already write (no counter, no race). Uses
+ * the (userId, kind, createdAt) index.
+ */
+export async function countUserImagesToday(userId: string): Promise<number> {
+  const startOfDayUtc = new Date();
+  startOfDayUtc.setUTCHours(0, 0, 0, 0);
+  try {
+    const [row] = await db
+      .select({ value: count() })
+      .from(document)
+      .where(
+        and(
+          eq(document.userId, userId),
+          eq(document.kind, "image"),
+          gte(document.createdAt, startOfDayUtc)
+        )
+      );
+    return row?.value ?? 0;
+  } catch {
+    // Fail OPEN on a count error (don't block a paying-or-free user over a DB
+    // hiccup) — the cap is a soft guardrail, not a security boundary.
+    return 0;
+  }
+}
+
 export async function updateDocumentContent({
   id,
   content,
