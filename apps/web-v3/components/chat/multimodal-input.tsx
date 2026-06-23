@@ -792,11 +792,32 @@ function PureModelSelectorCompact({
   const [open, setOpen] = useState(false);
   const { status: authStatus, login } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
+  const router = useRouter();
   const { data: modelsData } = useSWR(
     `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
     (url: string) => fetch(url).then((r) => r.json()),
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );
+  // Credit state mirrors the server premium gate (chat/route.ts): premium models
+  // are usable when the credit rail is OFF, or the user has a positive balance.
+  // Authed-only fetch; anon never has credit.
+  const { data: credit } = useSWR<{
+    configured: boolean;
+    balanceUsd: number | null;
+  }>(
+    isAuthed ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/credit/balance` : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false }
+  );
+  // Optimistic on every uncertain case (loading / rail-off / balance unknown) so
+  // a paying user NEVER sees a lock flicker — only lock when we're sure the
+  // balance is depleted. The server stays the hard backstop either way.
+  const canUsePremium =
+    isAuthed &&
+    (credit === undefined ||
+      credit.configured === false ||
+      credit.balanceUsd === null ||
+      credit.balanceUsd > 0);
 
   const pricing: Record<string, ModelPricing> | undefined = modelsData?.pricing;
   const capabilities:
@@ -908,11 +929,13 @@ function PureModelSelectorCompact({
               >
                 {grouped[key].map(({ model, curated }) => {
                   const logoProvider = model.id.split("/")[0];
-                  // Premium models are locked for anonymous users (only the
-                  // free Fast model is usable signed-out) — clicking a locked
-                  // model starts the sign-in flow (Perplexity pattern).
+                  // Premium models are locked for anyone who can't pay for them:
+                  // anonymous users (sign-in flow) AND signed-in users out of
+                  // credit (top-up flow). Mirrors the server gate, so the
+                  // switcher never offers a model that would dead-end on send.
+                  // Free models + Auto are always selectable. (Perplexity pattern.)
                   const locked =
-                    !isAuthed &&
+                    !canUsePremium &&
                     model.free !== true &&
                     model.id !== AUTO_MODEL_ID;
                   return (
@@ -931,7 +954,14 @@ function PureModelSelectorCompact({
                         }
                         if (locked) {
                           setOpen(false);
-                          login();
+                          if (isAuthed) {
+                            // Out of credit → send them to top up, not sign-in.
+                            router.push(
+                              `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/settings/billing`
+                            );
+                          } else {
+                            login();
+                          }
                           return;
                         }
                         onModelChange?.(model.id);
@@ -990,7 +1020,16 @@ function PureModelSelectorCompact({
                           );
                         })()}
                         {locked && (
-                          <LockIcon className="size-3.5 text-muted-foreground/70" />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <LockIcon className="size-3.5 text-muted-foreground/70" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {isAuthed
+                                ? "Out of credit — top up to use premium models"
+                                : "Sign in to use premium models"}
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                         {model.id === AUTO_MODEL_ID && (
                           <span className="rounded bg-foreground/10 px-1 py-0.5 font-medium text-[9px] text-foreground/70 uppercase tracking-wide">
