@@ -22,6 +22,10 @@ type EditImageProps = {
   // The latest image the user UPLOADED this turn (blob pathname), if any —
   // lets edit_image transform an uploaded photo (Path B, consensual likeness).
   uploadedImagePathname?: string;
+  // The most recent image in this conversation — used when the model omits `id`
+  // and there's no fresh upload, so follow-up edits "just work" without the
+  // model tracking ids (no "no image to edit" errors).
+  fallbackImageId?: string;
 };
 
 /**
@@ -34,16 +38,17 @@ export const editImage = ({
   dataStream,
   canUsePremium,
   uploadedImagePathname,
+  fallbackImageId,
 }: EditImageProps) =>
   tool({
     description:
-      "Edit/refine an image (image-to-image, preserves the subject). TWO modes: (1) edit a previously GENERATED image — pass its `id` (from the generate_image result); (2) edit the user's UPLOADED photo — OMIT `id` (it uses the photo they just uploaded). Examples: 'add a glow', 'make it warmer', 'remove the background', 'turn this into a watercolour', 'make a clean headshot from my photo'. Use generate_image for a brand-new image from scratch.",
+      "Edit/refine an image (image-to-image, preserves the subject) — e.g. 'add a glow', 'make it warmer', 'remove the background', 'make him younger', 'add tattoos', 'turn this into a watercolour'. You normally DON'T need an id: it automatically targets the image currently being worked on (the one you just made, or the photo the user just uploaded). Pass `id` only to target a SPECIFIC older image. Use generate_image for a brand-new image from scratch.",
     inputSchema: z.object({
       id: z
         .string()
         .optional()
         .describe(
-          "The id of a previously GENERATED image to edit. OMIT this to edit the user's UPLOADED photo."
+          "OPTIONAL — only to target a specific OLDER image. Omit it for the current / just-made / just-uploaded image."
         ),
       instruction: z
         .string()
@@ -63,12 +68,17 @@ export const editImage = ({
         }
       }
 
-      // Path B — edit the user's UPLOADED photo (no generated id given).
-      if (!id) {
+      // Resolve the target: explicit id → fresh upload this turn → the last
+      // image in the conversation. The model omitting an id is the common case
+      // and must "just work" (no "no image to edit" error / whack-a-mole).
+      const docId = id ?? (uploadedImagePathname ? undefined : fallbackImageId);
+
+      // Path B — edit the user's UPLOADED photo (fresh upload, no resolvable id).
+      if (!docId) {
         if (!uploadedImagePathname) {
           return {
             error:
-              "There's no image to edit — ask the user to upload a photo, or generate one first.",
+              "There's no image to edit yet — generate one first, or upload a photo.",
           };
         }
         const blob = await getBlob(uploadedImagePathname);
@@ -112,8 +122,9 @@ export const editImage = ({
         };
       }
 
-      // Edit a previously GENERATED image (by id).
-      const document = await getDocumentById({ id });
+      // Edit an existing image by resolved id (explicit, or the conversation's
+      // last image).
+      const document = await getDocumentById({ id: docId });
       if (!document) {
         return { error: "I couldn't find that image to edit." };
       }
@@ -153,11 +164,11 @@ export const editImage = ({
 
       // The edit saves a NEW version under the same id — pin THIS message to it
       // so history stays immutable (older messages keep their version).
-      const versions = await getDocumentsById({ id });
+      const versions = await getDocumentsById({ id: docId });
       const versionIndex = Math.max(0, versions.length - 1);
 
       return {
-        id,
+        id: docId,
         prompt: document.title,
         model: document.model ?? undefined,
         versionIndex,

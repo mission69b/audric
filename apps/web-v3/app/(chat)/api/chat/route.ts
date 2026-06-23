@@ -430,6 +430,35 @@ export async function POST(request: Request) {
     const artifactsActive =
       isExplicitArtifact || isExplicitRecipe || hasExistingArtifact;
 
+    // The most recent image in THIS conversation (generated/edited, incl. old
+    // createDocument-image). edit_image falls back to it when the model omits an
+    // id — so "make him younger" / "add tattoos" just works without the model
+    // having to track ids (kills the "no image to edit" whack-a-mole).
+    let lastImageId: string | undefined;
+    for (const m of messagesFromDb) {
+      if (m.role !== "assistant" || !Array.isArray(m.parts)) {
+        continue;
+      }
+      for (const p of m.parts as Array<{
+        type?: string;
+        output?: { id?: string; kind?: string };
+        input?: { kind?: string };
+      }>) {
+        if (
+          (p.type === "tool-generate_image" || p.type === "tool-edit_image") &&
+          p.output?.id
+        ) {
+          lastImageId = p.output.id;
+        } else if (
+          p.type === "tool-createDocument" &&
+          p.output?.id &&
+          (p.output?.kind === "image" || p.input?.kind === "image")
+        ) {
+          lastImageId = p.output.id;
+        }
+      }
+    }
+
     let uiMessages: ChatMessage[];
 
     if (isToolApprovalFlow && messages) {
@@ -765,6 +794,7 @@ export async function POST(request: Request) {
                     dataStream,
                     canUsePremium,
                     uploadedImagePathname,
+                    fallbackImageId: lastImageId,
                   }),
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
