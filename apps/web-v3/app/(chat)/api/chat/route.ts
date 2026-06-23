@@ -38,7 +38,6 @@ import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
-import { generateFromReference } from "@/lib/ai/tools/generate-from-reference";
 import { generateImage } from "@/lib/ai/tools/generate-image";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
@@ -93,7 +92,6 @@ type ActiveTool =
   | "updateDocument"
   | "generate_image"
   | "edit_image"
-  | "generate_from_reference"
   | "requestSuggestions"
   | "balance_check"
   | "transaction_history"
@@ -115,7 +113,6 @@ const DOC_MUTATION_TOOLS = new Set<ActiveTool>([
   "requestSuggestions",
   "generate_image",
   "edit_image",
-  "generate_from_reference",
 ]);
 
 function getStreamContext() {
@@ -661,7 +658,6 @@ export async function POST(request: Request) {
                   // signed-in users (no heuristic gate → no dead-ends).
                   "generate_image",
                   "edit_image",
-                  "generate_from_reference",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -799,13 +795,6 @@ export async function POST(request: Request) {
                     canUsePremium,
                     uploadedImagePathname,
                     fallbackImageId: lastImageId,
-                  }),
-                  // Reference-grounded generation (real specific subjects) —
-                  // server-orchestrated: classify → web reference → img2img.
-                  generate_from_reference: generateFromReference({
-                    session,
-                    dataStream,
-                    canUsePremium,
                   }),
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
