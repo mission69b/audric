@@ -1,6 +1,12 @@
 "use client";
 
-import { BrainIcon, FileTextIcon, GlobeIcon, Loader2Icon } from "lucide-react";
+import {
+  BrainIcon,
+  CheckIcon,
+  FileTextIcon,
+  GlobeIcon,
+  Loader2Icon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   ChainOfThought,
@@ -13,6 +19,7 @@ import { sanitizeText } from "@/lib/utils";
 export type CotItem =
   | { kind: "reasoning"; text: string }
   | { kind: "parsed"; name: string }
+  | { kind: "done" }
   | {
       kind: "search";
       query: string;
@@ -86,7 +93,9 @@ export function CotTimeline({
   const hasWork = items.some(
     (i) => i.kind === "search" || i.kind === "parsed"
   );
-  const stepLabel = `${items.length} step${items.length === 1 ? "" : "s"}`;
+  // "Done" is a terminal marker, not a work step — don't count it.
+  const stepCount = items.filter((i) => i.kind !== "done").length;
+  const stepLabel = `${stepCount} step${stepCount === 1 ? "" : "s"}`;
   let header: string;
   if (isLoading) {
     if (hasSearch) {
@@ -124,14 +133,30 @@ export function CotTimeline({
               />
             );
           }
+          if (item.kind === "done") {
+            return (
+              <ChainOfThoughtStep
+                icon={CheckIcon}
+                // biome-ignore lint/suspicious/noArrayIndexKey: timeline is append-only and stable per render
+                key={`d-${i}`}
+                label="Done"
+                status="complete"
+              />
+            );
+          }
           return item.kind === "reasoning" ? (
             <ChainOfThoughtStep
-              description={sanitizeText(item.text)}
               icon={BrainIcon}
               // biome-ignore lint/suspicious/noArrayIndexKey: timeline is append-only and stable per render
               key={`r-${i}`}
               label="Thinking"
-            />
+            >
+              {/* Preserve the model's own line breaks / numbered lists instead of
+                  flattening reasoning into one unreadable blob. */}
+              <div className="whitespace-pre-wrap text-muted-foreground text-xs leading-relaxed">
+                {sanitizeText(item.text)}
+              </div>
+            </ChainOfThoughtStep>
           ) : (
             <ChainOfThoughtStep
               className={item.state === "active" ? "[&_svg]:animate-spin" : ""}

@@ -16,7 +16,7 @@ const filePartSchema = z.object({
     "image/gif",
     "application/pdf",
   ]),
-  name: z.string().min(1).max(100),
+  name: z.string().min(1).max(200),
   // AI-SDK-standard display field (the preview chip reads it); optional mirror
   // of `name` so the chip shows the real filename, not a generic "file".
   filename: z.string().max(200).optional(),

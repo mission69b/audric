@@ -315,22 +315,14 @@ function PureMultimodalInput({
     }
   }, []);
 
-  const handleFileChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const picked = Array.from(event.target.files || []);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
-      // Images need a vision model (or Auto, which routes to one). PDFs work
-      // everywhere. Drop images the current model can't see — never silently
-      // attach one it'll ignore.
-      const files = picked.filter((file) => {
-        if (file.type.startsWith("image/") && !canAttachImages) {
-          return false;
-        }
-        return true;
-      });
+  // Shared upload path for the file picker AND drag-and-drop. Images need a
+  // vision model (or Auto, which routes to one); PDFs work everywhere. Drop
+  // images the current model can't see — never silently attach one it'll ignore.
+  const processFiles = useCallback(
+    async (picked: File[]) => {
+      const files = picked.filter(
+        (file) => !(file.type.startsWith("image/") && !canAttachImages)
+      );
       if (files.length < picked.length) {
         toast.error(
           "This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)"
@@ -360,6 +352,54 @@ function PureMultimodalInput({
       }
     },
     [setAttachments, uploadFile, canAttachImages]
+  );
+
+  const handleFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const picked = Array.from(event.target.files || []);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      await processFiles(picked);
+    },
+    [processFiles]
+  );
+
+  // Drag-and-drop onto the composer (Venice-style "Drop files here").
+  const [isDragging, setIsDragging] = useState(false);
+  const dragDepth = useRef(0);
+  const handleDragEnter = useCallback((event: React.DragEvent) => {
+    if (!event.dataTransfer?.types?.includes("Files")) {
+      return;
+    }
+    event.preventDefault();
+    dragDepth.current += 1;
+    setIsDragging(true);
+  }, []);
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    if (event.dataTransfer?.types?.includes("Files")) {
+      event.preventDefault();
+    }
+  }, []);
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    dragDepth.current -= 1;
+    if (dragDepth.current <= 0) {
+      dragDepth.current = 0;
+      setIsDragging(false);
+    }
+  }, []);
+  const handleDrop = useCallback(
+    async (event: React.DragEvent) => {
+      event.preventDefault();
+      dragDepth.current = 0;
+      setIsDragging(false);
+      const dropped = Array.from(event.dataTransfer?.files || []);
+      if (dropped.length > 0) {
+        await processFiles(dropped);
+      }
+    },
+    [processFiles]
   );
 
   const handlePaste = useCallback(
@@ -428,7 +468,21 @@ function PureMultimodalInput({
   }, [handlePaste]);
 
   return (
-    <div className={cn("relative flex w-full flex-col gap-4", className)}>
+    <div
+      className={cn("relative flex w-full flex-col gap-4", className)}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-primary/40 border-dashed bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 font-medium text-foreground text-sm">
+            <PaperclipIcon size={16} />
+            Drop files here
+          </div>
+        </div>
+      )}
       {editingMessage && onCancelEdit && (
         <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
           <span>Editing message</span>

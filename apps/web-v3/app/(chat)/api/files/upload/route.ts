@@ -92,7 +92,10 @@ export async function POST(request: Request) {
         url: result.url,
         pathname: result.pathname,
         contentType: result.contentType,
-        name: safeName,
+        // Display name = the ORIGINAL filename (spaces/parens intact) so the chip
+        // + "Parsed <name>" read cleanly; the blob is resolved via `url`, and the
+        // sanitized `safeName` is only the storage pathname.
+        name: rawName,
       });
     } catch (_error) {
       return NextResponse.json({ error: "Upload failed" }, { status: 500 });

@@ -150,6 +150,12 @@ const PurePreviewMessage = ({
       pushNarration(part.text ?? "");
     }
   });
+  // Terminal "Done" marker (Venice-style) once the turn has finished its work —
+  // solidifies completion. Only when there was visible work and we're not still
+  // streaming.
+  if (isAssistant && !isLoading && cotItems.length > 0) {
+    cotItems.push({ kind: "done" });
+  }
 
   const parts = message.parts?.map((part, index) => {
     const { type } = part;
