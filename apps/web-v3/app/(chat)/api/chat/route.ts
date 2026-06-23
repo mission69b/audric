@@ -334,6 +334,23 @@ export async function POST(request: Request) {
         recentUserText
       );
 
+    // Image generation is frequently a RAW prompt with NO verb (a pasted
+    // Midjourney/DALL·E-style description: "Photorealistic wide-angle photograph
+    // of …"). The verb-gate above misses those, so createDocument never turns on
+    // and the model dead-ends ("image generation isn't available to me"). Detect
+    // image intent from the router's classifier OR image-prompt cues so the tool
+    // is available. (No new cost path — image gen already works via verbs; this
+    // just adds the verb-less entry point.)
+    const isImageIntent =
+      routeDecision?.classification?.intent === "image" ||
+      /\b(draw|illustrate|render|paint)\b/i.test(recentUserText) ||
+      /\b(generate|create|make|design)\b[\s\S]{0,40}\b(image|images|photo|photograph|picture|illustration|art|artwork|logo|wallpaper|render|portrait|poster|sticker|icon|scene|avatar)\b/i.test(
+        recentUserText
+      ) ||
+      /\b(photorealistic|hyper-?realistic|cinematic|wide-angle|shot on|in the style of|digital art|oil painting|3d render|octane|unreal engine|volumetric|bokeh|depth of field|aspect ratio)\b/i.test(
+        recentUserText
+      );
+
     // Visible main-loop research (replaces the old deep_research subagent): a
     // research-shaped turn injects the research directive + a higher step budget
     // so the model runs several VISIBLE web_search steps (rendered live in the
@@ -386,7 +403,10 @@ export async function POST(request: Request) {
         )
     );
     const artifactsActive =
-      isExplicitArtifact || isExplicitRecipe || hasExistingArtifact;
+      isExplicitArtifact ||
+      isImageIntent ||
+      isExplicitRecipe ||
+      hasExistingArtifact;
 
     let uiMessages: ChatMessage[];
 
@@ -599,7 +619,7 @@ export async function POST(request: Request) {
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                   "set_preferences",
                 ]
-              : isExplicitArtifact
+              : isExplicitArtifact || isImageIntent
                 ? ["web_search", "createDocument"]
                 : ["web_search"];
 
