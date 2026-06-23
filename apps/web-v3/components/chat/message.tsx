@@ -392,7 +392,11 @@ const PurePreviewMessage = ({
 
   // Never render a blank assistant turn (e.g. a model that finished with no text
   // and no tool output) — surface a short, honest fallback instead of silence.
-  const isEmptyAssistant = isAssistant && !isLoading && !hasAnyContent;
+  // Guard hard: if the turn did ANY visible work (a CoT step — reasoning, a
+  // search, or a parsed file), it is NOT empty, so the fallback can never show
+  // alongside a real answer/trace (a transient mid-stream state once did).
+  const isEmptyAssistant =
+    isAssistant && !isLoading && !hasAnyContent && cotItems.length === 0;
 
   const content = isThinking ? (
     <div className="flex h-[calc(13px*1.65)] items-center text-[13px] leading-[1.65]">

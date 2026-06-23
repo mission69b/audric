@@ -80,14 +80,26 @@ export function CotTimeline({
   }
 
   const hasSearch = items.some((i) => i.kind === "search");
+  // A non-reasoning step (parsed a file / searched) → the turn "Worked", not
+  // just "Thought" (Venice-style framing — more accurate than calling a parse
+  // "thinking").
+  const hasWork = items.some(
+    (i) => i.kind === "search" || i.kind === "parsed"
+  );
   const stepLabel = `${items.length} step${items.length === 1 ? "" : "s"}`;
   let header: string;
   if (isLoading) {
-    header = hasSearch ? "Researching the web…" : "Thinking…";
-  } else if (elapsedMs > 0) {
-    header = `Thought for ${Math.max(1, Math.round(elapsedMs / 1000))}s · ${stepLabel}`;
+    if (hasSearch) {
+      header = "Researching the web…";
+    } else {
+      header = hasWork ? "Working…" : "Thinking…";
+    }
   } else {
-    header = `Thought · ${stepLabel}`;
+    const verb = hasWork ? "Worked" : "Thought";
+    header =
+      elapsedMs > 0
+        ? `${verb} for ${Math.max(1, Math.round(elapsedMs / 1000))}s · ${stepLabel}`
+        : `${verb} · ${stepLabel}`;
   }
 
   return (
