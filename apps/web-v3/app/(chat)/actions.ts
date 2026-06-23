@@ -41,8 +41,11 @@ export async function generateTitleFromUserMessage({
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
   const session = await auth();
+  // No session (expired / replayed action / bot) → no-op instead of throwing,
+  // which Next surfaces as a noisy 500 on POST /. The authed UI is the only
+  // legitimate caller.
   if (!session?.user?.id) {
-    throw new Error("Unauthorized");
+    return;
   }
 
   const [message] = await getMessageById({ id });
@@ -69,8 +72,10 @@ export async function updateChatVisibility({
   visibility: VisibilityType;
 }) {
   const session = await auth();
+  // No session → no-op (avoid the noisy 500 on POST /); authed UI is the only
+  // legitimate caller.
   if (!session?.user?.id) {
-    throw new Error("Unauthorized");
+    return;
   }
 
   const chat = await getChatById({ id: chatId });
