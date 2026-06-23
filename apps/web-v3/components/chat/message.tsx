@@ -77,6 +77,7 @@ const PurePreviewMessage = ({
       (part.type === "reasoning" &&
         "text" in part &&
         part.text?.trim().length > 0) ||
+      part.type === "data-parsed-file" ||
       part.type.startsWith("tool-")
   );
   const isThinking = isAssistant && isLoading && !hasAnyContent;
@@ -127,7 +128,9 @@ const PurePreviewMessage = ({
     }
   };
   allParts.forEach((part, i) => {
-    if (part.type === "reasoning") {
+    if (part.type === "data-parsed-file") {
+      cotItems.push({ kind: "parsed", name: part.data.name });
+    } else if (part.type === "reasoning") {
       pushNarration("text" in part ? (part.text ?? "") : "");
     } else if (part.type === "tool-web_search") {
       cotItems.push({
@@ -158,6 +161,11 @@ const PurePreviewMessage = ({
       return null;
     }
     if (type === "text" && index < lastWorkIndex) {
+      return null;
+    }
+
+    if (type === "data-parsed-file") {
+      // Rendered as a step in the CoT timeline (above), not in the body.
       return null;
     }
 

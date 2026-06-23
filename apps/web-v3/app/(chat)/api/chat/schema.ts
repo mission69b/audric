@@ -17,6 +17,9 @@ const filePartSchema = z.object({
     "application/pdf",
   ]),
   name: z.string().min(1).max(100),
+  // AI-SDK-standard display field (the preview chip reads it); optional mirror
+  // of `name` so the chip shows the real filename, not a generic "file".
+  filename: z.string().max(200).optional(),
   // Our attachments are the session-gated in-app blob path (/api/files/blob?…),
   // which is RELATIVE — so `.url()` (absolute-only) wrongly rejects them. Allow
   // a relative path or an absolute/data URL; the server re-derives the blob ref.

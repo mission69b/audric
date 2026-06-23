@@ -75,6 +75,9 @@ export type CustomUIDataTypes = {
   // Confidential (TEE) turn → the client lazily fetches the TEE-signed receipt
   // for this response id from /api/tee/receipt and renders the verified badge.
   "tee-receipt": { responseId: string; model: string };
+  // A PDF attachment was extracted to text server-side (before the model ran) →
+  // surfaced as a "Parsed <name>" step at the top of the turn's CoT timeline.
+  "parsed-file": { name: string };
 };
 
 export type ChatMessage = UIMessage<

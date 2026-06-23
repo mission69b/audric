@@ -251,6 +251,10 @@ function PureMultimodalInput({
           type: "file" as const,
           url: attachment.url,
           name: attachment.name,
+          // `filename` is the AI-SDK-standard field the preview chip reads;
+          // `name` is our schema field the server reads. Send both → the chip
+          // shows the real name (not "file") and the server keeps its handle.
+          filename: attachment.name,
           mediaType: attachment.contentType,
         })),
         {
@@ -293,11 +297,14 @@ function PureMultimodalInput({
 
       if (response.ok) {
         const data = await response.json();
-        const { url, pathname, contentType } = data;
+        const { url, pathname, contentType, name } = data;
 
         return {
           url,
-          name: pathname,
+          // Clean, sanitized original filename for display (chip + "Parsed
+          // <name>" step). The blob is resolved server-side via `url`, so this
+          // is display-only — fall back to the pathname if absent.
+          name: name ?? pathname,
           contentType,
         };
       }

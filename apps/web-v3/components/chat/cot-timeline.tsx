@@ -1,6 +1,6 @@
 "use client";
 
-import { BrainIcon, GlobeIcon, Loader2Icon } from "lucide-react";
+import { BrainIcon, FileTextIcon, GlobeIcon, Loader2Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   ChainOfThought,
@@ -12,6 +12,7 @@ import { sanitizeText } from "@/lib/utils";
 
 export type CotItem =
   | { kind: "reasoning"; text: string }
+  | { kind: "parsed"; name: string }
   | {
       kind: "search";
       query: string;
@@ -99,8 +100,19 @@ export function CotTimeline({
     >
       <ChainOfThoughtHeader>{header}</ChainOfThoughtHeader>
       <ChainOfThoughtContent>
-        {items.map((item, i) =>
-          item.kind === "reasoning" ? (
+        {items.map((item, i) => {
+          if (item.kind === "parsed") {
+            return (
+              <ChainOfThoughtStep
+                icon={FileTextIcon}
+                // biome-ignore lint/suspicious/noArrayIndexKey: timeline is append-only and stable per render
+                key={`p-${i}`}
+                label={`Parsed ${item.name}`}
+                status="complete"
+              />
+            );
+          }
+          return item.kind === "reasoning" ? (
             <ChainOfThoughtStep
               description={sanitizeText(item.text)}
               icon={BrainIcon}
@@ -155,8 +167,8 @@ export function CotTimeline({
                 </div>
               )}
             </ChainOfThoughtStep>
-          )
-        )}
+          );
+        })}
       </ChainOfThoughtContent>
     </ChainOfThought>
   );

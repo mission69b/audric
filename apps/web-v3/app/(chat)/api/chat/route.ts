@@ -205,6 +205,25 @@ export async function POST(request: Request) {
     ).some(
       (p) => p.type === "file" && p.mediaType?.startsWith("image/")
     );
+    // PDFs in this turn are extracted to text server-side (prepareAttachments).
+    // Surface that as a Venice-style "Parsed <name>" step in the CoT timeline.
+    const parsedPdfNames = (
+      (message?.parts as Array<{
+        type?: string;
+        mediaType?: string;
+        name?: string;
+        filename?: string;
+        url?: string;
+      }>) ?? []
+    )
+      .filter(
+        (p) =>
+          p.type === "file" &&
+          (p.mediaType === "application/pdf" ||
+            /\.pdf(\?|$)/i.test(p.url ?? "") ||
+            /\.pdf$/i.test(p.filename ?? p.name ?? ""))
+      )
+      .map((p) => p.filename ?? p.name ?? "document.pdf");
     const routeDecision =
       selectedChatModel === AUTO_MODEL_ID
         ? await routeTurn({
@@ -534,6 +553,10 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
+        // Emit the "Parsed <file>" step(s) first so they head the CoT timeline.
+        for (const name of parsedPdfNames) {
+          dataStream.write({ type: "data-parsed-file", data: { name } });
+        }
         const baseModel = getLanguageModel(chatModel);
         // Recall this user's memories and inject them into the LEADING system
         // prompt (model-agnostic). The withMemWal wrapper used to splice recall
