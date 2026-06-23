@@ -95,7 +95,8 @@ export function PureMessageActions({
       }
     ).then((res) => {
       if (!res.ok) {
-        throw new Error("Failed to create document");
+        // Anon (no account) → 401: saving a document needs sign-in.
+        throw new Error(res.status === 401 ? "auth" : "fail");
       }
       setArtifact({
         documentId: id,
@@ -116,7 +117,10 @@ export function PureMessageActions({
     toast.promise(promote, {
       loading: "Opening as document…",
       success: "Opened as document",
-      error: "Couldn't open as document",
+      error: (e) =>
+        e instanceof Error && e.message === "auth"
+          ? "Sign in to save as a document — it's free."
+          : "Couldn't open as document.",
     });
   };
 
