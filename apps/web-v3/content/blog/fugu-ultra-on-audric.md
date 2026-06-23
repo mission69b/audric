@@ -3,6 +3,7 @@ title: Sakana Fugu Ultra is now on Audric
 date: 2026-06-23
 description: Sakana Fugu Ultra — Mythos-class reasoning from a pool of frontier models — is live in Audric, private by default.
 author: funkii
+draft: true
 ---
 
 Sakana Fugu Ultra just launched, and it's already in Audric.
