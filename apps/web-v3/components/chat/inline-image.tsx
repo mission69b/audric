@@ -119,14 +119,14 @@ export function InlineImage({
         </button>
       </div>
 
-      <DialogContent className="max-w-[92vw] gap-0 overflow-hidden border-border/40 p-0 sm:max-w-[880px]">
+      <DialogContent className="max-w-[96vw] gap-0 overflow-hidden border-border/40 p-0 sm:max-w-[1120px]">
         <DialogTitle className="sr-only">
           {title ?? "Generated image"}
         </DialogTitle>
         {/* biome-ignore lint/performance/noImgElement: base64 data URL, not a remote asset */}
         <img
           alt={title ?? "Generated image"}
-          className="max-h-[78vh] w-full bg-muted/30 object-contain"
+          className="max-h-[84vh] w-full bg-muted/30 object-contain"
           src={dataUrl}
         />
         <div className="flex items-center justify-between gap-2 border-border/30 border-t px-3 py-2">

@@ -372,6 +372,16 @@ export async function POST(request: Request) {
       chatModel = DEFAULT_CHAT_MODEL;
     }
 
+    // Image-generation turns: the IMAGE model (gpt-image-2 etc.) does the real
+    // work — the chat model just calls generate_image + writes a 1-line confirm.
+    // So on Auto, don't burn a frontier model (e.g. Opus) on that trivial
+    // orchestration; route to the free model (Kimi) — cheaper, faster, and it
+    // still shows a clean Thinking step. (Image QUALITY is unaffected — that's
+    // the image model, not the chat model.)
+    if (routeDecision?.classification?.intent === "image") {
+      chatModel = DEFAULT_CHAT_MODEL;
+    }
+
     // Recipes ALWAYS run on the free model (Kimi), overriding Auto AND explicit
     // picks: (1) cold-start — a user with zero credits can still run a paid
     // Recipe (the USDC pays the data service, not the model), and (2) it
