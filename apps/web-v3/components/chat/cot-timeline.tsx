@@ -14,6 +14,7 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "@/components/ai-elements/chain-of-thought";
+import { MessageResponse } from "@/components/ai-elements/message";
 import { sanitizeText } from "@/lib/utils";
 
 export type CotItem =
@@ -151,11 +152,11 @@ export function CotTimeline({
               key={`r-${i}`}
               label="Thinking"
             >
-              {/* Preserve the model's own line breaks / numbered lists instead of
-                  flattening reasoning into one unreadable blob. */}
-              <div className="whitespace-pre-wrap text-muted-foreground text-xs leading-relaxed">
+              {/* Render the model's reasoning as markdown (bold, numbered lists)
+                  — not a flattened blob or raw ** characters. */}
+              <MessageResponse className="text-muted-foreground text-xs leading-relaxed [&_li]:my-0.5 [&_ol]:my-1.5 [&_p]:my-1.5 [&_ul]:my-1.5">
                 {sanitizeText(item.text)}
-              </div>
+              </MessageResponse>
             </ChainOfThoughtStep>
           ) : (
             <ChainOfThoughtStep
