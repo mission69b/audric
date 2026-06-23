@@ -49,7 +49,7 @@ import { transactionHistory } from "@/lib/ai/tools/transaction-history";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import { isProductionEnvironment } from "@/lib/constants";
-import { debitMicrosForUsage } from "@/lib/credit/meter";
+import { debitMicrosForUsage, marginFor } from "@/lib/credit/meter";
 import {
   createStreamId,
   deleteChatById,
@@ -973,7 +973,8 @@ export async function POST(request: Request) {
                 inputTokens: meta.inputTokens,
                 outputTokens: meta.outputTokens,
               },
-              pricing
+              pricing,
+              marginFor(chatModel)
             );
             if (debit > 0) {
               await recordCredit({

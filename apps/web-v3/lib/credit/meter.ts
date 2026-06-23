@@ -9,15 +9,21 @@
  * number — TODO(usage-data)). Kept here so pricing lives in ONE place.
  */
 
-import type { ModelPricing } from "@/lib/ai/models";
+import { allChatModels, type ModelPricing } from "@/lib/ai/models";
 
-// 1.4 = 40% markup over the underlying Gateway cost. This is THE profitability
-// lever: at pass-through (1.0) every $1 of credit cost ~$1 of COGS, so usage
-// made $0 and any credit ≥ price lost money. At 1.4, a $1 of credit costs
-// ~$0.71 COGS, so the included-credit allowances (Pro $25 / Max $150) stay
-// margin-positive even on heavy users + breakage. Applies to top-up AND
-// subscription credit. The switcher shows the marked-up (charged) rate.
+// 1.4 = the DEFAULT markup over the underlying Gateway cost (used for any model
+// without a per-model `margin`). Per-model overrides land the curated lineup a
+// few % under Venice (the undercut-Venice rule — SPEC_AUDRIC_API): Grok 1.10,
+// Sonnet 1.15, Opus 1.15, GPT-5.5 1.20. The switcher + the debit both use the
+// resolved margin via `marginFor`, so charged === displayed === debited.
 export const CREDIT_MARGIN = 1.4;
+
+/** Resolve the credit margin for a model — its per-model `margin` or the
+ * default. ONE source for both the displayed rate (/api/models) and the
+ * debit (here), so they can never drift. */
+export function marginFor(modelId: string): number {
+  return allChatModels.find((m) => m.id === modelId)?.margin ?? CREDIT_MARGIN;
+}
 
 export type TurnUsage = {
   inputTokens?: number;
@@ -30,7 +36,8 @@ export type TurnUsage = {
  */
 export function debitMicrosForUsage(
   usage: TurnUsage,
-  pricing: ModelPricing | undefined
+  pricing: ModelPricing | undefined,
+  margin: number = CREDIT_MARGIN
 ): number {
   if (!pricing) {
     return 0;
@@ -39,6 +46,6 @@ export function debitMicrosForUsage(
   const output = usage.outputTokens ?? 0;
   const micros =
     (input * (pricing.inputPer1M ?? 0) + output * (pricing.outputPer1M ?? 0)) *
-    CREDIT_MARGIN;
+    margin;
   return Math.max(0, Math.round(micros));
 }

@@ -71,6 +71,11 @@ export type ChatModel = {
    * model on Auto, and by the composer to gate image (not PDF) uploads.
    * (Live capabilities are fetched from the Gateway; this is the routing hint.) */
   vision?: boolean;
+  /** Per-model credit margin (charged = Gateway base × margin). Set to land the
+   * model a few % UNDER Venice's retail while keeping ≥10% margin (the per-model
+   * undercut-Venice rule — SPEC_AUDRIC_API). Falls back to `CREDIT_MARGIN` (1.4)
+   * when unset. Margin-based (not absolute) so the price auto-tracks our cost. */
+  margin?: number;
 };
 
 export const chatModels: ChatModel[] = [
@@ -86,35 +91,28 @@ export const chatModels: ChatModel[] = [
     bestFor: "Fast & free",
   },
   {
-    id: "deepseek/deepseek-v3.2",
-    name: "DeepSeek V3.2",
-    provider: "deepseek",
-    description: "Fast and capable model with tool use",
-    gatewayOrder: ["bedrock", "deepinfra"],
-    privacy: "private",
-    tier: "smart",
-    bestFor: "Capable & cheap",
-  },
-  {
-    id: "xai/grok-4.1-fast-non-reasoning",
-    name: "Grok 4.1 Fast",
+    id: "xai/grok-4.3",
+    name: "Grok 4.3",
     provider: "xai",
-    description: "Fast non-reasoning model with tool use",
+    description: "Fast, capable model with tool use & vision",
     gatewayOrder: ["xai"],
     privacy: "private",
     tier: "smart",
-    bestFor: "Quick answers",
+    vision: true,
+    margin: 1.1,
+    bestFor: "Fast & capable",
   },
   {
-    id: "openai/gpt-oss-120b",
-    name: "GPT OSS 120B",
-    provider: "openai",
-    description: "Open-source 120B reasoning model",
-    gatewayOrder: ["fireworks", "bedrock"],
-    reasoningEffort: "low",
+    id: "anthropic/claude-sonnet-4.6",
+    name: "Claude Sonnet 4.6",
+    provider: "anthropic",
+    description: "Balanced Claude — fast, strong writing & tools",
+    gatewayOrder: ["anthropic", "bedrock"],
     privacy: "private",
     tier: "smart",
-    bestFor: "Open reasoning",
+    vision: true,
+    margin: 1.15,
+    bestFor: "Balanced & fast",
   },
   {
     id: "anthropic/claude-opus-4.8",
@@ -128,6 +126,7 @@ export const chatModels: ChatModel[] = [
     tier: "smart",
     frontier: true,
     vision: true,
+    margin: 1.15,
     bestFor: "Code & writing",
   },
   {
@@ -139,6 +138,7 @@ export const chatModels: ChatModel[] = [
     tier: "smart",
     frontier: true,
     vision: true,
+    margin: 1.2,
     bestFor: "All-round + vision",
   },
   // Gemini 3 Pro removed from the chat lineup: unreliable on multi-step / multi-
