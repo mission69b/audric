@@ -82,13 +82,17 @@ export function InlineImage({
 
   const onCopy = async () => {
     try {
-      const blob = await (await fetch(dataUrl)).blob();
+      // Decode the base64 SYNCHRONOUSLY (no await before the clipboard write) so
+      // the browser keeps the user-gesture — an async fetch first breaks
+      // clipboard.write() in Safari/Firefox.
+      const bytes = Uint8Array.from(atob(content), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "image/png" });
       await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
+        new ClipboardItem({ "image/png": blob }),
       ]);
-      toast.success("Image copied");
+      toast.success("Image copied to clipboard");
     } catch {
-      toast.error("Couldn't copy the image");
+      toast.error("Couldn't copy — try Download instead");
     }
   };
 
