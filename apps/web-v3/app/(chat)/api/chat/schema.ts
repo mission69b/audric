@@ -7,8 +7,15 @@ const textPartSchema = z.object({
 
 const filePartSchema = z.object({
   type: z.enum(["file"]),
-  // Match the upload route's accepted set (jpeg/png/webp/gif).
-  mediaType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+  // Match the upload route's accepted set (images + PDF). A PDF is extracted to
+  // text server-side (prepareAttachments); images are inlined as base64.
+  mediaType: z.enum([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+  ]),
   name: z.string().min(1).max(100),
   // Our attachments are the session-gated in-app blob path (/api/files/blob?…),
   // which is RELATIVE — so `.url()` (absolute-only) wrongly rejects them. Allow
