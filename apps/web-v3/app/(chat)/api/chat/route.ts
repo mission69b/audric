@@ -676,10 +676,25 @@ export async function POST(request: Request) {
           // duplicate-artifact class). Structural — independent of prompt wording
           // or per-model tool-loop quirks; the model can still narrate.
           prepareStep: ({ steps }) => {
+            // Drop the mutation tools only after a SUCCESSFUL artifact (its
+            // result carries an `id`) — NOT after a failed call (error /
+            // limitReached / signInRequired). Otherwise a failed first attempt
+            // (e.g. edit_image with no id when there's no upload) would lock the
+            // tool out and block the model's retry with the correct id.
             const usedDocTool = steps.some((s) =>
-              s.toolCalls?.some((tc) =>
-                DOC_MUTATION_TOOLS.has(tc?.toolName as ActiveTool)
-              )
+              (
+                s.toolResults as
+                  | Array<{ toolName?: string; output?: unknown }>
+                  | undefined
+              )?.some((tr) => {
+                if (!DOC_MUTATION_TOOLS.has(tr?.toolName as ActiveTool)) {
+                  return false;
+                }
+                const out = tr?.output;
+                return Boolean(
+                  out && typeof out === "object" && "id" in (out as object)
+                );
+              })
             );
             if (!usedDocTool) {
               return {};
