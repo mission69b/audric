@@ -329,14 +329,20 @@ function PureMultimodalInput({
           contentType,
         };
       }
+      // Anon (no account) → 401: file upload is a signed-in feature.
+      if (response.status === 401) {
+        toast.error("Sign in to upload files — it's free.");
+        return;
+      }
       const { error } = await response.json();
       toast.error(error ?? "Upload failed");
     } catch (error) {
-      // Surface the real reason (size/type/auth) instead of a generic message.
+      // Surface the real reason; the client-direct (>4MB) path 401s for anon too.
+      const msg = error instanceof Error ? error.message : "";
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to upload file, please try again!"
+        /unauthorized|401/i.test(msg)
+          ? "Sign in to upload files — it's free."
+          : msg || "Failed to upload file, please try again!"
       );
     }
   }, []);
