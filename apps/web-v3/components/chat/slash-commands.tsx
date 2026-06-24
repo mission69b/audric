@@ -6,10 +6,12 @@ import {
   PaletteIcon,
   PenLineIcon,
   PenSquareIcon,
+  SparklesIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
+import { SKILLS } from "@/lib/skills/catalog";
 import { cn } from "@/lib/utils";
 
 export type SlashCommand = {
@@ -18,9 +20,22 @@ export type SlashCommand = {
   icon: ReactNode;
   action: string;
   shortcut?: string;
+  /** For `action: "skill"` — the starter prompt inserted into the composer. */
+  prompt?: string;
 };
 
-export const slashCommands: SlashCommand[] = [
+// Skills lead the list (discoverability) — picking one seeds its starter prompt
+// into the composer (the user reviews + sends). Derived from the skills catalog
+// so it never drifts from the /skills page.
+const skillCommands: SlashCommand[] = SKILLS.map((skill) => ({
+  name: skill.slug,
+  description: skill.name,
+  icon: <SparklesIcon className="size-3.5" />,
+  action: "skill",
+  prompt: skill.examples[0],
+}));
+
+const utilityCommands: SlashCommand[] = [
   {
     name: "new",
     description: "Start a new chat",
@@ -63,6 +78,11 @@ export const slashCommands: SlashCommand[] = [
     icon: <BombIcon className="size-3.5" />,
     action: "purge",
   },
+];
+
+export const slashCommands: SlashCommand[] = [
+  ...skillCommands,
+  ...utilityCommands,
 ];
 
 type SlashCommandMenuProps = {

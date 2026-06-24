@@ -213,6 +213,13 @@ function PureMultimodalInput({
     setSlashOpen(false);
     setInput("");
     switch (cmd.action) {
+      case "skill":
+        // Seed the skill's starter prompt; the user reviews/edits, then sends.
+        if (cmd.prompt) {
+          setInput(cmd.prompt);
+          setTimeout(() => textareaRef.current?.focus(), 0);
+        }
+        break;
       case "new":
         router.push("/");
         break;
