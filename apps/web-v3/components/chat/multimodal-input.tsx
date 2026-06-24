@@ -221,19 +221,25 @@ function PureMultimodalInput({
     }
   };
 
+  // Arm a skill (picker or slash): drop a `/slug ` token into the composer +
+  // mark it active (load-on-invoke). The token is the "press enter to run"
+  // affordance; the badge persists after send. Preserves any free text already
+  // typed (and replaces a previously-armed leading token).
+  const armSkill = (slug: string) => {
+    setSlashOpen(false);
+    const rest = input.replace(/^\/\S+\s*/, "");
+    setInput(rest ? `/${slug} ${rest}` : `/${slug} `);
+    setActiveSkill?.(slug);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
   const handleSlashSelect = (cmd: SlashCommand) => {
     setSlashOpen(false);
     setInput("");
     switch (cmd.action) {
       case "skill":
-        // Seed the skill's starter prompt; the user reviews/edits, then sends.
-        // Tag the next send with this skill so the route loads its methodology
-        // (load-on-invoke). cmd.name === the skill slug.
-        if (cmd.prompt) {
-          setInput(cmd.prompt);
-          setActiveSkill?.(cmd.name);
-          setTimeout(() => textareaRef.current?.focus(), 0);
-        }
+        // Arm the skill — drops `/slug ` into the composer; press enter to run.
+        armSkill(cmd.name);
         break;
       case "new":
         router.push("/");
@@ -294,50 +300,53 @@ function PureMultimodalInput({
   const [slashQuery, setSlashQuery] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
 
-  const submitForm = useCallback(() => {
-    window.history.pushState(
-      {},
-      "",
-      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
-    );
+  const submitForm = useCallback(
+    (overrideText?: string) => {
+      window.history.pushState(
+        {},
+        "",
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
+      );
 
-    sendMessage({
-      role: "user",
-      parts: [
-        ...attachments.map((attachment) => ({
-          type: "file" as const,
-          url: attachment.url,
-          name: attachment.name,
-          // `filename` is the AI-SDK-standard field the preview chip reads;
-          // `name` is our schema field the server reads. Send both → the chip
-          // shows the real name (not "file") and the server keeps its handle.
-          filename: attachment.name,
-          mediaType: attachment.contentType,
-        })),
-        {
-          type: "text",
-          text: input,
-        },
-      ],
-    });
+      sendMessage({
+        role: "user",
+        parts: [
+          ...attachments.map((attachment) => ({
+            type: "file" as const,
+            url: attachment.url,
+            name: attachment.name,
+            // `filename` is the AI-SDK-standard field the preview chip reads;
+            // `name` is our schema field the server reads. Send both → the chip
+            // shows the real name (not "file") and the server keeps its handle.
+            filename: attachment.name,
+            mediaType: attachment.contentType,
+          })),
+          {
+            type: "text",
+            text: overrideText ?? input,
+          },
+        ],
+      });
 
-    setAttachments([]);
-    setLocalStorageInput("");
-    setInput("");
+      setAttachments([]);
+      setLocalStorageInput("");
+      setInput("");
 
-    if (width && width > 768) {
-      textareaRef.current?.focus();
-    }
-  }, [
-    input,
-    setInput,
-    attachments,
-    sendMessage,
-    setAttachments,
-    setLocalStorageInput,
-    width,
-    chatId,
-  ]);
+      if (width && width > 768) {
+        textareaRef.current?.focus();
+      }
+    },
+    [
+      input,
+      setInput,
+      attachments,
+      sendMessage,
+      setAttachments,
+      setLocalStorageInput,
+      width,
+      chatId,
+    ]
+  );
 
   const uploadFile = useCallback(async (file: File) => {
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -651,13 +660,32 @@ function PureMultimodalInput({
       <PromptInput
         className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
         onSubmit={() => {
-          if (input.startsWith("/")) {
-            const query = input.slice(1).trim();
-            const cmd = slashCommands.find((c) => c.name === query);
+          const trimmed = input.trim();
+          if (trimmed.startsWith("/")) {
+            const firstWord = trimmed.slice(1).split(/\s+/)[0];
+            // A skill token (`/crypto [task]`): arm it + send the task (or the
+            // bare token → the agent confirms + asks). The token is stripped so
+            // the message is just the task.
+            const skill = SKILLS.find((s) => s.slug === firstWord);
+            if (skill) {
+              const task = trimmed.slice(firstWord.length + 1).trim();
+              setActiveSkill?.(skill.slug);
+              if (status === "ready" || status === "error") {
+                submitForm(task || `/${skill.slug}`);
+              } else {
+                toast.error(
+                  "Please wait for the model to finish its response!"
+                );
+              }
+              return;
+            }
+            // A utility command (/new, /clear, …).
+            const cmd = slashCommands.find((c) => c.name === firstWord);
             if (cmd) {
               handleSlashSelect(cmd);
+              return;
             }
-            return;
+            // Unknown /token — fall through and send it as a normal message.
           }
           if (!input.trim() && attachments.length === 0) {
             return;
@@ -750,7 +778,8 @@ function PureMultimodalInput({
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
             <SkillTool
               activeSkillId={activeSkillId}
-              setActiveSkill={setActiveSkill}
+              onClear={() => setActiveSkill?.(null)}
+              onPick={armSkill}
             />
             <ModelSelectorCompact
               onModelChange={onModelChange}
@@ -860,10 +889,12 @@ const AttachmentsButton = memo(PureAttachmentsButton);
 // shows the skill with an ✕ to clear. Slash (/crypto) sets the same state.
 function PureSkillTool({
   activeSkillId,
-  setActiveSkill,
+  onPick,
+  onClear,
 }: {
   activeSkillId?: string | null;
-  setActiveSkill?: (slug: string | null) => void;
+  onPick: (slug: string) => void;
+  onClear: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const active = activeSkillId ? getSkill(activeSkillId) : undefined;
@@ -893,7 +924,7 @@ function PureSkillTool({
               )}
               key={skill.slug}
               onClick={() => {
-                setActiveSkill?.(skill.slug);
+                onPick(skill.slug);
                 setOpen(false);
               }}
               type="button"
@@ -919,7 +950,7 @@ function PureSkillTool({
           <button
             aria-label={`Clear ${active.name} skill`}
             className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
-            onClick={() => setActiveSkill?.(null)}
+            onClick={onClear}
             type="button"
           >
             <XIcon className="size-3" />
