@@ -45,6 +45,29 @@ type Reco = {
   strongSell?: number;
   period?: string;
 };
+type News = {
+  headline?: string;
+  summary?: string;
+  source?: string;
+  url?: string;
+  datetime?: number; // unix seconds
+};
+type Earnings = {
+  period?: string;
+  estimate?: number;
+  actual?: number;
+  surprisePercent?: number;
+};
+
+const NEWS_LOOKBACK_DAYS = 10;
+const MAX_NEWS = 5;
+const MAX_EARNINGS = 4;
+const MAX_PEERS = 6;
+const SUMMARY_CHARS = 180;
+
+function ymd(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
 
 async function fh<T>(path: string, token: string): Promise<T | null> {
   try {
@@ -82,7 +105,7 @@ function pickSymbol(
 
 export const stockAnalysis = tool({
   description:
-    "Get LIVE, structured data for a US-listed STOCK or ETF — exact current price, day change, market cap, P/E, EPS, 52-week range, dividend yield, beta, and analyst ratings (buy/hold/sell). More precise and current than web_search for any 'price/quote of <ticker>', 'how is <company> stock doing', valuation, or compare-stocks question. Pass the company name OR ticker. Call once per ticker, then answer in your own words with the real numbers.",
+    "Get LIVE, in-depth data for a US-listed STOCK or ETF — current price + day change, market cap, P/E, EPS, 52-week range, dividend yield, beta, analyst buy/hold/sell ratings, recent earnings beats/misses, recent news headlines, and peer companies. More precise and current than web_search for any 'price/quote of <ticker>', 'how is <company> stock doing', valuation, earnings, or compare-stocks question. Pass the company name OR ticker. Call once per ticker. For a DEEP 'research / analyze / should I look at <stock>' request, ALSO call web_search for the latest catalysts/sentiment, then synthesize both.",
   inputSchema: z.object({
     query: z
       .string()
@@ -108,13 +131,22 @@ export const stockAnalysis = tool({
       };
     }
     const symbol = picked.symbol;
+    const to = new Date();
+    const from = new Date(Date.now() - NEWS_LOOKBACK_DAYS * 864e5);
 
-    const [quote, profile, metricRes, recos] = await Promise.all([
-      fh<Quote>(`/quote?symbol=${symbol}`, token),
-      fh<Profile>(`/stock/profile2?symbol=${symbol}`, token),
-      fh<Metric>(`/stock/metric?symbol=${symbol}&metric=all`, token),
-      fh<Reco[]>(`/stock/recommendation?symbol=${symbol}`, token),
-    ]);
+    const [quote, profile, metricRes, recos, news, earnings, peers] =
+      await Promise.all([
+        fh<Quote>(`/quote?symbol=${symbol}`, token),
+        fh<Profile>(`/stock/profile2?symbol=${symbol}`, token),
+        fh<Metric>(`/stock/metric?symbol=${symbol}&metric=all`, token),
+        fh<Reco[]>(`/stock/recommendation?symbol=${symbol}`, token),
+        fh<News[]>(
+          `/company-news?symbol=${symbol}&from=${ymd(from)}&to=${ymd(to)}`,
+          token
+        ),
+        fh<Earnings[]>(`/stock/earnings?symbol=${symbol}`, token),
+        fh<string[]>(`/stock/peers?symbol=${symbol}`, token),
+      ]);
 
     if (!quote?.c) {
       return { error: `Couldn't fetch a live quote for ${symbol}.` };
@@ -154,6 +186,20 @@ export const stockAnalysis = tool({
             period: r.period,
           }
         : null,
+      recentEarnings: (earnings ?? []).slice(0, MAX_EARNINGS).map((e) => ({
+        period: e.period,
+        epsEstimate: e.estimate,
+        epsActual: e.actual,
+        surprisePct: e.surprisePercent,
+      })),
+      recentNews: (news ?? []).slice(0, MAX_NEWS).map((n) => ({
+        headline: n.headline,
+        source: n.source,
+        date: n.datetime ? ymd(new Date(n.datetime * 1000)) : undefined,
+        url: n.url,
+        summary: n.summary?.slice(0, SUMMARY_CHARS),
+      })),
+      peers: (peers ?? []).filter((p) => p !== symbol).slice(0, MAX_PEERS),
       website: profile?.weburl,
       source: "Finnhub",
     };
