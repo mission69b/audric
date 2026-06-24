@@ -68,6 +68,12 @@ const serverSchema = z.object({
   // Transactional + lifecycle email (Resend) — OPTIONAL: unset → email sending
   // is a no-op (no boot failure; welcome/receipts just don't send). Server-only.
   RESEND_API_KEY: optionalString,
+  // Stock data (Finnhub) — OPTIONAL: enables the free `stock_analysis` skill
+  // (US-equity quote + profile + fundamentals + analyst ratings). Stocks have no
+  // reliable keyless feed (Yahoo/Stooq are server-blocked), so this is the one
+  // data skill that needs a key. Unset → the skill returns a graceful "not
+  // configured" notice (no boot failure). Free tier ≈ 60 req/min. Server-only.
+  FINNHUB_API_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -100,6 +106,7 @@ const runtimeEnv = {
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
+  FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

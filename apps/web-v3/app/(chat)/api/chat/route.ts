@@ -49,6 +49,7 @@ import { runRecipeTool } from "@/lib/ai/tools/run-recipe";
 import { saveMemory } from "@/lib/ai/tools/save-memory";
 import { sendTransfer } from "@/lib/ai/tools/send-transfer";
 import { setPreferences } from "@/lib/ai/tools/set-preferences";
+import { stockAnalysis } from "@/lib/ai/tools/stock-analysis";
 import { transactionHistory } from "@/lib/ai/tools/transaction-history";
 import { updateDocument } from "@/lib/ai/tools/update-document";
 import { webScrape } from "@/lib/ai/tools/web-scrape";
@@ -97,6 +98,7 @@ type ActiveTool =
   | "crypto_market"
   | "dexscreener_token"
   | "dexscreener_trending"
+  | "stock_analysis"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
@@ -664,6 +666,9 @@ export async function POST(request: Request) {
                   "crypto_market",
                   "dexscreener_token",
                   "dexscreener_trending",
+                  // stock_analysis = the stocks analog (Finnhub; US equities).
+                  // Free like the rest; needs a key (no keyless stock feed).
+                  "stock_analysis",
                   // Image generation/edit are first-class + always available to
                   // signed-in users (no heuristic gate → no dead-ends).
                   "generate_image",
@@ -691,6 +696,7 @@ export async function POST(request: Request) {
                     "crypto_market",
                     "dexscreener_token",
                     "dexscreener_trending",
+                    "stock_analysis",
                     "generate_image",
                     "createDocument",
                   ]
@@ -700,6 +706,7 @@ export async function POST(request: Request) {
                     "crypto_market",
                     "dexscreener_token",
                     "dexscreener_trending",
+                    "stock_analysis",
                     "generate_image",
                   ];
 
@@ -803,6 +810,10 @@ export async function POST(request: Request) {
             // trending narratives ("top AI coins"); free, keyless, multi-chain.
             dexscreener_token: dexscreenerToken,
             dexscreener_trending: dexscreenerTrending,
+            // stock_analysis (Finnhub) — US-equity quote + profile + fundamentals
+            // + analyst ratings; free, available to everyone (degrades to a
+            // notice if FINNHUB_API_KEY is unset).
+            stock_analysis: stockAnalysis,
             // Image generation is always available (anon → sign-in gate inside
             // the tool, never a dead-end). First-class, not via createDocument.
             generate_image: generateImage({
