@@ -96,6 +96,7 @@ function PureMultimodalInput({
   className,
   selectedModelId,
   onModelChange,
+  setActiveSkill,
   editingMessage,
   onCancelEdit,
 }: {
@@ -115,6 +116,7 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
+  setActiveSkill?: (slug: string | null) => void;
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
 }) {
@@ -215,8 +217,11 @@ function PureMultimodalInput({
     switch (cmd.action) {
       case "skill":
         // Seed the skill's starter prompt; the user reviews/edits, then sends.
+        // Tag the next send with this skill so the route loads its methodology
+        // (load-on-invoke). cmd.name === the skill slug.
         if (cmd.prompt) {
           setInput(cmd.prompt);
+          setActiveSkill?.(cmd.name);
           setTimeout(() => textareaRef.current?.focus(), 0);
         }
         break;

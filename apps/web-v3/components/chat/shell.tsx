@@ -46,6 +46,7 @@ export function ChatShell() {
     votes,
     currentModelId,
     setCurrentModelId,
+    setActiveSkill,
     showCreditCardAlert,
     setShowCreditCardAlert,
   } = useActiveChat();
@@ -114,6 +115,7 @@ export function ChatShell() {
             }
           : sendMessage
       }
+      setActiveSkill={setActiveSkill}
       setAttachments={setAttachments}
       setInput={setInput}
       setMessages={setMessages}

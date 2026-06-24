@@ -17,7 +17,10 @@ function SkillCard({ skill }: { skill: SkillDef }) {
   const router = useRouter();
 
   const tryExample = (prompt: string) => {
-    router.push(`${BASE_PATH}/?query=${encodeURIComponent(prompt)}`);
+    // Pass the skill slug so the turn loads its methodology (load-on-invoke).
+    router.push(
+      `${BASE_PATH}/?query=${encodeURIComponent(prompt)}&skill=${skill.slug}`
+    );
   };
 
   return (

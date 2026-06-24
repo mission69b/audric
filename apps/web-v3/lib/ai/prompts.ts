@@ -110,6 +110,7 @@ export const systemPrompt = ({
   walletAddress,
   artifactsActive,
   researchActive,
+  skillInstructions,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -132,6 +133,10 @@ export const systemPrompt = ({
   /** Research-shaped turn → inject the multi-search directive so the model runs
    * several VISIBLE web_search steps then a cited synthesis. */
   researchActive?: boolean;
+  /** A skill's methodology (`SKILL.md`-style), injected ONLY when the user
+   * explicitly invoked that skill this turn (load-on-invoke). Absent on normal
+   * turns — the agent auto-routes via the short crypto/stock prompt lines. */
+  skillInstructions?: string | null;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -163,7 +168,12 @@ export const systemPrompt = ({
   // directives when it actually has the tool.
   const preferences = isAuthed ? `\n\n${preferencesPrompt}` : "";
   const research = researchActive ? `\n\n${researchPrompt}` : "";
-  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
+  // Load-on-invoke: when the user explicitly invokes a skill (composer slash),
+  // its full methodology is injected as a strong directive for this turn.
+  const skill = skillInstructions
+    ? `\n\n<active_skill>\nThe user invoked a skill — follow this methodology for this turn:\n\n${skillInstructions}\n</active_skill>`
+    : "";
+  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${skill}${wallet}${memory}${preferences}`;
 };
 
 export const preferencesPrompt = `Standing preferences (custom instructions): when the user states a LASTING directive about HOW you should respond — the language to reply in ("only speak German"), tone/length ("always be concise"), persona, what to call them, or output format — call \`set_preferences\` with the COMPLETE updated instruction set. These apply to EVERY future response automatically (they're injected as <custom_instructions> above), so do NOT use \`save_memory\` for them — memory is for FACTS recalled when relevant, which would miss a standing directive on an unrelated message.
