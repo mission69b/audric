@@ -28,6 +28,7 @@ import {
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { scanChatImages } from "@/lib/ai/scan-chat-images";
 import {
   ensureGeminiThoughtSignatures,
   isGemini3,
@@ -432,48 +433,11 @@ export async function POST(request: Request) {
       isExplicitArtifact || isExplicitRecipe || hasExistingArtifact;
 
     // The most recent image in THIS conversation (generated/edited, incl. old
-    // createDocument-image). edit_image falls back to it when the model omits an
-    // id — so "make him younger" / "add tattoos" just works without the model
-    // having to track ids (kills the "no image to edit" whack-a-mole).
-    let lastImageId: string | undefined;
-    // Did THIS chat ever surface an image at all (a generated/edited one OR a
-    // photo the user uploaded)? Gates the DB fallback below so it can never
-    // cross-target an unrelated chat's image.
-    let chatHasImageSignal = false;
-    for (const m of messagesFromDb) {
-      if (!Array.isArray(m.parts)) {
-        continue;
-      }
-      for (const p of m.parts as Array<{
-        type?: string;
-        mediaType?: string;
-        output?: { id?: string; kind?: string };
-        input?: { kind?: string };
-      }>) {
-        // A user-uploaded image (Path B source) counts as image activity even
-        // though it has no document id.
-        if (p.type === "file" && p.mediaType?.startsWith("image/")) {
-          chatHasImageSignal = true;
-        }
-        if (m.role !== "assistant") {
-          continue;
-        }
-        if (p.type === "tool-generate_image" || p.type === "tool-edit_image") {
-          chatHasImageSignal = true;
-          if (p.output?.id) {
-            lastImageId = p.output.id;
-          }
-        } else if (
-          p.type === "tool-createDocument" &&
-          (p.output?.kind === "image" || p.input?.kind === "image")
-        ) {
-          chatHasImageSignal = true;
-          if (p.output?.id) {
-            lastImageId = p.output.id;
-          }
-        }
-      }
-    }
+    // createDocument-image) + whether the chat involved an image at all.
+    // edit_image falls back to it when the model omits an id — so "make him
+    // younger" / "add tattoos" just works without the model tracking ids.
+    // Pure helper → directly evalable (scripts/eval-image-fallback.mts).
+    const { lastImageId, chatHasImageSignal } = scanChatImages(messagesFromDb);
 
     // Robust fallback: when the chat clearly involved an image but the scan
     // couldn't pin its id (a weak Auto model wrote a messy tool part, or the
