@@ -46,6 +46,7 @@ export function ChatShell() {
     votes,
     currentModelId,
     setCurrentModelId,
+    activeSkillId,
     setActiveSkill,
     showCreditCardAlert,
     setShowCreditCardAlert,
@@ -88,6 +89,7 @@ export function ChatShell() {
   const isEmpty = messages.length === 0;
   const composer = isReadonly ? null : (
     <MultimodalInput
+      activeSkillId={activeSkillId}
       attachments={attachments}
       chatId={chatId}
       editingMessage={editingMessage}

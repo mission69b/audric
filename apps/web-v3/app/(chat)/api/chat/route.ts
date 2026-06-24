@@ -703,6 +703,7 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
             artifactsActive,
             researchActive,
+            skillName: activeSkill?.name,
             skillInstructions: activeSkill?.instructions,
           }),
           messages: modelMessages,

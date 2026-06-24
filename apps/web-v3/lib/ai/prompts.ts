@@ -111,6 +111,7 @@ export const systemPrompt = ({
   artifactsActive,
   researchActive,
   skillInstructions,
+  skillName,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -137,6 +138,8 @@ export const systemPrompt = ({
    * explicitly invoked that skill this turn (load-on-invoke). Absent on normal
    * turns — the agent auto-routes via the short crypto/stock prompt lines. */
   skillInstructions?: string | null;
+  /** Display name of the active skill (for the narration directive). */
+  skillName?: string | null;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -171,7 +174,7 @@ export const systemPrompt = ({
   // Load-on-invoke: when the user explicitly invokes a skill (composer slash),
   // its full methodology is injected as a strong directive for this turn.
   const skill = skillInstructions
-    ? `\n\n<active_skill>\nThe user invoked a skill — follow this methodology for this turn:\n\n${skillInstructions}\n</active_skill>`
+    ? `\n\n<active_skill>\nThe user has the **${skillName ?? "selected"}** skill active — load it and follow this methodology this turn. If their latest message contains a concrete task, do it. If it does NOT (they just armed the skill), briefly confirm the ${skillName ?? "skill"} skill is active and ask what they'd like to do with it BEFORE calling any tools — do not guess a task.\n\n${skillInstructions}\n</active_skill>`
     : "";
   return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${skill}${wallet}${memory}${preferences}`;
 };
