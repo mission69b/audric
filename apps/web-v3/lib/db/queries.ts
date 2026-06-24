@@ -825,6 +825,31 @@ export async function saveDocument({
 }
 
 /**
+ * The id of this user's most recently created/edited image Document, or null.
+ * The robust fallback for `edit_image` when the message-part scan can't pin the
+ * conversation's last image (e.g. a weak Auto model produced a messy tool part,
+ * or the model switched between turns). DB-backed = model/part-shape independent.
+ * Uses the (userId, kind, createdAt) index. Caller gates this to a chat that has
+ * shown image activity, so it can't cross-target an unrelated chat's image.
+ * (Proper chat-scoping awaits a `Document.chatId` column — tracked follow-up.)
+ */
+export async function getLatestUserImageDocumentId(
+  userId: string
+): Promise<string | null> {
+  try {
+    const [row] = await db
+      .select({ id: document.id })
+      .from(document)
+      .where(and(eq(document.userId, userId), eq(document.kind, "image")))
+      .orderBy(desc(document.createdAt))
+      .limit(1);
+    return row?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Images this user has generated/edited since UTC midnight — the free-tier daily
  * cap derives from the Documents we already write (no counter, no race). Uses
  * the (userId, kind, createdAt) index.

@@ -53,6 +53,7 @@ import {
   deleteChatById,
   getChatById,
   getCreditBalanceMicros,
+  getLatestUserImageDocumentId,
   getMessageCountByUserId,
   getMessagesByChatId,
   getUserById,
@@ -435,28 +436,55 @@ export async function POST(request: Request) {
     // id — so "make him younger" / "add tattoos" just works without the model
     // having to track ids (kills the "no image to edit" whack-a-mole).
     let lastImageId: string | undefined;
+    // Did THIS chat ever surface an image at all (a generated/edited one OR a
+    // photo the user uploaded)? Gates the DB fallback below so it can never
+    // cross-target an unrelated chat's image.
+    let chatHasImageSignal = false;
     for (const m of messagesFromDb) {
-      if (m.role !== "assistant" || !Array.isArray(m.parts)) {
+      if (!Array.isArray(m.parts)) {
         continue;
       }
       for (const p of m.parts as Array<{
         type?: string;
+        mediaType?: string;
         output?: { id?: string; kind?: string };
         input?: { kind?: string };
       }>) {
-        if (
-          (p.type === "tool-generate_image" || p.type === "tool-edit_image") &&
-          p.output?.id
-        ) {
-          lastImageId = p.output.id;
+        // A user-uploaded image (Path B source) counts as image activity even
+        // though it has no document id.
+        if (p.type === "file" && p.mediaType?.startsWith("image/")) {
+          chatHasImageSignal = true;
+        }
+        if (m.role !== "assistant") {
+          continue;
+        }
+        if (p.type === "tool-generate_image" || p.type === "tool-edit_image") {
+          chatHasImageSignal = true;
+          if (p.output?.id) {
+            lastImageId = p.output.id;
+          }
         } else if (
           p.type === "tool-createDocument" &&
-          p.output?.id &&
           (p.output?.kind === "image" || p.input?.kind === "image")
         ) {
-          lastImageId = p.output.id;
+          chatHasImageSignal = true;
+          if (p.output?.id) {
+            lastImageId = p.output.id;
+          }
         }
       }
+    }
+
+    // Robust fallback: when the chat clearly involved an image but the scan
+    // couldn't pin its id (a weak Auto model wrote a messy tool part, or the
+    // model switched between turns — the live "no image to edit" bug), resolve
+    // the user's most recent image Document from the DB. Gated on
+    // `chatHasImageSignal` so a brand-new chat keeps the honest "upload or
+    // generate one first" prompt instead of grabbing another chat's image.
+    let fallbackImageId = lastImageId;
+    if (!fallbackImageId && chatHasImageSignal && session?.user) {
+      fallbackImageId =
+        (await getLatestUserImageDocumentId(session.user.id)) ?? undefined;
     }
 
     let uiMessages: ChatMessage[];
@@ -786,7 +814,7 @@ export async function POST(request: Request) {
                     dataStream,
                     canUsePremium,
                     uploadedImagePathname,
-                    fallbackImageId: lastImageId,
+                    fallbackImageId,
                   }),
                   editDocument: editDocument({ dataStream, session }),
                   updateDocument: updateDocument({
