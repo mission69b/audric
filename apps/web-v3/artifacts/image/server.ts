@@ -30,6 +30,11 @@ export const IMAGE_EDIT_MODEL = "google/gemini-2.5-flash-image";
  *  The instruction is wrapped to preserve the original style/composition (the
  *  edit model occasionally over-restyles a vague ask like "make it funnier"),
  *  and retried once because it intermittently returns text-only with no image. */
+// Bound each edit attempt so a hung Gateway/model call fails fast (the honest
+// "edit didn't go through" error) instead of leaving the turn "Thinking…" for
+// minutes. Two attempts → worst case ~2× this.
+const EDIT_ATTEMPT_TIMEOUT_MS = 45_000;
+
 export async function editImageBytes(
   priorBase64: string,
   instruction: string,
@@ -39,18 +44,32 @@ export async function editImageBytes(
     `Edit the provided image as follows: ${instruction}.\n` +
     "Preserve the original style, medium, composition, lighting, and the existing subjects — change ONLY what the instruction asks.";
   for (let attempt = 0; attempt < 2; attempt++) {
-    const result = await generateText({
-      model: gateway.languageModel(IMAGE_EDIT_MODEL),
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image", image: priorBase64, mediaType },
+    let result: Awaited<ReturnType<typeof generateText>>;
+    try {
+      result = await Promise.race([
+        generateText({
+          model: gateway.languageModel(IMAGE_EDIT_MODEL),
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image", image: priorBase64, mediaType },
+              ],
+            },
           ],
-        },
-      ],
-    });
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("image_edit_timeout")),
+            EDIT_ATTEMPT_TIMEOUT_MS
+          )
+        ),
+      ]);
+    } catch {
+      // Timeout or transport error → try the next attempt, then return null.
+      continue;
+    }
     const img = (result.files ?? []).find((f) =>
       f.mediaType?.startsWith("image/")
     );

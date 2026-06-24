@@ -87,9 +87,17 @@ export const editImage = ({
         }
         dataStream.write({ type: "data-clear", data: null, transient: true });
         dataStream.write({ type: "data-kind", data: "image", transient: true });
+        // Pass the upload's REAL content type. A phone photo is usually
+        // image/jpeg; the old code labeled every upload image/png, so the edit
+        // model failed to decode it and returned text-only → "edit didn't go
+        // through". (Generated images are always PNG → Path A unaffected.)
+        const editMediaType = blob.contentType?.startsWith("image/")
+          ? blob.contentType
+          : "image/png";
         const edited = await editImageBytes(
           blob.body.toString("base64"),
-          instruction
+          instruction,
+          editMediaType
         );
         if (!edited) {
           return {
