@@ -51,6 +51,7 @@ import { sendTransfer } from "@/lib/ai/tools/send-transfer";
 import { setPreferences } from "@/lib/ai/tools/set-preferences";
 import { transactionHistory } from "@/lib/ai/tools/transaction-history";
 import { updateDocument } from "@/lib/ai/tools/update-document";
+import { webScrape } from "@/lib/ai/tools/web-scrape";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import { isProductionEnvironment } from "@/lib/constants";
 import { debitMicrosForUsage, marginFor } from "@/lib/credit/meter";
@@ -92,6 +93,7 @@ export const maxDuration = 300;
 
 type ActiveTool =
   | "web_search"
+  | "web_scrape"
   | "crypto_market"
   | "dexscreener_token"
   | "dexscreener_trending"
@@ -653,6 +655,9 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
+                  // web_scrape: read a specific URL → clean markdown (the
+                  // complement to search). Free (Jina Reader), keyless.
+                  "web_scrape",
                   // Crypto skills (the wedge — our edge over Venice's zero
                   // on-chain). crypto_market = listed-coin price (CoinGecko);
                   // dexscreener_* = onchain/DEX token research + trending. Free.
@@ -682,6 +687,7 @@ export async function POST(request: Request) {
               : isExplicitArtifact
                 ? [
                     "web_search",
+                    "web_scrape",
                     "crypto_market",
                     "dexscreener_token",
                     "dexscreener_trending",
@@ -690,6 +696,7 @@ export async function POST(request: Request) {
                   ]
                 : [
                     "web_search",
+                    "web_scrape",
                     "crypto_market",
                     "dexscreener_token",
                     "dexscreener_trending",
@@ -786,6 +793,9 @@ export async function POST(request: Request) {
             // parallelSearch) were both verified to NOT synthesize on our
             // open-model roster (S.478 A/B). Available to everyone (incl. anon).
             web_search: webSearch,
+            // web_scrape — read a specific URL → clean markdown (Jina Reader);
+            // free, keyless, available to everyone. Complement to web_search.
+            web_scrape: webScrape,
             // crypto_market (first wedge skill, §0.5 P0) — live structured market
             // data; available to everyone (read-only public data, no auth, free).
             crypto_market: cryptoMarket,
