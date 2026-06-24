@@ -6,13 +6,20 @@
  * Skills are FREE (plan/cap monetized) and the agent ALSO auto-routes to them
  * from natural language — this registry just makes them discoverable + invokable.
  *
- * A "skill" here is a USER-facing capability, not a 1:1 tool. "Crypto" fronts
- * BOTH crypto_market (CoinGecko, listed coins) and crypto_research (DexScreener,
- * any token/contract + trending) — the agent routes to the right one by intent,
- * so the user sees one coherent skill instead of two confusingly-similar cards.
+ * A "skill" here is a substantial, multi-step CAPABILITY (Manus-style), not a
+ * primitive tool. "Crypto" fronts BOTH crypto_market (CoinGecko, listed coins)
+ * AND crypto_research (DexScreener, any token/contract + trending) — the agent
+ * routes by intent, so the user sees one coherent skill. "Stocks" fans out to
+ * quote + fundamentals + ratings + earnings + news + peers.
+ *
+ * NOT skills (deliberately excluded): primitive always-on tools like web_search
+ * and web_scrape (read a URL → text) — they have no methodology to load, so they
+ * live as core tools, not skill cards (same as image generation).
  *
  * Thin audric-side registry by design — the t2000-skills SKILL.md descriptor
  * home + the agent x402 front is the later, verticalized step (AGENT_WEDGE §1c/§6).
+ * NOTE (2026-06-24): these are B-lite tool-backed skills (tool + prompt line) —
+ * NOT yet Manus's loaded-`SKILL.md` methodology docs (that engine is deferred).
  * `examples[0]` doubles as the slash-invoke starter prompt; every example is a
  * complete, sendable prompt (the /skills page auto-sends it via ?query=).
  */
@@ -54,17 +61,6 @@ export const SKILLS: SkillDef[] = [
       "What's Apple's stock price?",
       "Research NVDA for me",
       "Compare TSLA and AAPL",
-    ],
-  },
-  {
-    slug: "scrape",
-    name: "Read a page",
-    category: "Web",
-    description:
-      "Read a specific URL and return clean text — summarize or extract from any web page.",
-    examples: [
-      "Summarize https://blog.sui.io",
-      "Give me the key points from https://docs.sui.io",
     ],
   },
 ];
