@@ -49,7 +49,6 @@ export const EVERY_PLAN: string[] = [
 
 /** Teased, never sold — clearly labeled "coming". */
 export const COMING_SOON: string[] = [
-  "Confidential AI (Pro & Max) — verifiable TEE models even the provider can't read",
   "End-to-end encrypted chats — sealed with Seal, readable only by you",
   "Decentralized backup — your memory, end-to-end on Walrus",
 ];
@@ -78,7 +77,6 @@ export const TIERS: Tier[] = [
       "Unlimited chat on open models",
       "Every premium + frontier model",
       "Image & media generation",
-      "Confidential (TEE) models when they land",
     ],
     priceEnv: "STRIPE_PRICE_PRO",
   },
@@ -93,7 +91,6 @@ export const TIERS: Tier[] = [
       "$110/mo credit — more than topping up, never expires",
       "Everything in Pro",
       "Highest media & usage caps",
-      "Confidential (TEE) models when they land",
       "First access to new features",
     ],
     priceEnv: "STRIPE_PRICE_MAX",

@@ -46,8 +46,7 @@ if (!process.env.AI_GATEWAY_API_KEY) {
   }
 }
 
-// MIRRORS lib/ai/models.ts (the gateway chat models; confidential/TEE excluded
-// — they route to RedPill, not the gateway).
+// MIRRORS lib/ai/models.ts (the gateway chat models).
 const MODEL_IDS = [
   "moonshotai/kimi-k2.5",
   "deepseek/deepseek-v3.2",

@@ -36,10 +36,9 @@ export type ModelCapabilities = {
 // (self-hosted) tiers are fast-follows; the type carries them now so the badge
 // UI is forward-compatible.
 // Privacy ladder (§5c). `private` = Zero Data Retention via the Gateway (ON for
-// every chat — prompts never stored/trained on). `confidential` = the coming
-// TEE rung (even the provider can't read it; verifiable). `anon` is the legacy
+// every chat — prompts never stored/trained on). `anon` is the legacy
 // "may retain anonymized" label, kept for any model without a ZDR provider.
-export type ModelPrivacyTier = "anon" | "private" | "confidential" | "local";
+export type ModelPrivacyTier = "anon" | "private" | "local";
 
 // `fast` = the zero-credit acquisition model (Kimi); `smart` = premium,
 // per-1k-token credit-metered (the metering itself lands in Phase 5 — here the
@@ -63,10 +62,6 @@ export type ChatModel = {
   bestFor?: string;
   /** Premium frontier model — gated to credit/paid tiers. */
   frontier?: boolean;
-  /** Routes DIRECTLY to the TEE provider (RedPill/Phala), not the Gateway.
-   * Confidential models are inert until REDPILL_API_KEY is set — see
-   * `isConfidentialConfigured()` in providers.ts. */
-  confidential?: boolean;
   /** Reads images. Used by the router to send image attachments to a capable
    * model on Auto, and by the composer to gate image (not PDF) uploads.
    * (Live capabilities are fetched from the Gateway; this is the routing hint.) */
@@ -149,59 +144,9 @@ export const chatModels: ChatModel[] = [
   // used for image editing is unaffected — different model, works fine.)
 ];
 
-// Confidential (TEE) tier — the 3rd privacy rung (SPEC_AUDRIC_V3 §5c). These run
-// ENTIRELY inside a Phala GPU TEE via RedPill's OpenAI-compatible API: even the
-// provider can't read the prompt, and every response is TEE-signed (verifiable
-// per request). They route directly to RedPill — NOT the Gateway — so they're
-// inert until REDPILL_API_KEY is set (the switcher only surfaces them when the
-// /api/models route reports `confidentialEnabled`). Model ids are the live
-// RedPill catalog ids (`GET https://api.redpill.ai/v1/models`).
-export const confidentialModels: ChatModel[] = [
-  {
-    id: "phala/qwen3.5-27b",
-    name: "Qwen 3.5 27B",
-    provider: "phala",
-    description: "Capable multimodal model — runs entirely in a TEE",
-    privacy: "confidential",
-    tier: "smart",
-    confidential: true,
-    bestFor: "Capable + vision",
-  },
-  {
-    id: "phala/glm-4.7-flash",
-    name: "GLM 4.7 Flash",
-    provider: "phala",
-    description: "Fast confidential model in a TEE (attestation-verified)",
-    privacy: "confidential",
-    tier: "smart",
-    confidential: true,
-    bestFor: "Fast & private",
-  },
-  {
-    id: "phala/gpt-oss-20b",
-    name: "GPT-OSS 20B",
-    provider: "phala",
-    description: "Open reasoning model in a TEE (attestation-verified)",
-    privacy: "confidential",
-    tier: "smart",
-    confidential: true,
-    bestFor: "Open reasoning",
-  },
-];
-
-const confidentialModelIds = new Set(confidentialModels.map((m) => m.id));
-
-/** True when `id` is a confidential (TEE) model — routes to RedPill, not the
- * Gateway. Pure + client-safe (no env read). */
-export function isConfidentialModel(id: string): boolean {
-  return confidentialModelIds.has(id);
-}
-
-/** Every selectable model — gateway lineup + the confidential (TEE) lineup. */
-export const allChatModels: ChatModel[] = [
-  ...chatModels,
-  ...confidentialModels,
-];
+/** Every selectable model. (Confidential/TEE tier deferred + removed 2026-06-24
+ * — see SPEC_AUDRIC_AGENT_WEDGE; re-add when the TEE rung ships.) */
+export const allChatModels: ChatModel[] = [...chatModels];
 
 export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>

@@ -32,7 +32,6 @@ import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
 import { RecipeRunTool } from "./recipe-run-tool";
 import { SendTransferTool } from "./send-transfer-tool";
-import { TeeReceiptBadge } from "./tee-receipt-badge";
 
 /** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
 function ImageLimitCard({ message }: { message: string }) {
@@ -191,16 +190,6 @@ const PurePreviewMessage = ({
     if (type === "data-parsed-file") {
       // Rendered as a step in the CoT timeline (above), not in the body.
       return null;
-    }
-
-    if (type === "data-tee-receipt") {
-      return (
-        <TeeReceiptBadge
-          key={key}
-          model={part.data.model}
-          responseId={part.data.responseId}
-        />
-      );
     }
 
     if (type === "tool-balance_check") {

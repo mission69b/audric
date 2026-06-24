@@ -11,7 +11,10 @@ import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
-import { FREE_DAILY_TEXT_LIMIT, maxMessagesPerHour } from "@/lib/ai/entitlements";
+import {
+  FREE_DAILY_TEXT_LIMIT,
+  maxMessagesPerHour,
+} from "@/lib/ai/entitlements";
 import { prepareAttachments } from "@/lib/ai/inline-attachments";
 import { routeTurn } from "@/lib/ai/intelligence/router";
 import {
@@ -22,14 +25,9 @@ import {
   DEFAULT_CHAT_MODEL,
   getCapabilities,
   getModelPricing,
-  isConfidentialModel,
 } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
-import {
-  getConfidentialCatalog,
-  getLanguageModel,
-  isConfidentialConfigured,
-} from "@/lib/ai/providers";
+import { getLanguageModel } from "@/lib/ai/providers";
 import {
   ensureGeminiThoughtSignatures,
   isGemini3,
@@ -157,15 +155,12 @@ export async function POST(request: Request) {
       auth(),
     ]);
 
-    // Fetch the account once up front — the tier drives BOTH the Confidential
-    // gate (below) and the hourly cap (further down). Guests/anon have no row →
-    // treated as free.
+    // Fetch the account once up front — the tier drives the hourly cap (further
+    // down). Guests/anon have no row → treated as free.
     const dbUser =
       session?.user && session.user.type !== "guest"
         ? await getUserById(session.user.id)
         : null;
-    const isPaidTier =
-      dbUser?.subscriptionTier === "pro" || dbUser?.subscriptionTier === "max";
 
     // Credit balance + premium entitlement — fetched ONCE; drives the "Auto"
     // router (which model it may pick), the per-turn cap, and the premium gate.
@@ -276,21 +271,12 @@ export async function POST(request: Request) {
       : allowedModelIds.has(selectedChatModel)
         ? selectedChatModel
         : DEFAULT_CHAT_MODEL;
-    // Confidential (TEE) models route directly to RedPill (the Gateway has no
-    // `phala/*` model) AND are a PAID perk — only routable when the tier is
-    // configured AND the user is on Pro/Max. Otherwise degrade to the default
-    // (rather than 404 / give it away free).
-    const requestedRoutable =
-      !isConfidentialModel(requestedModel) ||
-      (isConfidentialConfigured() && isPaidTier);
     const requestedIsFree =
       chatModels.find((m) => m.id === requestedModel)?.free === true;
     // `let` because research turns override it to the cheap research model below
     // (after the research gate, which needs the loaded history).
     let chatModel =
-      (session?.user || requestedIsFree) && requestedRoutable
-        ? requestedModel
-        : DEFAULT_CHAT_MODEL;
+      session?.user || requestedIsFree ? requestedModel : DEFAULT_CHAT_MODEL;
 
     // IP rate-limit guards the ANONYMOUS try-before-signup surface only (no
     // account to cap). Authed users — free OR paid — are governed by the
@@ -310,7 +296,6 @@ export async function POST(request: Request) {
       const userType: UserType = session.user.type;
       // Cap is lifted for anyone who has PAID — an active sub OR a positive
       // credit balance (PAYG top-up); free authed keeps the acquisition cap.
-      // (dbUser was already fetched above for the Confidential gate.)
       const cap = maxMessagesPerHour(userType, {
         subscriptionTier: dbUser?.subscriptionTier,
         hasCredit: creditMicros > 0,
@@ -583,7 +568,6 @@ export async function POST(request: Request) {
     );
 
     const modelConfig = allChatModels.find((m) => m.id === chatModel);
-    const isConfidential = isConfidentialModel(chatModel);
 
     // Credit gate (Phase 5): premium (non-free) models are metered against the
     // credit balance. When the credit rail is live and the user is out of
@@ -750,22 +734,15 @@ export async function POST(request: Request) {
             };
           },
           providerOptions: {
-            // Confidential models bypass the Gateway entirely (direct to the
-            // RedPill TEE), so Gateway options don't apply — the TEE itself is
-            // the privacy guarantee (stronger than ZDR). For every Gateway
-            // model: Zero Data Retention routes ONLY to providers contractually
-            // bound not to store or train on prompts (the "Private · ZDR" rung;
-            // a model with no ZDR provider fails no_providers_available).
-            ...(isConfidential
-              ? {}
-              : {
-                  gateway: {
-                    zeroDataRetention: true,
-                    ...(modelConfig?.gatewayOrder && {
-                      order: modelConfig.gatewayOrder,
-                    }),
-                  },
-                }),
+            // Zero Data Retention routes ONLY to providers contractually bound
+            // not to store or train on prompts (the "Private · ZDR" rung; a
+            // model with no ZDR provider fails no_providers_available).
+            gateway: {
+              zeroDataRetention: true,
+              ...(modelConfig?.gatewayOrder && {
+                order: modelConfig.gatewayOrder,
+              }),
+            },
             ...((routeDecision?.reasoningEffort ??
               modelConfig?.reasoningEffort) && {
               openai: {
@@ -892,23 +869,6 @@ export async function POST(request: Request) {
           })
         );
 
-        // Confidential (TEE) turn → surface the response id so the client can
-        // fetch its TEE-signed receipt (the "verifiable per request" proof).
-        // Best-effort + post-merge so it never blocks or breaks the stream.
-        if (isConfidential) {
-          try {
-            const resp = await result.response;
-            if (resp?.id) {
-              dataStream.write({
-                type: "data-tee-receipt",
-                data: { responseId: resp.id, model: chatModel },
-              });
-            }
-          } catch (_) {
-            /* non-fatal — no receipt badge this turn */
-          }
-        }
-
         if (titlePromise) {
           try {
             const title = await titlePromise;
@@ -966,9 +926,7 @@ export async function POST(request: Request) {
         // per assistant turn, even if onFinish ever re-fires). Inert when the
         // credit rail isn't configured.
         if (isPremiumModel && isCreditConfigured()) {
-          const pricing = isConfidential
-            ? (await getConfidentialCatalog()).pricing[chatModel]
-            : (await getModelPricing())[chatModel];
+          const pricing = (await getModelPricing())[chatModel];
           for (const m of finishedMessages) {
             if (m.role !== "assistant") {
               continue;
