@@ -9,7 +9,7 @@
 
 import { ArrowUpRightIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SKILL_CATEGORIES, SKILLS, type SkillDef } from "@/lib/skills/catalog";
+import { SKILLS, type SkillDef } from "@/lib/skills/catalog";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
@@ -25,6 +25,9 @@ function SkillCard({ skill }: { skill: SkillDef }) {
       <div className="flex items-center gap-2">
         <SparklesIcon className="size-4 text-muted-foreground" />
         <h3 className="font-medium text-foreground">{skill.name}</h3>
+        <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+          {skill.category}
+        </span>
         <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 uppercase tracking-wide dark:text-emerald-400">
           Free
         </span>
@@ -75,24 +78,11 @@ export default function SkillsPage() {
           in the composer, or tap an example to try one.
         </p>
 
-        {SKILL_CATEGORIES.map((category) => {
-          const skills = SKILLS.filter((s) => s.category === category);
-          if (skills.length === 0) {
-            return null;
-          }
-          return (
-            <div className="mb-8" key={category}>
-              <h2 className="mb-3 font-medium text-[11px] text-muted-foreground/50 uppercase tracking-wider">
-                {category}
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {skills.map((skill) => (
-                  <SkillCard key={skill.slug} skill={skill} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {SKILLS.map((skill) => (
+            <SkillCard key={skill.slug} skill={skill} />
+          ))}
+        </div>
       </div>
     </div>
   );
