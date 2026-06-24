@@ -169,7 +169,7 @@ export const systemPrompt = ({
   // directives when it actually has the tool.
   const preferences = isAuthed ? `\n\n${preferencesPrompt}` : "";
   const research = researchActive ? `\n\n${researchPrompt}` : "";
-  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
+  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
 };
 
 export const preferencesPrompt = `Standing preferences (custom instructions): when the user states a LASTING directive about HOW you should respond — the language to reply in ("only speak German"), tone/length ("always be concise"), persona, what to call them, or output format — call \`set_preferences\` with the COMPLETE updated instruction set. These apply to EVERY future response automatically (they're injected as <custom_instructions> above), so do NOT use \`save_memory\` for them — memory is for FACTS recalled when relevant, which would miss a standing directive on an unrelated message.
@@ -203,6 +203,12 @@ export const documentsPrompt = `Analyzing an attached document (PDF/file): its t
 
 export const searchPrompt = `Live web search: when the user asks about current events, news, live prices, recent releases, or anything past your training data, call \`web_search\` with a clear query. Then write the answer in your OWN words using the returned results, and cite sources inline as markdown links. Never say you can't access current information — you can, via web_search.
 CRITICAL — trust fresh results over your training: the web results reflect the world as it is NOW, which is LATER than your training cutoff. When current, well-sourced reporting conflicts with what you think you know (e.g. "company X is still private" but multiple outlets report it IPO'd), the world has MOVED ON — trust the fresh reporting and update your answer. Do NOT dismiss current reporting as "fabricated", "speculative", or "rumor" merely because it post-dates your knowledge or surprises you. If reputable sources agree, report it as fact; only hedge when reputable sources actually disagree or are missing. Corroborate across a few sources rather than falling back on your stale prior.`;
+
+export const cryptoPrompt = `Crypto data — you have live tools; pick by intent (don't use web_search for these — these are precise + current):
+- \`crypto_market\`: a MAJOR listed coin's market data (price, market cap, 24h/7d, rank) by name/symbol — e.g. "price of SUI/BTC". Fast path for the top coins.
+- \`dexscreener_token\`: research ANY token (esp. smaller/new/memecoins, or a specific CONTRACT address) across all chains — price, liquidity, 24h volume, DEX, socials. Use for "research <token>", "info on <0x…/sui contract>", or anything crypto_market doesn't list. Prefer the contract address for an exact token.
+- \`dexscreener_trending\`: trending narratives — "what are the top AI coins right now", "what's hot". Call with NO arg to list narratives (each has a slug), then call again with the slug to get that narrative's top tokens.
+Then synthesize the real numbers in your own words (a markdown table for multi-token comparisons); cite the source (CoinGecko / DexScreener). NONE of these return token HOLDER counts / distribution — if asked for "top holders", say you can't fetch that yet and point to a chain explorer (e.g. Suivision/SuiScan).`;
 
 export const walletPrompt = `Passport wallet — the user has a non-custodial Sui wallet (created from their Google sign-in via zkLogin; no seed phrase). You can read it, and move funds from it WITH their tap-to-confirm. You can send two gasless Sui-native stables: USDC and USDsui (Sui Dollar). Both are spendable.
 - \`balance_check\`: read their holdings (USDC, USDsui, SUI, other tokens) with USD values. Use it for balance questions AND to check affordability before proposing a send. It renders its OWN balance table in the UI — do NOT restate the figures in a document/artifact; after it runs, add at most a one-line natural-language summary.

@@ -36,6 +36,10 @@ import {
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { cryptoMarket } from "@/lib/ai/tools/crypto-market";
+import {
+  dexscreenerToken,
+  dexscreenerTrending,
+} from "@/lib/ai/tools/dexscreener";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
@@ -89,6 +93,8 @@ export const maxDuration = 300;
 type ActiveTool =
   | "web_search"
   | "crypto_market"
+  | "dexscreener_token"
+  | "dexscreener_trending"
   | "createDocument"
   | "editDocument"
   | "updateDocument"
@@ -647,9 +653,12 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
-                  // crypto_market (first wedge skill) — live structured market
-                  // data; beats stale web_search for prices/caps. Free + keyless.
+                  // Crypto skills (the wedge — our edge over Venice's zero
+                  // on-chain). crypto_market = listed-coin price (CoinGecko);
+                  // dexscreener_* = onchain/DEX token research + trending. Free.
                   "crypto_market",
+                  "dexscreener_token",
+                  "dexscreener_trending",
                   // Image generation/edit are first-class + always available to
                   // signed-in users (no heuristic gate → no dead-ends).
                   "generate_image",
@@ -674,10 +683,18 @@ export async function POST(request: Request) {
                 ? [
                     "web_search",
                     "crypto_market",
+                    "dexscreener_token",
+                    "dexscreener_trending",
                     "generate_image",
                     "createDocument",
                   ]
-                : ["web_search", "crypto_market", "generate_image"];
+                : [
+                    "web_search",
+                    "crypto_market",
+                    "dexscreener_token",
+                    "dexscreener_trending",
+                    "generate_image",
+                  ];
 
         const result = streamText({
           model: baseModel,
@@ -772,6 +789,10 @@ export async function POST(request: Request) {
             // crypto_market (first wedge skill, §0.5 P0) — live structured market
             // data; available to everyone (read-only public data, no auth, free).
             crypto_market: cryptoMarket,
+            // crypto_research tools (DexScreener) — onchain/DEX token research +
+            // trending narratives ("top AI coins"); free, keyless, multi-chain.
+            dexscreener_token: dexscreenerToken,
+            dexscreener_trending: dexscreenerTrending,
             // Image generation is always available (anon → sign-in gate inside
             // the tool, never a dead-end). First-class, not via createDocument.
             generate_image: generateImage({
