@@ -65,8 +65,14 @@ export const dexscreenerToken = tool({
     query: z
       .string()
       .describe("Token symbol, name, or contract address (any chain)."),
+    chain: z
+      .string()
+      .optional()
+      .describe(
+        "Chain to restrict to when the user names one (e.g. 'sui', 'solana', 'ethereum', 'base'). Pass it whenever the user says 'on <chain>' — otherwise a low-liquidity token on that chain can be outranked by same-symbol tokens elsewhere."
+      ),
   }),
-  execute: async ({ query }) => {
+  execute: async ({ query, chain }) => {
     try {
       const res = await fetch(
         `${DEXSCREENER}/latest/dex/search?q=${encodeURIComponent(query)}`
@@ -75,11 +81,26 @@ export const dexscreenerToken = tool({
         return { error: `Token lookup unavailable (${res.status}).` };
       }
       const data = (await res.json()) as { pairs?: Pair[] };
-      const pairs = topByLiquidity(data.pairs ?? []);
-      if (pairs.length === 0) {
+      let pairs = data.pairs ?? [];
+      let chainNote: string | undefined;
+      if (chain) {
+        const c = chain.toLowerCase();
+        const onChain = pairs.filter((p) => p.chainId?.toLowerCase() === c);
+        if (onChain.length > 0) {
+          pairs = onChain;
+        } else {
+          chainNote = `No ${chain} match for "${query}"; showing other chains. If it's a specific token, pass its contract address.`;
+        }
+      }
+      const top = topByLiquidity(pairs);
+      if (top.length === 0) {
         return { error: `No DEX token found for "${query}".` };
       }
-      return { results: pairs.map(shapePair), source: "DexScreener" };
+      return {
+        results: top.map(shapePair),
+        source: "DexScreener",
+        ...(chainNote ? { note: chainNote } : {}),
+      };
     } catch (e) {
       return { error: `Token lookup failed: ${(e as Error).message}` };
     }

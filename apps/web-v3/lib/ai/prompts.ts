@@ -206,7 +206,7 @@ CRITICAL — trust fresh results over your training: the web results reflect the
 
 export const cryptoPrompt = `Crypto data — you have live tools; pick by intent (don't use web_search for these — these are precise + current):
 - \`crypto_market\`: a MAJOR listed coin's market data (price, market cap, 24h/7d, rank) by name/symbol — e.g. "price of SUI/BTC". Fast path for the top coins.
-- \`dexscreener_token\`: research ANY token (esp. smaller/new/memecoins, or a specific CONTRACT address) across all chains — price, liquidity, 24h volume, DEX, socials. Use for "research <token>", "info on <0x…/sui contract>", or anything crypto_market doesn't list. Prefer the contract address for an exact token.
+- \`dexscreener_token\`: research ANY token (esp. smaller/new/memecoins, or a specific CONTRACT address) across all chains — price, liquidity, 24h volume, DEX, socials. Use for "research <token>", "info on <0x…/sui contract>", or anything crypto_market doesn't list. Prefer the contract address for an exact token. If the user names a CHAIN ("MANIFEST on Sui"), pass \`chain\` (e.g. 'sui') so a low-liquidity token on that chain isn't outranked by same-symbol tokens elsewhere.
 - \`dexscreener_trending\`: trending narratives — "what are the top AI coins right now", "what's hot". Call with NO arg to list narratives (each has a slug), then call again with the slug to get that narrative's top tokens.
 Then synthesize the real numbers in your own words (a markdown table for multi-token comparisons); cite the source (CoinGecko / DexScreener). NONE of these return token HOLDER counts / distribution — if asked for "top holders", say you can't fetch that yet and point to a chain explorer (e.g. Suivision/SuiScan).`;
 
