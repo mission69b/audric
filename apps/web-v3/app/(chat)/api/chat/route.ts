@@ -45,7 +45,6 @@ import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
-import { runRecipeTool } from "@/lib/ai/tools/run-recipe";
 import { saveMemory } from "@/lib/ai/tools/save-memory";
 import { sendTransfer } from "@/lib/ai/tools/send-transfer";
 import { setPreferences } from "@/lib/ai/tools/set-preferences";
@@ -89,7 +88,7 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 // Web-search-grounded turns can run 60–120s (search + synthesis). 60s would be
 // killed mid-stream in prod — raise to 300s (Vercel Fluid compute / Pro; Hobby
 // caps at 60s so deep-research turns need a paid tier). Genuinely long async
-// work (video gen, multi-step Recipes) graduates to Vercel Workflows in 4b.
+// work (video gen) graduates to Vercel Workflows in 4b.
 export const maxDuration = 300;
 
 type ActiveTool =
@@ -109,7 +108,6 @@ type ActiveTool =
   | "transaction_history"
   | "resolve_suins"
   | "send_transfer"
-  | "run_recipe"
   | "save_memory"
   | "set_preferences";
 
@@ -191,7 +189,7 @@ export async function POST(request: Request) {
 
     // "Auto" → classify the turn and pick the best entitled model (router). On a
     // tool-approval continuation (no fresh `message`), classify on the latest
-    // user message so synthesis (e.g. a recipe) still routes to a capable model.
+    // user message so synthesis still routes to a capable model.
     type TextPart = { type?: string; text?: string };
     const partsText = (parts: TextPart[] | undefined): string =>
       (parts ?? [])
@@ -269,14 +267,6 @@ export async function POST(request: Request) {
             hasImage: hasImageAttachment,
           })
         : null;
-
-    // Recipes are a USER-INITIATED paid action — the agent must NOT spontaneously
-    // spend on one for a general question (the Recipes "Run" button seeds
-    // "Run the <Name> recipe …"; a user can also ask explicitly). Only expose
-    // `run_recipe` to the model on such turns. Deterministic + model-agnostic, so
-    // no model can surprise the user with an unprompted paid recipe card; general
-    // research questions answer via the free web_search path instead.
-    const isExplicitRecipe = /\brun\b[\s\S]*\brecipe\b/i.test(routeText);
 
     // Anonymous "try-before-signup" is allowed: no session => free-model-only,
     // no server persistence. Premium models + saved history require sign-in.
@@ -418,16 +408,6 @@ export async function POST(request: Request) {
       chatModel = DEFAULT_CHAT_MODEL;
     }
 
-    // Recipes ALWAYS run on the free model (Kimi), overriding Auto AND explicit
-    // picks: (1) cold-start — a user with zero credits can still run a paid
-    // Recipe (the USDC pays the data service, not the model), and (2) it
-    // sidesteps a Gemini-3 tool-narration failure ("must include at least one
-    // parts field" after a tool result). Recipe narration is just formatting
-    // fetched data — it never needs a premium model.
-    if (isExplicitRecipe) {
-      chatModel = DEFAULT_CHAT_MODEL;
-    }
-
     // Keep artifacts active when this chat ALREADY has one — so refinement turns
     // WITHOUT a creation verb ("add a glow", "warmer colors", "make it sleeker")
     // can still edit it. Otherwise the verb-only gate would disable
@@ -441,8 +421,7 @@ export async function POST(request: Request) {
             p.type === "tool-createDocument" || p.type === "tool-updateDocument"
         )
     );
-    const artifactsActive =
-      isExplicitArtifact || isExplicitRecipe || hasExistingArtifact;
+    const artifactsActive = isExplicitArtifact || hasExistingArtifact;
 
     // The most recent image in THIS conversation (generated/edited, incl. old
     // createDocument-image) + whether the chat involved an image at all.
@@ -475,7 +454,7 @@ export async function POST(request: Request) {
                 (p: Record<string, unknown>) =>
                   p.state === "approval-responded" ||
                   p.state === "output-denied" ||
-                  // Client-executed tools (send_transfer, run_recipe) produce
+                  // Client-executed tools (send_transfer) produce
                   // their result in the
                   // browser; trust the client-provided output on continuation so
                   // the agent can narrate it. Safe here — the user paid from
@@ -508,16 +487,13 @@ export async function POST(request: Request) {
       ];
     }
 
-    // Resolve dangling client-executed tool calls (send_transfer /
-    // run_recipe) the user bypassed by typing a new message instead of using the
-    // card. Left unresolved, `convertToModelMessages` throws "Tool result is
-    // missing" and the whole turn fails. Synthesize a benign "skipped" result so
-    // the conversation continues (the model treats the user's chat reply as the
+    // Resolve dangling client-executed tool calls (send_transfer) the user
+    // bypassed by typing a new message instead of using the card. Left
+    // unresolved, `convertToModelMessages` throws "Tool result is missing" and
+    // the whole turn fails. Synthesize a benign "skipped" result so the
+    // conversation continues (the model treats the user's chat reply as the
     // answer). Applies to history only — the new user message has no tool calls.
-    const CLIENT_TOOL_PART_TYPES = new Set([
-      "tool-send_transfer",
-      "tool-run_recipe",
-    ]);
+    const CLIENT_TOOL_PART_TYPES = new Set(["tool-send_transfer"]);
     uiMessages = uiMessages.map((m) => ({
       ...m,
       parts: m.parts.map((p) => {
@@ -685,7 +661,6 @@ export async function POST(request: Request) {
                         "requestSuggestions",
                       ] as ActiveTool[])
                     : []),
-                  ...(isExplicitRecipe ? (["run_recipe"] as ActiveTool[]) : []),
                   ...(memoryOn ? (["save_memory"] as ActiveTool[]) : []),
                   "set_preferences",
                 ]
@@ -721,7 +696,6 @@ export async function POST(request: Request) {
             customInstructions: dbUser?.customInstructions,
             walletAddress: session?.user?.id,
             artifactsActive,
-            recipesActive: isExplicitRecipe,
             researchActive,
           }),
           messages: modelMessages,
@@ -855,9 +829,6 @@ export async function POST(request: Request) {
                   }),
                   resolve_suins: resolveSuins,
                   send_transfer: sendTransfer,
-                  // Recipes (Phase 4b) — client-executed multi-service paid
-                  // flows; the browser signs each x402 call on confirm.
-                  run_recipe: runRecipeTool,
                   // Private Memory (§7c) — explicit capture; only when the user
                   // has memory ON this turn. Recall is automatic (model wrap).
                   ...(memoryOn

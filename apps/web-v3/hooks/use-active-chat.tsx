@@ -126,7 +126,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
             (part.approval as { approved?: boolean })?.approved === true
         ) ?? false;
       // Continue the turn either after an approval (server-executed tools) OR
-      // once a client-executed tool (send_transfer, run_recipe) has returned its
+      // once a client-executed tool (send_transfer) has returned its
       // result via addToolResult — so the agent narrates the response.
       return (
         approvalApproved || lastAssistantMessageIsCompleteWithToolCalls(opts)

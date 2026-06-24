@@ -18,7 +18,6 @@
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
-    "smoke:models": "tsx scripts/model-matrix-smoke.mts",
     "eval:router": "tsx scripts/router-eval.mts",
     "eval:image": "tsx scripts/eval-image-fallback.ts",
     "smoke:image": "tsx scripts/image-edit-spike.mts",

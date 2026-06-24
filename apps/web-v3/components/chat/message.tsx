@@ -30,7 +30,6 @@ import { useArtifact } from "@/hooks/use-artifact";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
-import { RecipeRunTool } from "./recipe-run-tool";
 import { SendTransferTool } from "./send-transfer-tool";
 
 /** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
@@ -213,10 +212,6 @@ const PurePreviewMessage = ({
 
     if (type === "tool-send_transfer") {
       return <SendTransferTool key={part.toolCallId} part={part} />;
-    }
-
-    if (type === "tool-run_recipe") {
-      return <RecipeRunTool key={part.toolCallId} part={part} />;
     }
 
     if (type === "tool-save_memory") {

@@ -27,7 +27,7 @@ export default function TermsPage() {
         network. You sign in with Google, and a self-custodial wallet is derived
         for you (zkLogin). <strong>Audric is non-custodial:</strong> we cannot
         access, move, or freeze your funds, and every on-chain action (sending
-        USDC, paying for a Recipe, etc.) requires your explicit confirmation.
+        USDC, etc.) requires your explicit confirmation.
       </p>
 
       <H>2. Not financial advice</H>

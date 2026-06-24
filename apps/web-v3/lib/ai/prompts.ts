@@ -109,7 +109,6 @@ export const systemPrompt = ({
   customInstructions,
   walletAddress,
   artifactsActive,
-  recipesActive,
   researchActive,
 }: {
   requestHints: RequestHints;
@@ -127,12 +126,9 @@ export const systemPrompt = ({
   memoryRecall?: string | null;
   walletAddress?: string;
   /** Only advertise the artifact tools when they're actually active this turn
-   * (explicit creation intent / recipe) — otherwise the model narrates "I'll
+   * (explicit creation intent) — otherwise the model narrates "I'll
    * create a document" and double-outputs (inline + artifact). */
   artifactsActive?: boolean;
-  /** Only advertise Recipes when `run_recipe` is active this turn — otherwise
-   * the model announces "I'll run the recipe" it can't actually run. */
-  recipesActive?: boolean;
   /** Research-shaped turn → inject the multi-search directive so the model runs
    * several VISIBLE web_search steps then a cited synthesis. */
   researchActive?: boolean;
@@ -155,13 +151,11 @@ export const systemPrompt = ({
   // model treats a plain question as a "write a document" task).
   const artifacts = artifactsActive ? `\n\n${artifactsPrompt}` : "";
 
-  // Wallet tools + Recipes are wallet-gated → only offer them to signed-in users.
+  // Wallet tools are wallet-gated → only offer them to signed-in users.
   const addrLine = walletAddress
     ? `\nThe user's Passport wallet address is ${walletAddress} — this is also their receive address. When they ask "what's my address" / "where do I receive", give it directly; don't tell them to look elsewhere.`
     : "";
-  const wallet = isAuthed
-    ? `\n\n${walletPrompt}${addrLine}${recipesActive ? `\n\n${recipesPrompt}` : ""}`
-    : "";
+  const wallet = isAuthed ? `\n\n${walletPrompt}${addrLine}` : "";
   // Recalled facts FIRST, then the memory instruction — so its "injected above"
   // wording stays accurate.
   const memory = isAuthed && memoryOn ? `${recall}\n\n${memoryPrompt}` : "";
@@ -228,15 +222,7 @@ Money-write discipline (sends):
 - Don't repeat a send the user already confirmed unless they clearly ask again.
 - EXPECTED OUTPUT: after it confirms, tell them it's done and share the on-chain digest; if it's denied or fails, say so plainly — never imply money moved when it didn't.`;
 
-export const boundariesPrompt = `What you can do today: chat, live web search, image generation, read/move the user's Passport USDC (send + balances + history), and run curated Recipes (paid multi-service data flows — signed-in users).
-Free-form "call or pay for any external API/service" is NOT available — only the curated Recipes below. If asked for something outside this, say so briefly and offer what you CAN do. NEVER claim to have called or paid a service when you haven't.`;
-
-export const recipesPrompt = `Recipes — curated, paid multi-service data flows. Each runs a fixed set of live-data calls billed in USDC from the user's Passport; the user taps to confirm the bundled price first. Available recipes:
-- \`morning_brief\` (Morning Brief): top business news + S&P 500 + leading crypto + weather. Optional input \`city\`.
-- \`ticker_deep_dive\` (Ticker Deep-Dive): live quote + recent price history + recent news for ONE stock. REQUIRED input \`symbol\` (e.g. AAPL) — ask for it if missing.
-When the user asks to run one (by name or "run recipe"), call \`run_recipe\` with the matching recipeId + inputs. After it returns, synthesize the \`data\` into a clear, well-structured briefing written INLINE in your reply (use markdown headings/bullets — do NOT create an artifact). If the result is partial, use what's present and note what's missing. Never blind-retry — failed steps auto-refund.
-
-If steps FAIL: report it plainly and briefly. Recipes are paid in USDC and Audric is gasless — so NEVER tell the user to acquire/top-up SUI or "gas", and NEVER invent technical causes (gas, faucets, sponsored-transaction mechanics, on-chain budgeting). You do not have that information. Say the recipe couldn't complete its paid steps right now and offer to try again later; if a specific error string is in the result, you may quote it verbatim, but do not embellish or speculate about blockchain internals.`;
+export const boundariesPrompt = `What you can do today: chat, live web search + read a specific page, live crypto + US-stock market data, image generation/editing, and read/move the user's Passport USDC (send + balances + history — signed-in users). If asked for something outside this, say so briefly and offer what you CAN do. NEVER claim to have called or paid a service when you haven't.`;
 
 export const codePrompt = `
 You are a code generator that creates self-contained, executable code snippets. When writing code:

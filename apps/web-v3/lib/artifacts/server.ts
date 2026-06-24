@@ -25,7 +25,7 @@ export type CreateDocumentCallbackProps = {
   session: Session | null;
   modelId: string;
   // Live conversation messages from the tool-execute step — includes prior tool
-  // results (run_recipe / web_search) so the doc is written from REAL fetched
+  // results (web_search) so the doc is written from REAL fetched
   // data, not hallucinated from the title alone. Absent → title-only fallback.
   contextMessages?: ModelMessage[];
   // kind:'image' only — the selected image model + aspect ratio (set by the

@@ -5,7 +5,6 @@ import {
   GiftIcon,
   PanelLeftIcon,
   PenSquareIcon,
-  SparklesIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -127,21 +126,6 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
                     <span className="font-medium">New chat</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                {user && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                      onClick={() => {
-                        setOpenMobile(false);
-                        router.push("/recipes");
-                      }}
-                      tooltip="Recipes"
-                    >
-                      <SparklesIcon className="size-4" />
-                      <span className="font-medium">Recipes</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
                 {!user && (
                   <SidebarMenuItem>
                     <SidebarMenuButton

@@ -7,7 +7,6 @@ import type { editImage } from "./ai/tools/edit-image";
 import type { generateImage } from "./ai/tools/generate-image";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
-import type { runRecipeTool } from "./ai/tools/run-recipe";
 import type { saveMemory } from "./ai/tools/save-memory";
 import type { sendTransfer } from "./ai/tools/send-transfer";
 import type { transactionHistory } from "./ai/tools/transaction-history";
@@ -45,7 +44,6 @@ type transactionHistoryTool = InferUITool<
 >;
 type resolveSuinsTool = InferUITool<typeof resolveSuins>;
 type sendTransferTool = InferUITool<typeof sendTransfer>;
-type runRecipeToolType = InferUITool<typeof runRecipeTool>;
 type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
 type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
 type editImageTool = InferUITool<ReturnType<typeof editImage>>;
@@ -61,7 +59,6 @@ export type ChatTools = {
   transaction_history: transactionHistoryTool;
   resolve_suins: resolveSuinsTool;
   send_transfer: sendTransferTool;
-  run_recipe: runRecipeToolType;
   save_memory: saveMemoryTool;
 };
 

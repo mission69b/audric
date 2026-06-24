@@ -75,8 +75,8 @@ function ReturnInner() {
         on.
       </p>
       <p className="mt-3 text-muted-foreground text-xs">
-        New here? Try live web research, generating an image, or running a
-        market Recipe.
+        New here? Try live web research, a crypto or stock lookup, or generating
+        an image.
       </p>
 
       {/* Founder touch + sticker teaser (the claim-stickers flow lands here later) */}

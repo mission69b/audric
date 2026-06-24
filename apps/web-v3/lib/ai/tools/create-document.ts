@@ -73,7 +73,7 @@ export const createDocument = ({
         dataStream,
         session,
         modelId,
-        // The live step messages carry prior tool results (recipe/search data),
+        // The live step messages carry prior tool results (search/skill data),
         // so a 'code'/'sheet' handler can write from real data, not the title alone.
         contextMessages: messages,
       });

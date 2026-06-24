@@ -17,8 +17,8 @@ export function flattenContext(messages: ModelMessage[]): string {
   // → the handler uses its CREATIVE prompt ("write about the topic") instead of
   // the data-grounded "use ONLY the data, do NOT invent" prompt. (The latter,
   // fed the user's instruction as "data", muzzled creative artifacts into blank
-  // output — there's nothing to "use" and inventing is forbidden.) Recipe / web-
-  // search synthesis still grounds correctly: their data lives in tool-results.
+  // output — there's nothing to "use" and inventing is forbidden.) Web-search /
+  // data-skill synthesis still grounds correctly: their data lives in tool-results.
   const chunks: string[] = [];
   for (const m of messages) {
     const content = m.content;
@@ -34,7 +34,7 @@ export function flattenContext(messages: ModelMessage[]): string {
       }
     }
   }
-  // Cap so a large recipe/news payload can't blow the artifact-gen context.
+  // Cap so a large news/search payload can't blow the artifact-gen context.
   return chunks.join("\n\n").slice(0, 24_000);
 }
 
@@ -43,7 +43,7 @@ export const textDocumentHandler = createDocumentHandler<"text">({
   onCreateDocument: async ({ title, dataStream, modelId, contextMessages }) => {
     let draftContent = "";
 
-    // When the turn already fetched data (a recipe, a web search), write the
+    // When the turn already fetched data (a web search, a data skill), write the
     // document FROM that data — never invent facts the data doesn't contain.
     // Otherwise fall back to writing about the title topic from knowledge.
     const contextText = contextMessages?.length

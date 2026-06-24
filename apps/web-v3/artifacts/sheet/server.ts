@@ -9,7 +9,7 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
   onCreateDocument: async ({ title, dataStream, modelId, contextMessages }) => {
     let draftContent = "";
 
-    // If the turn already fetched data (recipe / web search), build the sheet
+    // If the turn already fetched data (web search / data skill), build the sheet
     // FROM that data — never fabricate rows. Flatten to plain text (not the raw
     // tool-call messages, which strict providers reject → empty output).
     const contextText = contextMessages?.length

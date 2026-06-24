@@ -44,7 +44,7 @@ export const EVERY_PLAN: string[] = [
   "Decentralized memory — encrypted on Walrus, yours to wipe",
   "Private chats & files — encrypted at rest, never public",
   "Auto — automatically picks the best model for every task",
-  "Recipes — pay-per-use live-data flows, with your own USDC",
+  "Live crypto + stock market data + web research — built in",
 ];
 
 /** Teased, never sold — clearly labeled "coming". */
@@ -102,11 +102,10 @@ export const TOPUP_PRESETS_USD = [5, 10, 25, 50];
 /**
  * What pay-as-you-go credit unlocks — shown on the top-up checkout so it isn't
  * just a bare amount. Benefit-led, minimal. Credit funds premium/frontier model
- * usage, media generation, and Recipes; core open-model chat stays free.
+ * usage and media generation; core open-model chat + data skills stay free.
  */
 export const TOPUP_PERKS: string[] = [
   "Every premium + frontier model — Claude, GPT-5.5, Gemini",
   "Image & media generation",
-  "Pay-per-use Recipes — live market data",
   "Never expires — only pay for what you use",
 ];

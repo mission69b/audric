@@ -15,7 +15,7 @@
  * Audric sends gasless stables (USDC + USDsui). The asset is part of the intent
  * key, so the dedup gate treats "5 USDC" and "5 USDsui" to the same address as
  * distinct sends. Pure + deterministic by design (the human tap is the other
- * gate). Reused by the Recipes `payService` path.
+ * gate). Backs the send_transfer path.
  */
 
 import { preflightSend } from "@t2000/sdk/browser";

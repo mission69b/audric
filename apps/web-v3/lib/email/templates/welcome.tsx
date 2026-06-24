@@ -21,7 +21,7 @@ const FEATURES: [string, string][] = [
     "Private memory & chats",
     "encrypted on decentralized storage, yours to delete anytime",
   ],
-  ["Recipes", "pay-per-use live-data flows, with your own USDC"],
+  ["Live crypto + stock research", "real-time market data, right in chat"],
 ];
 
 export function WelcomeEmail({ name }: { name?: string }) {

@@ -2,7 +2,8 @@
 
 **Private, decentralized AI — truly yours.** A private-by-default, permissionless,
 multi-model AI agent on Sui: Google sign-in → a non-custodial zkLogin Passport
-wallet → an AI that can search, generate, send USDC (P2P), and run paid Recipes.
+wallet → an AI that can search the web, research live crypto + stock markets,
+generate images, and send USDC (P2P).
 
 Part of the [t2000](https://t2000.ai) stack — consumes `@t2000/sdk`.
 
@@ -14,16 +15,16 @@ Part of the [t2000](https://t2000.ai) stack — consumes `@t2000/sdk`.
   classify → model + reasoning effort + step budget, entitlement-aware),
   **visible multi-step research** (research-shaped turns run several live
   `web_search` steps in the main loop → cited synthesis, rendered in a
-  chain-of-thought timeline), and opt-in artifacts/recipes. Verify harnesses:
-  `pnpm eval:router` · `pnpm smoke:models`
+  chain-of-thought timeline), and opt-in artifacts. Verify harnesses:
+  `pnpm eval:router` · `pnpm eval:image`
 - **zkLogin Passport** auth (`@mysten/enoki` + `@t2000/sdk`) — Google sign-in,
   non-custodial wallet, ~7-day httpOnly app session
 - **Drizzle ORM** + Postgres (Neon) for chats / messages / credit ledger
 - **Private blob seam** (`lib/blob`) — private blobs with a local-fs fallback;
   Walrus + Seal is the post-launch decentralized swap behind the same interface
 - **Private Memory** (`@mysten-incubation/memwal`) — opt-in, off by default
-- **Credit rail** (Stripe) — card top-up → metered premium models; P2P + Recipes
-  paid in USDC from the Passport
+- **Credit rail** (Stripe) — card top-up → metered premium models; P2P USDC
+  sends from the Passport
 - **shadcn/ui** + Tailwind + AI Elements
 
 ## Running locally

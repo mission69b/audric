@@ -1,7 +1,7 @@
 /**
  * Client-side P2P send executor (Audric v3 — the money path's second write).
  *
- * Runs in the browser on the zkLogin Passport session key, mirroring payService:
+ * Runs in the browser on the zkLogin Passport session key:
  *   session (localStorage) → ZkLoginSigner → buildSendTx → executeTx (gasless).
  *
  * Audric sends gasless stables — USDC + USDsui. Both transfer gaslessly at the
