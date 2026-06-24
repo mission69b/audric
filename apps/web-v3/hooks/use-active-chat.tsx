@@ -12,7 +12,6 @@ import {
   type Dispatch,
   type ReactNode,
   type SetStateAction,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -50,11 +49,6 @@ type ActiveChatContextValue = {
   votes: Vote[] | undefined;
   currentModelId: string;
   setCurrentModelId: (id: string) => void;
-  /** The armed skill (composer slash / picker / /skills page) — drives the
-   * composer badge; its methodology loads each turn until cleared. */
-  activeSkillId: string | null;
-  /** Arm/clear the active skill (load-on-invoke). Pass null to clear. */
-  setActiveSkill: (slug: string | null) => void;
   showCreditCardAlert: boolean;
   setShowCreditCardAlert: Dispatch<SetStateAction<boolean>>;
 };
@@ -88,18 +82,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
-
-  // Active skill (composer slash / picker / the /skills page). VISIBLE state
-  // (drives the composer badge) that PERSISTS until the user clears it or picks
-  // another — the methodology re-loads each turn while active (load-on-invoke).
-  // A ref mirror is set synchronously so prepareSendMessagesRequest reads the
-  // current value even on the same tick as a programmatic invoke.
-  const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
-  const activeSkillRef = useRef<string | null>(null);
-  const setActiveSkill = useCallback((slug: string | null) => {
-    activeSkillRef.current = slug;
-    setActiveSkillId(slug);
-  }, []);
 
   const [input, setInput] = useState("");
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
@@ -170,10 +152,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
           typeof window !== "undefined" &&
           window.localStorage.getItem("audric-memory") === "1";
 
-        // Persistent active skill — re-sent each turn while armed (the user
-        // clears it via the composer badge ✕ or by picking another skill).
-        const activeSkillId = activeSkillRef.current ?? undefined;
-
         return {
           body: {
             id: request.id,
@@ -183,7 +161,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibility,
             useMemWal,
-            ...(activeSkillId ? { activeSkillId } : {}),
             ...request.body,
           },
         };
@@ -253,9 +230,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     const query = params.get("query");
     if (query && !hasAppendedQueryRef.current) {
       hasAppendedQueryRef.current = true;
-      // Load-on-invoke from the /skills page: ?skill=<slug> arms that skill
-      // (badge shows; methodology loads each turn until cleared).
-      setActiveSkill(params.get("skill"));
       window.history.replaceState(
         {},
         "",
@@ -266,7 +240,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
         parts: [{ type: "text", text: query }],
       });
     }
-  }, [sendMessage, chatId, setActiveSkill]);
+  }, [sendMessage, chatId]);
 
   useAutoResume({
     autoResume: !isNewChat && !!chatData,
@@ -304,8 +278,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       votes,
       currentModelId,
       setCurrentModelId,
-      activeSkillId,
-      setActiveSkill,
       showCreditCardAlert,
       setShowCreditCardAlert,
     }),
@@ -326,8 +298,6 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       isLoading,
       votes,
       currentModelId,
-      activeSkillId,
-      setActiveSkill,
       showCreditCardAlert,
     ]
   );

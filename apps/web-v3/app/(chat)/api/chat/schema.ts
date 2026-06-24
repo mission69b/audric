@@ -49,10 +49,6 @@ export const postRequestBodySchema = z.object({
   // Private Memory opt-in (off by default) — recall this user's memories +
   // enable the save_memory tool for this turn.
   useMemWal: z.boolean().optional(),
-  // Explicitly-invoked skill (composer slash, e.g. /crypto) — the route loads
-  // that skill's methodology into the system prompt for this turn (load-on-invoke
-  // / progressive disclosure). Absent on normal turns (the agent auto-routes).
-  activeSkillId: z.string().max(64).optional(),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

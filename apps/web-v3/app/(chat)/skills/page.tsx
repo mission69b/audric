@@ -7,21 +7,8 @@
  * natural language — this page just makes them visible + tappable.
  */
 
-import {
-  ArrowUpRightIcon,
-  BookOpenIcon,
-  SparklesIcon,
-  XIcon,
-} from "lucide-react";
+import { ArrowUpRightIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Streamdown } from "streamdown";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { SKILLS, type SkillDef } from "@/lib/skills/catalog";
 
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -30,10 +17,7 @@ function SkillCard({ skill }: { skill: SkillDef }) {
   const router = useRouter();
 
   const tryExample = (prompt: string) => {
-    // Pass the skill slug so the turn loads its methodology (load-on-invoke).
-    router.push(
-      `${BASE_PATH}/?query=${encodeURIComponent(prompt)}&skill=${skill.slug}`
-    );
+    router.push(`${BASE_PATH}/?query=${encodeURIComponent(prompt)}`);
   };
 
   return (
@@ -44,27 +28,7 @@ function SkillCard({ skill }: { skill: SkillDef }) {
         <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] text-muted-foreground">
           {skill.category}
         </span>
-        <Dialog>
-          <DialogTrigger asChild>
-            <button
-              aria-label={`How the ${skill.name} skill works`}
-              className="ml-auto rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-muted hover:text-foreground"
-              title="How it works"
-              type="button"
-            >
-              <BookOpenIcon className="size-3.5" />
-            </button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{skill.name} — how it works</DialogTitle>
-            </DialogHeader>
-            <Streamdown className="prose prose-sm dark:prose-invert max-w-none text-sm">
-              {skill.instructions}
-            </Streamdown>
-          </DialogContent>
-        </Dialog>
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 uppercase tracking-wide dark:text-emerald-400">
+        <span className="ml-auto rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 uppercase tracking-wide dark:text-emerald-400">
           Free
         </span>
       </div>

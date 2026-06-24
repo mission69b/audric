@@ -79,7 +79,6 @@ import {
   recallMemoryBlock,
 } from "@/lib/memwal";
 import { checkIpRateLimit } from "@/lib/ratelimit";
-import { getSkill } from "@/lib/skills/catalog";
 import { isCreditConfigured, maybeAutoRecharge } from "@/lib/stripe";
 import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
@@ -154,12 +153,7 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       useMemWal,
-      activeSkillId,
     } = requestBody;
-
-    // Load-on-invoke: an explicitly-invoked skill (composer slash) loads its
-    // methodology into the system prompt for this turn (progressive disclosure).
-    const activeSkill = activeSkillId ? getSkill(activeSkillId) : undefined;
 
     // Turn start — stamped ONCE here (server receive, ≈ user send) and reused for
     // the assistant message's createdAt on BOTH start and finish, so it's never
@@ -703,8 +697,6 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
             artifactsActive,
             researchActive,
-            skillName: activeSkill?.name,
-            skillInstructions: activeSkill?.instructions,
           }),
           messages: modelMessages,
           // Step budget: research turns get a high budget for several visible

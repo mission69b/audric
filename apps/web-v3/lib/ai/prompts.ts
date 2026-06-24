@@ -110,8 +110,6 @@ export const systemPrompt = ({
   walletAddress,
   artifactsActive,
   researchActive,
-  skillInstructions,
-  skillName,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -134,12 +132,6 @@ export const systemPrompt = ({
   /** Research-shaped turn → inject the multi-search directive so the model runs
    * several VISIBLE web_search steps then a cited synthesis. */
   researchActive?: boolean;
-  /** A skill's methodology (`SKILL.md`-style), injected ONLY when the user
-   * explicitly invoked that skill this turn (load-on-invoke). Absent on normal
-   * turns — the agent auto-routes via the short crypto/stock prompt lines. */
-  skillInstructions?: string | null;
-  /** Display name of the active skill (for the narration directive). */
-  skillName?: string | null;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -171,12 +163,7 @@ export const systemPrompt = ({
   // directives when it actually has the tool.
   const preferences = isAuthed ? `\n\n${preferencesPrompt}` : "";
   const research = researchActive ? `\n\n${researchPrompt}` : "";
-  // Load-on-invoke: when the user explicitly invokes a skill (composer slash),
-  // its full methodology is injected as a strong directive for this turn.
-  const skill = skillInstructions
-    ? `\n\n<active_skill>\nThe user has the **${skillName ?? "selected"}** skill active — load it and follow this methodology this turn. If their latest message contains a concrete task, do it. If their message is just the skill token (e.g. "/crypto") or otherwise has NO concrete task, briefly confirm the ${skillName ?? "skill"} skill is active and ask what they'd like to do with it BEFORE calling any tools — do not guess a task.\n\n${skillInstructions}\n</active_skill>`
-    : "";
-  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${skill}${wallet}${memory}${preferences}`;
+  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
 };
 
 export const preferencesPrompt = `Standing preferences (custom instructions): when the user states a LASTING directive about HOW you should respond — the language to reply in ("only speak German"), tone/length ("always be concise"), persona, what to call them, or output format — call \`set_preferences\` with the COMPLETE updated instruction set. These apply to EVERY future response automatically (they're injected as <custom_instructions> above), so do NOT use \`save_memory\` for them — memory is for FACTS recalled when relevant, which would miss a standing directive on an unrelated message.
@@ -217,11 +204,12 @@ export const cryptoPrompt = `Crypto data — you have live tools; pick by intent
 - \`dexscreener_token\`: research ANY token (esp. smaller/new/memecoins, or a specific CONTRACT address) across all chains — price, liquidity, 24h volume, DEX, socials. Use for "research <token>", "info on <0x…/sui contract>", or anything crypto_market doesn't list. Prefer the contract address for an exact token. If the user names a CHAIN ("MANIFEST on Sui"), pass \`chain\` (e.g. 'sui') so a low-liquidity token on that chain isn't outranked by same-symbol tokens elsewhere.
 - \`dexscreener_trending\`: trending narratives — "what are the top AI coins right now", "what's hot". Call with NO arg to list narratives (each has a slug), then call again with the slug to get that narrative's top tokens.
 Then synthesize the real numbers in your own words (a markdown table for multi-token comparisons); cite the source (CoinGecko / DexScreener). NONE of these return token HOLDER counts / distribution — if asked for "top holders", say you can't fetch that yet and point to a chain explorer (e.g. Suivision/SuiScan).
-For a DEEP request ("research / analyze / deep dive / what's the story with <token>"), CHAIN: get the hard numbers from the crypto tool(s) AND call \`web_search\` for the latest news / narrative / catalysts, then write one synthesized brief (numbers + the why). Don't stop at the raw price on a research-shaped ask.`;
+For a DEEP request ("research / analyze / deep dive / what's the story with <token>"), CHAIN: get the hard numbers from the crypto tool(s) AND call \`web_search\` for the latest news / narrative / catalysts, then write one synthesized brief (numbers + the why). Don't stop at the raw price on a research-shaped ask.
+ALWAYS format market caps + volumes WITH their unit ($2.81B, $262M) — never drop the B/M (a market cap is never a bare "$2,478"). Use ONLY the numbers from the current tool call; never carry a figure from one coin to another.`;
 
 export const stockPrompt = `Stocks / equities: for a US-listed STOCK or ETF, call \`stock_analysis\` with the company name or ticker — NOT web_search for the numbers (this is exact + live). It returns price, market cap, P/E, EPS, 52-week range, dividend yield, beta, analyst buy/hold/sell ratings, recent earnings beats/misses, recent news headlines, and peer companies. Call once per ticker, then synthesize in your own words (a markdown table for an overview or multi-stock comparison); cite "Finnhub", and cite any news headlines you use as markdown links.
-For a DEEP request ("research / analyze / deep dive / what's going on with / should I look at <stock>"), CHAIN: call \`stock_analysis\` for the hard numbers AND \`web_search\` for the latest catalysts / analyst takes / sentiment, then write one synthesized brief (numbers + the why). Don't stop at the raw quote on a research-shaped ask.
-It covers US equities only — for non-US tickers, or if it returns no match, fall back to web_search.`;
+For a DEEP request ("research / analyze / deep dive / what's going on with / should I look at <stock>"), CHAIN: call \`stock_analysis\` for the hard numbers AND \`web_search\` for the latest catalysts / analyst takes / sentiment, then write one synthesized brief — snapshot → fundamentals → analyst view → recent earnings & news → a balanced bull case AND bear case → bottom line. Don't stop at the raw quote on a research-shaped ask, and never give a buy/sell recommendation (present data + analysis).
+ALWAYS format market caps WITH their unit ($4.32T, $40B) — never a bare number. It covers US equities only — for non-US tickers, or if it returns no match, fall back to web_search.`;
 
 export const walletPrompt = `Passport wallet — the user has a non-custodial Sui wallet (created from their Google sign-in via zkLogin; no seed phrase). You can read it, and move funds from it WITH their tap-to-confirm. You can send two gasless Sui-native stables: USDC and USDsui (Sui Dollar). Both are spendable.
 - \`balance_check\`: read their holdings (USDC, USDsui, SUI, other tokens) with USD values. Use it for balance questions AND to check affordability before proposing a send. It renders its OWN balance table in the UI — do NOT restate the figures in a document/artifact; after it runs, add at most a one-line natural-language summary.

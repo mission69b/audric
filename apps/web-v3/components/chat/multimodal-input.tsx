@@ -8,10 +8,8 @@ import {
   BrainIcon,
   EyeIcon,
   LockIcon,
-  PuzzleIcon,
   SparklesIcon,
   WrenchIcon,
-  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -41,11 +39,6 @@ import {
 } from "@/components/ai-elements/model-selector";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -58,7 +51,6 @@ import {
   type ModelPricing,
   type ModelPrivacyTier,
 } from "@/lib/ai/models";
-import { getSkill, SKILLS } from "@/lib/skills/catalog";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -104,8 +96,6 @@ function PureMultimodalInput({
   className,
   selectedModelId,
   onModelChange,
-  activeSkillId,
-  setActiveSkill,
   editingMessage,
   onCancelEdit,
 }: {
@@ -125,8 +115,6 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
-  activeSkillId?: string | null;
-  setActiveSkill?: (slug: string | null) => void;
   editingMessage?: ChatMessage | null;
   onCancelEdit?: () => void;
 }) {
@@ -221,26 +209,10 @@ function PureMultimodalInput({
     }
   };
 
-  // Arm a skill (picker or slash): drop a `/slug ` token into the composer +
-  // mark it active (load-on-invoke). The token is the "press enter to run"
-  // affordance; the badge persists after send. Preserves any free text already
-  // typed (and replaces a previously-armed leading token).
-  const armSkill = (slug: string) => {
-    setSlashOpen(false);
-    const rest = input.replace(/^\/\S+\s*/, "");
-    setInput(rest ? `/${slug} ${rest}` : `/${slug} `);
-    setActiveSkill?.(slug);
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  };
-
   const handleSlashSelect = (cmd: SlashCommand) => {
     setSlashOpen(false);
     setInput("");
     switch (cmd.action) {
-      case "skill":
-        // Arm the skill — drops `/slug ` into the composer; press enter to run.
-        armSkill(cmd.name);
-        break;
       case "new":
         router.push("/");
         break;
@@ -300,53 +272,50 @@ function PureMultimodalInput({
   const [slashQuery, setSlashQuery] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
 
-  const submitForm = useCallback(
-    (overrideText?: string) => {
-      window.history.pushState(
-        {},
-        "",
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
-      );
+  const submitForm = useCallback(() => {
+    window.history.pushState(
+      {},
+      "",
+      `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/chat/${chatId}`
+    );
 
-      sendMessage({
-        role: "user",
-        parts: [
-          ...attachments.map((attachment) => ({
-            type: "file" as const,
-            url: attachment.url,
-            name: attachment.name,
-            // `filename` is the AI-SDK-standard field the preview chip reads;
-            // `name` is our schema field the server reads. Send both → the chip
-            // shows the real name (not "file") and the server keeps its handle.
-            filename: attachment.name,
-            mediaType: attachment.contentType,
-          })),
-          {
-            type: "text",
-            text: overrideText ?? input,
-          },
-        ],
-      });
+    sendMessage({
+      role: "user",
+      parts: [
+        ...attachments.map((attachment) => ({
+          type: "file" as const,
+          url: attachment.url,
+          name: attachment.name,
+          // `filename` is the AI-SDK-standard field the preview chip reads;
+          // `name` is our schema field the server reads. Send both → the chip
+          // shows the real name (not "file") and the server keeps its handle.
+          filename: attachment.name,
+          mediaType: attachment.contentType,
+        })),
+        {
+          type: "text",
+          text: input,
+        },
+      ],
+    });
 
-      setAttachments([]);
-      setLocalStorageInput("");
-      setInput("");
+    setAttachments([]);
+    setLocalStorageInput("");
+    setInput("");
 
-      if (width && width > 768) {
-        textareaRef.current?.focus();
-      }
-    },
-    [
-      input,
-      setInput,
-      attachments,
-      sendMessage,
-      setAttachments,
-      setLocalStorageInput,
-      width,
-      chatId,
-    ]
-  );
+    if (width && width > 768) {
+      textareaRef.current?.focus();
+    }
+  }, [
+    input,
+    setInput,
+    attachments,
+    sendMessage,
+    setAttachments,
+    setLocalStorageInput,
+    width,
+    chatId,
+  ]);
 
   const uploadFile = useCallback(async (file: File) => {
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -660,32 +629,13 @@ function PureMultimodalInput({
       <PromptInput
         className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
         onSubmit={() => {
-          const trimmed = input.trim();
-          if (trimmed.startsWith("/")) {
-            const firstWord = trimmed.slice(1).split(/\s+/)[0];
-            // A skill token (`/crypto [task]`): arm it + send the task (or the
-            // bare token → the agent confirms + asks). The token is stripped so
-            // the message is just the task.
-            const skill = SKILLS.find((s) => s.slug === firstWord);
-            if (skill) {
-              const task = trimmed.slice(firstWord.length + 1).trim();
-              setActiveSkill?.(skill.slug);
-              if (status === "ready" || status === "error") {
-                submitForm(task || `/${skill.slug}`);
-              } else {
-                toast.error(
-                  "Please wait for the model to finish its response!"
-                );
-              }
-              return;
-            }
-            // A utility command (/new, /clear, …).
-            const cmd = slashCommands.find((c) => c.name === firstWord);
+          if (input.startsWith("/")) {
+            const query = input.slice(1).trim();
+            const cmd = slashCommands.find((c) => c.name === query);
             if (cmd) {
               handleSlashSelect(cmd);
-              return;
             }
-            // Unknown /token — fall through and send it as a normal message.
+            return;
           }
           if (!input.trim() && attachments.length === 0) {
             return;
@@ -776,11 +726,6 @@ function PureMultimodalInput({
         <PromptInputFooter className="px-3 pb-3">
           <PromptInputTools>
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-            <SkillTool
-              activeSkillId={activeSkillId}
-              onClear={() => setActiveSkill?.(null)}
-              onPick={armSkill}
-            />
             <ModelSelectorCompact
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
@@ -842,9 +787,6 @@ export const MultimodalInput = memo(
     if (prevProps.selectedModelId !== nextProps.selectedModelId) {
       return false;
     }
-    if (prevProps.activeSkillId !== nextProps.activeSkillId) {
-      return false;
-    }
     if (prevProps.editingMessage !== nextProps.editingMessage) {
       return false;
     }
@@ -883,85 +825,6 @@ function PureAttachmentsButton({
 }
 
 const AttachmentsButton = memo(PureAttachmentsButton);
-
-// Skill picker + active-skill badge (AGENT_WEDGE §3a). The puzzle button opens a
-// dropdown of skills; picking one ARMS it (load-on-invoke). When armed, a badge
-// shows the skill with an ✕ to clear. Slash (/crypto) sets the same state.
-function PureSkillTool({
-  activeSkillId,
-  onPick,
-  onClear,
-}: {
-  activeSkillId?: string | null;
-  onPick: (slug: string) => void;
-  onClear: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const active = activeSkillId ? getSkill(activeSkillId) : undefined;
-
-  return (
-    <div className="flex items-center gap-1">
-      <Popover onOpenChange={setOpen} open={open}>
-        <PopoverTrigger asChild>
-          <Button
-            className="h-7 w-7 rounded-lg border border-border/40 p-1 text-foreground transition-colors hover:border-border"
-            title="Use a skill"
-            type="button"
-            variant="ghost"
-          >
-            <PuzzleIcon className="size-3.5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-1">
-          <div className="px-2 py-1.5 font-medium text-[10px] text-muted-foreground/40 uppercase tracking-wider">
-            Skills
-          </div>
-          {SKILLS.map((skill) => (
-            <button
-              className={cn(
-                "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors hover:bg-muted/60",
-                skill.slug === activeSkillId && "bg-muted/50"
-              )}
-              key={skill.slug}
-              onClick={() => {
-                onPick(skill.slug);
-                setOpen(false);
-              }}
-              type="button"
-            >
-              <SparklesIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/60" />
-              <span className="min-w-0">
-                <span className="block text-[13px] text-foreground">
-                  {skill.name}
-                </span>
-                <span className="line-clamp-2 text-[11px] text-muted-foreground/60">
-                  {skill.description}
-                </span>
-              </span>
-            </button>
-          ))}
-        </PopoverContent>
-      </Popover>
-
-      {active && (
-        <span className="flex items-center gap-1 rounded-lg bg-foreground/5 py-1 pr-1 pl-2 text-[12px] text-foreground">
-          <SparklesIcon className="size-3 text-muted-foreground/70" />
-          {active.name}
-          <button
-            aria-label={`Clear ${active.name} skill`}
-            className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
-            onClick={onClear}
-            type="button"
-          >
-            <XIcon className="size-3" />
-          </button>
-        </span>
-      )}
-    </div>
-  );
-}
-
-const SkillTool = memo(PureSkillTool);
 
 // Honest privacy labels (SPEC_AUDRIC_V3 §5c). At launch every model rides the
 // Vercel AI Gateway → `anon`. NEVER relabel a gateway model `private` (the
