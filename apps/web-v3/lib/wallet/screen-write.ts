@@ -60,7 +60,7 @@ export function screenSend(input: SendIntent): ScreenResult {
   if (isDuplicateSend(input)) {
     return {
       ok: false,
-      reason: `You just sent ${input.amount} ${input.asset} to this address moments ago — I won't repeat it automatically. Ask again if you really want to send it twice.`,
+      reason: `You just sent ${input.amount} ${input.asset} to this address moments ago — I won't repeat it automatically. Give it a minute, then ask again if you really want to send it twice.`,
     };
   }
 
