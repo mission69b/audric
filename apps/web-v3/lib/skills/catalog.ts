@@ -70,8 +70,8 @@ export const SKILLS: SkillDef[] = [
     description:
       "Deep on-chain data for any token — by name, symbol, or contract address — across Sui, Solana, Ethereum, Base and more: price, liquidity, volume, DEX and socials.",
     examples: [
-      "Research the DEEP token on Sui",
-      "Look up the WAL (Walrus) token",
+      "Research the MANIFEST token on Sui",
+      "Top trending tokens on Base right now",
       "Find on-chain liquidity & volume for a token by contract address",
     ],
   },
