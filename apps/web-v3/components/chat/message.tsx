@@ -216,7 +216,17 @@ const PurePreviewMessage = ({
           data-testid="message-content"
           key={key}
         >
-          <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
+          {isUser ? (
+            // User input shows VERBATIM — preserve newlines/indentation/dashes.
+            // (Rendering it as markdown reinterpreted "- item" lines into a list
+            // and collapsed the formatting the user typed.) Only the assistant's
+            // output is markdown-rendered.
+            <div className="whitespace-pre-wrap break-words">
+              {sanitizeText(part.text)}
+            </div>
+          ) : (
+            <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
+          )}
         </MessageContent>
       );
     }
