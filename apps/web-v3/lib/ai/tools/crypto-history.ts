@@ -4,8 +4,8 @@ import { cmcOhlcv, isCmcConfigured } from "@/lib/ai/crypto/cmc";
 
 /**
  * crypto_history — daily price HISTORY (OHLCV) for a listed coin, via
- * CoinMarketCap Pro. The price-history capability CoinGecko-keyless/DexScreener
- * don't give cleanly. CMC-only → degrades to a graceful note when CMC_API_KEY is
+ * CoinMarketCap Pro. The price-history capability keyless CoinGecko doesn't give
+ * cleanly. CMC-only → degrades to a graceful note when CMC_API_KEY is
  * unset (crypto_market still covers current price + 24h/7d change). Free +
  * read-only → available to everyone (the key is server-side).
  */

@@ -39,13 +39,10 @@ import { cryptoGlobal } from "@/lib/ai/tools/crypto-global";
 import { cryptoHistory } from "@/lib/ai/tools/crypto-history";
 import { cryptoMarket } from "@/lib/ai/tools/crypto-market";
 import { cryptoScreener } from "@/lib/ai/tools/crypto-screener";
-import {
-  dexscreenerToken,
-  dexscreenerTrending,
-} from "@/lib/ai/tools/dexscreener";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
+import { onchainTrending, tokenResearch } from "@/lib/ai/tools/onchain";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
 import { saveMemory } from "@/lib/ai/tools/save-memory";
@@ -101,8 +98,8 @@ type ActiveTool =
   | "crypto_history"
   | "crypto_screener"
   | "crypto_global"
-  | "dexscreener_token"
-  | "dexscreener_trending"
+  | "onchain_trending"
+  | "token_research"
   | "stock_analysis"
   | "createDocument"
   | "editDocument"
@@ -643,8 +640,8 @@ export async function POST(request: Request) {
                   // complement to search). Free (Jina Reader), keyless.
                   "web_scrape",
                   // Crypto skills (the wedge — our edge over Venice's zero
-                  // on-chain). crypto_market = listed-coin price (CoinGecko);
-                  // dexscreener_* = onchain/DEX token research + trending. Free.
+                  // on-chain). crypto_market = listed-coin price (CMC);
+                  // onchain_*/token_research = on-chain/DEX (GeckoTerminal). Free.
                   "crypto_market",
                   // crypto_history = daily OHLCV price history (CMC; the upgrade).
                   "crypto_history",
@@ -652,8 +649,10 @@ export async function POST(request: Request) {
                   "crypto_screener",
                   // crypto_global = market overview + Fear & Greed sentiment.
                   "crypto_global",
-                  "dexscreener_token",
-                  "dexscreener_trending",
+                  // onchain_trending = chain-scoped trending/top/new (GeckoTerminal);
+                  // token_research = any token by symbol/name/contract (GeckoTerminal).
+                  "onchain_trending",
+                  "token_research",
                   // stock_analysis = the stocks analog (Finnhub; US equities).
                   // Free like the rest; needs a key (no keyless stock feed).
                   "stock_analysis",
@@ -684,8 +683,8 @@ export async function POST(request: Request) {
                     "crypto_history",
                     "crypto_screener",
                     "crypto_global",
-                    "dexscreener_token",
-                    "dexscreener_trending",
+                    "onchain_trending",
+                    "token_research",
                     "stock_analysis",
                     "generate_image",
                     "createDocument",
@@ -697,8 +696,8 @@ export async function POST(request: Request) {
                     "crypto_history",
                     "crypto_screener",
                     "crypto_global",
-                    "dexscreener_token",
-                    "dexscreener_trending",
+                    "onchain_trending",
+                    "token_research",
                     "stock_analysis",
                     "generate_image",
                   ];
@@ -807,10 +806,10 @@ export async function POST(request: Request) {
             // crypto_global — market overview (total mcap, dominance) + Fear &
             // Greed sentiment (CMC global-metrics + v3 fear-and-greed).
             crypto_global: cryptoGlobal,
-            // crypto_research tools (DexScreener) — onchain/DEX token research +
-            // trending narratives ("top AI coins"); free, keyless, multi-chain.
-            dexscreener_token: dexscreenerToken,
-            dexscreener_trending: dexscreenerTrending,
+            // On-chain/DEX (GeckoTerminal) — chain-scoped trending/top/new pools +
+            // any-token research by symbol/name/contract; free, keyless, multi-chain.
+            onchain_trending: onchainTrending,
+            token_research: tokenResearch,
             // stock_analysis (Finnhub) — US-equity quote + profile + fundamentals
             // + analyst ratings; free, available to everyone (degrades to a
             // notice if FINNHUB_API_KEY is unset).

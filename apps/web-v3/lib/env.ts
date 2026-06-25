@@ -77,7 +77,7 @@ const serverSchema = z.object({
   // Crypto market data (CoinMarketCap Pro) — OPTIONAL: when set, the crypto
   // skills (crypto_market + price history) route through CMC (canonical quotes,
   // OHLCV, categories/trending; commercial-use Startup tier). Unset → they fall
-  // back to the keyless CoinGecko/DexScreener path (no boot failure). The same
+  // back to the keyless CoinGecko / GeckoTerminal path (no boot failure). The same
   // key later powers the t2000 agent gateway (dual-use). Server-only.
   CMC_API_KEY: optionalString,
 });

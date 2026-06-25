@@ -3,7 +3,7 @@
  * when `CMC_API_KEY` is set (commercial-use Startup tier: canonical quotes,
  * OHLCV, categories). Server-only (the key is server-only via the env gate).
  * When the key is unset, `isCmcConfigured()` is false and callers fall back to
- * the keyless CoinGecko/DexScreener path — so the crypto skills never hard-fail.
+ * the keyless CoinGecko / GeckoTerminal path — so the crypto skills never hard-fail.
  */
 import { env } from "@/lib/env";
 

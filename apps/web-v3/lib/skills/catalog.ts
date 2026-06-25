@@ -5,9 +5,10 @@
  * These are auto-routing capabilities: the agent picks the right tool from
  * natural language (the prompt guidance in `cryptoPrompt`/`stockPrompt` drives
  * it) — this registry is purely for the browse page (what exists + examples to
- * try). "Crypto" fronts crypto_market (CoinGecko) + crypto_research (DexScreener);
- * "Stocks" = stock_analysis (Finnhub). web_search / web_scrape / image gen are
- * primitive always-on tools, not catalogued skills.
+ * try). "Crypto" fronts CMC (crypto_market/history/screener/global) + on-chain
+ * (token_research / onchain_trending via GeckoTerminal); "Stocks" = stock_analysis
+ * (Finnhub). web_search / web_scrape / image gen are primitive always-on tools,
+ * not catalogued skills.
  *
  * (The explicit-invocation engine — slash/picker/badge/load-on-invoke — was
  * scaled back 2026-06-25: our skills auto-route, so deliberate invocation added
@@ -68,11 +69,11 @@ export const SKILLS: SkillDef[] = [
     name: "Token Research",
     category: "Crypto",
     description:
-      "Deep on-chain data for any token — by name, symbol, or contract address — across Sui, Solana, Ethereum, Base and more: price, liquidity, volume, DEX and socials.",
+      "On-chain data for any token — by name, symbol, or contract — and what's trending, top or new on a chain, across Sui, Solana, Ethereum, Base and more: price, liquidity, volume and DEX.",
     examples: [
       "Research the MANIFEST token on Sui",
       "Top trending tokens on Base right now",
-      "Find on-chain liquidity & volume for a token by contract address",
+      "What new tokens just launched on Solana?",
     ],
   },
   {

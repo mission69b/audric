@@ -11,7 +11,7 @@ import { cmcScreener, isCmcConfigured } from "@/lib/ai/crypto/cmc";
  */
 export const cryptoScreener = tool({
   description:
-    "Screen/rank crypto coins. kinds: GAINERS or LOSERS (top movers by %), NEW (recently listed coins), TRENDING (what's hot now), or CATEGORY (top coins in a sector — AI, DePIN, RWA, gaming, memes, Layer 1…). Use for 'top gainers today', 'biggest movers this week', 'new coins / recent launches', 'what's trending', 'top AI coins'. Returns a ranked list (name, symbol, price, % change, market cap, rank). For ONE coin's price use crypto_market; for history use crypto_history; for an arbitrary on-chain CONTRACT/memecoin use dexscreener_token.",
+    "Screen/rank crypto coins. kinds: GAINERS or LOSERS (top movers by %), NEW (recently listed coins), TRENDING (what's hot now), or CATEGORY (top coins in a sector — AI, DePIN, RWA, gaming, memes, Layer 1…). Use for 'top gainers today', 'biggest movers this week', 'new coins / recent launches', 'what's trending', 'top AI coins'. Returns a ranked list (name, symbol, price, % change, market cap, rank). For ONE coin's price use crypto_market; for history use crypto_history; for an arbitrary on-chain CONTRACT/memecoin use token_research; for trending ON A SPECIFIC CHAIN use onchain_trending.",
   inputSchema: z.object({
     kind: z
       .enum(["gainers", "losers", "new", "trending", "category"])
@@ -37,7 +37,7 @@ export const cryptoScreener = tool({
     if (!isCmcConfigured()) {
       return {
         error:
-          "The crypto screener isn't available right now. I can still look up a specific coin (crypto_market) or research a token (dexscreener_token).",
+          "The crypto screener isn't available right now. I can still look up a specific coin (crypto_market) or research a token (token_research).",
       };
     }
     if (kind === "category" && !category) {
