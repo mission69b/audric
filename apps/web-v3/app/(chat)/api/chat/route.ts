@@ -26,6 +26,7 @@ import {
   getCapabilities,
   getModelPricing,
 } from "@/lib/ai/models";
+import { hasPaymentIntent } from "@/lib/ai/payment-intent";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { scanChatImages } from "@/lib/ai/scan-chat-images";
@@ -360,6 +361,16 @@ export async function POST(request: Request) {
     );
     const recentUserText = `${routeText} ${priorUserText}`.trim();
 
+    // Money-write gate (S.490 spontaneous-send fix): expose send_transfer ONLY
+    // on payment-intent turns (router 'money' intent, explicit payment verbs, or
+    // a mid-flow confirm continuation). On an unrelated turn (e.g. image gen) the
+    // tool is absent → the agent structurally cannot propose a send.
+    const paymentIntent = hasPaymentIntent({
+      text: recentUserText,
+      intent: routeDecision?.classification?.intent,
+      isContinuation: isToolApprovalFlow,
+    });
+
     // Artifacts are now ONLY code / sheet / image (prose is always inline). This
     // gate opts createDocument in only on creation intent that maps to a panel
     // artifact. Prose verbs/nouns (essay/poem/haiku) are intentionally NOT here.
@@ -663,7 +674,9 @@ export async function POST(request: Request) {
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
-                  "send_transfer",
+                  // send_transfer (money WRITE) gated to payment-intent turns
+                  // only (S.490). Reads (balance/history/resolve) stay always-on.
+                  ...(paymentIntent ? (["send_transfer"] as ActiveTool[]) : []),
                   ...(artifactsActive
                     ? ([
                         "createDocument",
