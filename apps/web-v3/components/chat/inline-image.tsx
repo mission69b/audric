@@ -115,7 +115,7 @@ export function InlineImage({
         </DialogTrigger>
         <button
           aria-label="Download image"
-          className="absolute right-2 bottom-2 rounded-md bg-black/50 p-1.5 text-white/90 opacity-0 backdrop-blur-sm transition-all hover:bg-black/70 group-hover:opacity-100"
+          className="absolute right-2 bottom-2 rounded-md bg-black/50 p-1.5 text-white/90 opacity-100 backdrop-blur-sm transition-all hover:bg-black/70 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
           onClick={onDownload}
           type="button"
         >
