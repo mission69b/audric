@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ZkLoginProvider } from "@/components/auth/zklogin-provider";
 import { ReferralCapture } from "@/components/referral-capture";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
   },
   description: DESCRIPTION,
   applicationName: "Audric",
+  // PWA: standalone "Add to Home Screen" on iOS (manifest covers Android/Chrome).
+  appleWebApp: {
+    capable: true,
+    title: "Audric",
+    statusBarStyle: "default",
+  },
   openGraph: {
     title: OG_TITLE,
     description: DESCRIPTION,
@@ -103,6 +110,7 @@ export default function RootLayout({
         </ThemeProvider>
         <Analytics />
         <ReferralCapture />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

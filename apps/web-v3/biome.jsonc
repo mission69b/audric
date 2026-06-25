@@ -19,7 +19,10 @@
       "!hooks/use-mobile.ts",
       // Drizzle-generated migration snapshots/journal — never hand-edited, so
       // don't lint/format them (they'd fail formatter checks in CI).
-      "!lib/db/migrations"
+      "!lib/db/migrations",
+      // Service worker — a web-platform file (uses `self`, event-listener APIs);
+      // not application source, so keep it out of the app lint/format rules.
+      "!public/sw.js"
     ]
   },
   "linter": {
