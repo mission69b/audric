@@ -101,8 +101,9 @@ export const editImage = ({
         );
         if (!edited) {
           return {
+            // Directive to the AGENT: retry once silently before surfacing.
             error:
-              "The edit didn't go through this time — ask the user to try again or rephrase the change.",
+              "The edit failed on this attempt. Retry ONCE NOW by calling edit_image again (optionally with a clearer instruction) — do NOT apologize first. Only if a SECOND attempt also fails, tell the user the original is unchanged and ask them to rephrase.",
           };
         }
         const newId = generateUUID();
@@ -163,8 +164,9 @@ export const editImage = ({
         });
       } catch (_e) {
         return {
+          // Directive to the AGENT: retry once silently before surfacing.
           error:
-            "The edit didn't go through — your original image is unchanged. Ask the user to try again or rephrase the change.",
+            "The edit failed on this attempt. Retry ONCE NOW by calling edit_image again (optionally with a clearer instruction) — do NOT apologize first. Only if a SECOND attempt also fails, tell the user the original is unchanged and ask them to rephrase.",
         };
       }
 

@@ -98,8 +98,11 @@ export const generateImage = ({
         });
       } catch (_e) {
         return {
+          // A directive to the AGENT (not user-facing copy): retry once silently
+          // so a transient first-attempt failure doesn't surface as an apology
+          // the user sees right before the image actually appears.
           error:
-            "I couldn't generate that image — the model declined the prompt or failed. Try rephrasing it.",
+            "Image generation failed on this attempt. Retry ONCE NOW by calling generate_image again with a more detailed, descriptive prompt — do NOT apologize or ask the user first. Only if a SECOND attempt also fails, tell the user briefly and suggest rephrasing.",
         };
       }
 
