@@ -147,7 +147,7 @@ export async function routeTurn({
     const { object } = await generateObject({
       model: getLanguageModel(CLASSIFIER_MODEL),
       schema: classificationSchema,
-      system:
+      instructions:
         "You are a routing classifier for an AI assistant. Classify ONLY the user's latest message so the system can pick the right model, effort, and step budget. Be decisive. Most everyday messages are 'standard'. Reserve 'hard' for genuine multi-step reasoning, analysis, non-trivial coding, or research. Do not answer the message.",
       prompt: text,
     });

@@ -19,7 +19,7 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
 
     const { fullStream } = streamText({
       model: getLanguageModel(modelId),
-      system: useContext
+      instructions: useContext
         ? `${sheetPrompt}\n\nUse ONLY the data provided below (tool results, fetched figures). Do NOT invent rows, numbers, or values not in that data. Output ONLY the raw CSV data. No explanations, no markdown fences.`
         : `${sheetPrompt}\n\nOutput ONLY the raw CSV data. No explanations, no markdown fences.`,
       prompt: useContext
@@ -45,7 +45,7 @@ export const sheetDocumentHandler = createDocumentHandler<"sheet">({
 
     const { fullStream } = streamText({
       model: getLanguageModel(modelId),
-      system: `${updateDocumentPrompt(document.content, "sheet")}\n\nOutput ONLY the raw CSV data. No explanations, no markdown fences.`,
+      instructions: `${updateDocumentPrompt(document.content, "sheet")}\n\nOutput ONLY the raw CSV data. No explanations, no markdown fences.`,
       prompt: description,
     });
 

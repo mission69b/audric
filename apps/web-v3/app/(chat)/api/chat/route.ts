@@ -4,7 +4,7 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
-  stepCountIs,
+  isStepCount,
   streamText,
 } from "ai";
 import { checkBotId } from "botid/server";
@@ -704,7 +704,7 @@ export async function POST(request: Request) {
 
         const result = streamText({
           model: baseModel,
-          system: systemPrompt({
+          instructions: systemPrompt({
             requestHints,
             supportsTools,
             isAuthed: Boolean(session?.user),
@@ -719,10 +719,10 @@ export async function POST(request: Request) {
           // Step budget: research turns get a high budget for several visible
           // web_search steps (works off-Auto too); otherwise the router's
           // difficulty-scaled budget, default 5.
-          stopWhen: stepCountIs(
+          stopWhen: isStepCount(
             researchActive ? 12 : (routeDecision?.stepBudget ?? 5)
           ),
-          experimental_activeTools: baseActiveTools,
+          activeTools: baseActiveTools,
           // Once a doc-mutation tool has run this turn, remove them all from the
           // active set so NO model can chain a second artifact write (the
           // duplicate-artifact class). Structural — independent of prompt wording
@@ -867,7 +867,7 @@ export async function POST(request: Request) {
                 }
               : {}),
           },
-          experimental_telemetry: {
+          telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: "stream-text",
           },
@@ -900,12 +900,8 @@ export async function POST(request: Request) {
                   inputTokens: u?.inputTokens,
                   outputTokens: u?.outputTokens,
                   totalTokens: u?.totalTokens,
-                  reasoningTokens:
-                    u?.reasoningTokens ??
-                    u?.outputTokenDetails?.reasoningTokens,
-                  cachedInputTokens:
-                    u?.cachedInputTokens ??
-                    u?.inputTokenDetails?.cacheReadTokens,
+                  reasoningTokens: u?.outputTokenDetails?.reasoningTokens,
+                  cachedInputTokens: u?.inputTokenDetails?.cacheReadTokens,
                 };
               }
               return;
@@ -924,7 +920,7 @@ export async function POST(request: Request) {
         }
       },
       generateId: generateUUID,
-      onFinish: async ({ messages: finishedMessages }) => {
+      onEnd: async ({ messages: finishedMessages }) => {
         // Anonymous chats aren't persisted (no account to attach them to).
         if (!session?.user) {
           return;

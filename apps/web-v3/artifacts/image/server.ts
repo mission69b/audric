@@ -1,8 +1,4 @@
-import {
-  gateway,
-  experimental_generateImage as generateImage,
-  generateText,
-} from "ai";
+import { gateway, generateImage, generateText } from "ai";
 import {
   DEFAULT_IMAGE_MODEL,
   IMAGE_FALLBACK_MODEL,
@@ -57,7 +53,7 @@ export async function editImageBytes(
               role: "user",
               content: [
                 { type: "text", text: prompt },
-                { type: "image", image: priorBase64, mediaType },
+                { type: "file", data: priorBase64, mediaType },
               ],
             },
           ],
