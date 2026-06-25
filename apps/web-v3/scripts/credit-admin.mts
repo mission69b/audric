@@ -62,7 +62,9 @@ async function main() {
     console.log(`\nLEDGER (latest ${ledger.length}):`);
     for (const e of ledger) {
       console.log(
-        `  ${e.createdAt?.toISOString?.() ?? e.createdAt}  ${String(e.type).padEnd(
+        `  ${e.createdAt?.toISOString?.() ?? e.createdAt}  ${String(
+          e.type
+        ).padEnd(
           10
         )} ${usd(Number(e.amountMicros)).padStart(10)}  ${e.description ?? ""}${
           e.ref ? ` [ref:${e.ref}]` : ""

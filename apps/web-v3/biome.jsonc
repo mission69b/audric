@@ -16,7 +16,10 @@
       "!components/elements",
       "!components/ui",
       "!lib/utils.ts",
-      "!hooks/use-mobile.ts"
+      "!hooks/use-mobile.ts",
+      // Drizzle-generated migration snapshots/journal — never hand-edited, so
+      // don't lint/format them (they'd fail formatter checks in CI).
+      "!lib/db/migrations"
     ]
   },
   "linter": {

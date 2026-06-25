@@ -24,16 +24,27 @@ console.log(
   pms.data.map((p) => `${p.id} ${p.card?.last4}`)
 );
 
-const subs = await stripe.subscriptions.list({ customer: CUST, status: "all", limit: 5 });
+const subs = await stripe.subscriptions.list({
+  customer: CUST,
+  status: "all",
+  limit: 5,
+});
 console.log(
   "subscriptions:",
-  subs.data.map((s) => `${s.id} ${s.status} defaultPm=${s.default_payment_method}`)
+  subs.data.map(
+    (s) => `${s.id} ${s.status} defaultPm=${s.default_payment_method}`
+  )
 );
 
 // Is the DB's default PM actually attached anywhere / to whom?
 try {
   const pm = await stripe.paymentMethods.retrieve(DB_DEFAULT_PM);
-  console.log("DB default PM", DB_DEFAULT_PM, "attached to customer:", pm.customer);
+  console.log(
+    "DB default PM",
+    DB_DEFAULT_PM,
+    "attached to customer:",
+    pm.customer
+  );
 } catch (e) {
   console.log("DB default PM retrieve failed:", e.message);
 }

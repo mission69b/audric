@@ -91,9 +91,7 @@ export function CotTimeline({
   // A non-reasoning step (parsed a file / searched) → the turn "Worked", not
   // just "Thought" (Venice-style framing — more accurate than calling a parse
   // "thinking").
-  const hasWork = items.some(
-    (i) => i.kind === "search" || i.kind === "parsed"
-  );
+  const hasWork = items.some((i) => i.kind === "search" || i.kind === "parsed");
   // "Done" is a terminal marker, not a work step — don't count it.
   const stepCount = items.filter((i) => i.kind !== "done").length;
   const stepLabel = `${stepCount} step${stepCount === 1 ? "" : "s"}`;

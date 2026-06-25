@@ -151,7 +151,9 @@ async function main() {
       written += 1;
     }
     if (todo.length > CONCURRENCY) {
-      console.log(`  …${Math.min(i + CONCURRENCY, todo.length)}/${todo.length}`);
+      console.log(
+        `  …${Math.min(i + CONCURRENCY, todo.length)}/${todo.length}`
+      );
     }
   }
 

@@ -17,15 +17,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# 2026-05-25: filters fixed from `--filter web` (the deleted v0.7e apps/web
-# package) to `--filter @audric/web-v2`. Pre-fix, every job exited 0 with
-# "No projects matched the filters" — CI was silently green-but-empty for
-# ~3 days after v0.7e Phase 5 (S.253, 2026-05-22) archived apps/web. The
-# dead spec-consistency runner step was also dropped; the runtime check
-# lived at `apps/web/lib/engine/spec-consistency.ts` and went with the
-# archive. Vercel handles the production build (with real secrets); CI
-# focuses on lint + typecheck + test, matching the vercel/chatbot template
-# pattern (lint.yml + playwright.yml).
+# 2026-06-25: retargeted from the FROZEN `@audric/web-v2` to the live
+# `@audric/web-v3`. web-v2 was archived; CI had no gate on the production app
+# (web-v3) — local tsc/Biome was the only safety net. Now: lint (Biome via
+# ultracite) + typecheck (tsc) + the deterministic eval (eval:image — a pure
+# regression lock, no server/secrets). Playwright e2e (`web-v3 test`) is NOT
+# run here — it needs a running server + browsers + secrets; keep it as a
+# separate follow-up workflow. Vercel handles the production build with real
+# secrets; CI focuses on the no-secret static gates.
 jobs:
   check:
     name: Lint & Typecheck
@@ -38,12 +37,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @audric/web-v2 lint
-      - run: pnpm --filter @audric/web-v2 check:ads
-      - run: pnpm --filter @audric/web-v2 typecheck
+      - run: pnpm --filter @audric/web-v3 lint
+      - run: pnpm --filter @audric/web-v3 typecheck
 
-  test:
-    name: Unit Tests
+  eval:
+    name: Evals (deterministic)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -53,4 +51,4 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @audric/web-v2 test
+      - run: pnpm --filter @audric/web-v3 eval:image
