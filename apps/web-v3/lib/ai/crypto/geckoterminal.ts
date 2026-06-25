@@ -197,3 +197,77 @@ export async function gtSearch(
       .slice(0, Math.min(Math.max(Math.round(limit), 1), 12)),
   };
 }
+
+export type GtHistory = {
+  symbol?: string;
+  days: number;
+  pool?: string;
+  chain?: string;
+  dex?: string;
+  series: {
+    date: string;
+    open?: number;
+    high?: number;
+    low?: number;
+    close?: number;
+    volumeUsd?: number;
+  }[];
+  summary: {
+    startUsd?: number;
+    endUsd?: number;
+    highUsd?: number;
+    lowUsd?: number;
+    changePct?: number;
+  };
+  source: "GeckoTerminal";
+};
+
+/**
+ * Daily OHLCV for a DEX pool (the base token's USD candles), last `days`.
+ * `networkSlug` is the resolved GT slug (e.g. "sui-network") + `pool` the pool
+ * address — both come straight off a `gtSearch` row. Closes the DEX-only-token
+ * price-history gap that CMC (listed coins only) can't cover.
+ */
+export async function gtOhlcv(
+  networkSlug: string,
+  pool: string,
+  days = 30
+): Promise<GtHistory | null> {
+  const limit = Math.min(Math.max(Math.round(days), 1), 365);
+  const json = (await gtFetch(
+    `/networks/${networkSlug}/pools/${pool}/ohlcv/day?limit=${limit}&currency=usd&token=base`
+  )) as { data?: { attributes?: { ohlcv_list?: number[][] } } } | null;
+  const list = json?.data?.attributes?.ohlcv_list;
+  if (!list?.length) {
+    return null;
+  }
+  // GT returns newest-first — reverse to chronological (oldest → newest).
+  const series = [...list].reverse().map((r) => ({
+    date: new Date((r[0] ?? 0) * 1000).toISOString().slice(0, 10),
+    open: r[1],
+    high: r[2],
+    low: r[3],
+    close: r[4],
+    volumeUsd: r[5],
+  }));
+  const num = (xs: (number | undefined)[]) =>
+    xs.filter((n): n is number => typeof n === "number");
+  const closes = num(series.map((s) => s.close));
+  const highs = num(series.map((s) => s.high));
+  const lows = num(series.map((s) => s.low));
+  const startUsd = closes[0];
+  const endUsd = closes.at(-1);
+  return {
+    days: limit,
+    series,
+    summary: {
+      startUsd,
+      endUsd,
+      highUsd: highs.length ? Math.max(...highs) : undefined,
+      lowUsd: lows.length ? Math.min(...lows) : undefined,
+      changePct:
+        startUsd && endUsd ? ((endUsd - startUsd) / startUsd) * 100 : undefined,
+    },
+    source: "GeckoTerminal",
+  };
+}
