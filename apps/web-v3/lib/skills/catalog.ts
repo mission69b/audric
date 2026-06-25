@@ -5,10 +5,12 @@
  * These are auto-routing capabilities: the agent picks the right tool from
  * natural language (the prompt guidance in `cryptoPrompt`/`stockPrompt` drives
  * it) — this registry is purely for the browse page (what exists + examples to
- * try). "Crypto" fronts CMC (crypto_market/history/screener/global) + on-chain
- * (token_research / onchain_trending via GeckoTerminal); "Stocks" = stock_analysis
- * (Finnhub). web_search / web_scrape / image gen are primitive always-on tools,
- * not catalogued skills.
+ * try). "Crypto" fronts CMC (crypto_market = Crypto Market, crypto_history =
+ * Crypto History, crypto_screener = Crypto Screener, crypto_global = Market Pulse)
+ * + on-chain GeckoTerminal (onchain_trending = On-chain Trending, token_research
+ * = Token Research); "Stocks" = stock_analysis (Finnhub). web_search / web_scrape
+ * / image gen / the Passport wallet tools are headline always-on features, not
+ * catalogued data skills.
  *
  * (The explicit-invocation engine — slash/picker/badge/load-on-invoke — was
  * scaled back 2026-06-25: our skills auto-route, so deliberate invocation added
@@ -65,15 +67,39 @@ export const SKILLS: SkillDef[] = [
     ],
   },
   {
+    slug: "market-pulse",
+    name: "Market Pulse",
+    category: "Crypto",
+    description:
+      "The whole market at a glance — total crypto market cap, 24h volume, BTC/ETH dominance, plus the Fear & Greed sentiment index.",
+    examples: [
+      "Is the crypto market fearful or greedy?",
+      "What's the total crypto market cap?",
+      "What's Bitcoin's dominance right now?",
+    ],
+  },
+  {
+    slug: "onchain-trending",
+    name: "On-chain Trending",
+    category: "Crypto",
+    description:
+      "What's moving on a specific chain — trending, top-by-volume, or newly-launched tokens across Sui, Solana, Base, Ethereum, BSC and more.",
+    examples: [
+      "Top trending tokens on Sui right now",
+      "Top tokens by volume on Base",
+      "New tokens on Solana",
+    ],
+  },
+  {
     slug: "token-research",
     name: "Token Research",
     category: "Crypto",
     description:
-      "On-chain data for any token — by name, symbol, or contract — and what's trending, top or new on a chain, across Sui, Solana, Ethereum, Base and more: price, liquidity, volume and DEX.",
+      "Deep-dive any single token — by name, symbol, or contract address — across all chains: live price, liquidity, 24h volume, the DEX it trades on, and the latest news.",
     examples: [
       "Research the MANIFEST token on Sui",
-      "Top trending tokens on Base right now",
-      "What new tokens just launched on Solana?",
+      "What's the liquidity and volume for DEEP on Sui?",
+      "Research the WAL token",
     ],
   },
   {
