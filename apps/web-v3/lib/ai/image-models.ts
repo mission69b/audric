@@ -92,6 +92,11 @@ export const IMAGE_MODELS: ImageModel[] = [
  * too, bounded by the daily cap, not a downgraded model). */
 export const DEFAULT_IMAGE_MODEL = "openai/gpt-image-2";
 
+/** Fallback when the chosen model fails — a DIFFERENT provider (Google) so a
+ * single model/provider outage (e.g. gpt-image-2 unavailable on the Gateway)
+ * doesn't break all image generation. */
+export const IMAGE_FALLBACK_MODEL = "google/imagen-4.0-generate-001";
+
 /** Free-tier images/day (signed-in, no credits). Derived from image Documents;
  * resets at UTC midnight. Paid/credit users are not capped here. */
 export const FREE_DAILY_IMAGE_LIMIT = 15;

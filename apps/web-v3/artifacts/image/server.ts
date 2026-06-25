@@ -3,7 +3,10 @@ import {
   experimental_generateImage as generateImage,
   generateText,
 } from "ai";
-import { DEFAULT_IMAGE_MODEL } from "@/lib/ai/image-models";
+import {
+  DEFAULT_IMAGE_MODEL,
+  IMAGE_FALLBACK_MODEL,
+} from "@/lib/ai/image-models";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 
 // Most Gateway image models (gpt-image-2, recraft, …) take `size`, NOT
@@ -99,17 +102,34 @@ export const imageDocumentHandler = createDocumentHandler<"image">({
       throw new Error(AUTH_REQUIRED_MESSAGE);
     }
     const size = aspectRatio ? RATIO_TO_SIZE[aspectRatio] : undefined;
-    const { image } = await generateImage({
-      model: gateway.imageModel(imageModel ?? DEFAULT_IMAGE_MODEL),
-      prompt: title,
-      ...(size ? { size } : {}),
-    });
-    dataStream.write({
-      type: "data-imageDelta",
-      data: image.base64,
-      transient: true,
-    });
-    return image.base64;
+    const primary = imageModel ?? DEFAULT_IMAGE_MODEL;
+    // Try the chosen model, then a different-provider fallback — so a single
+    // model/provider outage doesn't break all image generation. Log the real
+    // error per model (the catch upstream only sees the last one).
+    const candidates =
+      primary === IMAGE_FALLBACK_MODEL
+        ? [primary]
+        : [primary, IMAGE_FALLBACK_MODEL];
+    let lastError: unknown;
+    for (const model of candidates) {
+      try {
+        const { image } = await generateImage({
+          model: gateway.imageModel(model),
+          prompt: title,
+          ...(size ? { size } : {}),
+        });
+        dataStream.write({
+          type: "data-imageDelta",
+          data: image.base64,
+          transient: true,
+        });
+        return image.base64;
+      } catch (error) {
+        lastError = error;
+        console.error(`[image] generation failed on ${model}:`, error);
+      }
+    }
+    throw lastError ?? new Error("image generation failed");
   },
   onUpdateDocument: async ({ document, description, dataStream, session }) => {
     if (!session?.user) {

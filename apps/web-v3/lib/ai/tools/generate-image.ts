@@ -96,13 +96,13 @@ export const generateImage = ({
           imageModel: selected.id,
           aspectRatio: ratio,
         });
-      } catch (_e) {
+      } catch (e) {
+        // The handler already tried the chosen model + a fallback provider, so
+        // reaching here means image generation is genuinely down right now.
+        console.error("[generate_image] failed after fallback:", e);
         return {
-          // A directive to the AGENT (not user-facing copy): retry once silently
-          // so a transient first-attempt failure doesn't surface as an apology
-          // the user sees right before the image actually appears.
           error:
-            "Image generation failed on this attempt. Retry ONCE NOW by calling generate_image again with a more detailed, descriptive prompt — do NOT apologize or ask the user first. Only if a SECOND attempt also fails, tell the user briefly and suggest rephrasing.",
+            "I couldn't generate that image right now — the image service looks briefly unavailable. Please try again in a moment.",
         };
       }
 
