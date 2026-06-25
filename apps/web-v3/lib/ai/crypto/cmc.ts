@@ -174,6 +174,147 @@ export async function cmcMarket(query: string): Promise<CmcMarket | null> {
   return market;
 }
 
+type ScreenerCoin = {
+  name?: string;
+  symbol?: string;
+  cmc_rank?: number | null;
+  date_added?: string;
+  quote?: { USD?: UsdQuote };
+};
+export type ScreenerRow = {
+  name?: string;
+  symbol?: string;
+  priceUsd?: number;
+  change24hPct?: number;
+  change7dPct?: number;
+  marketCapUsd?: number;
+  rank?: number | null;
+  dateAdded?: string;
+};
+export type ScreenerKind =
+  | "gainers"
+  | "losers"
+  | "new"
+  | "trending"
+  | "category";
+export type ScreenerResult = {
+  label: string;
+  results: ScreenerRow[];
+  source: "CoinMarketCap";
+};
+
+function toRow(c: ScreenerCoin): ScreenerRow {
+  const u = c.quote?.USD ?? {};
+  return {
+    name: c.name,
+    symbol: c.symbol?.toUpperCase(),
+    priceUsd: u.price,
+    change24hPct: u.percent_change_24h,
+    change7dPct: u.percent_change_7d,
+    marketCapUsd: u.market_cap,
+    rank: c.cmc_rank,
+    dateAdded: c.date_added,
+  };
+}
+
+/** Drop junk/untracked rows — no price, or an absurd %change (CMC category
+ * lists occasionally surface a bogus token, e.g. null price + 331,197,476%). */
+function clean(rows: ScreenerRow[]): ScreenerRow[] {
+  return rows.filter(
+    (r) =>
+      typeof r.priceUsd === "number" &&
+      Number.isFinite(r.priceUsd) &&
+      r.priceUsd > 0 &&
+      (r.change24hPct == null || Math.abs(r.change24hPct) < 1_000_000)
+  );
+}
+
+/** Screen/rank coins: gainers, losers, new listings, trending, or a category. */
+export async function cmcScreener(
+  kind: ScreenerKind,
+  opts: {
+    category?: string;
+    timePeriod?: "24h" | "7d" | "30d";
+    limit?: number;
+  } = {}
+): Promise<ScreenerResult | null> {
+  const limit = Math.min(Math.max(Math.round(opts.limit ?? 10), 1), 25);
+  const tp = opts.timePeriod ?? "24h";
+
+  if (kind === "gainers" || kind === "losers") {
+    const data = (await cmcFetch(
+      `/v1/cryptocurrency/trending/gainers-losers?time_period=${tp}&sort_dir=${kind === "gainers" ? "desc" : "asc"}&limit=${limit}&convert=USD`
+    )) as ScreenerCoin[] | null;
+    if (!data?.length) {
+      return null;
+    }
+    return {
+      label: `Top ${kind} (${tp})`,
+      results: clean(data.map(toRow)),
+      source: "CoinMarketCap",
+    };
+  }
+  if (kind === "new") {
+    const data = (await cmcFetch(
+      `/v1/cryptocurrency/listings/new?limit=${limit}&convert=USD`
+    )) as ScreenerCoin[] | null;
+    if (!data?.length) {
+      return null;
+    }
+    return {
+      label: "Newly listed",
+      results: clean(data.map(toRow)),
+      source: "CoinMarketCap",
+    };
+  }
+  if (kind === "trending") {
+    const data = (await cmcFetch(
+      `/v1/cryptocurrency/trending/latest?limit=${limit}&convert=USD`
+    )) as ScreenerCoin[] | null;
+    if (!data?.length) {
+      return null;
+    }
+    return {
+      label: "Trending now",
+      results: clean(data.map(toRow)),
+      source: "CoinMarketCap",
+    };
+  }
+
+  // category — match the sector by name, prefer the broadest (highest mcap),
+  // then fetch its top coins (e.g. "AI" → "AI & Big Data").
+  const q = (opts.category ?? "").trim().toLowerCase();
+  if (!q) {
+    return null;
+  }
+  const cats = (await cmcFetch(
+    "/v1/cryptocurrency/categories?limit=5000"
+  )) as Array<{ id?: string; name?: string; market_cap?: number }> | null;
+  // Word-boundary match — a naive substring lets "AI" match "Polych*ai*n
+  // Capital Portfolio" (→ BTC/ETH). Require the query as a whole word so "AI"
+  // hits "AI & Big Data" / "Generative AI", not "polychain"/"blockchain".
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`\\b${escaped}\\b`, "i");
+  const best = (cats ?? [])
+    .filter((c) => c.name && re.test(c.name))
+    .sort((a, b) => (b.market_cap ?? 0) - (a.market_cap ?? 0))[0];
+  if (!best?.id) {
+    return null;
+  }
+  const cat = (await cmcFetch(
+    `/v1/cryptocurrency/category?id=${best.id}&limit=${limit}&convert=USD`
+  )) as { name?: string; coins?: ScreenerCoin[] } | null;
+  const coins = cat?.coins ?? [];
+  if (coins.length === 0) {
+    return null;
+  }
+  return {
+    label: `Top ${best.name} coins`,
+    results: clean(coins.map(toRow)),
+    source: "CoinMarketCap",
+  };
+}
+
 type OhlcvRow = {
   time_open?: string;
   quote?: {
