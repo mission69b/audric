@@ -2,7 +2,11 @@ import { z } from "zod";
 
 const textPartSchema = z.object({
   type: z.enum(["text"]),
-  text: z.string().min(1).max(2000),
+  // Generous cap — a long paste or message must NOT silently 400 (the old 2000
+  // limit dropped large pastes with no response). Very large pastes are turned
+  // into a text-file attachment client-side (see the composer paste handler);
+  // this covers long typed/pasted messages. Empty allowed (attachment-only turns).
+  text: z.string().max(100_000),
 });
 
 const filePartSchema = z.object({
