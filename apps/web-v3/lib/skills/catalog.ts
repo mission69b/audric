@@ -28,30 +28,62 @@ export type SkillDef = {
 
 export const SKILLS: SkillDef[] = [
   {
-    slug: "crypto",
-    name: "Crypto",
+    slug: "crypto-market",
+    name: "Crypto Market",
     category: "Crypto",
     description:
-      "Live prices & market caps, price history/charts, screeners (top gainers, new launches, trending, sector rankings like AI or DePIN), and deep on-chain research on any token — by name, symbol, or contract, any chain.",
+      "Live price, market cap, rank, 24h/7d change, volume and all-time high for any listed coin.",
     examples: [
       "What's the price of SUI?",
+      "How's Bitcoin doing today?",
+      "Compare SUI and SOL market caps",
+    ],
+  },
+  {
+    slug: "crypto-history",
+    name: "Crypto History",
+    category: "Crypto",
+    description:
+      "Daily price history (OHLCV) over any window — the trend, highs/lows and % change.",
+    examples: [
       "Show me ETH's price over the last 30 days",
-      "Top crypto gainers this week",
-      "What are the top AI coins right now?",
-      "Research the MANIFEST token on Sui",
+      "How has SUI performed this week?",
       "Compare the 30-day performance of SUI, SOL and SEI",
     ],
   },
   {
-    slug: "stock",
+    slug: "crypto-screener",
+    name: "Crypto Screener",
+    category: "Crypto",
+    description:
+      "Rank & discover — top gainers/losers, newly-listed coins, what's trending, or the top coins in a sector (AI, DePIN, RWA, gaming…).",
+    examples: [
+      "Top crypto gainers this week",
+      "What are the top AI coins right now?",
+      "Any new coins launched recently?",
+    ],
+  },
+  {
+    slug: "token-research",
+    name: "Token Research",
+    category: "Crypto",
+    description:
+      "Deep on-chain data for any token — by name, symbol, or contract address — across Sui, Solana, Ethereum, Base and more: price, liquidity, volume, DEX and socials.",
+    examples: [
+      "Research the DEEP token on Sui",
+      "Look up the WAL (Walrus) token",
+      "Find on-chain liquidity & volume for a token by contract address",
+    ],
+  },
+  {
+    slug: "stocks",
     name: "Stocks",
     category: "Markets",
     description:
-      "Live US stock & ETF quotes, fundamentals (P/E, EPS, 52-week range, dividend yield), analyst ratings, recent earnings beats/misses, news, and peers.",
+      "Live US stock & ETF quotes, fundamentals (P/E, EPS, 52-week range, dividend yield), analyst ratings, recent earnings, news and peers.",
     examples: [
       "What's Apple's stock price?",
       "Research NVDA — fundamentals, ratings and recent news",
-      "How has TSLA done lately?",
       "Compare TSLA and AAPL",
     ],
   },
