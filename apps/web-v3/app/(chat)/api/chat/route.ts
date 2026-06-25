@@ -422,6 +422,21 @@ export async function POST(request: Request) {
       chatModel = DEFAULT_CHAT_MODEL;
     }
 
+    // Money-write turns must land on a model that reliably EMITS the
+    // send_transfer tool call. Auto's standard-tier pick (Grok 4.3) intermittently
+    // NARRATES the send instead ("confirm on the next screen") → no confirm card
+    // → the user can't send. Route payment turns to a reliable tool-caller:
+    // Claude Sonnet for premium, the free model (Kimi) for free users — never the
+    // Grok pick. Both verified to emit the send call. Sends are rare + high-stakes,
+    // so reliability outweighs the routing default. (Off-Auto manual picks stand.)
+    if (routeDecision && paymentIntent) {
+      const sonnet = "anthropic/claude-sonnet-4.6";
+      chatModel =
+        canUsePremium && chatModels.some((m) => m.id === sonnet)
+          ? sonnet
+          : DEFAULT_CHAT_MODEL;
+    }
+
     // Keep artifacts active when this chat ALREADY has one — so refinement turns
     // WITHOUT a creation verb ("add a glow", "warmer colors", "make it sleeker")
     // can still edit it. Otherwise the verb-only gate would disable
