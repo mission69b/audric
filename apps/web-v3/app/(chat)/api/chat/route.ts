@@ -423,6 +423,23 @@ export async function POST(request: Request) {
     );
     const artifactsActive = isExplicitArtifact || hasExistingArtifact;
 
+    // send_transfer (money MOVEMENT) is gated to explicit payment-intent turns
+    // ONLY. INCIDENT 2026-06-25: on an image-generation turn (routed to the weak
+    // free model), the model hallucinated a send_transfer to an INVENTED address
+    // because the money tool was always-on for every signed-in user. Gating it on
+    // a real user payment signal — the router's "money" intent OR an explicit
+    // payment verb in the last 2 user messages — makes a spontaneous transfer
+    // structurally impossible. The READ-ONLY wallet tools (balance_check,
+    // transaction_history, resolve_suins) stay always-on; only the money-mover is
+    // gated. Over-inclusion is harmless (the tool being available ≠ a transfer;
+    // the user still must be asking + tap-to-confirm); a false NEGATIVE just makes
+    // the model ask the user to retry the send, so we err toward the verb list.
+    const paymentIntent =
+      routeDecision?.classification?.intent === "money" ||
+      /\b(send|sending|transfer|pay|paying|repay|remit|withdraw|tip)\b/i.test(
+        recentUserText
+      );
+
     // The most recent image in THIS conversation (generated/edited, incl. old
     // createDocument-image) + whether the chat involved an image at all.
     // edit_image falls back to it when the model omits an id — so "make him
@@ -652,7 +669,9 @@ export async function POST(request: Request) {
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
-                  "send_transfer",
+                  // Money MOVEMENT — gated to payment-intent turns only (see
+                  // `paymentIntent`); prevents a spontaneous hallucinated send.
+                  ...(paymentIntent ? (["send_transfer"] as ActiveTool[]) : []),
                   ...(artifactsActive
                     ? ([
                         "createDocument",
@@ -699,6 +718,13 @@ export async function POST(request: Request) {
             researchActive,
           }),
           messages: modelMessages,
+          // Per-step output cap — a backstop against a degenerate generation
+          // (INCIDENT 2026-06-25: after a denied tool call the weak free model
+          // spiraled into a multi-thousand-line repetitive wall-of-text). 8k
+          // output tokens (~6k words) is generous for any chat/research answer
+          // — long code/sheets stream via createDocument, not the message body —
+          // so it never truncates a real reply, only bounds a runaway.
+          maxOutputTokens: 8000,
           // Step budget: research turns get a high budget for several visible
           // web_search steps (works off-Auto too); otherwise the router's
           // difficulty-scaled budget, default 5.
