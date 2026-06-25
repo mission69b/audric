@@ -32,12 +32,14 @@ export const SKILLS: SkillDef[] = [
     name: "Crypto",
     category: "Crypto",
     description:
-      "Live coin prices & market caps, deep research on any token (by name, symbol or contract — any chain), and trending narratives like 'top AI coins'.",
+      "Live prices & market caps, price history/charts, screeners (top gainers, new launches, trending, sector rankings like AI or DePIN), and deep on-chain research on any token — by name, symbol, or contract, any chain.",
     examples: [
       "What's the price of SUI?",
-      "Research the MANIFEST token on Sui",
+      "Show me ETH's price over the last 30 days",
+      "Top crypto gainers this week",
       "What are the top AI coins right now?",
-      "Compare SUI and SOL market caps",
+      "Research the MANIFEST token on Sui",
+      "Compare the 30-day performance of SUI, SOL and SEI",
     ],
   },
   {
@@ -45,10 +47,11 @@ export const SKILLS: SkillDef[] = [
     name: "Stocks",
     category: "Markets",
     description:
-      "Live US stock/ETF quote, fundamentals (P/E, EPS, 52-week range), analyst ratings, recent earnings & news.",
+      "Live US stock & ETF quotes, fundamentals (P/E, EPS, 52-week range, dividend yield), analyst ratings, recent earnings beats/misses, news, and peers.",
     examples: [
       "What's Apple's stock price?",
-      "Research NVDA for me",
+      "Research NVDA — fundamentals, ratings and recent news",
+      "How has TSLA done lately?",
       "Compare TSLA and AAPL",
     ],
   },

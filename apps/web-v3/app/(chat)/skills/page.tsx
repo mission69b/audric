@@ -73,9 +73,9 @@ export default function SkillsPage() {
           </button>
         </div>
         <p className="mb-8 text-muted-foreground text-sm">
-          Live data skills Audric can use — free, and built right into chat. Ask
-          naturally, type <span className="font-mono text-foreground">/</span>{" "}
-          in the composer, or tap an example to try one.
+          Live data skills Audric can use — free, and built right into chat.
+          Just ask naturally and Audric picks the right one, or tap an example
+          to try it.
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
