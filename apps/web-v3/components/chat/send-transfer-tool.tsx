@@ -21,8 +21,61 @@ type SendPart = Extract<
   { type: "tool-send_transfer" }
 >;
 
+/**
+ * Money-safety (address-source guard). Is this recipient one the USER actually
+ * provided — typed/pasted the 0x, gave a name we resolved via resolve_suins, or
+ * already confirmed a send to it this conversation? If NOT, the address is
+ * model-originated — a hallucination risk (2026-06-25 incident: the agent
+ * invented a recipient on an unrelated turn). We don't hard-block (a legit
+ * address could be phrased in a way the scan misses) — we warn loudly so the
+ * send is a deliberate, eyes-open action, not a casual tap.
+ */
+function recipientWasUserProvided(
+  messages: ChatMessage[],
+  to: string
+): boolean {
+  const needle = to.toLowerCase();
+  for (const m of messages) {
+    for (const part of m.parts) {
+      const p = part as {
+        type?: string;
+        text?: string;
+        output?: unknown;
+        input?: { to?: string };
+        state?: string;
+      };
+      // 1. The user typed or pasted the address.
+      if (
+        m.role === "user" &&
+        p.type === "text" &&
+        p.text?.toLowerCase().includes(needle)
+      ) {
+        return true;
+      }
+      // 2. resolve_suins turned a name/handle the USER gave into this address.
+      if (
+        p.type === "tool-resolve_suins" &&
+        p.output != null &&
+        JSON.stringify(p.output).toLowerCase().includes(needle)
+      ) {
+        return true;
+      }
+      // 3. The user already CONFIRMED a send to this address this conversation.
+      if (
+        p.type === "tool-send_transfer" &&
+        p.state === "output-available" &&
+        (p.output as { digest?: string } | undefined)?.digest &&
+        p.input?.to?.toLowerCase() === needle
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function SendTransferTool({ part }: { part: SendPart }) {
-  const { addToolResult } = useActiveChat();
+  const { addToolResult, messages } = useActiveChat();
   const [pending, setPending] = useState(false);
   const { toolCallId, state } = part;
   const widthClass = "w-[min(100%,450px)]";
@@ -95,6 +148,8 @@ export function SendTransferTool({ part }: { part: SendPart }) {
 
   const { to, amount } = input;
   const asset = input.asset ?? "USDC";
+  // Address-source guard: warn when the recipient didn't come from the user.
+  const userProvided = recipientWasUserProvided(messages, to);
 
   const onAllow = async () => {
     // Host pre-dispatch screen (preflight + retry-dedup) — runs before signing.
@@ -133,6 +188,12 @@ export function SendTransferTool({ part }: { part: SendPart }) {
             <div className="mt-1 text-foreground">
               From your Passport · gasless.
             </div>
+            {!userProvided && (
+              <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-[12px] text-amber-700 dark:text-amber-400">
+                ⚠️ This address wasn't in your messages — Audric may have
+                generated it. Only send if you recognize it.
+              </div>
+            )}
           </div>
           <div className="mt-3 flex items-center justify-end gap-2 border-t px-4 py-3">
             <button
@@ -144,12 +205,20 @@ export function SendTransferTool({ part }: { part: SendPart }) {
               Deny
             </button>
             <button
-              className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className={`rounded-md px-3 py-1.5 text-primary-foreground text-sm transition-colors disabled:opacity-50 ${
+                userProvided
+                  ? "bg-primary hover:bg-primary/90"
+                  : "bg-amber-600 hover:bg-amber-600/90"
+              }`}
               disabled={pending}
               onClick={onAllow}
               type="button"
             >
-              {pending ? "Sending…" : "Allow & Send"}
+              {pending
+                ? "Sending…"
+                : userProvided
+                  ? "Allow & Send"
+                  : "Send anyway"}
             </button>
           </div>
         </ToolContent>

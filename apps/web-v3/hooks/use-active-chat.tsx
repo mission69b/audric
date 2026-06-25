@@ -60,6 +60,50 @@ function extractChatId(pathname: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Money-safety: neutralize any `send_transfer` card loaded FROM HISTORY that's
+ * still "pending" (no result). A send card is client-executed (the user taps
+ * Allow/Deny in-session); a LIVE card comes from the stream, never from the DB
+ * load. So a pending transfer in loaded history is stale by definition — a turn
+ * that was interrupted (refresh / the agent erroring mid-continuation, e.g. the
+ * 2026-06-25 runaway). Left as-is it re-renders an actionable confirm card the
+ * user could tap later. Mark it terminal ("declined") so a stale transfer can
+ * never be re-tapped. Complements the server-side dangling-tool resolver.
+ */
+function sanitizeLoadedSends(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((m) => {
+    const hasPendingSend = m.parts?.some((part) => {
+      const p = part as { type?: string; state?: string; output?: unknown };
+      return (
+        p.type === "tool-send_transfer" &&
+        (p.state === "input-available" || p.state === "input-streaming") &&
+        p.output == null
+      );
+    });
+    if (!hasPendingSend) {
+      return m;
+    }
+    return {
+      ...m,
+      parts: m.parts.map((part) => {
+        const p = part as { type?: string; state?: string; output?: unknown };
+        if (
+          p.type === "tool-send_transfer" &&
+          (p.state === "input-available" || p.state === "input-streaming") &&
+          p.output == null
+        ) {
+          return {
+            ...part,
+            state: "output-available",
+            output: { denied: true, note: "expired" },
+          } as ChatMessage["parts"][number];
+        }
+        return part;
+      }),
+    };
+  });
+}
+
 export function ActiveChatProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { setDataStream } = useDataStream();
@@ -96,7 +140,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
 
   const initialMessages: ChatMessage[] = isNewChat
     ? []
-    : (chatData?.messages ?? []);
+    : sanitizeLoadedSends(chatData?.messages ?? []);
   const visibility: VisibilityType = isNewChat
     ? "private"
     : (chatData?.visibility ?? "private");
@@ -198,7 +242,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     }
     if (chatData?.messages) {
       loadedChatIds.current.add(chatId);
-      setMessages(chatData.messages);
+      setMessages(sanitizeLoadedSends(chatData.messages));
     }
   }, [chatId, chatData?.messages, setMessages]);
 
