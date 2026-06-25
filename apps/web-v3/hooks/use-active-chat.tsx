@@ -224,12 +224,17 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     }
   }, [chatData, isNewChat]);
 
-  const hasAppendedQueryRef = useRef(false);
+  // Key on chatId+query so EACH /skills example tap is handled. A one-time
+  // boolean blocked the 2nd+ prompt: this provider never unmounts (it's in the
+  // (chat) shell), so the ref persisted — the URL showed ?query but it was
+  // never sent. Each tap is a fresh chatId, so the keyed ref re-fires.
+  const handledQueryRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const query = params.get("query");
-    if (query && !hasAppendedQueryRef.current) {
-      hasAppendedQueryRef.current = true;
+    const key = query ? `${chatId}:${query}` : null;
+    if (query && key && handledQueryRef.current !== key) {
+      handledQueryRef.current = key;
       window.history.replaceState(
         {},
         "",
