@@ -48,6 +48,7 @@ type UsdQuote = {
   last_updated?: string;
 };
 type CmcCoin = {
+  id?: number;
   name?: string;
   symbol?: string;
   slug?: string;
@@ -88,8 +89,15 @@ function pickByRank(coins: CmcCoin[]): CmcCoin | undefined {
   )[0];
 }
 
-/** Resolve a free-text query (symbol or name) to one coin's live market data. */
-export async function cmcMarket(query: string): Promise<CmcMarket | null> {
+/**
+ * Resolve a free-text query (symbol or name) to the ONE canonical coin (with its
+ * live quote). Fetches BOTH symbol AND slug then picks lowest cmc_rank —
+ * critical because a real coin's NAME often collides with a memecoin's SYMBOL
+ * ("bitcoin" → the BITCOIN scam-token vs BTC; "solana" → a SOLANA memecoin vs
+ * SOL). Symbol-first alone returns the impostor; merge + rank lets BTC (rank 1)
+ * win over the rank-848 memecoin. Shared by cmcMarket + cmcOhlcv.
+ */
+async function resolveCoin(query: string): Promise<CmcCoin | null> {
   const q = query.trim();
   if (!q) {
     return null;
@@ -100,11 +108,6 @@ export async function cmcMarket(query: string): Promise<CmcMarket | null> {
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
 
-  // Resolve via BOTH symbol AND slug, then pick the canonical coin by lowest
-  // cmc_rank. Critical: a real coin's NAME often collides with a memecoin's
-  // SYMBOL ("bitcoin" → the BITCOIN scam-token vs BTC; "solana" → a SOLANA
-  // memecoin vs SOL). Symbol-first alone returns the impostor; merging both and
-  // ranking lets BTC (rank 1) win over the rank-848 memecoin.
   const candidates: CmcCoin[] = [];
   if (symbol) {
     const data = (await cmcFetch(
@@ -125,7 +128,12 @@ export async function cmcMarket(query: string): Promise<CmcMarket | null> {
       candidates.push(...Object.values(data));
     }
   }
-  const coin = pickByRank(candidates);
+  return pickByRank(candidates) ?? null;
+}
+
+/** Resolve a free-text query (symbol or name) to one coin's live market data. */
+export async function cmcMarket(query: string): Promise<CmcMarket | null> {
+  const coin = await resolveCoin(query);
   if (!coin) {
     return null;
   }
@@ -164,4 +172,99 @@ export async function cmcMarket(query: string): Promise<CmcMarket | null> {
   }
 
   return market;
+}
+
+type OhlcvRow = {
+  time_open?: string;
+  quote?: {
+    USD?: {
+      open?: number;
+      high?: number;
+      low?: number;
+      close?: number;
+      volume?: number;
+      timestamp?: string;
+    };
+  };
+};
+
+export type CmcHistory = {
+  name?: string;
+  symbol?: string;
+  days: number;
+  series: {
+    date: string;
+    open?: number;
+    high?: number;
+    low?: number;
+    close?: number;
+    volumeUsd?: number;
+  }[];
+  summary: {
+    startUsd?: number;
+    endUsd?: number;
+    highUsd?: number;
+    lowUsd?: number;
+    changePct?: number;
+  };
+  source: "CoinMarketCap";
+};
+
+/** Daily OHLCV price history for a coin (resolved canonically), last `days`. */
+export async function cmcOhlcv(
+  query: string,
+  days = 30
+): Promise<CmcHistory | null> {
+  const coin = await resolveCoin(query);
+  if (!coin?.id) {
+    return null;
+  }
+  const count = Math.min(Math.max(Math.round(days), 1), 365);
+  const data = (await cmcFetch(
+    `/v2/cryptocurrency/ohlcv/historical?id=${coin.id}&count=${count}&interval=daily&convert=USD`
+  )) as
+    | { quotes?: OhlcvRow[] }
+    | Record<string, { quotes?: OhlcvRow[] }>
+    | null;
+
+  let rows = (data as { quotes?: OhlcvRow[] } | null)?.quotes;
+  if (!rows && data && typeof data === "object") {
+    rows = (Object.values(data)[0] as { quotes?: OhlcvRow[] } | undefined)
+      ?.quotes;
+  }
+  if (!rows?.length) {
+    return null;
+  }
+
+  const series = rows.map((r) => ({
+    date: (r.time_open ?? r.quote?.USD?.timestamp ?? "").slice(0, 10),
+    open: r.quote?.USD?.open,
+    high: r.quote?.USD?.high,
+    low: r.quote?.USD?.low,
+    close: r.quote?.USD?.close,
+    volumeUsd: r.quote?.USD?.volume,
+  }));
+  const num = (xs: (number | undefined)[]) =>
+    xs.filter((n): n is number => typeof n === "number");
+  const closes = num(series.map((s) => s.close));
+  const highs = num(series.map((s) => s.high));
+  const lows = num(series.map((s) => s.low));
+  const startUsd = closes[0];
+  const endUsd = closes.at(-1);
+
+  return {
+    name: coin.name,
+    symbol: coin.symbol?.toUpperCase(),
+    days: count,
+    series,
+    summary: {
+      startUsd,
+      endUsd,
+      highUsd: highs.length ? Math.max(...highs) : undefined,
+      lowUsd: lows.length ? Math.min(...lows) : undefined,
+      changePct:
+        startUsd && endUsd ? ((endUsd - startUsd) / startUsd) * 100 : undefined,
+    },
+    source: "CoinMarketCap",
+  };
 }

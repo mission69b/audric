@@ -35,6 +35,7 @@ import {
 } from "@/lib/ai/thought-signatures";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import { cryptoHistory } from "@/lib/ai/tools/crypto-history";
 import { cryptoMarket } from "@/lib/ai/tools/crypto-market";
 import {
   dexscreenerToken,
@@ -95,6 +96,7 @@ type ActiveTool =
   | "web_search"
   | "web_scrape"
   | "crypto_market"
+  | "crypto_history"
   | "dexscreener_token"
   | "dexscreener_trending"
   | "stock_analysis"
@@ -640,6 +642,8 @@ export async function POST(request: Request) {
                   // on-chain). crypto_market = listed-coin price (CoinGecko);
                   // dexscreener_* = onchain/DEX token research + trending. Free.
                   "crypto_market",
+                  // crypto_history = daily OHLCV price history (CMC; the upgrade).
+                  "crypto_history",
                   "dexscreener_token",
                   "dexscreener_trending",
                   // stock_analysis = the stocks analog (Finnhub; US equities).
@@ -669,6 +673,7 @@ export async function POST(request: Request) {
                     "web_search",
                     "web_scrape",
                     "crypto_market",
+                    "crypto_history",
                     "dexscreener_token",
                     "dexscreener_trending",
                     "stock_analysis",
@@ -679,6 +684,7 @@ export async function POST(request: Request) {
                     "web_search",
                     "web_scrape",
                     "crypto_market",
+                    "crypto_history",
                     "dexscreener_token",
                     "dexscreener_trending",
                     "stock_analysis",
@@ -780,6 +786,9 @@ export async function POST(request: Request) {
             // crypto_market (first wedge skill, §0.5 P0) — live structured market
             // data; available to everyone (read-only public data, no auth, free).
             crypto_market: cryptoMarket,
+            // crypto_history — daily OHLCV price history (CMC; CMC-only, graceful
+            // note if unset). The price-history capability CoinGecko-keyless lacks.
+            crypto_history: cryptoHistory,
             // crypto_research tools (DexScreener) — onchain/DEX token research +
             // trending narratives ("top AI coins"); free, keyless, multi-chain.
             dexscreener_token: dexscreenerToken,
