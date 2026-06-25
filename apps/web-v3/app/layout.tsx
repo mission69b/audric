@@ -1,5 +1,5 @@
 import { Analytics } from "@vercel/analytics/next";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ZkLoginProvider } from "@/components/auth/zklogin-provider";
 import { ReferralCapture } from "@/components/referral-capture";
@@ -42,8 +42,11 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   maximumScale: 1,
+  // PWA standalone: draw to the screen edges so surfaces can respect the
+  // device safe areas (notch / home indicator) via env(safe-area-inset-*).
+  viewportFit: "cover",
 };
 
 const geist = Geist({

@@ -558,7 +558,10 @@ function PureMultimodalInput({
     // biome-ignore lint/a11y/noStaticElementInteractions: file drag-and-drop dropzone wrapping the composer — a drop target, not an interactive control
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: file drag-and-drop dropzone wrapping the composer — a drop target, not an interactive control
     <div
-      className={cn("relative flex w-full flex-col gap-4", className)}
+      className={cn(
+        "relative flex w-full flex-col gap-4 pb-[env(safe-area-inset-bottom)]",
+        className
+      )}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
