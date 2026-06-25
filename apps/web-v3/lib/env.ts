@@ -74,6 +74,12 @@ const serverSchema = z.object({
   // data skill that needs a key. Unset → the skill returns a graceful "not
   // configured" notice (no boot failure). Free tier ≈ 60 req/min. Server-only.
   FINNHUB_API_KEY: optionalString,
+  // Crypto market data (CoinMarketCap Pro) — OPTIONAL: when set, the crypto
+  // skills (crypto_market + price history) route through CMC (canonical quotes,
+  // OHLCV, categories/trending; commercial-use Startup tier). Unset → they fall
+  // back to the keyless CoinGecko/DexScreener path (no boot failure). The same
+  // key later powers the t2000 agent gateway (dual-use). Server-only.
+  CMC_API_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -107,6 +113,7 @@ const runtimeEnv = {
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
+  CMC_API_KEY: process.env.CMC_API_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

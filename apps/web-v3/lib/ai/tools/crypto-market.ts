@@ -1,8 +1,14 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { cmcMarket, isCmcConfigured } from "@/lib/ai/crypto/cmc";
 
 /**
- * crypto_market — LIVE, structured crypto market data via CoinGecko.
+ * crypto_market — LIVE, structured crypto market data.
+ *
+ * PRIMARY source = CoinMarketCap Pro (canonical, commercial-use, no rate-limit
+ * 429s) when `CMC_API_KEY` is set; falls back to the keyless CoinGecko path
+ * below when CMC is unset OR returns no match — so the skill never hard-fails
+ * and anon/unconfigured envs still work.
  *
  * The first wedge "skill" (SPEC_AUDRIC_AGENT_WEDGE §0.5/§6 P0): validates whether
  * a structured data skill beats free `web_search` for crypto queries. web_search
@@ -64,6 +70,14 @@ export const cryptoMarket = tool({
       .describe("Coin name, symbol, or id — e.g. 'SUI', 'bitcoin', 'ETH'."),
   }),
   execute: async ({ query }) => {
+    // PRIMARY: CoinMarketCap (canonical + commercial). On no-match/failure, fall
+    // through to the keyless CoinGecko path below (graceful degrade).
+    if (isCmcConfigured()) {
+      const cmc = await cmcMarket(query);
+      if (cmc) {
+        return cmc;
+      }
+    }
     try {
       const searchRes = await fetch(
         `${COINGECKO}/search?query=${encodeURIComponent(query)}`
