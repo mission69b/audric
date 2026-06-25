@@ -88,14 +88,16 @@ export const IMAGE_MODELS: ImageModel[] = [
   },
 ];
 
-/** Default model (quality; used for all tiers — free users get the good models
- * too, bounded by the daily cap, not a downgraded model). */
-export const DEFAULT_IMAGE_MODEL = "openai/gpt-image-2";
+/** Default model. imagen-4 (Google) over gpt-image-2: measured 8–27s vs
+ * 47–147s for the same prompts (2026-06-25 diag) — gpt-image-2's slowness was
+ * causing intermittent in-chat failures/aborts. imagen-4 is high-quality AND
+ * ~5–10× faster, the right default for an interactive chat. gpt-image-2 stays
+ * selectable for users who want it (model override). */
+export const DEFAULT_IMAGE_MODEL = "google/imagen-4.0-generate-001";
 
-/** Fallback when the chosen model fails — a DIFFERENT provider (Google) so a
- * single model/provider outage (e.g. gpt-image-2 unavailable on the Gateway)
- * doesn't break all image generation. */
-export const IMAGE_FALLBACK_MODEL = "google/imagen-4.0-generate-001";
+/** Fallback when the chosen model fails — a DIFFERENT provider (Flux) so a
+ * single model/provider blip doesn't break all image generation. Fast too. */
+export const IMAGE_FALLBACK_MODEL = "bfl/flux-2-pro";
 
 /** Free-tier images/day (signed-in, no credits). Derived from image Documents;
  * resets at UTC midnight. Paid/credit users are not capped here. */
