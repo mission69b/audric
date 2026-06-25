@@ -53,7 +53,7 @@ export const textDocumentHandler = createDocumentHandler<"text">({
 
     const { fullStream } = streamText({
       model: getLanguageModel(modelId),
-      system: useContext
+      instructions: useContext
         ? "Write the requested document using ONLY the data provided below (tool results, fetched figures, headlines). Do NOT invent or estimate facts, numbers, prices, dates, or headlines that aren't in that data — if something isn't available, omit it. Markdown supported; use headings."
         : "Write about the given topic. Markdown is supported. Use headings wherever appropriate.",
       experimental_transform: smoothStream({ chunking: "word" }),
@@ -80,7 +80,7 @@ export const textDocumentHandler = createDocumentHandler<"text">({
 
     const { fullStream } = streamText({
       model: getLanguageModel(modelId),
-      system: updateDocumentPrompt(document.content, "text"),
+      instructions: updateDocumentPrompt(document.content, "text"),
       experimental_transform: smoothStream({ chunking: "word" }),
       prompt: description,
     });

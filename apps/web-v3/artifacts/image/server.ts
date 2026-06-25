@@ -1,8 +1,4 @@
-import {
-  gateway,
-  experimental_generateImage as generateImage,
-  generateText,
-} from "ai";
+import { gateway, generateImage, generateText } from "ai";
 import {
   DEFAULT_IMAGE_MODEL,
   IMAGE_FALLBACK_MODEL,
@@ -49,26 +45,21 @@ export async function editImageBytes(
   for (let attempt = 0; attempt < 2; attempt++) {
     let result: Awaited<ReturnType<typeof generateText>>;
     try {
-      result = await Promise.race([
-        generateText({
-          model: gateway.languageModel(IMAGE_EDIT_MODEL),
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
-                { type: "image", image: priorBase64, mediaType },
-              ],
-            },
-          ],
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("image_edit_timeout")),
-            EDIT_ATTEMPT_TIMEOUT_MS
-          )
-        ),
-      ]);
+      // Native AI SDK 7 timeout (replaces the bespoke Promise.race) — aborts a
+      // hung Gateway/model call so the turn fails fast instead of "Thinking…".
+      result = await generateText({
+        model: gateway.languageModel(IMAGE_EDIT_MODEL),
+        timeout: EDIT_ATTEMPT_TIMEOUT_MS,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "file", data: priorBase64, mediaType },
+            ],
+          },
+        ],
+      });
     } catch {
       // Timeout or transport error → try the next attempt, then return null.
       continue;
