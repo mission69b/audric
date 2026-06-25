@@ -757,6 +757,12 @@ export async function POST(request: Request) {
               ),
             };
           },
+          // Portable reasoning (AI SDK 7): the router's effort decision applies
+          // across ALL providers via the Gateway (OpenAI/Anthropic/Google/xAI/
+          // Groq/DeepSeek/Fireworks), not just the OpenAI-shaped path. Undefined
+          // → provider-default. Replaces the old providerOptions.openai shape.
+          reasoning:
+            routeDecision?.reasoningEffort ?? modelConfig?.reasoningEffort,
           providerOptions: {
             // Zero Data Retention routes ONLY to providers contractually bound
             // not to store or train on prompts (the "Private · ZDR" rung; a
@@ -767,14 +773,6 @@ export async function POST(request: Request) {
                 order: modelConfig.gatewayOrder,
               }),
             },
-            ...((routeDecision?.reasoningEffort ??
-              modelConfig?.reasoningEffort) && {
-              openai: {
-                reasoningEffort:
-                  routeDecision?.reasoningEffort ??
-                  modelConfig?.reasoningEffort,
-              },
-            }),
           },
           // createDocument works for everyone (incl. anonymous free-trial):
           // the artifact renders live from the stream, and persistence
