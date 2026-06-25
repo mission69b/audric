@@ -82,6 +82,10 @@ function setCookie(name: string, value: string) {
 // ~4.5MB → 413). 4MB stays safely under that cap.
 const SERVER_UPLOAD_LIMIT = 4 * 1024 * 1024;
 
+// A clipboard paste longer than this becomes a "Pasted text" attachment
+// (Claude-style) instead of flooding the composer. Smaller pastes stay inline.
+const PASTE_TO_FILE_CHARS = 2000;
+
 function PureMultimodalInput({
   chatId,
   input,
@@ -476,6 +480,27 @@ function PureMultimodalInput({
       );
 
       if (imageItems.length === 0) {
+        // Large text paste → a "Pasted text" attachment (Claude-style), so it
+        // doesn't flood the composer (the inline text cap still covers small
+        // pastes). Below the threshold, let the normal inline paste happen.
+        const pastedText = event.clipboardData?.getData("text/plain") ?? "";
+        if (pastedText.length > PASTE_TO_FILE_CHARS) {
+          event.preventDefault();
+          const file = new File([pastedText], "Pasted text.txt", {
+            type: "text/plain",
+          });
+          setUploadQueue((prev) => [...prev, "Pasted text"]);
+          try {
+            const uploaded = await uploadFile(file);
+            if (uploaded?.url) {
+              setAttachments((curr) => [...curr, uploaded as Attachment]);
+            }
+          } catch (_error) {
+            toast.error("Couldn't attach the pasted text — try again.");
+          } finally {
+            setUploadQueue([]);
+          }
+        }
         return;
       }
 

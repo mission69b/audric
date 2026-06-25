@@ -133,7 +133,10 @@ export async function prepareAttachments(
             try {
               const blob = await getBlob(pathname);
               if (blob) {
-                text = await extractPdfText(pathname, new Uint8Array(blob.body));
+                text = await extractPdfText(
+                  pathname,
+                  new Uint8Array(blob.body)
+                );
               }
             } catch {
               text = "";
@@ -142,6 +145,34 @@ export async function prepareAttachments(
               ? `The user attached a PDF ("${name}"). Extracted text follows — use it to answer their question.\n\n<pdf name="${name}">\n${text}\n</pdf>`
               : `The user attached a PDF ("${name}"), but no text could be extracted — it is likely a scanned/image-only PDF. Tell them you couldn't read it and suggest a text-based PDF or pasting the relevant text.`;
             return { type: "text" as const, text: body };
+          }
+
+          // text/plain → a large clipboard paste turned into a "Pasted text"
+          // attachment (Claude-style). Decode the blob and inline it as text so
+          // the model reads it (same idea as PDF, but no parsing needed).
+          const isText =
+            filePart.mediaType === "text/plain" ||
+            /\.txt(\?|$)/i.test(filePart.url) ||
+            /\.txt$/i.test(name);
+          if (isText) {
+            let text = "";
+            try {
+              const blob = await getBlob(pathname);
+              if (blob) {
+                text = blob.body.toString("utf-8");
+              }
+            } catch {
+              text = "";
+            }
+            if (text.length > PDF_TEXT_MAX_CHARS) {
+              text = `${text.slice(0, PDF_TEXT_MAX_CHARS)}\n\n[…text truncated]`;
+            }
+            return {
+              type: "text" as const,
+              text: text.trim()
+                ? `The user pasted a block of text (attached as "${name}"). It follows — use it to answer their question.\n\n<pasted_text>\n${text}\n</pasted_text>`
+                : `[The user attached pasted text ("${name}") but it couldn't be read.]`,
+            };
           }
 
           // Any other private-blob file type the model can't fetch → a text note

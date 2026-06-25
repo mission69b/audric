@@ -16,22 +16,35 @@ const ACCEPTED_IMAGE_TYPES = [
   "image/gif",
 ];
 const PDF_TYPE = "application/pdf";
-const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, PDF_TYPE];
+// text/plain: large clipboard pastes are turned into a "Pasted text" .txt
+// attachment client-side (Claude-style) → extracted server-side like a PDF.
+const TEXT_TYPE = "text/plain";
+const ACCEPTED_TYPES = [...ACCEPTED_IMAGE_TYPES, PDF_TYPE, TEXT_TYPE];
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10MB (PDFs run larger)
+const MAX_TEXT_BYTES = 1 * 1024 * 1024; // 1MB of pasted text is plenty
+
+function maxBytesFor(type: string): number {
+  if (type === PDF_TYPE) {
+    return MAX_PDF_BYTES;
+  }
+  if (type === TEXT_TYPE) {
+    return MAX_TEXT_BYTES;
+  }
+  return MAX_IMAGE_BYTES;
+}
 
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
     .refine((file) => ACCEPTED_TYPES.includes(file.type), {
-      message: "File type should be an image (JPEG, PNG, WebP, GIF) or PDF",
+      message:
+        "File type should be an image (JPEG, PNG, WebP, GIF), PDF, or text",
     })
-    .refine(
-      (file) =>
-        file.size <= (file.type === PDF_TYPE ? MAX_PDF_BYTES : MAX_IMAGE_BYTES),
-      { message: "File too large (images ≤5MB, PDFs ≤10MB)" }
-    ),
+    .refine((file) => file.size <= maxBytesFor(file.type), {
+      message: "File too large (images ≤5MB, PDFs ≤10MB, text ≤1MB)",
+    }),
 });
 
 const EXT_BY_TYPE: Record<string, string> = {
@@ -40,6 +53,7 @@ const EXT_BY_TYPE: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
   "application/pdf": "pdf",
+  "text/plain": "txt",
 };
 
 export async function POST(request: Request) {

@@ -19,6 +19,9 @@ const filePartSchema = z.object({
     "image/webp",
     "image/gif",
     "application/pdf",
+    // Large clipboard paste → a "Pasted text" .txt attachment (extracted
+    // server-side in prepareAttachments, like a PDF).
+    "text/plain",
   ]),
   name: z.string().min(1).max(200),
   // AI-SDK-standard display field (the preview chip reads it); optional mirror

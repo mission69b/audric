@@ -16,14 +16,16 @@ export const PreviewAttachment = ({
   const { name, url, contentType } = attachment;
   const isImage = contentType?.startsWith("image");
   const displayName = (name ?? "file").split("/").pop() ?? "file";
-  const typeLabel = isImage
-    ? "Image"
-    : contentType === "application/pdf"
+  // Claude-style: no filename shown, just a short type badge.
+  const typeLabel =
+    contentType === "application/pdf"
       ? "PDF"
-      : (displayName.split(".").pop()?.toUpperCase() ?? "File");
+      : contentType === "text/plain"
+        ? "PASTED"
+        : (displayName.split(".").pop()?.toUpperCase() ?? "FILE");
 
-  // Images → square thumbnail. Files (PDF/doc) → a wide rectangular chip so the
-  // full filename is readable (Venice-style), not truncated into a square.
+  // Every attachment renders as a SQUARE card (Claude-style): images show the
+  // thumbnail; files show a centered icon + a small type badge — no filename.
   if (isImage) {
     return (
       <div
@@ -65,27 +67,20 @@ export const PreviewAttachment = ({
 
   return (
     <div
-      className="group relative flex h-14 w-60 shrink-0 items-center gap-2.5 overflow-hidden rounded-xl border border-border/40 bg-muted px-2.5"
+      className="group relative flex h-24 w-24 shrink-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-border/40 bg-muted"
       data-testid="input-attachment-preview"
     >
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background/80">
-        {isUploading ? (
-          <Spinner className="size-4" />
-        ) : (
-          <FileTextIcon className="size-5 text-muted-foreground/70" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-foreground text-xs">
-          {displayName}
-        </div>
-        <div className="text-[10px] text-muted-foreground/70 uppercase tracking-wide">
-          {typeLabel}
-        </div>
-      </div>
+      {isUploading ? (
+        <Spinner className="size-5" />
+      ) : (
+        <FileTextIcon className="size-7 text-muted-foreground/70" />
+      )}
+      <span className="rounded bg-background/70 px-1.5 py-0.5 font-medium text-[9px] text-muted-foreground uppercase tracking-wide">
+        {typeLabel}
+      </span>
       {onRemove && !isUploading && (
         <button
-          className="flex size-5 shrink-0 items-center justify-center rounded-full bg-black/10 text-foreground/70 opacity-0 transition-opacity hover:bg-black/20 group-hover:opacity-100 dark:bg-white/10 dark:hover:bg-white/20"
+          className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-black/10 text-foreground/70 opacity-0 transition-opacity hover:bg-black/20 group-hover:opacity-100 dark:bg-white/10 dark:hover:bg-white/20"
           onClick={onRemove}
           type="button"
         >
