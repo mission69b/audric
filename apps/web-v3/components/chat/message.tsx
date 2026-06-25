@@ -166,11 +166,22 @@ const PurePreviewMessage = ({
       pushNarration(part.text ?? "");
     }
   });
-  // Terminal "Done" marker (Venice-style) once the turn has finished its work —
-  // solidifies completion. Only when there was visible work and we're not still
-  // streaming.
+  // Terminal marker once the turn has finished its work. If an image tool
+  // errored, mark the turn FAILED (not a misleading "Done" ✓ next to a failed
+  // generation). Only when there was visible work and we're not still streaming.
   if (isAssistant && !isLoading && cotItems.length > 0) {
-    cotItems.push({ kind: "done" });
+    const imageFailed = allParts.some(
+      (p) =>
+        (p.type === "tool-generate_image" || p.type === "tool-edit_image") &&
+        typeof p.output === "object" &&
+        p.output !== null &&
+        "error" in p.output
+    );
+    cotItems.push(
+      imageFailed
+        ? { kind: "failed", label: "Image generation failed" }
+        : { kind: "done" }
+    );
   }
 
   const parts = message.parts?.map((part, index) => {

@@ -6,6 +6,7 @@ import {
   FileTextIcon,
   GlobeIcon,
   Loader2Icon,
+  TriangleAlertIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -21,6 +22,7 @@ export type CotItem =
   | { kind: "reasoning"; text: string }
   | { kind: "parsed"; name: string }
   | { kind: "done" }
+  | { kind: "failed"; label: string }
   | {
       kind: "search";
       query: string;
@@ -139,6 +141,18 @@ export function CotTimeline({
                 // biome-ignore lint/suspicious/noArrayIndexKey: timeline is append-only and stable per render
                 key={`d-${i}`}
                 label="Done"
+                status="complete"
+              />
+            );
+          }
+          if (item.kind === "failed") {
+            return (
+              <ChainOfThoughtStep
+                className="text-amber-600 dark:text-amber-500 [&_svg]:text-amber-600 dark:[&_svg]:text-amber-500"
+                icon={TriangleAlertIcon}
+                // biome-ignore lint/suspicious/noArrayIndexKey: timeline is append-only and stable per render
+                key={`f-${i}`}
+                label={item.label}
                 status="complete"
               />
             );
