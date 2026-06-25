@@ -35,6 +35,7 @@ import {
 } from "@/lib/ai/thought-signatures";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import { cryptoGlobal } from "@/lib/ai/tools/crypto-global";
 import { cryptoHistory } from "@/lib/ai/tools/crypto-history";
 import { cryptoMarket } from "@/lib/ai/tools/crypto-market";
 import { cryptoScreener } from "@/lib/ai/tools/crypto-screener";
@@ -99,6 +100,7 @@ type ActiveTool =
   | "crypto_market"
   | "crypto_history"
   | "crypto_screener"
+  | "crypto_global"
   | "dexscreener_token"
   | "dexscreener_trending"
   | "stock_analysis"
@@ -648,6 +650,8 @@ export async function POST(request: Request) {
                   "crypto_history",
                   // crypto_screener = gainers/losers/new/trending/category (CMC).
                   "crypto_screener",
+                  // crypto_global = market overview + Fear & Greed sentiment.
+                  "crypto_global",
                   "dexscreener_token",
                   "dexscreener_trending",
                   // stock_analysis = the stocks analog (Finnhub; US equities).
@@ -679,6 +683,7 @@ export async function POST(request: Request) {
                     "crypto_market",
                     "crypto_history",
                     "crypto_screener",
+                    "crypto_global",
                     "dexscreener_token",
                     "dexscreener_trending",
                     "stock_analysis",
@@ -691,6 +696,7 @@ export async function POST(request: Request) {
                     "crypto_market",
                     "crypto_history",
                     "crypto_screener",
+                    "crypto_global",
                     "dexscreener_token",
                     "dexscreener_trending",
                     "stock_analysis",
@@ -798,6 +804,9 @@ export async function POST(request: Request) {
             // crypto_screener — rank/discover: gainers/losers/new/trending/
             // category (CMC clean API). Replaces the old web-search fallback.
             crypto_screener: cryptoScreener,
+            // crypto_global — market overview (total mcap, dominance) + Fear &
+            // Greed sentiment (CMC global-metrics + v3 fear-and-greed).
+            crypto_global: cryptoGlobal,
             // crypto_research tools (DexScreener) — onchain/DEX token research +
             // trending narratives ("top AI coins"); free, keyless, multi-chain.
             dexscreener_token: dexscreenerToken,

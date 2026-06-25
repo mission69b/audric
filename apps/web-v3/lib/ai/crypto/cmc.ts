@@ -29,7 +29,12 @@ async function cmcFetch(path: string): Promise<unknown | null> {
       status?: { error_code?: number };
       data?: unknown;
     };
-    if (json?.status?.error_code !== 0) {
+    // Reject only on an EXPLICIT non-zero error. Coerce with Number() because
+    // the v3 fear-and-greed endpoint returns error_code as the STRING "0" (not
+    // the numeric 0 the standard endpoints use) — a strict !== 0 wrongly rejects
+    // it. Absent error_code is also treated as ok.
+    const ec = json?.status?.error_code;
+    if (ec != null && Number(ec) !== 0) {
       return null;
     }
     return json.data ?? null;
@@ -313,6 +318,63 @@ export async function cmcScreener(
     results: clean(coins.map(toRow)),
     source: "CoinMarketCap",
   };
+}
+
+export type CmcGlobal = {
+  totalMarketCapUsd?: number;
+  totalVolume24hUsd?: number;
+  btcDominancePct?: number;
+  ethDominancePct?: number;
+  altcoinMarketCapUsd?: number;
+  defiMarketCapUsd?: number;
+  stablecoinMarketCapUsd?: number;
+  activeCryptos?: number;
+  fearGreedValue?: number;
+  fearGreedLabel?: string;
+  source: "CoinMarketCap";
+};
+
+/** Global crypto market overview + the Fear & Greed sentiment index. */
+export async function cmcGlobal(): Promise<CmcGlobal | null> {
+  const g = (await cmcFetch("/v1/global-metrics/quotes/latest")) as {
+    quote?: {
+      USD?: {
+        total_market_cap?: number;
+        total_volume_24h?: number;
+        altcoin_market_cap?: number;
+        defi_market_cap?: number;
+        stablecoin_market_cap?: number;
+      };
+    };
+    btc_dominance?: number;
+    eth_dominance?: number;
+    active_cryptocurrencies?: number;
+  } | null;
+  if (!g) {
+    return null;
+  }
+  const u = g.quote?.USD ?? {};
+  const result: CmcGlobal = {
+    totalMarketCapUsd: u.total_market_cap,
+    totalVolume24hUsd: u.total_volume_24h,
+    btcDominancePct: g.btc_dominance,
+    ethDominancePct: g.eth_dominance,
+    altcoinMarketCapUsd: u.altcoin_market_cap,
+    defiMarketCapUsd: u.defi_market_cap,
+    stablecoinMarketCapUsd: u.stablecoin_market_cap,
+    activeCryptos: g.active_cryptocurrencies,
+    source: "CoinMarketCap",
+  };
+  // Fear & Greed (separate v3 endpoint; non-fatal if it fails).
+  const fg = (await cmcFetch("/v3/fear-and-greed/latest")) as {
+    value?: number;
+    value_classification?: string;
+  } | null;
+  if (fg && typeof fg.value === "number") {
+    result.fearGreedValue = fg.value;
+    result.fearGreedLabel = fg.value_classification;
+  }
+  return result;
 }
 
 type OhlcvRow = {
