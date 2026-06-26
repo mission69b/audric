@@ -66,6 +66,8 @@ function PureMessages({
 
   useDataStream();
 
+  const isGenerating = status === "submitted" || status === "streaming";
+
   const prevChatIdRef = useRef(chatId);
   const sawStreamingRef = useRef(false);
   const didReopenScrollRef = useRef(false);
@@ -193,16 +195,27 @@ function PureMessages({
       </div>
 
       <button
-        aria-label="Scroll to bottom"
-        className={`absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center rounded-full border border-border/50 bg-card/90 px-3.5 shadow-[var(--shadow-float)] backdrop-blur-lg transition-all duration-200 h-7 text-[10px] ${
+        aria-label={
+          isGenerating ? "Jump to the reply being written" : "Scroll to latest"
+        }
+        className={cn(
+          "absolute bottom-4 left-1/2 z-10 flex h-7 -translate-x-1/2 items-center gap-1.5 rounded-full border border-border/50 bg-card/90 px-3 font-medium text-[10px] text-muted-foreground shadow-[var(--shadow-float)] backdrop-blur-lg transition-all duration-200",
           isAtBottom
             ? "pointer-events-none scale-90 opacity-0"
             : "pointer-events-auto scale-100 opacity-100"
-        }`}
+        )}
         onClick={() => scrollToBottom("smooth")}
         type="button"
       >
-        <ArrowDownIcon className="size-3 text-muted-foreground" />
+        {isGenerating ? (
+          <>
+            <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+            <span>Replying</span>
+            <ArrowDownIcon className="size-3" />
+          </>
+        ) : (
+          <ArrowDownIcon className="size-3" />
+        )}
       </button>
     </div>
   );
