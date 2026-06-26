@@ -51,6 +51,13 @@ function toPost(filename: string): BlogPost | null {
   if (data.draft === "true") {
     return null;
   }
+  // Scheduled publishing: a post dated in the future (UTC) stays hidden from the
+  // index AND direct routes until that day — set staggered dates to drip releases
+  // without un-drafting each one by hand.
+  const todayUtc = new Date().toISOString().slice(0, 10);
+  if (data.date && data.date > todayUtc) {
+    return null;
+  }
   const slug = filename.replace(/\.md$/, "");
   return {
     slug,

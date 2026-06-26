@@ -3,7 +3,6 @@ title: Audric makes video now
 date: 2026-06-26
 description: Describe a scene and Audric creates a short cinematic clip — private by default. Free users get one a day; Pro and Max unlock the premium video models.
 author: funkii
-draft: true
 ---
 
 Audric can now generate video.

@@ -1,9 +1,8 @@
 ---
 title: Upscale your images in Audric
-date: 2026-06-26
+date: 2026-06-27
 description: The image suite is complete — generate, edit, and now upscale to a higher resolution, all in one conversation. Private by default.
 author: funkii
-draft: true
 ---
 
 You can now upscale images in Audric.
