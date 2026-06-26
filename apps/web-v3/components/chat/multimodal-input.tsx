@@ -772,6 +772,7 @@ function PureMultimodalInput({
           <PromptInputTools>
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
             <ModelSelectorCompact
+              canUsePremium={canUsePremium}
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
             />
@@ -894,12 +895,17 @@ const PRIVACY_BADGE: Record<
 function PureModelSelectorCompact({
   selectedModelId,
   onModelChange,
+  canUsePremium,
 }: {
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
+  // False for anon AND signed-in users with no subscription/credit → premium
+  // models are locked (Perplexity pattern); tapping one routes to upgrade.
+  canUsePremium: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { status: authStatus, login } = useZkLogin();
+  const router = useRouter();
+  const { status: authStatus } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
   const { data: modelsData } = useSWR(
     `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
@@ -1012,13 +1018,12 @@ function PureModelSelectorCompact({
               >
                 {grouped[key].map(({ model, curated }) => {
                   const logoProvider = model.id.split("/")[0];
-                  // Premium models are locked for anonymous users (only the
-                  // free Fast model is usable signed-out) — clicking a locked
-                  // model starts the sign-in flow (Perplexity pattern). Signed-in
-                  // users out of credit can still SELECT premium (Venice pattern)
-                  // — the composer shows an upsell banner instead of locking.
+                  // Premium models are locked for anyone who can't use premium —
+                  // anon AND signed-in users with no subscription/credit
+                  // (Perplexity pattern). Tapping a locked model routes to the
+                  // upgrade path (pricing for anon, billing for signed-in).
                   const locked =
-                    !isAuthed &&
+                    !canUsePremium &&
                     model.free !== true &&
                     model.id !== AUTO_MODEL_ID;
                   return (
@@ -1037,7 +1042,9 @@ function PureModelSelectorCompact({
                         }
                         if (locked) {
                           setOpen(false);
-                          login();
+                          router.push(
+                            isAuthed ? "/settings/billing" : "/pricing"
+                          );
                           return;
                         }
                         onModelChange?.(model.id);
@@ -1101,7 +1108,9 @@ function PureModelSelectorCompact({
                               <LockIcon className="size-3.5 text-muted-foreground/70" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              Sign in to use premium models
+                              {isAuthed
+                                ? "Upgrade to use premium models"
+                                : "Sign up to use premium models"}
                             </TooltipContent>
                           </Tooltip>
                         )}
