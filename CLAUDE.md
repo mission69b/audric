@@ -41,7 +41,7 @@ audric/
 ## Critical rules
 
 1. **Work in `apps/web-v3`.** web-v2 is frozen.
-2. **No `@t2000/engine`.** It was retired. web-v3 composes the **AI SDK v6** (`ai`) over the **Vercel AI Gateway** + `@t2000/sdk` directly. There is no engine, no `getDefaultTools`, no `AISDKEngine`.
+2. **No `@t2000/engine`.** It was retired. web-v3 composes the **AI SDK 7** (`ai@7`, upgraded from v6 on 2026-06-25 — S.496) over the **Vercel AI Gateway** + `@t2000/sdk` directly. There is no engine, no `getDefaultTools`, no `AISDKEngine`. (v7 portable `reasoning` drives the Auto router; `@ai-sdk/otel` is registered in `instrumentation.ts`; `Experimental_Agent` is now an alias of `ToolLoopAgent`.)
 3. **No DeFi.** No NAVI / save / borrow / lending / Prisma. The wallet does **send (gasless USDC/USDsui) · swap (Cetus, in SDK) · pay (x402 Recipes)**.
 4. **Money writes are CLIENT-executed.** `send_transfer` / `run_recipe` have no server `execute` — the browser signs via zkLogin on tap-to-confirm. The server NEVER holds keys.
 5. **Never read `process.env.X` directly.** Go through the typed `env` proxy (`lib/env.ts`, Zod gate validated at boot via `instrumentation.ts`). New var → add to schema + `runtimeEnv` first.
