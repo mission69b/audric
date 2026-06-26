@@ -805,14 +805,6 @@ function PureMultimodalInput({
           )}
         </PromptInputFooter>
       </PromptInput>
-      {/* Ambient privacy cue — the ZDR guarantee is present every turn, not just
-          inside the model switcher (SPEC_AUDRIC_V3 §5c privacy-by-default). */}
-      <div className="mt-1.5 flex items-center justify-center gap-1 text-[10px] text-muted-foreground/40">
-        <LockIcon className="size-2.5" />
-        <span>
-          Private · zero data retention — your chats are never training data.
-        </span>
-      </div>
     </div>
   );
 }
