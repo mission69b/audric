@@ -27,31 +27,17 @@ export type VideoModel = {
   maxSeconds: number;
 };
 
-/** v1 lineup — all via the Gateway. Verified head-to-head 2026-06-26 (contract +
- * latency + cost). Grok Imagine = the default: a video producer rated it best,
- * and it's the FASTEST (~28s) AND cheaper than Veo. Veo (native audio) + Kling 3
- * (premium) are quality alts; Seedance 1.5 is the cheap free-tier model.
- * (Excluded: Seedance 2.0 — ~3min latency; Grok 1.5 — i2v only, no t2v.) */
+// Lean lineup (founder, 2026-06-26): Grok-only for paid + Seedance for free.
+// Dropped Veo + Kling — Grok is fastest/cheapest/producer-rated, video is a
+// commodity feature (not the moat), so a multi-model lineup wasn't worth the
+// complexity. (Re-add Veo here in minutes IF "video with sound" becomes a real
+// ask — it's the only model that generates audio.)
 export const VIDEO_MODELS: VideoModel[] = [
   {
     id: "xai/grok-imagine-video",
     label: "Grok Imagine",
     costPerSecondUsd: 0.07,
     defaultSeconds: 6,
-    maxSeconds: 10,
-  },
-  {
-    id: "google/veo-3.1-fast-generate-001",
-    label: "Veo 3.1 Fast",
-    costPerSecondUsd: 0.1,
-    defaultSeconds: 6,
-    maxSeconds: 8,
-  },
-  {
-    id: "klingai/kling-v3.0-t2v",
-    label: "Kling 3.0",
-    costPerSecondUsd: 0.168,
-    defaultSeconds: 5,
     maxSeconds: 10,
   },
   {
@@ -63,8 +49,7 @@ export const VIDEO_MODELS: VideoModel[] = [
   },
 ];
 
-/** Quality default — Grok Imagine (producer-rated best; fastest + cheaper than
- * Veo). Veo/Kling are selectable quality alts via a model hint. */
+/** The single paid default — Grok Imagine (fastest + cheapest + producer-rated). */
 export const DEFAULT_VIDEO_MODEL = "xai/grok-imagine-video";
 
 /** Free-tier video runs on the CHEAP model (~$0.13/clip) — the cost lever that

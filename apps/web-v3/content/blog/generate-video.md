@@ -1,7 +1,7 @@
 ---
 title: Audric makes video now
 date: 2026-06-26
-description: Describe a scene and Audric creates a short cinematic clip — private by default. Free users get one a day; Pro and Max unlock the premium video models.
+description: Describe a scene and Audric creates a short cinematic clip — private by default. Free users get one a day; Pro and Max get more.
 author: funkii
 ---
 
@@ -15,10 +15,10 @@ Just ask: *"make a video of a calm ocean wave at sunset."* Pick landscape, squar
 
 ## What you get
 
-- **Free** — one video a day on our fast model.
-- **Pro & Max** — the premium video models (Grok Imagine, Veo, Kling), no daily cap, funded by your monthly credit that never expires.
+- **Free** — one video a day.
+- **Pro & Max** — no daily cap, funded by your monthly credit that never expires.
 
-Audric picks a fast, high-quality model for you by default. On Pro and Max you can also choose a specific model — Grok Imagine, Veo, or Kling.
+Audric uses **Grok Imagine** — fast, high-quality clips.
 
 ![From a prompt to a clip — free and premium tiers.](/blog/blog-video-frame.png)
 

@@ -80,7 +80,7 @@ export const TIERS: Tier[] = [
       "Unlimited chat on open models",
       "Every premium + frontier model (Claude, GPT-5.x, Gemini)",
       "No daily caps — images & video funded by your credit",
-      "Premium video — Grok Imagine, Veo & Kling",
+      "Video generation — fast, high-quality clips",
       "Full image suite — generate, edit & upscale",
     ],
     priceEnv: "STRIPE_PRICE_PRO",
@@ -111,6 +111,6 @@ export const TOPUP_PRESETS_USD = [5, 10, 25, 50];
  */
 export const TOPUP_PERKS: string[] = [
   "Every premium + frontier model — Claude, GPT-5.5, Gemini",
-  "Premium video (Grok Imagine, Veo, Kling) + the full image suite",
+  "Video generation + the full image suite",
   "Never expires — only pay for what you use",
 ];
