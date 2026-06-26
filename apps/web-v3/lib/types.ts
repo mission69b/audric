@@ -5,6 +5,7 @@ import type { balanceCheck } from "./ai/tools/balance-check";
 import type { createDocument } from "./ai/tools/create-document";
 import type { editImage } from "./ai/tools/edit-image";
 import type { generateImage } from "./ai/tools/generate-image";
+import type { generateVideo } from "./ai/tools/generate-video";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
 import type { saveMemory } from "./ai/tools/save-memory";
@@ -49,6 +50,7 @@ type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
 type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
 type editImageTool = InferUITool<ReturnType<typeof editImage>>;
 type upscaleImageTool = InferUITool<ReturnType<typeof upscaleImage>>;
+type generateVideoTool = InferUITool<ReturnType<typeof generateVideo>>;
 
 export type ChatTools = {
   createDocument: createDocumentTool;
@@ -56,6 +58,7 @@ export type ChatTools = {
   generate_image: generateImageTool;
   edit_image: editImageTool;
   upscale_image: upscaleImageTool;
+  generate_video: generateVideoTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
   balance_check: balanceCheckTool;

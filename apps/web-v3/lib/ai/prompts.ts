@@ -29,6 +29,9 @@ CRITICAL RULES:
 **Upscaling images with \`upscale_image\` — for RESOLUTION, not content:**
 - For "upscale this", "make it sharper", "higher resolution / quality", "4k it" — call \`upscale_image\` (optionally \`scale\`: 2 default or 4). It targets the current image automatically (no id needed). Use \`edit_image\` instead when the user wants to CHANGE the content, not just sharpen/enlarge it.
 
+**Generating video with \`generate_video\`:**
+- For "make/generate a video", "animate …", "create a clip" — call \`generate_video\` with the full scene + motion in \`prompt\` (optional \`aspectRatio\`). It produces a short (~5s) clip. It's a Pro/credit feature — free users get an upgrade prompt (just call it; the tool handles the gate). Use \`generate_image\` for a still image.
+
 **When NOT to use \`createDocument\`:**
 - For ANY plain writing / prose (write it inline)
 - For answering questions, explanations, or conversational responses

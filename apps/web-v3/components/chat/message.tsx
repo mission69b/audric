@@ -28,6 +28,7 @@ function modelDisplayName(id: string): string {
 
 import { useArtifact } from "@/hooks/use-artifact";
 import { InlineImage, InlineImageLoading } from "./inline-image";
+import { InlineVideo, InlineVideoLoading } from "./inline-video";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
 import { SendTransferTool } from "./send-transfer-tool";
@@ -396,6 +397,48 @@ const PurePreviewMessage = ({
         );
       }
       return <InlineImageLoading key={toolCallId} />;
+    }
+
+    if (type === "tool-generate_video") {
+      const { toolCallId } = part;
+      const out = part.output;
+      if (out && "error" in out) {
+        return (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 text-sm dark:bg-red-950/50"
+            key={toolCallId}
+          >
+            {String(out.error)}
+          </div>
+        );
+      }
+      if (out && "signInRequired" in out) {
+        return (
+          <div
+            className="rounded-lg border border-border/40 bg-muted/40 p-4 text-muted-foreground text-sm"
+            key={toolCallId}
+          >
+            {out.message}
+          </div>
+        );
+      }
+      if (out && "upgradeRequired" in out) {
+        return (
+          <ImageLimitCard
+            key={toolCallId}
+            message={
+              out.message ??
+              "Video generation is a Pro feature. Add credits or upgrade for more."
+            }
+          />
+        );
+      }
+      if (out && "url" in out) {
+        return (
+          <InlineVideo key={toolCallId} title={out.prompt} url={out.url} />
+        );
+      }
+      return <InlineVideoLoading key={toolCallId} />;
     }
 
     if (type === "tool-createDocument") {

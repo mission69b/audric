@@ -43,6 +43,7 @@ import { cryptoScreener } from "@/lib/ai/tools/crypto-screener";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
+import { generateVideo } from "@/lib/ai/tools/generate-video";
 import { onchainTrending, tokenResearch } from "@/lib/ai/tools/onchain";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
@@ -109,6 +110,7 @@ type ActiveTool =
   | "generate_image"
   | "edit_image"
   | "upscale_image"
+  | "generate_video"
   | "requestSuggestions"
   | "balance_check"
   | "transaction_history"
@@ -690,6 +692,9 @@ export async function POST(request: Request) {
                   "generate_image",
                   "edit_image",
                   "upscale_image",
+                  // generate_video = standalone media capability (Pro/credit);
+                  // gates premium inside the tool (anon → sign-in, free → upgrade).
+                  "generate_video",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -851,6 +856,9 @@ export async function POST(request: Request) {
               dataStream,
               canUsePremium,
             }),
+            // generate_video = standalone media capability (Pro/credit). Always
+            // registered (anon → sign-in gate, free → upgrade gate inside).
+            generate_video: generateVideo({ session, canUsePremium }),
             createDocument: createDocument({
               session,
               dataStream,
