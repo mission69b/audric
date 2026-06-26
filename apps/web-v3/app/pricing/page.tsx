@@ -47,6 +47,12 @@ export default function PricingPage() {
             </li>
           ))}
         </ul>
+        <Link
+          className="mt-4 inline-block text-foreground text-sm underline underline-offset-4 transition-colors hover:text-muted-foreground"
+          href="/skills"
+        >
+          Browse all Skills →
+        </Link>
       </div>
 
       {/* Tiers */}
