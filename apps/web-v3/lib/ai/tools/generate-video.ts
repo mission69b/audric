@@ -30,7 +30,7 @@ type GenerateVideoProps = {
 export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
   tool({
     description:
-      "Generate a short VIDEO clip from a text description. Use WHENEVER the user wants a video / clip / animation — 'make a video of …', 'animate …', 'create a clip'. Put a vivid SCENE + MOTION + mood description in `prompt`. CRITICAL: video models CANNOT render legible text, words, logos, UI, or taglines — they come out as garbled gibberish. NEVER ask for on-screen text/logos/captions, and do NOT promise the user any readable words in the clip; describe only the visual scene, subjects, camera motion, lighting, and style. (For a still image use generate_image; for text-on-image use generate_image too.) Free users get 1 video/day on the fast model; Pro/credit users get more + the best model (Veo). Just call it — the tool handles the gate.",
+      "Generate a short VIDEO clip from a text description. Use WHENEVER the user wants a video / clip / animation — 'make a video of …', 'animate …', 'create a clip'. Put a vivid SCENE + MOTION + mood description in `prompt`. CRITICAL: video models CANNOT render legible text, words, logos, UI, or taglines — they come out as garbled gibberish. NEVER ask for on-screen text/logos/captions, and do NOT promise the user any readable words in the clip; describe only the visual scene, subjects, camera motion, lighting, and style. (For a still image use generate_image; for text-on-image use generate_image too.) Free users get 1 video/day on the fast model; Pro/credit users get more + the premium models (Grok Imagine, Veo, Kling). Just call it — the tool handles the gate.",
     inputSchema: z.object({
       prompt: z
         .string()
@@ -51,7 +51,7 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
         .string()
         .optional()
         .describe(
-          "Optional model id override (e.g. 'bytedance/seedance-v1.5-pro' for faster/cheaper). Omit for the quality default (Veo 3.1 Fast)."
+          "Optional model id override (e.g. 'google/veo-3.1-fast-generate-001' or 'klingai/kling-v3.0-t2v'). Omit for the default (Grok Imagine — fast + high quality)."
         ),
     }),
     execute: async ({ prompt, aspectRatio, durationSeconds, model }) => {
@@ -70,7 +70,7 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
         if (usedToday >= FREE_DAILY_VIDEO_LIMIT) {
           return {
             upgradeRequired: true as const,
-            message: `You've used your free video for today. Upgrade to Pro for more videos on our best model (Veo) — or try again after midnight UTC.`,
+            message: `You've used your free video for today. Upgrade to Pro for more videos on our premium models (Grok Imagine, Veo, Kling) — or try again after midnight UTC.`,
           };
         }
       }

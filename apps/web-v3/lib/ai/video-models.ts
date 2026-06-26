@@ -27,9 +27,19 @@ export type VideoModel = {
   maxSeconds: number;
 };
 
-/** v1 lineup — all via the Gateway. Veo 3.1 Fast = the quality default; Seedance
- * + Kling are cheaper/faster hints; Veo 3.1 (full) is the max-quality hint. */
+/** v1 lineup — all via the Gateway. Verified head-to-head 2026-06-26 (contract +
+ * latency + cost). Grok Imagine = the default: a video producer rated it best,
+ * and it's the FASTEST (~28s) AND cheaper than Veo. Veo (native audio) + Kling 3
+ * (premium) are quality alts; Seedance 1.5 is the cheap free-tier model.
+ * (Excluded: Seedance 2.0 — ~3min latency; Grok 1.5 — i2v only, no t2v.) */
 export const VIDEO_MODELS: VideoModel[] = [
+  {
+    id: "xai/grok-imagine-video",
+    label: "Grok Imagine",
+    costPerSecondUsd: 0.07,
+    defaultSeconds: 6,
+    maxSeconds: 10,
+  },
   {
     id: "google/veo-3.1-fast-generate-001",
     label: "Veo 3.1 Fast",
@@ -38,11 +48,11 @@ export const VIDEO_MODELS: VideoModel[] = [
     maxSeconds: 8,
   },
   {
-    id: "google/veo-3.1-generate-001",
-    label: "Veo 3.1",
-    costPerSecondUsd: 0.2,
-    defaultSeconds: 6,
-    maxSeconds: 8,
+    id: "klingai/kling-v3.0-t2v",
+    label: "Kling 3.0",
+    costPerSecondUsd: 0.168,
+    defaultSeconds: 5,
+    maxSeconds: 10,
   },
   {
     id: "bytedance/seedance-v1.5-pro",
@@ -51,20 +61,14 @@ export const VIDEO_MODELS: VideoModel[] = [
     defaultSeconds: 5,
     maxSeconds: 12,
   },
-  {
-    id: "klingai/kling-v2.5-turbo-t2v",
-    label: "Kling 2.5 Turbo",
-    costPerSecondUsd: 0.042,
-    defaultSeconds: 5,
-    maxSeconds: 10,
-  },
 ];
 
-/** Quality default — Veo 3.1 Fast (best coherence + native audio, sane price). */
-export const DEFAULT_VIDEO_MODEL = "google/veo-3.1-fast-generate-001";
+/** Quality default — Grok Imagine (producer-rated best; fastest + cheaper than
+ * Veo). Veo/Kling are selectable quality alts via a model hint. */
+export const DEFAULT_VIDEO_MODEL = "xai/grok-imagine-video";
 
-/** Free-tier video runs on the CHEAP model (~$0.13/clip vs Veo's ~$0.60) — the
- * cost lever that makes a daily free taste viable. Veo stays paid-only. */
+/** Free-tier video runs on the CHEAP model (~$0.13/clip) — the cost lever that
+ * makes a daily free taste viable. Premium models stay paid-only. */
 export const FREE_VIDEO_MODEL = "bytedance/seedance-v1.5-pro";
 
 /** Free (no-credit) users get 1 video/day (separate from the 10/day image cap —

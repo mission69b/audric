@@ -9,8 +9,8 @@ const PAID_HOURLY = 10_000; // any paid tier → effectively unlimited
 
 // Free-tier DAILY text-prompt cap (authed, no paid plan). Bounds worst-case
 // free-model (Kimi) burn — the swing cost in SPEC_AUDRIC_ECONOMICS — while
-// staying 3× more generous than Venice's 10/day. Paid tiers are exempt.
-export const FREE_DAILY_TEXT_LIMIT = 30;
+// staying 2× more generous than Venice's 10/day. Paid tiers are exempt.
+export const FREE_DAILY_TEXT_LIMIT = 20;
 
 export function maxMessagesPerHour(
   userType: UserType,
