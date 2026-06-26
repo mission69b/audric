@@ -2,12 +2,14 @@ import { experimental_generateVideo, gateway, tool } from "ai";
 import { z } from "zod";
 import type { Session } from "@/app/(auth)/auth";
 import {
+  FREE_DAILY_VIDEO_LIMIT,
+  FREE_VIDEO_MODEL,
   resolveDuration,
   selectVideoModel,
   videoCostMicros,
 } from "@/lib/ai/video-models";
 import { putBlob } from "@/lib/blob";
-import { recordCredit } from "@/lib/db/queries";
+import { countUserVideosToday, recordCredit } from "@/lib/db/queries";
 import { generateUUID } from "@/lib/utils";
 
 type GenerateVideoProps = {
@@ -28,7 +30,7 @@ type GenerateVideoProps = {
 export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
   tool({
     description:
-      "Generate a short VIDEO clip from a text description. Use WHENEVER the user wants a video / clip / animation — 'make a video of …', 'animate …', 'create a clip'. Put a vivid SCENE + MOTION + mood description in `prompt`. CRITICAL: video models CANNOT render legible text, words, logos, UI, or taglines — they come out as garbled gibberish. NEVER ask for on-screen text/logos/captions, and do NOT promise the user any readable words in the clip; describe only the visual scene, subjects, camera motion, lighting, and style. (For a still image use generate_image; for text-on-image use generate_image too.) This is a Pro/credit feature (free users get an upgrade prompt).",
+      "Generate a short VIDEO clip from a text description. Use WHENEVER the user wants a video / clip / animation — 'make a video of …', 'animate …', 'create a clip'. Put a vivid SCENE + MOTION + mood description in `prompt`. CRITICAL: video models CANNOT render legible text, words, logos, UI, or taglines — they come out as garbled gibberish. NEVER ask for on-screen text/logos/captions, and do NOT promise the user any readable words in the clip; describe only the visual scene, subjects, camera motion, lighting, and style. (For a still image use generate_image; for text-on-image use generate_image too.) Free users get 1 video/day on the fast model; Pro/credit users get more + the best model (Veo). Just call it — the tool handles the gate.",
     inputSchema: z.object({
       prompt: z
         .string()
@@ -60,15 +62,23 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
             "Generating videos needs a (free) Audric account — sign in and I'll create it.",
         };
       }
-      if (!canUsePremium) {
-        return {
-          upgradeRequired: true as const,
-          message:
-            "Video generation is a Pro feature. Add credits or upgrade to Pro to create clips.",
-        };
+
+      // Free tier: 1 video/day on the CHEAP model (Seedance); Veo stays paid.
+      const isFree = !canUsePremium;
+      if (isFree) {
+        const usedToday = await countUserVideosToday(session.user.id);
+        if (usedToday >= FREE_DAILY_VIDEO_LIMIT) {
+          return {
+            upgradeRequired: true as const,
+            message: `You've used your free video for today. Upgrade to Pro for more videos on our best model (Veo) — or try again after midnight UTC.`,
+          };
+        }
       }
 
-      const selected = selectVideoModel(model);
+      // Free → forced to the cheap model; paid → their pick (default Veo).
+      const selected = isFree
+        ? selectVideoModel(FREE_VIDEO_MODEL)
+        : selectVideoModel(model);
       const ratio = aspectRatio ?? "16:9";
       const seconds = resolveDuration(selected, durationSeconds);
       const id = generateUUID();
@@ -118,12 +128,14 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
         contentType: mediaType,
       });
 
-      // Credit debit (premium). Cost = model $/sec × seconds × margin; idempotent.
+      // Ledger row per clip (idempotent by ref). Paid → real per-clip debit;
+      // free → a $0 marker that the 1/day cap counts (countUserVideosToday).
+      // Written only on SUCCESS, so a failed gen doesn't burn the free allowance.
       await recordCredit({
         userId: session.user.id,
-        amountMicros: videoCostMicros(selected, seconds),
+        amountMicros: isFree ? 0 : videoCostMicros(selected, seconds),
         type: "debit",
-        description: `video: ${selected.label} ${seconds}s`,
+        description: `${isFree ? "video (free)" : "video"}: ${selected.label} ${seconds}s`,
         ref: `video:${id}`,
       });
 

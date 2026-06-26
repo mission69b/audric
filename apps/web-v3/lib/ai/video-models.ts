@@ -63,6 +63,14 @@ export const VIDEO_MODELS: VideoModel[] = [
 /** Quality default — Veo 3.1 Fast (best coherence + native audio, sane price). */
 export const DEFAULT_VIDEO_MODEL = "google/veo-3.1-fast-generate-001";
 
+/** Free-tier video runs on the CHEAP model (~$0.13/clip vs Veo's ~$0.60) — the
+ * cost lever that makes a daily free taste viable. Veo stays paid-only. */
+export const FREE_VIDEO_MODEL = "bytedance/seedance-v1.5-pro";
+
+/** Free (no-credit) users get 1 video/day (separate from the 10/day image cap —
+ * different cost class). Derived from `video:` ledger rows; resets UTC midnight. */
+export const FREE_DAILY_VIDEO_LIMIT = 1;
+
 export function getVideoModel(id?: string): VideoModel | undefined {
   return id ? VIDEO_MODELS.find((m) => m.id === id) : undefined;
 }

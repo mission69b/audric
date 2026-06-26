@@ -876,6 +876,31 @@ export async function countUserImagesToday(userId: string): Promise<number> {
   }
 }
 
+/**
+ * Today's (UTC) video count for a user — derived from the `video:<id>` ledger
+ * rows generate_video writes (paid debit OR a $0 free-tier marker). Powers the
+ * 1-free-video/day cap. Fails OPEN on error (soft guardrail, not security).
+ */
+export async function countUserVideosToday(userId: string): Promise<number> {
+  const startOfDayUtc = new Date();
+  startOfDayUtc.setUTCHours(0, 0, 0, 0);
+  try {
+    const [row] = await db
+      .select({ value: count() })
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, userId),
+          like(creditLedger.ref, "video:%"),
+          gte(creditLedger.createdAt, startOfDayUtc)
+        )
+      );
+    return row?.value ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function updateDocumentContent({
   id,
   content,
