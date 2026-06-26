@@ -73,12 +73,20 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
       const seconds = resolveDuration(selected, durationSeconds);
       const id = generateUUID();
 
+      // Server-side no-text backstop. Video models (esp. Veo) hallucinate
+      // GARBLED on-screen text whenever the prompt mentions brand names /
+      // concepts ("Audric", "Sui", "AI") — even when no text was requested. The
+      // agent guidance alone can't stop it, so actively steer the model away from
+      // rendering ANY text. This is the single biggest video-quality lever.
+      const NO_TEXT =
+        " Clean cinematic footage with absolutely NO text, NO words, NO letters, NO captions, NO subtitles, NO logos, and NO writing of any kind anywhere in the frame.";
+
       let base64Data: string | undefined;
       let mediaType = "video/mp4";
       try {
         const result = await experimental_generateVideo({
           model: gateway.videoModel(selected.id),
-          prompt,
+          prompt: `${prompt}${NO_TEXT}`,
           aspectRatio: ratio,
           // `duration` is model-specific (not in the base options type).
           ...({ duration: seconds } as { duration: number }),

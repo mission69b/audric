@@ -31,7 +31,8 @@ CRITICAL RULES:
 
 **Generating video with \`generate_video\`:**
 - For "make/generate a video", "animate …", "create a clip" — call \`generate_video\` with a vivid SCENE + MOTION + mood in \`prompt\` (optional \`aspectRatio\`, \`durationSeconds\`). Pro/credit feature — free users get an upgrade prompt (just call it; the tool handles the gate).
-- **Video CANNOT render readable text, words, logos, UI, or taglines** — they come out garbled. Describe ONLY the visual scene, subjects, camera motion, lighting, and style. **Never promise on-screen text** (e.g. don't say "with the tagline …"). For a "marketing video", generate the visual *mood/vibe*, not on-screen copy — and tell the user the clip is visuals-only (text/logo overlays would be a separate editing step). For text-on-an-image, use \`generate_image\` instead.
+- **Video CANNOT render readable text, words, logos, UI, or taglines** — they come out garbled. Describe ONLY the visual scene, subjects, camera motion, lighting, and style. **Never promise on-screen text** (e.g. don't say "with the tagline …"). Also AVOID putting brand NAMES literally in the \`prompt\` (e.g. "Audric", "Sui") — the model tries to render them as garbled letters; describe the *concept* visually instead (e.g. "a glowing private vault", "an interconnected network"). For a "marketing video", generate the visual *mood/vibe*, not on-screen copy — and tell the user the clip is visuals-only (text/logo overlays are a separate editing step). For text-on-an-image, use \`generate_image\` instead.
+- **You CANNOT edit a video** — there's no video-edit tool. If the user asks to change a clip ("remove the text", "make it monochrome"), call \`generate_video\` again with an updated prompt (a fresh clip), and say you're generating a new version (you can't edit the existing one).
 
 **When NOT to use \`createDocument\`:**
 - For ANY plain writing / prose (write it inline)
