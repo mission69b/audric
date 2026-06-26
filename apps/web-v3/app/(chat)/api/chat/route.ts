@@ -52,6 +52,7 @@ import { setPreferences } from "@/lib/ai/tools/set-preferences";
 import { stockAnalysis } from "@/lib/ai/tools/stock-analysis";
 import { transactionHistory } from "@/lib/ai/tools/transaction-history";
 import { updateDocument } from "@/lib/ai/tools/update-document";
+import { upscaleImage } from "@/lib/ai/tools/upscale-image";
 import { webScrape } from "@/lib/ai/tools/web-scrape";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import { isProductionEnvironment } from "@/lib/constants";
@@ -107,6 +108,7 @@ type ActiveTool =
   | "updateDocument"
   | "generate_image"
   | "edit_image"
+  | "upscale_image"
   | "requestSuggestions"
   | "balance_check"
   | "transaction_history"
@@ -127,6 +129,7 @@ const DOC_MUTATION_TOOLS = new Set<ActiveTool>([
   "requestSuggestions",
   "generate_image",
   "edit_image",
+  "upscale_image",
 ]);
 
 function getStreamContext() {
@@ -682,10 +685,11 @@ export async function POST(request: Request) {
                   // stock_analysis = the stocks analog (Finnhub; US equities).
                   // Free like the rest; needs a key (no keyless stock feed).
                   "stock_analysis",
-                  // Image generation/edit are first-class + always available to
-                  // signed-in users (no heuristic gate → no dead-ends).
+                  // Image generation/edit/upscale are first-class + always
+                  // available to signed-in users (no heuristic gate → no dead-ends).
                   "generate_image",
                   "edit_image",
+                  "upscale_image",
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",
@@ -855,6 +859,13 @@ export async function POST(request: Request) {
             ...(session?.user
               ? {
                   edit_image: editImage({
+                    session,
+                    dataStream,
+                    canUsePremium,
+                    uploadedImagePathname,
+                    fallbackImageId,
+                  }),
+                  upscale_image: upscaleImage({
                     session,
                     dataStream,
                     canUsePremium,

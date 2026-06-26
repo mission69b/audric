@@ -172,7 +172,9 @@ const PurePreviewMessage = ({
   if (isAssistant && !isLoading && cotItems.length > 0) {
     const imageFailed = allParts.some(
       (p) =>
-        (p.type === "tool-generate_image" || p.type === "tool-edit_image") &&
+        (p.type === "tool-generate_image" ||
+          p.type === "tool-edit_image" ||
+          p.type === "tool-upscale_image") &&
         typeof p.output === "object" &&
         p.output !== null &&
         "error" in p.output
@@ -321,6 +323,44 @@ const PurePreviewMessage = ({
     }
 
     if (type === "tool-edit_image") {
+      const { toolCallId } = part;
+      const out = part.output;
+      if (out && "error" in out) {
+        return (
+          <div
+            className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-500 text-sm dark:bg-red-950/50"
+            key={toolCallId}
+          >
+            {String(out.error)}
+          </div>
+        );
+      }
+      if (out && "limitReached" in out) {
+        return (
+          <ImageLimitCard
+            key={toolCallId}
+            message={
+              out.message ??
+              "You've reached today's free image limit. Add credits or upgrade for more."
+            }
+          />
+        );
+      }
+      if (out && "id" in out) {
+        return (
+          <InlineImage
+            documentId={out.id}
+            key={toolCallId}
+            model={out.model}
+            title={out.prompt}
+            versionIndex={out.versionIndex}
+          />
+        );
+      }
+      return <InlineImageLoading key={toolCallId} />;
+    }
+
+    if (type === "tool-upscale_image") {
       const { toolCallId } = part;
       const out = part.output;
       if (out && "error" in out) {

@@ -80,6 +80,12 @@ const serverSchema = z.object({
   // back to the keyless CoinGecko / GeckoTerminal path (no boot failure). The same
   // key later powers the t2000 agent gateway (dual-use). Server-only.
   CMC_API_KEY: optionalString,
+  // Image super-resolution (fal.ai) — OPTIONAL: enables the `upscale_image` tool
+  // (fal `clarity-upscaler`, image→image — not on the Vercel Gateway's text→image
+  // surface). Unset → the tool returns a graceful "not configured" notice (no
+  // boot failure). The SAME key powers the Phase-3 uncensored image set
+  // (SPEC_AUDRIC_IMAGE_PIPELINE §2.2/§12) — provisioned once, reused. Server-only.
+  FAL_API_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -114,6 +120,7 @@ const runtimeEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   CMC_API_KEY: process.env.CMC_API_KEY,
+  FAL_API_KEY: process.env.FAL_API_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

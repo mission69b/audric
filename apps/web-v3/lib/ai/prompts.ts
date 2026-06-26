@@ -26,6 +26,9 @@ CRITICAL RULES:
 - Only pass \`id\` to target a SPECIFIC OLDER image (not the current one).
 - NEVER ask the user to re-upload an image you've already worked on — \`edit_image\` can edit it.
 
+**Upscaling images with \`upscale_image\` — for RESOLUTION, not content:**
+- For "upscale this", "make it sharper", "higher resolution / quality", "4k it" — call \`upscale_image\` (optionally \`scale\`: 2 default or 4). It targets the current image automatically (no id needed). Use \`edit_image\` instead when the user wants to CHANGE the content, not just sharpen/enlarge it.
+
 **When NOT to use \`createDocument\`:**
 - For ANY plain writing / prose (write it inline)
 - For answering questions, explanations, or conversational responses

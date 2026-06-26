@@ -11,6 +11,7 @@ import type { saveMemory } from "./ai/tools/save-memory";
 import type { sendTransfer } from "./ai/tools/send-transfer";
 import type { transactionHistory } from "./ai/tools/transaction-history";
 import type { updateDocument } from "./ai/tools/update-document";
+import type { upscaleImage } from "./ai/tools/upscale-image";
 import type { webSearch } from "./ai/tools/web-search";
 import type { Suggestion } from "./db/schema";
 
@@ -47,12 +48,14 @@ type sendTransferTool = InferUITool<typeof sendTransfer>;
 type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
 type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
 type editImageTool = InferUITool<ReturnType<typeof editImage>>;
+type upscaleImageTool = InferUITool<ReturnType<typeof upscaleImage>>;
 
 export type ChatTools = {
   createDocument: createDocumentTool;
   updateDocument: updateDocumentTool;
   generate_image: generateImageTool;
   edit_image: editImageTool;
+  upscale_image: upscaleImageTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
   balance_check: balanceCheckTool;
