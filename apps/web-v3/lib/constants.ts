@@ -29,15 +29,37 @@ export const starterChips: StarterChip[] = [
       "I need you to research a topic for me. Use web search to find current, reliable information. Summarize the key findings clearly, cite your sources, and flag any conflicting information or areas where more research might be needed.",
   },
   {
-    label: "Surprise me",
+    label: "Create a video prompt",
     starterPrompt:
-      "Tell me something genuinely fascinating that most people don't know about. Pick a topic that's thought-provoking, weird, or challenges common assumptions. Explain why it matters or what makes it interesting.",
+      "Help me make a video. Suggest one vivid, cinematic scene idea (visuals only — no on-screen text or logos), then generate a short clip of it.",
   },
   {
     label: "Check my balance",
     starterPrompt: "What's in my Passport wallet right now? Show my balances.",
     authed: true,
   },
+];
+
+/** Cycling composer placeholder examples (Venice-style) — capabilities first,
+ * then concrete one-tap-worthy prompts spanning chat / web / media / crypto /
+ * wallet. Visual hints only (rotated in the textarea placeholder). */
+export const composerPlaceholders: string[] = [
+  "Ask me anything privately",
+  "Search the web for current info",
+  "Generate images from descriptions",
+  "Create flowcharts or diagrams",
+  "Analyze documents and PDFs",
+  "Generate or animate videos",
+  "Edit or upscale your images",
+  "What are the trending AI crypto projects?",
+  "Make a video of a calm ocean wave at sunset",
+  "Research NVDA — fundamentals, ratings and recent news",
+  "New tokens on Solana",
+  "Top crypto gainers this week",
+  "Show me ETH's price over the last 30 days",
+  "What's the crypto Fear & Greed index right now?",
+  "Send USDC to a friend — free and instant",
+  "What's in my Passport wallet?",
 ];
 
 /** Concrete example prompts for the static login/preview pane. */

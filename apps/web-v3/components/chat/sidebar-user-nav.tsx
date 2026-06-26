@@ -144,24 +144,23 @@ export function SidebarUserNav() {
               className="px-2 py-1.5 text-[12px]"
               data-testid="funding-readout"
             >
-              {/* One adaptive status line — Plan for subscribers, else Credits
-                  for the PAYG-primary path. Never both (the full breakdown lives
-                  in Billing). */}
-              {paidTier ? (
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Plan</span>
-                  <span className="font-medium text-foreground/80 capitalize">
-                    {paidTier}
-                  </span>
-                </div>
-              ) : credit?.configured ? (
+              {/* Plan + Credits both shown (Manus-style) — see your tier AND
+                  spendable balance without opening Billing. Plan is always
+                  present (Free when not subscribed); Credits when the rail is on. */}
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Plan</span>
+                <span className="font-medium text-foreground/80 capitalize">
+                  {paidTier ?? "Free"}
+                </span>
+              </div>
+              {credit?.configured && (
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span>Credits</span>
                   <span className="text-foreground/70 tabular-nums">
                     {fmtUsdc(credit?.balanceUsd)}
                   </span>
                 </div>
-              ) : null}
+              )}
               <div className="flex items-center justify-between text-muted-foreground">
                 <span>Passport USDC</span>
                 <span className="text-foreground/70 tabular-nums">

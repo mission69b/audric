@@ -51,6 +51,7 @@ import {
   type ModelPricing,
   type ModelPrivacyTier,
 } from "@/lib/ai/models";
+import { composerPlaceholders } from "@/lib/constants";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -272,6 +273,18 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<string[]>([]);
+  // Cycling example placeholders (Venice-style) — rotates while not editing.
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  useEffect(() => {
+    if (editingMessage) {
+      return;
+    }
+    const id = setInterval(
+      () => setPlaceholderIndex((i) => (i + 1) % composerPlaceholders.length),
+      3500
+    );
+    return () => clearInterval(id);
+  }, [editingMessage]);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState("");
   const [slashIndex, setSlashIndex] = useState(0);
@@ -748,7 +761,9 @@ function PureMultimodalInput({
             }
           }}
           placeholder={
-            editingMessage ? "Edit your message..." : "Ask anything..."
+            editingMessage
+              ? "Edit your message..."
+              : composerPlaceholders[placeholderIndex]
           }
           ref={textareaRef}
           value={input}
