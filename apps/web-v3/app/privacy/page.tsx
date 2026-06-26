@@ -30,9 +30,11 @@ export default function PrivacyPage() {
           receive your Google password.
         </li>
         <li>
-          <strong>Your content:</strong> chats and messages you send, and any
-          artifacts you generate, so we can show your history and continue
-          conversations.
+          <strong>Your content:</strong> your chats and the artifacts you
+          generate — stored{" "}
+          <strong>encrypted and private to your account</strong>, kept only so{" "}
+          <em>you</em> can revisit your history and pick up conversations. Never
+          sold, never used to train models, never on a public URL.
         </li>
         <li>
           <strong>Memory (optional):</strong> only if you turn Private Memory
