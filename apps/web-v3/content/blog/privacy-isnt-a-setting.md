@@ -7,6 +7,8 @@ author: funkii
 
 At most AI products, privacy is a setting — something you opt into, buried in a menu, off by default. At Audric it's the opposite: privacy isn't a setting, it's how the product is built. There's no switch to find, because there's nothing to turn on.
 
+![Privacy isn't a setting — there's no switch to turn off.](/blog/blog-privacy-cover.png)
+
 Here's what that means in practice.
 
 ## We collect the minimum
@@ -24,6 +26,8 @@ Your chats and the files and images you create are stored encrypted and private 
 ## What can be decentralized, is — and you control it
 
 Your memory lives on decentralized storage (Walrus), encrypted and opt-in. Your wallet is non-custodial — built from your sign-in, only you hold the keys, so only you can move your money. The parts of Audric that can be yours to hold, are. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
+
+![The switch that can't be switched off.](/blog/blog-privacy-toggle.png)
 
 ---
 

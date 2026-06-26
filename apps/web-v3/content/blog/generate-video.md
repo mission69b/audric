@@ -11,12 +11,16 @@ Describe a scene and it creates a short cinematic clip — no timeline, no edito
 
 Just ask: *"make a video of a calm ocean wave at sunset."* Pick landscape, square, or vertical (16:9, 1:1, or 9:16) — vertical clips are ready for TikTok and Reels.
 
+![Audric makes video now.](/blog/blog-video-cover.png)
+
 ## What you get
 
 - **Free** — one video a day on our fast model.
 - **Pro & Max** — the premium video models (Grok Imagine, Veo, Kling), no daily cap, funded by your monthly credit that never expires.
 
 Audric picks a fast, high-quality model for you by default. On Pro and Max you can also choose a specific model — Grok Imagine, Veo, or Kling.
+
+![From a prompt to a clip — free and premium tiers.](/blog/blog-video-frame.png)
 
 ## Private by default
 

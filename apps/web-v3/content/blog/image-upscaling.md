@@ -11,6 +11,8 @@ That completes the creative loop: generate an image, refine it in chat, then sha
 
 Just say *"upscale this"* or *"make it sharper."*
 
+![Upscale your images in Audric.](/blog/blog-upscale-cover.png)
+
 ## One conversation, the whole image suite
 
 - **Generate** — describe what you want.
@@ -18,6 +20,8 @@ Just say *"upscale this"* or *"make it sharper."*
 - **Upscale** — sharper, higher resolution, ready to use.
 
 It works on images you generated and on photos you upload.
+
+![Before and after — the generate, edit, upscale loop.](/blog/blog-upscale-loop.png)
 
 ## Private by default
 

@@ -7,6 +7,8 @@ author: funkii
 
 Audric now has **Skills** — live data tools it reaches for automatically, right inside the conversation. No plugins to install, no connectors to configure, no tabs to open. Ask in plain language and Audric routes to the right one and weaves the live data into its answer.
 
+![Introducing Skills — live data, built into chat.](/blog/blog-skills-cover.png)
+
 ## What Skills can pull
 
 **Crypto**
@@ -21,6 +23,8 @@ Audric now has **Skills** — live data tools it reaches for automatically, righ
 **Stocks**
 
 - **Stocks** — live US stock and ETF quotes, fundamentals (P/E, EPS, 52-week range, dividend yield), analyst ratings, recent earnings, news, and peers.
+
+![The Skills catalog.](/blog/blog-skills-catalog.png)
 
 ## They just work
 
