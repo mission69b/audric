@@ -44,7 +44,8 @@ export const EVERY_PLAN: string[] = [
   "Decentralized memory — encrypted on Walrus, yours to wipe",
   "Private chats & files — encrypted at rest, never public",
   "Auto — automatically picks the best model for every task",
-  "Live crypto + stock market data + web research — built in",
+  "Live crypto + stock research — prices, charts, screeners, on-chain & analyst data",
+  "Web search, PDF analysis & diagrams — all built in",
 ];
 
 /** Teased, never sold — clearly labeled "coming". */
@@ -60,9 +61,11 @@ export const TIERS: Tier[] = [
     priceUsd: 0,
     tagline: "The private AI, on the house",
     features: [
-      "Open, uncensored models — unlimited core chat",
-      "Web search, image generation & cited multi-step research",
-      "Pay-as-you-go top-up for premium models",
+      "20 chats/day on open, uncensored models",
+      "10 images/day — generate, edit & upscale",
+      "1 video/day",
+      "Web search + cited multi-step research",
+      "Pay-as-you-go top-up for premium models & more media",
     ],
   },
   {
@@ -75,8 +78,10 @@ export const TIERS: Tier[] = [
     features: [
       "$20/mo credit — more than topping up, never expires",
       "Unlimited chat on open models",
-      "Every premium + frontier model",
-      "Image & media generation",
+      "Every premium + frontier model (Claude, GPT-5.x, Gemini)",
+      "No daily caps — images & video funded by your credit",
+      "Premium video — Grok Imagine, Veo & Kling",
+      "Full image suite — generate, edit & upscale",
     ],
     priceEnv: "STRIPE_PRICE_PRO",
   },
@@ -89,8 +94,8 @@ export const TIERS: Tier[] = [
     tagline: "Maximum everything",
     features: [
       "$110/mo credit — more than topping up, never expires",
-      "Everything in Pro",
-      "Highest media & usage caps",
+      "Everything in Pro, at the highest usage",
+      "Most monthly credit for premium models, video & media",
       "First access to new features",
     ],
     priceEnv: "STRIPE_PRICE_MAX",
@@ -106,6 +111,6 @@ export const TOPUP_PRESETS_USD = [5, 10, 25, 50];
  */
 export const TOPUP_PERKS: string[] = [
   "Every premium + frontier model — Claude, GPT-5.5, Gemini",
-  "Image & media generation",
+  "Premium video (Grok Imagine, Veo, Kling) + the full image suite",
   "Never expires — only pay for what you use",
 ];
