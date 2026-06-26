@@ -44,7 +44,7 @@ export const EVERY_PLAN: string[] = [
   "Decentralized memory — encrypted on Walrus",
   "Private chats & files — encrypted at rest, never public",
   "Auto — automatically picks the best model for every task",
-  "Live crypto + stock research — prices, charts, screeners, on-chain & analyst data",
+  "Skills — built-in live data: crypto, stocks & on-chain (prices, charts, screeners, ratings)",
   "Web search, PDF analysis & diagrams — all built in",
 ];
 
