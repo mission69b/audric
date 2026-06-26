@@ -56,6 +56,7 @@ import { updateDocument } from "@/lib/ai/tools/update-document";
 import { upscaleImage } from "@/lib/ai/tools/upscale-image";
 import { webScrape } from "@/lib/ai/tools/web-scrape";
 import { webSearch } from "@/lib/ai/tools/web-search";
+import { hasVideoIntent } from "@/lib/ai/video-intent";
 import { isProductionEnvironment } from "@/lib/constants";
 import { debitMicrosForUsage, marginFor } from "@/lib/credit/meter";
 import {
@@ -376,6 +377,12 @@ export async function POST(request: Request) {
       isContinuation: isToolApprovalFlow,
     });
 
+    // Video gate (2026-06-26 tool-confusion fix): expose generate_video ONLY on
+    // video-intent turns. On an image/other turn the tool is absent → the model
+    // structurally CANNOT mis-fire video instead of generate_image (the incident:
+    // an image request looping into video + the Gateway's ~1 video/min quota).
+    const videoIntent = hasVideoIntent({ text: recentUserText });
+
     // Artifacts are now ONLY code / sheet / image (prose is always inline). This
     // gate opts createDocument in only on creation intent that maps to a panel
     // artifact. Prose verbs/nouns (essay/poem/haiku) are intentionally NOT here.
@@ -692,9 +699,11 @@ export async function POST(request: Request) {
                   "generate_image",
                   "edit_image",
                   "upscale_image",
-                  // generate_video = standalone media capability (Pro/credit);
-                  // gates premium inside the tool (anon → sign-in, free → upgrade).
-                  "generate_video",
+                  // generate_video gated to VIDEO-intent turns only (2026-06-26
+                  // tool-confusion fix) — absent on image turns so the model
+                  // can't mis-fire video for generate_image. Premium gating +
+                  // free 1/day still enforced inside the tool.
+                  ...(videoIntent ? (["generate_video"] as ActiveTool[]) : []),
                   "balance_check",
                   "transaction_history",
                   "resolve_suins",

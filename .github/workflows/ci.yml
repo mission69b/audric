@@ -53,3 +53,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @audric/web-v3 eval:image
       - run: pnpm --filter @audric/web-v3 eval:no-autosend
+      - run: pnpm --filter @audric/web-v3 eval:no-video-misfire

@@ -21,6 +21,7 @@
     "eval:router": "tsx scripts/router-eval.mts",
     "eval:image": "tsx scripts/eval-image-fallback.ts",
     "eval:no-autosend": "tsx scripts/no-autosend-eval.ts",
+    "eval:no-video-misfire": "tsx scripts/no-video-misfire-eval.ts",
     "smoke:image": "tsx scripts/image-edit-spike.mts",
     "stripe:seed": "tsx scripts/stripe-seed.ts",
     "reset-billing": "tsx scripts/reset-billing.ts",
