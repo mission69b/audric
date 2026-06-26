@@ -72,12 +72,14 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
         base64Data = clip?.base64;
         mediaType = clip?.mediaType ?? "video/mp4";
       } catch (e) {
-        // TEMP (diagnosis): surface the real gateway reason — prod logs aren't
-        // reachable via the CLI. Revert to the clean message once root-caused.
+        // Log the real reason server-side (e.g. the Gateway's "$10 minimum
+        // balance" video gate — an infra/ops signal for us), but NEVER leak
+        // internal billing detail to the user — show a clean message.
         const reason = e instanceof Error ? e.message : String(e);
-        console.error("[generate_video] failed:", e);
+        console.error("[generate_video] failed:", reason);
         return {
-          error: `Video generation failed — ${reason.slice(0, 240)}`,
+          error:
+            "I couldn't generate that video right now — video is briefly unavailable. Please try again shortly.",
         };
       }
 
