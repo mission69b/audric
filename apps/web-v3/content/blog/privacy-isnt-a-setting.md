@@ -23,7 +23,7 @@ Your chats and the files and images you create are stored encrypted and private 
 
 ## What can be decentralized, is — and you control it
 
-Your memory lives on decentralized storage (Walrus), encrypted and opt-in. The parts of Audric that can be yours to hold, are. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
+Your memory lives on decentralized storage (Walrus), encrypted and opt-in. Your wallet is non-custodial — built from your sign-in, only you hold the keys, so only you can move your money. The parts of Audric that can be yours to hold, are. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
 
 ---
 

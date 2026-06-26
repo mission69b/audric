@@ -9,7 +9,7 @@ Audric can now generate video.
 
 Describe a scene and it creates a short cinematic clip — no timeline, no editor, just a prompt. It's the newest piece of the creative suite, alongside image generation, editing, and upscaling.
 
-Just ask: *"make a video of a calm ocean wave at sunset."*
+Just ask: *"make a video of a calm ocean wave at sunset."* Pick landscape, square, or vertical (16:9, 1:1, or 9:16) — vertical clips are ready for TikTok and Reels.
 
 ## What you get
 
