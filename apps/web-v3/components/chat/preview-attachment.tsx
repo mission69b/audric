@@ -54,7 +54,7 @@ export const PreviewAttachment = ({
         )}
         {onRemove && !isUploading && (
           <button
-            className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/80 group-hover:opacity-100"
+            className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-black/60 text-white opacity-100 backdrop-blur-sm transition-opacity hover:bg-black/80 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
             onClick={onRemove}
             type="button"
           >
@@ -80,7 +80,7 @@ export const PreviewAttachment = ({
       </span>
       {onRemove && !isUploading && (
         <button
-          className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-black/10 text-foreground/70 opacity-0 transition-opacity hover:bg-black/20 group-hover:opacity-100 dark:bg-white/10 dark:hover:bg-white/20"
+          className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-black/10 text-foreground/70 opacity-100 transition-opacity hover:bg-black/20 group-hover:opacity-100 [@media(hover:hover)]:opacity-0 dark:bg-white/10 dark:hover:bg-white/20"
           onClick={onRemove}
           type="button"
         >
