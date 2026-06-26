@@ -1,7 +1,11 @@
 import { experimental_generateVideo, gateway, tool } from "ai";
 import { z } from "zod";
 import type { Session } from "@/app/(auth)/auth";
-import { selectVideoModel, videoCostMicros } from "@/lib/ai/video-models";
+import {
+  resolveDuration,
+  selectVideoModel,
+  videoCostMicros,
+} from "@/lib/ai/video-models";
 import { putBlob } from "@/lib/blob";
 import { recordCredit } from "@/lib/db/queries";
 import { generateUUID } from "@/lib/utils";
@@ -24,23 +28,31 @@ type GenerateVideoProps = {
 export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
   tool({
     description:
-      "Generate a short (~5s) VIDEO clip from a text description. Use WHENEVER the user wants a video / clip / animation — 'make a video of …', 'animate …', 'create a clip'. Put the full scene + motion description in `prompt`. This is a Pro/credit feature (free users get an upgrade prompt). For a still image use generate_image instead.",
+      "Generate a short VIDEO clip from a text description. Use WHENEVER the user wants a video / clip / animation — 'make a video of …', 'animate …', 'create a clip'. Put a vivid SCENE + MOTION + mood description in `prompt`. CRITICAL: video models CANNOT render legible text, words, logos, UI, or taglines — they come out as garbled gibberish. NEVER ask for on-screen text/logos/captions, and do NOT promise the user any readable words in the clip; describe only the visual scene, subjects, camera motion, lighting, and style. (For a still image use generate_image; for text-on-image use generate_image too.) This is a Pro/credit feature (free users get an upgrade prompt).",
     inputSchema: z.object({
       prompt: z
         .string()
-        .describe("Full description of the video scene + motion."),
+        .describe(
+          "Vivid description of the video SCENE, subjects, camera motion, lighting, and mood — NO text/words/logos to display (they garble)."
+        ),
       aspectRatio: z
         .enum(["16:9", "9:16", "1:1"])
         .optional()
         .describe("Aspect ratio; defaults to 16:9."),
+      durationSeconds: z
+        .number()
+        .optional()
+        .describe(
+          "Clip length in seconds (default ~6, clamped to the model max)."
+        ),
       model: z
         .string()
         .optional()
         .describe(
-          "Optional model id override (e.g. 'klingai/kling-v2.5-turbo-t2v'). Omit to auto-select."
+          "Optional model id override (e.g. 'bytedance/seedance-v1.5-pro' for faster/cheaper). Omit for the quality default (Veo 3.1 Fast)."
         ),
     }),
-    execute: async ({ prompt, aspectRatio, model }) => {
+    execute: async ({ prompt, aspectRatio, durationSeconds, model }) => {
       if (!session?.user) {
         return {
           signInRequired: true as const,
@@ -58,6 +70,7 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
 
       const selected = selectVideoModel(model);
       const ratio = aspectRatio ?? "16:9";
+      const seconds = resolveDuration(selected, durationSeconds);
       const id = generateUUID();
 
       let base64Data: string | undefined;
@@ -67,6 +80,8 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
           model: gateway.videoModel(selected.id),
           prompt,
           aspectRatio: ratio,
+          // `duration` is model-specific (not in the base options type).
+          ...({ duration: seconds } as { duration: number }),
         });
         const clip = result.videos?.[0];
         base64Data = clip?.base64;
@@ -95,12 +110,12 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
         contentType: mediaType,
       });
 
-      // Credit debit (premium). Flat per-clip estimate; idempotent by ref.
+      // Credit debit (premium). Cost = model $/sec × seconds × margin; idempotent.
       await recordCredit({
         userId: session.user.id,
-        amountMicros: videoCostMicros(selected),
+        amountMicros: videoCostMicros(selected, seconds),
         type: "debit",
-        description: `video: ${selected.label}`,
+        description: `video: ${selected.label} ${seconds}s`,
         ref: `video:${id}`,
       });
 
