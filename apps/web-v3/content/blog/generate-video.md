@@ -16,7 +16,7 @@ Just ask: *"make a video of a calm ocean wave at sunset."*
 - **Free** — one video a day on our fast model.
 - **Pro & Max** — the premium video models (Grok Imagine, Veo, Kling), no daily cap, funded by your monthly credit that never expires.
 
-Audric picks a fast, high-quality model by default; ask for a specific one any time.
+Audric picks a fast, high-quality model for you by default. On Pro and Max you can also choose a specific model — Grok Imagine, Veo, or Kling.
 
 ## Private by default
 
