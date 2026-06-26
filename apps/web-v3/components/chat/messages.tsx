@@ -57,6 +57,7 @@ function PureMessages({
     endRef: messagesEndRef,
     isAtBottom,
     scrollToBottom,
+    onViewportLeave,
     hasSentMessage,
     reset,
   } = useMessages({
@@ -66,12 +67,55 @@ function PureMessages({
   useDataStream();
 
   const prevChatIdRef = useRef(chatId);
+  const sawStreamingRef = useRef(false);
+  const didReopenScrollRef = useRef(false);
+
   useEffect(() => {
     if (prevChatIdRef.current !== chatId) {
       prevChatIdRef.current = chatId;
       reset();
+      sawStreamingRef.current = false;
+      didReopenScrollRef.current = false;
     }
   }, [chatId, reset]);
+
+  useEffect(() => {
+    if (status === "submitted" || status === "streaming") {
+      sawStreamingRef.current = true;
+    }
+  }, [status]);
+
+  // Principle #11 — a chat reopened with history lands at the LAST USER MESSAGE
+  // (near the top), not the absolute bottom. One-shot, and only for a chat loaded
+  // from history (never streamed in this session) — a live/new chat keeps
+  // bottom-follow so the streaming reply stays in view.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messagesContainerRef is a stable ref from useScrollToBottom
+  useEffect(() => {
+    if (
+      didReopenScrollRef.current ||
+      sawStreamingRef.current ||
+      status !== "ready" ||
+      messages.length === 0
+    ) {
+      return;
+    }
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const userNodes = container.querySelectorAll('[data-role="user"]');
+    const lastUser = userNodes.item(userNodes.length - 1) as HTMLElement | null;
+    if (!lastUser) {
+      return;
+    }
+    didReopenScrollRef.current = true;
+    // Mark not-at-bottom first so the auto-follow observer doesn't yank to the
+    // bottom in the same frame, then pin the last user turn near the top.
+    onViewportLeave();
+    requestAnimationFrame(() => {
+      lastUser.scrollIntoView({ block: "start", behavior: "instant" });
+    });
+  }, [messages.length, status, onViewportLeave]);
 
   return (
     <div className="relative flex-1 bg-background">

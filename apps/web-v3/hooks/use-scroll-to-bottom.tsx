@@ -19,6 +19,23 @@ export function useScrollToBottom() {
     return scrollTop + clientHeight >= scrollHeight - 100;
   }, []);
 
+  // Principle #3 — an active text selection inside the thread is intent: never
+  // yank the viewport to the live edge while the reader is selecting/copying.
+  const hasActiveSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      return false;
+    }
+    const container = containerRef.current;
+    if (!container) {
+      return false;
+    }
+    return (
+      container.contains(selection.anchorNode) ||
+      container.contains(selection.focusNode)
+    );
+  }, []);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     if (!containerRef.current) {
       return;
@@ -37,22 +54,44 @@ export function useScrollToBottom() {
 
     let scrollTimeout: ReturnType<typeof setTimeout>;
 
-    const handleScroll = () => {
+    // Any deliberate interaction (scroll, keyboard nav) = intent → stop following.
+    const pauseFollow = () => {
       isUserScrollingRef.current = true;
       clearTimeout(scrollTimeout);
-
-      const atBottom = checkIfAtBottom();
-      setIsAtBottom(atBottom);
-      isAtBottomRef.current = atBottom;
-
       scrollTimeout = setTimeout(() => {
         isUserScrollingRef.current = false;
       }, 150);
     };
 
+    const handleScroll = () => {
+      pauseFollow();
+      const atBottom = checkIfAtBottom();
+      setIsAtBottom(atBottom);
+      isAtBottomRef.current = atBottom;
+    };
+
+    // Principle #3 — keyboard navigation within the thread is intent too: a
+    // keypress while reading shouldn't be yanked to the live edge.
+    const navKeys = new Set([
+      "ArrowUp",
+      "ArrowDown",
+      "PageUp",
+      "PageDown",
+      "Home",
+      "End",
+      " ",
+    ]);
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (navKeys.has(event.key)) {
+        pauseFollow();
+      }
+    };
+
     container.addEventListener("scroll", handleScroll, { passive: true });
+    container.addEventListener("keydown", handleKeydown);
     return () => {
       container.removeEventListener("scroll", handleScroll);
+      container.removeEventListener("keydown", handleKeydown);
       clearTimeout(scrollTimeout);
     };
   }, [checkIfAtBottom]);
@@ -64,7 +103,11 @@ export function useScrollToBottom() {
     }
 
     const scrollIfNeeded = () => {
-      if (isAtBottomRef.current && !isUserScrollingRef.current) {
+      if (
+        isAtBottomRef.current &&
+        !isUserScrollingRef.current &&
+        !hasActiveSelection()
+      ) {
         requestAnimationFrame(() => {
           container.scrollTo({
             top: container.scrollHeight,
@@ -94,7 +137,7 @@ export function useScrollToBottom() {
       mutationObserver.disconnect();
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [hasActiveSelection]);
 
   function onViewportEnter() {
     setIsAtBottom(true);
