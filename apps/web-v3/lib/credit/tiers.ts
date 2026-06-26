@@ -41,7 +41,7 @@ export const EVERY_PLAN: string[] = [
   "Permissionless — no account, no KYC, no seed phrase",
   "Non-custodial wallet — your keys, your money, always",
   "Send USDC + USDsui anywhere — free, instant, gasless",
-  "Decentralized memory — encrypted on Walrus, yours to wipe",
+  "Decentralized memory — encrypted on Walrus",
   "Private chats & files — encrypted at rest, never public",
   "Auto — automatically picks the best model for every task",
   "Live crypto + stock research — prices, charts, screeners, on-chain & analyst data",
