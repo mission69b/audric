@@ -432,7 +432,7 @@ export default function BillingPage() {
         <p className="mt-0.5 text-muted-foreground text-xs">
           What Audric is — Free included.
         </p>
-        <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <ul className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
           {EVERY_PLAN.map((f) => (
             <li
               className="flex items-start gap-1.5 text-muted-foreground text-xs"
@@ -466,7 +466,7 @@ export default function BillingPage() {
           </span>
         </label>
       ) : null}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {TIERS.map((tier) => {
           const current = (data?.tier ?? "free") === tier.id;
           return (
@@ -615,7 +615,7 @@ function Overlay({
 }) {
   return (
     <div className="absolute inset-0 z-20 overflow-y-auto bg-background">
-      <div className="mx-auto w-full max-w-3xl px-4 py-10">
+      <div className="mx-auto w-full max-w-4xl px-4 py-10">
         <button
           aria-label="Back to chat"
           className="float-right rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

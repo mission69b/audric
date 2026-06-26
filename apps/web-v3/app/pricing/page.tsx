@@ -36,7 +36,7 @@ export default function PricingPage() {
         <h2 className="font-medium text-foreground text-sm">
           Included in every plan — Free included
         </h2>
-        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <ul className="mt-5 grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
           {EVERY_PLAN.map((f) => (
             <li
               className="flex items-start gap-2 text-muted-foreground text-sm"
@@ -50,7 +50,7 @@ export default function PricingPage() {
       </div>
 
       {/* Tiers */}
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-3">
         {TIERS.map((tier) => {
           const featured = tier.id === "pro";
           return (
