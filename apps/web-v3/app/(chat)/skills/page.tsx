@@ -2,12 +2,13 @@
 
 /**
  * Skills — the browse/discovery surface (AGENT_WEDGE §3a). Lists Audric's live
- * data skills by category; tapping an example seeds a new chat (`?query=` →
- * use-active-chat auto-sends it). The agent ALSO auto-routes to these from
- * natural language — this page just makes them visible + tappable.
+ * data skills by category; tapping an example PASTES it into the composer
+ * (`?draft=` → use-active-chat pre-fills `input`, no auto-send) so the user can
+ * tweak it before sending. The agent ALSO auto-routes to these from natural
+ * language — this page just makes them visible + tappable.
  */
 
-import { ArrowUpRightIcon, SparklesIcon, XIcon } from "lucide-react";
+import { PencilLineIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SKILLS, type SkillDef } from "@/lib/skills/catalog";
 
@@ -17,7 +18,7 @@ function SkillCard({ skill }: { skill: SkillDef }) {
   const router = useRouter();
 
   const tryExample = (prompt: string) => {
-    router.push(`${BASE_PATH}/?query=${encodeURIComponent(prompt)}`);
+    router.push(`${BASE_PATH}/?draft=${encodeURIComponent(prompt)}`);
   };
 
   return (
@@ -45,7 +46,7 @@ function SkillCard({ skill }: { skill: SkillDef }) {
             type="button"
           >
             <span className="min-w-0 flex-1 truncate">{example}</span>
-            <ArrowUpRightIcon className="size-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
+            <PencilLineIcon className="size-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
           </button>
         ))}
       </div>
@@ -75,7 +76,7 @@ export default function SkillsPage() {
         <p className="mb-8 text-muted-foreground text-sm">
           Live data skills Audric can use — free, and built right into chat.
           Just ask naturally and Audric picks the right one, or tap an example
-          to try it.
+          to drop it into the composer and tweak it before sending.
         </p>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

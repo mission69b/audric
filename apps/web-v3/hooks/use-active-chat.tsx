@@ -224,10 +224,10 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
     }
   }, [chatData, isNewChat]);
 
-  // Key on chatId+query so EACH /skills example tap is handled. A one-time
-  // boolean blocked the 2nd+ prompt: this provider never unmounts (it's in the
-  // (chat) shell), so the ref persisted — the URL showed ?query but it was
-  // never sent. Each tap is a fresh chatId, so the keyed ref re-fires.
+  // `?query=` AUTO-SENDS (preview.tsx suggested prompts). Keyed on chatId+query
+  // so each tap fires: this provider never unmounts (it's in the (chat) shell),
+  // so a one-time boolean would block the 2nd+ prompt; each tap is a fresh
+  // chatId, so the keyed ref re-fires.
   const handledQueryRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -246,6 +246,25 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       });
     }
   }, [sendMessage, chatId]);
+
+  // `?draft=` PASTES into the composer (editable) instead of sending — the
+  // /skills "try" examples use this so the user can tweak the prompt before
+  // sending (vs ?query's auto-send). Same per-chatId guard; calls setInput.
+  const handledDraftRef = useRef<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const draft = params.get("draft");
+    const key = draft ? `${chatId}:${draft}` : null;
+    if (draft && key && handledDraftRef.current !== key) {
+      handledDraftRef.current = key;
+      window.history.replaceState(
+        {},
+        "",
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/`
+      );
+      setInput(draft);
+    }
+  }, [chatId]);
 
   useAutoResume({
     autoResume: !isNewChat && !!chatData,
