@@ -47,15 +47,11 @@ function parseFrontmatter(raw: string): {
 function toPost(filename: string): BlogPost | null {
   const raw = fs.readFileSync(path.join(BLOG_DIR, filename), "utf8");
   const { data, body } = parseFrontmatter(raw);
-  // `draft: true` hides a post from the index + routes.
+  // `draft: true` hides a post from the index + routes. (Scheduling = flip the
+  // flag per post when you want it live; a date-based auto-gate needs request-
+  // time `new Date()`, which Next 16's static prerender / Cache Components
+  // disallows — not worth making the whole blog dynamic for a drip.)
   if (data.draft === "true") {
-    return null;
-  }
-  // Scheduled publishing: a post dated in the future (UTC) stays hidden from the
-  // index AND direct routes until that day — set staggered dates to drip releases
-  // without un-drafting each one by hand.
-  const todayUtc = new Date().toISOString().slice(0, 10);
-  if (data.date && data.date > todayUtc) {
     return null;
   }
   const slug = filename.replace(/\.md$/, "");

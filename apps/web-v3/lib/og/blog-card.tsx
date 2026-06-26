@@ -1,4 +1,4 @@
-import { getAllPosts, getPost } from "@/lib/blog";
+import { getPost } from "@/lib/blog";
 import { renderAudricCard } from "@/lib/og/audric-card";
 
 /**
@@ -7,11 +7,6 @@ import { renderAudricCard } from "@/lib/og/audric-card";
  * thin wrappers and the logic lives here). Built from the branded
  * `renderAudricCard` template with the post's title + description.
  */
-
-/** Slugs for static generation of the per-post OG/Twitter images. */
-export function blogOgParams(): { slug: string }[] {
-  return getAllPosts().map((p) => ({ slug: p.slug }));
-}
 
 /** Split a title into two balanced lines for the card's 2-line headline. */
 function splitTitle(title: string): [string, string] {

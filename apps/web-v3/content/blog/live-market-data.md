@@ -3,6 +3,7 @@ title: Live market data, built in
 date: 2026-06-28
 description: Crypto prices, history, screeners, on-chain trending, token research, and US stocks — live in chat, free for everyone, and private by default.
 author: funkii
+draft: true
 ---
 
 Audric brings live market data straight into chat — no plugins, no extra tabs. Ask naturally and Audric picks the right source.

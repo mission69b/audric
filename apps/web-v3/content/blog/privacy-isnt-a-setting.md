@@ -3,6 +3,7 @@ title: Privacy isn't a setting
 date: 2026-06-29
 description: At Audric, privacy isn't a toggle you turn on — it's how the product is built. Minimum collection, a zero-retention gateway on every request, encryption, and decentralized storage you control.
 author: funkii
+draft: true
 ---
 
 At most AI products, privacy is a setting — something you opt into, buried in a menu, off by default. At Audric it's the opposite: privacy isn't a setting, it's how the product is built. There's no switch to find, because there's nothing to turn on.
