@@ -45,6 +45,7 @@ import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
 import { generateVideo } from "@/lib/ai/tools/generate-video";
 import { onchainTrending, tokenResearch } from "@/lib/ai/tools/onchain";
+import { perpMarket } from "@/lib/ai/tools/perp-market";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
 import { saveMemory } from "@/lib/ai/tools/save-memory";
@@ -104,6 +105,7 @@ type ActiveTool =
   | "crypto_global"
   | "onchain_trending"
   | "token_research"
+  | "perp_market"
   | "stock_analysis"
   | "createDocument"
   | "editDocument"
@@ -691,6 +693,7 @@ export async function POST(request: Request) {
                   // token_research = any token by symbol/name/contract (GeckoTerminal).
                   "onchain_trending",
                   "token_research",
+                  "perp_market",
                   // stock_analysis = the stocks analog (Finnhub; US equities).
                   // Free like the rest; needs a key (no keyless stock feed).
                   "stock_analysis",
@@ -731,6 +734,7 @@ export async function POST(request: Request) {
                     "crypto_global",
                     "onchain_trending",
                     "token_research",
+                    "perp_market",
                     "stock_analysis",
                     "generate_image",
                     "createDocument",
@@ -744,6 +748,7 @@ export async function POST(request: Request) {
                     "crypto_global",
                     "onchain_trending",
                     "token_research",
+                    "perp_market",
                     "stock_analysis",
                     "generate_image",
                   ];
@@ -853,6 +858,9 @@ export async function POST(request: Request) {
             // On-chain/DEX (GeckoTerminal) — chain-scoped trending/top/new pools +
             // any-token research by symbol/name/contract; free, keyless, multi-chain.
             onchain_trending: onchainTrending,
+            // perp_market (Bluefin Sui perps) — free read for the "analyze a perp
+            // setup" probe (SPEC_AUDRIC_COMPUTER Phase 1). Data, never advice.
+            perp_market: perpMarket,
             token_research: tokenResearch,
             // stock_analysis (Finnhub) — US-equity quote + profile + fundamentals
             // + analyst ratings; free, available to everyone (degrades to a

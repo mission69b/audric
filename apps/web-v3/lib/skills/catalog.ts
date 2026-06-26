@@ -103,6 +103,18 @@ export const SKILLS: SkillDef[] = [
     ],
   },
   {
+    slug: "perps",
+    name: "Perps",
+    category: "Crypto",
+    description:
+      "Live perpetual-futures data from Bluefin (Sui's perps DEX) — mark price, funding rate, open interest, 24h stats. Analyze a setup: funding, liquidation math, and the risks (data, never advice).",
+    examples: [
+      "How's the SUI perp doing on Bluefin?",
+      "What's the funding rate on BTC perps right now?",
+      "Analyze a SUI long at 5x — funding, liquidation, risks",
+    ],
+  },
+  {
     slug: "stocks",
     name: "Stocks",
     category: "Markets",
