@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Script from "next/script";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
+import { SignInNudgeProvider } from "@/components/auth/sign-in-nudge";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { DataStreamProvider } from "@/components/chat/data-stream-provider";
 import { ChatShell } from "@/components/chat/shell";
@@ -33,23 +34,25 @@ async function SidebarShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
       <UpgradeModalProvider>
-        <AppSidebar user={session?.user} />
-        <SidebarInset>
-          <Toaster
-            position="top-center"
-            theme="system"
-            toastOptions={{
-              className:
-                "!bg-card !text-foreground !border-border/50 !shadow-[var(--shadow-float)]",
-            }}
-          />
-          <Suspense fallback={<div className="flex h-dvh" />}>
-            <ActiveChatProvider>
-              <ChatShell />
-            </ActiveChatProvider>
-          </Suspense>
-          {children}
-        </SidebarInset>
+        <SignInNudgeProvider>
+          <AppSidebar user={session?.user} />
+          <SidebarInset>
+            <Toaster
+              position="top-center"
+              theme="system"
+              toastOptions={{
+                className:
+                  "!bg-card !text-foreground !border-border/50 !shadow-[var(--shadow-float)]",
+              }}
+            />
+            <Suspense fallback={<div className="flex h-dvh" />}>
+              <ActiveChatProvider>
+                <ChatShell />
+              </ActiveChatProvider>
+            </Suspense>
+            {children}
+          </SidebarInset>
+        </SignInNudgeProvider>
       </UpgradeModalProvider>
     </SidebarProvider>
   );

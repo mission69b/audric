@@ -20,6 +20,8 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
+import { useSignInNudge } from "@/components/auth/sign-in-nudge";
+import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useDataStream } from "@/components/chat/data-stream-provider";
 import { getChatHistoryPaginationKey } from "@/components/chat/sidebar-history";
 import { toast } from "@/components/chat/toast";
@@ -85,6 +87,8 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
 
   const [input, setInput] = useState("");
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
+  const { status: zkStatus } = useZkLogin();
+  const { promptSignIn } = useSignInNudge();
 
   const { data: chatData, isLoading } = useSWR(
     isNewChat
@@ -173,6 +177,16 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
     onError: (error) => {
+      // Guest hits the message limit → turn the dead-end toast into a sign-in
+      // conversion prompt (the real funnel gate). Authed users still see the toast.
+      if (
+        error instanceof ChatbotError &&
+        error.type === "rate_limit" &&
+        zkStatus !== "authenticated"
+      ) {
+        promptSignIn();
+        return;
+      }
       if (error.message?.includes("AI Gateway requires a valid credit card")) {
         setShowCreditCardAlert(true);
       } else if (error instanceof ChatbotError) {

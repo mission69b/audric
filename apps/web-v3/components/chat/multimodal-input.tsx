@@ -38,15 +38,9 @@ import {
   ModelSelectorName,
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
+import { useSignInNudge } from "@/components/auth/sign-in-nudge";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -134,7 +128,8 @@ function PureMultimodalInput({
 }) {
   const router = useRouter();
   const { openUpgrade } = useUpgradeModal();
-  const { status: authStatus, login } = useZkLogin();
+  const { promptSignIn } = useSignInNudge();
+  const { status: authStatus } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
   const { setTheme, resolvedTheme } = useTheme();
   // Credit state mirrors the server premium gate (chat/route.ts). When a
@@ -167,11 +162,9 @@ function PureMultimodalInput({
     chatModels.find((m) => m.id === selectedModelId)?.free === true;
   const showCreditBanner = isAuthed && !canUsePremium && !selectedIsFree;
   // P2 conversion nudges (SPEC_AUDRIC_CONVERSION §1c/§1d).
-  // #1 anon: after a few guest turns, prompt sign-in (one per session unless dismissed).
+  // #1 anon: after a few guest turns, proactively prompt sign-in (the hard
+  // message-limit gate also triggers it, in use-active-chat's onError).
   const [anonTurns, setAnonTurns] = useLocalStorage<number>("anon-turns", 0);
-  const [anonNudgeDismissed, setAnonNudgeDismissed] = useState(false);
-  const showAnonNudge =
-    !isAuthed && (anonTurns ?? 0) >= 3 && !anonNudgeDismissed;
   // #2 signed-in free: a dismissible "upgrade" cue above the composer (not shown
   // when the out-of-credit banner is up, and persistently dismissible).
   const [upgradeNudgeDismissed, setUpgradeNudgeDismissed] =
@@ -345,7 +338,11 @@ function PureMultimodalInput({
     setInput("");
 
     if (!isAuthed) {
-      setAnonTurns((n) => (n ?? 0) + 1);
+      const next = (anonTurns ?? 0) + 1;
+      setAnonTurns(next);
+      if (next === 3) {
+        promptSignIn();
+      }
     }
 
     if (width && width > 768) {
@@ -361,7 +358,9 @@ function PureMultimodalInput({
     width,
     chatId,
     isAuthed,
+    anonTurns,
     setAnonTurns,
+    promptSignIn,
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
@@ -858,42 +857,6 @@ function PureMultimodalInput({
           )}
         </PromptInputFooter>
       </PromptInput>
-
-      <Dialog
-        onOpenChange={(o) => {
-          if (!o) {
-            setAnonNudgeDismissed(true);
-          }
-        }}
-        open={showAnonNudge}
-      >
-        <DialogContent className="flex flex-col gap-4 sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Keep going — it's free</DialogTitle>
-            <DialogDescription>
-              You're chatting as a guest. Create your free Passport with Google
-              — no seed phrase, no card — to save your chats, keep your private
-              memory, and unlock more each day.
-            </DialogDescription>
-          </DialogHeader>
-          <Button
-            className="w-full"
-            onClick={() =>
-              login(window.location.pathname + window.location.search)
-            }
-            type="button"
-          >
-            Continue with Google
-          </Button>
-          <button
-            className="text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
-            onClick={() => setAnonNudgeDismissed(true)}
-            type="button"
-          >
-            Maybe later
-          </button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
