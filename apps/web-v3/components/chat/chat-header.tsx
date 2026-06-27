@@ -2,7 +2,7 @@
 
 import { PanelLeftIcon, ShieldCheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { memo } from "react";
+import { memo, useState } from "react";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { Button } from "@/components/ui/button";
@@ -58,14 +58,22 @@ function PlanBadge() {
  * an informational badge (not a toggle like Perplexity's incognito). Reinforces
  * the core differentiator on every screen. */
 function PrivacyBadge() {
+  // Controlled so it's tap-openable on touch (Radix tooltips are hover/focus-only
+  // and never open on mobile tap) while keeping desktop hover via onOpenChange.
+  const [open, setOpen] = useState(false);
   return (
     <TooltipProvider delayDuration={150}>
-      <Tooltip>
+      <Tooltip onOpenChange={setOpen} open={open}>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 rounded-full border border-border/40 px-2.5 py-1 text-[12px] text-muted-foreground">
+          <button
+            aria-label="Privacy details"
+            className="flex items-center gap-1.5 rounded-full border border-border/40 px-2.5 py-1 text-[12px] text-muted-foreground"
+            onClick={() => setOpen((v) => !v)}
+            type="button"
+          >
             <ShieldCheckIcon className="size-3.5 text-emerald-500" />
             <span className="hidden sm:inline">Private</span>
-          </div>
+          </button>
         </TooltipTrigger>
         <TooltipContent className="max-w-60 text-center" side="bottom">
           Private by default — zero data retention. Your chats are never used to
