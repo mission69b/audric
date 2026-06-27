@@ -10,10 +10,9 @@ import {
 import { checkBotId } from "botid/server";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
-import { auth, type UserType } from "@/app/(auth)/auth";
+import { auth } from "@/app/(auth)/auth";
 import {
   FREE_DAILY_TEXT_LIMIT,
-  GUEST_DAILY_TEXT_LIMIT,
   maxMessagesPerHour,
 } from "@/lib/ai/entitlements";
 import { prepareAttachments } from "@/lib/ai/inline-attachments";
@@ -310,10 +309,10 @@ export async function POST(request: Request) {
     // Per-user cap + persistence are authed-only; anonymous chats are
     // client-side/ephemeral (sign in to save them).
     if (session?.user) {
-      const userType: UserType = session.user.type;
       // Cap is lifted for anyone who has PAID — an active sub OR a positive
       // credit balance (PAYG top-up); free authed keeps the acquisition cap.
-      const cap = maxMessagesPerHour(userType, {
+      // (Anonymous users never reach here — they're IP-gated in lib/ratelimit.)
+      const cap = maxMessagesPerHour({
         subscriptionTier: dbUser?.subscriptionTier,
         hasCredit: creditMicros > 0,
       });
@@ -325,20 +324,17 @@ export async function POST(request: Request) {
         return new ChatbotError("rate_limit:chat").toResponse();
       }
 
-      // DAILY text cap (the real product limit) — paid tiers (sub OR positive
-      // credit) exempt. Guests get a small taste (5) that drives the sign-in
-      // funnel; authed-free gets 20 (4× more — signing up actually unlocks more).
+      // DAILY text cap (the real product limit) for signed-in FREE users — paid
+      // tiers (sub OR positive credit) exempt.
       const isPaidUser =
         (dbUser?.subscriptionTier && dbUser.subscriptionTier !== "free") ||
         creditMicros > 0;
       if (!isPaidUser) {
-        const dailyLimit =
-          userType === "guest" ? GUEST_DAILY_TEXT_LIMIT : FREE_DAILY_TEXT_LIMIT;
         const dailyCount = await getMessageCountByUserId({
           id: session.user.id,
           differenceInHours: 24,
         });
-        if (dailyCount > dailyLimit) {
+        if (dailyCount > FREE_DAILY_TEXT_LIMIT) {
           return new ChatbotError("rate_limit:chat").toResponse();
         }
       }
