@@ -10,6 +10,7 @@ import {
   LockIcon,
   SparklesIcon,
   WrenchIcon,
+  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -39,6 +40,13 @@ import {
 } from "@/components/ai-elements/model-selector";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -126,7 +134,7 @@ function PureMultimodalInput({
 }) {
   const router = useRouter();
   const { openUpgrade } = useUpgradeModal();
-  const { status: authStatus } = useZkLogin();
+  const { status: authStatus, login } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
   const { setTheme, resolvedTheme } = useTheme();
   // Credit state mirrors the server premium gate (chat/route.ts). When a
@@ -137,6 +145,7 @@ function PureMultimodalInput({
   const { data: credit } = useSWR<{
     configured: boolean;
     balanceUsd: number | null;
+    tier?: string;
   }>(
     isAuthed
       ? `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/credit/balance`
@@ -157,6 +166,19 @@ function PureMultimodalInput({
     selectedModelId === AUTO_MODEL_ID ||
     chatModels.find((m) => m.id === selectedModelId)?.free === true;
   const showCreditBanner = isAuthed && !canUsePremium && !selectedIsFree;
+  // P2 conversion nudges (SPEC_AUDRIC_CONVERSION §1c/§1d).
+  // #1 anon: after a few guest turns, prompt sign-in (one per session unless dismissed).
+  const [anonTurns, setAnonTurns] = useLocalStorage<number>("anon-turns", 0);
+  const [anonNudgeDismissed, setAnonNudgeDismissed] = useState(false);
+  const showAnonNudge =
+    !isAuthed && (anonTurns ?? 0) >= 3 && !anonNudgeDismissed;
+  // #2 signed-in free: a dismissible "upgrade" cue above the composer (not shown
+  // when the out-of-credit banner is up, and persistently dismissible).
+  const [upgradeNudgeDismissed, setUpgradeNudgeDismissed] =
+    useLocalStorage<boolean>("upgrade-nudge-dismissed", false);
+  const isFreeTier = isAuthed && (credit?.tier ?? "free") === "free";
+  const showUpgradeNudge =
+    isFreeTier && !showCreditBanner && !upgradeNudgeDismissed;
   // Active-model capabilities — used to hint on image paste to a non-vision
   // model (the attach button is already gated; paste bypasses it).
   const { data: capsResponse } = useSWR<{
@@ -322,6 +344,10 @@ function PureMultimodalInput({
     setLocalStorageInput("");
     setInput("");
 
+    if (!isAuthed) {
+      setAnonTurns((n) => (n ?? 0) + 1);
+    }
+
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
@@ -334,6 +360,8 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    isAuthed,
+    setAnonTurns,
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
@@ -627,6 +655,32 @@ function PureMultimodalInput({
         )}
       </div>
 
+      {showUpgradeNudge && (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] px-3 py-1.5 text-[12px]">
+          <span className="text-muted-foreground">
+            <span className="font-medium text-foreground">Upgrade</span> for
+            every frontier model + video — monthly credit that never expires.
+          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              className="h-6 rounded-lg px-2 text-[11px]"
+              onClick={openUpgrade}
+              size="sm"
+            >
+              See plans
+            </Button>
+            <button
+              aria-label="Dismiss"
+              className="rounded p-1 text-muted-foreground/50 transition-colors hover:text-foreground"
+              onClick={() => setUpgradeNudgeDismissed(true)}
+              type="button"
+            >
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {showCreditBanner && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-card/70 px-3 py-2 text-[12px]">
           <span className="text-muted-foreground">
@@ -804,6 +858,42 @@ function PureMultimodalInput({
           )}
         </PromptInputFooter>
       </PromptInput>
+
+      <Dialog
+        onOpenChange={(o) => {
+          if (!o) {
+            setAnonNudgeDismissed(true);
+          }
+        }}
+        open={showAnonNudge}
+      >
+        <DialogContent className="flex flex-col gap-4 sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Keep going — it's free</DialogTitle>
+            <DialogDescription>
+              You're chatting as a guest. Create your free Passport with Google
+              — no seed phrase, no card — to save your chats, keep your private
+              memory, and unlock more each day.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            className="w-full"
+            onClick={() =>
+              login(window.location.pathname + window.location.search)
+            }
+            type="button"
+          >
+            Continue with Google
+          </Button>
+          <button
+            className="text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
+            onClick={() => setAnonNudgeDismissed(true)}
+            type="button"
+          >
+            Maybe later
+          </button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
