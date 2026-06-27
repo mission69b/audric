@@ -14,14 +14,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { AddCard } from "@/components/chat/billing/add-card";
+import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { Button } from "@/components/ui/button";
-import {
-  COMING_SOON,
-  EVERY_PLAN,
-  TIERS,
-  TOPUP_PRESETS_USD,
-} from "@/lib/credit/tiers";
-import { cn, fetcher } from "@/lib/utils";
+import { COMING_SOON, EVERY_PLAN, TOPUP_PRESETS_USD } from "@/lib/credit/tiers";
+import { fetcher } from "@/lib/utils";
 
 type BillingOverview = {
   configured: boolean;
@@ -85,6 +81,7 @@ function fmtUsd(n: number | null | undefined): string {
 
 export default function BillingPage() {
   const router = useRouter();
+  const { openUpgrade } = useUpgradeModal();
   const { data, mutate } = useSWR<CreditState>(
     `${BASE}/api/credit/balance`,
     fetcher,
@@ -104,14 +101,6 @@ export default function BillingPage() {
       return;
     }
     router.push(`${BASE}/checkout?topup=${amountUsd}`);
-  }
-
-  function subscribe(tier: string) {
-    if (needsTerms && !terms) {
-      toast.error("Please accept the credit terms first.");
-      return;
-    }
-    router.push(`${BASE}/checkout?plan=${tier}`);
   }
 
   const { data: billing, mutate: mutateBilling } = useSWR<BillingOverview>(
@@ -466,73 +455,24 @@ export default function BillingPage() {
           </span>
         </label>
       ) : null}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {TIERS.map((tier) => {
-          const current = (data?.tier ?? "free") === tier.id;
-          return (
-            <div
-              className={cn(
-                "flex flex-col rounded-2xl border p-4",
-                current
-                  ? "border-foreground/40 bg-card/60"
-                  : "border-border/50 bg-card/30"
-              )}
-              key={tier.id}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">{tier.name}</h3>
-                {current && (
-                  <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] text-foreground/70">
-                    Current
-                  </span>
-                )}
-              </div>
-              <div className="mt-1 flex items-baseline gap-1.5">
-                {tier.originalPriceUsd ? (
-                  <span className="text-muted-foreground/50 text-sm line-through tabular-nums">
-                    ${tier.originalPriceUsd}
-                  </span>
-                ) : null}
-                <span className="font-semibold text-foreground text-lg tabular-nums">
-                  {tier.priceUsd === 0 ? "Free" : `$${tier.priceUsd}`}
-                </span>
-                {tier.priceUsd ? (
-                  <span className="text-muted-foreground text-xs">/mo</span>
-                ) : null}
-              </div>
-              {tier.originalPriceUsd ? (
-                <span className="mt-1 inline-block self-start rounded bg-teal-500/10 px-1.5 py-0.5 font-medium text-[10px] text-teal-600 dark:text-teal-400">
-                  Beta · 50% off
-                </span>
-              ) : null}
-              <p className="mt-1 text-muted-foreground text-xs">
-                {tier.tagline}
-              </p>
-              <ul className="mt-3 flex-1 space-y-1.5">
-                {tier.features.map((f) => (
-                  <li
-                    className="flex items-start gap-1.5 text-muted-foreground text-xs"
-                    key={f}
-                  >
-                    <CheckIcon className="mt-0.5 size-3 shrink-0 text-foreground/50" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              {tier.id !== "free" &&
-                renderPlanButton({
-                  tierId: tier.id,
-                  current,
-                  subscribable: Boolean(
-                    data?.subscribableTiers?.includes(tier.id)
-                  ),
-                  busy,
-                  blockedByTerms: Boolean(needsTerms && !terms),
-                  onSubscribe: () => subscribe(tier.id),
-                })}
-            </div>
-          );
-        })}
+      {/* Plan selection lives in ONE place (the shared pricing overlay) — this
+          is the management view: current plan + "change" opens the overlay. */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div>
+          <div className="font-medium text-foreground text-sm capitalize">
+            {data?.tier && data.tier !== "free"
+              ? `${data.tier} plan`
+              : "Free plan"}
+          </div>
+          <p className="mt-0.5 text-muted-foreground text-xs">
+            {data?.tier && data.tier !== "free"
+              ? "Manage or change your plan anytime."
+              : "Upgrade for every frontier model + monthly credit that never expires."}
+          </p>
+        </div>
+        <Button onClick={openUpgrade} size="sm" type="button">
+          {data?.tier && data.tier !== "free" ? "Change plan" : "View plans"}
+        </Button>
       </div>
 
       {/* Coming soon — teased, not sold */}
@@ -549,60 +489,6 @@ export default function BillingPage() {
         </ul>
       </div>
     </Overlay>
-  );
-}
-
-function renderPlanButton({
-  current,
-  subscribable,
-  busy,
-  blockedByTerms,
-  onSubscribe,
-}: {
-  tierId: string;
-  current: boolean;
-  subscribable: boolean;
-  busy: boolean;
-  blockedByTerms: boolean;
-  onSubscribe: () => void;
-}) {
-  if (current) {
-    return (
-      <Button
-        className="mt-3"
-        disabled
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        Current plan
-      </Button>
-    );
-  }
-  if (!subscribable) {
-    return (
-      <Button
-        className="mt-3"
-        disabled
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        Coming soon
-      </Button>
-    );
-  }
-  return (
-    <Button
-      className="mt-3"
-      disabled={busy || blockedByTerms}
-      onClick={onSubscribe}
-      size="sm"
-      type="button"
-      variant="default"
-    >
-      Subscribe
-    </Button>
   );
 }
 

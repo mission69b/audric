@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PricingPlans } from "@/components/pricing/pricing-plans";
+import { PricingView } from "@/components/pricing/pricing-view";
 
 export const metadata: Metadata = {
   title: "Pricing · Audric",
@@ -18,19 +18,8 @@ export default function PricingPage() {
         ← Back to Audric
       </Link>
 
-      <div className="mt-8 text-center">
-        <h1 className="font-semibold text-4xl text-foreground tracking-tight">
-          Private AI, priced simply
-        </h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-          Start free — open, uncensored models, a non-custodial wallet, and your
-          own data. Upgrade for every frontier model with monthly credit that
-          never expires.
-        </p>
-      </div>
-
-      <div className="mt-10">
-        <PricingPlans />
+      <div className="mt-8">
+        <PricingView />
       </div>
 
       <p className="mt-8 text-center text-muted-foreground text-xs">

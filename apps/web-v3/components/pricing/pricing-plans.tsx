@@ -5,51 +5,36 @@ import { cn } from "@/lib/utils";
 
 /**
  * The single source of plan UI (SPEC_AUDRIC_CONVERSION §1a). Rendered in BOTH
- * the anon `/pricing` page (full) and the in-app `<UpgradeModal>` (compact) so
- * the two surfaces can never drift. Presentational + server-compatible (no
- * hooks) — CTAs are plain links to the existing `/checkout?plan=` flow.
- *
- * `compact` (modal): drops the full "every plan" grid + coming-soon, tightens
- * spacing. `onCtaClick` lets the modal close itself on navigate.
+ * the anon `/pricing` page AND the in-app full-screen upgrade overlay (via
+ * <PricingView>) so the surfaces can never drift. Presentational +
+ * server-compatible (no hooks) — CTAs are plain links to the existing
+ * `/checkout?plan=` flow. `onCtaClick` lets the overlay close itself on navigate.
  */
-export function PricingPlans({
-  compact = false,
-  onCtaClick,
-}: {
-  compact?: boolean;
-  onCtaClick?: () => void;
-}) {
+export function PricingPlans({ onCtaClick }: { onCtaClick?: () => void }) {
   return (
     <div className="space-y-6">
-      {compact ? (
-        <p className="text-center text-muted-foreground text-xs leading-relaxed">
-          Every plan includes uncensored models · zero data retention ·
-          non-custodial wallet · your data, encrypted.
-        </p>
-      ) : (
-        <div className="rounded-2xl border border-border/50 bg-card/40 p-6">
-          <h2 className="font-medium text-foreground text-sm">
-            Included in every plan — Free included
-          </h2>
-          <ul className="mt-5 grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
-            {EVERY_PLAN.map((f) => (
-              <li
-                className="flex items-start gap-2 text-muted-foreground text-sm"
-                key={f}
-              >
-                <CheckIcon className="mt-0.5 size-4 shrink-0 text-teal-500/70" />
-                {f}
-              </li>
-            ))}
-          </ul>
-          <Link
-            className="mt-4 inline-block text-foreground text-sm underline underline-offset-4 transition-colors hover:text-muted-foreground"
-            href="/skills"
-          >
-            Browse all Skills →
-          </Link>
-        </div>
-      )}
+      <div className="rounded-2xl border border-border/50 bg-card/40 p-6">
+        <h2 className="font-medium text-foreground text-sm">
+          Included in every plan — Free included
+        </h2>
+        <ul className="mt-5 grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
+          {EVERY_PLAN.map((f) => (
+            <li
+              className="flex items-start gap-2 text-muted-foreground text-sm"
+              key={f}
+            >
+              <CheckIcon className="mt-0.5 size-4 shrink-0 text-teal-500/70" />
+              {f}
+            </li>
+          ))}
+        </ul>
+        <Link
+          className="mt-4 inline-block text-foreground text-sm underline underline-offset-4 transition-colors hover:text-muted-foreground"
+          href="/skills"
+        >
+          Browse all Skills →
+        </Link>
+      </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         {TIERS.map((tier) => {
@@ -126,20 +111,18 @@ export function PricingPlans({
         })}
       </div>
 
-      {compact ? null : (
-        <div className="rounded-2xl border border-border/40 border-dashed p-5">
-          <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Coming soon
-          </div>
-          <ul className="mt-2 flex flex-col gap-1">
-            {COMING_SOON.map((f) => (
-              <li className="text-muted-foreground/70 text-sm" key={f}>
-                · {f}
-              </li>
-            ))}
-          </ul>
+      <div className="rounded-2xl border border-border/40 border-dashed p-5">
+        <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+          Coming soon
         </div>
-      )}
+        <ul className="mt-2 flex flex-col gap-1">
+          {COMING_SOON.map((f) => (
+            <li className="text-muted-foreground/70 text-sm" key={f}>
+              · {f}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
