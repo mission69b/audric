@@ -8,7 +8,6 @@ import { loadStripe } from "@stripe/stripe-js";
 import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import {
   type ReactNode,
   Suspense,
@@ -29,11 +28,12 @@ const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
 function CheckoutInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const { resolvedTheme } = useTheme();
   const { status: authStatus, login } = useZkLogin();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const theme = resolvedTheme === "dark" ? "dark" : "light";
+  // Checkout is forced-light (see checkout/layout.tsx) so Stripe's fixed light
+  // chrome doesn't clash with a dark app shell.
+  const theme = "light";
   const plan = params.get("plan"); // "pro" | "max"
   const topupRaw = params.get("topup"); // dollars
   const topup = topupRaw ? Math.floor(Number(topupRaw)) : null;
@@ -58,7 +58,7 @@ function CheckoutInner() {
       throw new Error(j.error ?? "Couldn't start checkout.");
     }
     return j.clientSecret as string;
-  }, [isSub, plan, topup, theme]);
+  }, [isSub, plan, topup]);
 
   const invalid = !(isSub || (topup && topup > 0)) || !stripePromise;
   useEffect(() => {

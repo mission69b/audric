@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import type { SessionUser } from "@/app/(auth)/auth";
+import { ReferralShareDialog } from "@/components/chat/referral-share-dialog";
 import {
   getChatHistoryPaginationKey,
   SidebarHistory,
@@ -54,6 +55,7 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
 
   const handleDeleteAll = () => {
     setShowDeleteAllDialog(false);
@@ -180,7 +182,7 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
               className="mb-1 flex w-full items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-2 text-left transition-colors duration-150 hover:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0"
               onClick={() => {
                 setOpenMobile(false);
-                router.push("/settings");
+                setShowReferral(true);
               }}
               title="Invite & earn — give $10, get $10"
               type="button"
@@ -221,6 +223,8 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ReferralShareDialog onOpenChange={setShowReferral} open={showReferral} />
     </>
   );
 }
