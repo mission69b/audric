@@ -133,7 +133,9 @@ export const generateVideo = ({ session, canUsePremium }: GenerateVideoProps) =>
       // Written only on SUCCESS, so a failed gen doesn't burn the free allowance.
       await recordCredit({
         userId: session.user.id,
-        amountMicros: isFree ? 0 : videoCostMicros(selected, seconds),
+        // Debits MUST be negative (balance = SUM(amountMicros)); videoCostMicros
+        // returns a positive cost, so negate it — mirrors the chat route's `-debit`.
+        amountMicros: isFree ? 0 : -videoCostMicros(selected, seconds),
         type: "debit",
         description: `${isFree ? "video (free)" : "video"}: ${selected.label} ${seconds}s`,
         ref: `video:${id}`,
