@@ -43,6 +43,13 @@
       "when": 1782194324087,
       "tag": "0005_uneven_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782564574655,
+      "tag": "0006_open_living_lightning",
+      "breakpoints": true
     }
   ]
 }

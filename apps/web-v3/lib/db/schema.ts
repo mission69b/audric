@@ -147,6 +147,37 @@ export const referral = pgTable(
 
 export type Referral = InferSelectModel<typeof referral>;
 
+// Private Inference API keys (SPEC_AUDRIC_API v1). A Pro/Max subscriber mints
+// `sk-…` keys to call the OpenAI-compatible API (api.t2000.ai). We store ONLY
+// the SHA-256 hash of the key (never the secret) + a short prefix for display
+// ("sk-…a1b2"). Calls debit the same CreditLedger as in-app turns; the
+// per-token billing rail is reused 1:1 (no separate price book).
+export const apiKey = pgTable(
+  "ApiKey",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id),
+    /** SHA-256 hex of the full secret. Unique → O(1) auth lookup. */
+    hashedKey: text("hashedKey").notNull(),
+    /** Display-only tail, e.g. "sk-…a1b2" (never the full secret). */
+    keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+    /** User-set label, e.g. "production agent". */
+    name: varchar("name", { length: 64 }),
+    lastUsedAt: timestamp("lastUsedAt"),
+    /** Soft-delete: set on revoke. Revoked keys never authenticate. */
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    hashUnique: uniqueIndex("ApiKey_hashedKey_unique").on(t.hashedKey),
+    userIdx: index("ApiKey_userId_idx").on(t.userId),
+  })
+);
+
+export type ApiKey = InferSelectModel<typeof apiKey>;
+
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   createdAt: timestamp("createdAt").notNull(),

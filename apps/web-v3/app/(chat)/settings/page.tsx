@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { HandleModal } from "@/components/chat/handle-modal";
+import { ApiKeysSection } from "@/components/settings/api-keys-section";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -402,6 +403,9 @@ export default function SettingsPage() {
           </Button>
         </div>
       </Section>
+
+      {/* API keys (Private Inference API) */}
+      {address && <ApiKeysSection />}
 
       {/* Your data */}
       <Section title="Your data">

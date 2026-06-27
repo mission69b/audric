@@ -27,6 +27,8 @@ import {
 } from "@/lib/referral/constants";
 import { ChatbotError } from "../errors";
 import {
+  type ApiKey,
+  apiKey,
   type Chat,
   chat,
   creditLedger,
@@ -196,6 +198,78 @@ export async function listCreditLedger(userId: string, limit = 50) {
     .where(eq(creditLedger.userId, userId))
     .orderBy(desc(creditLedger.createdAt))
     .limit(limit);
+}
+
+// ── Private Inference API keys (SPEC_AUDRIC_API v1) ──────────────────────────
+
+/** Persist a new API key (hash + display prefix). The plaintext secret is
+ *  returned to the caller ONCE at creation and never stored. */
+export async function createApiKey(entry: {
+  userId: string;
+  hashedKey: string;
+  keyPrefix: string;
+  name?: string;
+}): Promise<ApiKey> {
+  const [row] = await db
+    .insert(apiKey)
+    .values({
+      userId: entry.userId,
+      hashedKey: entry.hashedKey,
+      keyPrefix: entry.keyPrefix,
+      name: entry.name,
+    })
+    .returning();
+  return row;
+}
+
+/** Look up a LIVE (non-revoked) key by its hash — the auth hot path. */
+export async function getApiKeyByHash(
+  hashedKey: string
+): Promise<ApiKey | undefined> {
+  const [row] = await db
+    .select()
+    .from(apiKey)
+    .where(and(eq(apiKey.hashedKey, hashedKey), isNull(apiKey.revokedAt)))
+    .limit(1);
+  return row;
+}
+
+/** A user's keys (newest first), for the settings list. Revoked included so the
+ *  UI can show history; the secret is never present (only the prefix). */
+export async function listApiKeys(userId: string): Promise<ApiKey[]> {
+  return await db
+    .select()
+    .from(apiKey)
+    .where(eq(apiKey.userId, userId))
+    .orderBy(desc(apiKey.createdAt));
+}
+
+/** Revoke a key (soft-delete). Scoped to the owner so a user can't revoke
+ *  another's key. Returns true when a row actually flipped. */
+export async function revokeApiKey(
+  id: string,
+  userId: string
+): Promise<boolean> {
+  const rows = await db
+    .update(apiKey)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(apiKey.id, id),
+        eq(apiKey.userId, userId),
+        isNull(apiKey.revokedAt)
+      )
+    )
+    .returning({ id: apiKey.id });
+  return rows.length > 0;
+}
+
+/** Best-effort "last used" stamp (fire-and-forget from the auth path). */
+export async function touchApiKey(id: string): Promise<void> {
+  await db
+    .update(apiKey)
+    .set({ lastUsedAt: new Date() })
+    .where(eq(apiKey.id, id));
 }
 
 // ── Referrals ("Give $X, Get $X") ───────────────────────────────────────────
