@@ -9,6 +9,8 @@ import {
   useMemo,
   useState,
 } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/utils";
 import { PricingView } from "./pricing-view";
 
 /**
@@ -37,6 +39,15 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const value = useMemo(() => ({ openUpgrade: () => setOpen(true) }), []);
 
+  // The signed-in user's current plan — only fetched once the overlay opens
+  // (anon → 401 → undefined → default checkout CTAs). Drives the "Current plan"
+  // state so a subscriber can't re-checkout the plan they already have.
+  const { data: credit } = useSWR<{ tier?: string }>(
+    open ? "/api/credit/balance" : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+
   return (
     <UpgradeModalContext.Provider value={value}>
       {children}
@@ -60,7 +71,10 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
               </button>
             </DialogPrimitive.Close>
             <div className="px-5 py-12">
-              <PricingView onCtaClick={() => setOpen(false)} />
+              <PricingView
+                currentTier={credit?.tier}
+                onCtaClick={() => setOpen(false)}
+              />
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>

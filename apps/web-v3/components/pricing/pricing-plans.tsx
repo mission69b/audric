@@ -3,13 +3,53 @@ import Link from "next/link";
 import { COMING_SOON, EVERY_PLAN, TIERS } from "@/lib/credit/tiers";
 import { cn } from "@/lib/utils";
 
+type PlanCta =
+  | { kind: "current"; label: string }
+  | { kind: "link"; label: string; href: string };
+
+/**
+ * Resolve a tier's CTA given the user's CURRENT plan. Prevents the "re-checkout
+ * the plan you already have" bug: the active tier shows a non-clickable "Current
+ * plan", and an existing subscriber switching tiers is routed to Billing (the
+ * Stripe-managed change flow) rather than a fresh `/checkout` that double-charges.
+ */
+function planCta(
+  tierId: string,
+  priceUsd: number | null,
+  tierName: string,
+  currentTier?: string
+): PlanCta {
+  if (currentTier && tierId === currentTier) {
+    return { kind: "current", label: "Current plan" };
+  }
+  // Existing PAID subscriber changing plans → manage via Billing, not a new checkout.
+  if (currentTier && currentTier !== "free" && tierId !== currentTier) {
+    return { kind: "link", label: "Manage plan", href: "/settings/billing" };
+  }
+  if (!priceUsd) {
+    return { kind: "link", label: "Start free", href: "/" };
+  }
+  return {
+    kind: "link",
+    label: `Get ${tierName}`,
+    href: `/checkout?plan=${tierId}`,
+  };
+}
+
 /**
  * The single source of plan UI (SPEC_AUDRIC_CONVERSION §1a), rendered via
  * <PricingView> inside the in-app full-screen upgrade overlay. Presentational +
  * server-compatible (no hooks) — CTAs are plain links to the existing
  * `/checkout?plan=` flow. `onCtaClick` lets the overlay close itself on navigate.
+ * `currentTier` (the signed-in user's active plan) gates the per-tier CTA.
  */
-export function PricingPlans({ onCtaClick }: { onCtaClick?: () => void }) {
+export function PricingPlans({
+  onCtaClick,
+  currentTier,
+}: {
+  onCtaClick?: () => void;
+  currentTier?: string;
+}) {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border/50 bg-card/40 p-6">
@@ -93,18 +133,39 @@ export function PricingPlans({ onCtaClick }: { onCtaClick?: () => void }) {
                 ))}
               </ul>
 
-              <Link
-                className={cn(
-                  "mt-6 inline-flex h-9 items-center justify-center rounded-lg px-4 font-medium text-sm transition-colors",
-                  featured
-                    ? "bg-teal-600 text-white hover:bg-teal-500"
-                    : "border border-border/60 text-foreground hover:bg-muted"
-                )}
-                href={tier.priceUsd === 0 ? "/" : `/checkout?plan=${tier.id}`}
-                onClick={onCtaClick}
-              >
-                {tier.priceUsd === 0 ? "Start free" : `Get ${tier.name}`}
-              </Link>
+              {(() => {
+                const cta = planCta(
+                  tier.id,
+                  tier.priceUsd,
+                  tier.name,
+                  currentTier
+                );
+                if (cta.kind === "current") {
+                  return (
+                    <span
+                      aria-disabled="true"
+                      className="mt-6 inline-flex h-9 cursor-default items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-muted/40 px-4 font-medium text-muted-foreground text-sm"
+                    >
+                      <CheckIcon className="size-4 text-teal-500/80" />
+                      {cta.label}
+                    </span>
+                  );
+                }
+                return (
+                  <Link
+                    className={cn(
+                      "mt-6 inline-flex h-9 items-center justify-center rounded-lg px-4 font-medium text-sm transition-colors",
+                      featured
+                        ? "bg-teal-600 text-white hover:bg-teal-500"
+                        : "border border-border/60 text-foreground hover:bg-muted"
+                    )}
+                    href={cta.href}
+                    onClick={onCtaClick}
+                  >
+                    {cta.label}
+                  </Link>
+                );
+              })()}
             </div>
           );
         })}

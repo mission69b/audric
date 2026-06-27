@@ -6,7 +6,13 @@ import { PricingPlans } from "./pricing-plans";
  * was removed (2026-06-27) — every entry point opens the overlay now, so this is
  * the single pricing surface. `onCtaClick` lets the overlay close on navigate.
  */
-export function PricingView({ onCtaClick }: { onCtaClick?: () => void }) {
+export function PricingView({
+  onCtaClick,
+  currentTier,
+}: {
+  onCtaClick?: () => void;
+  currentTier?: string;
+}) {
   return (
     <div className="mx-auto w-full max-w-5xl">
       <div className="text-center">
@@ -20,7 +26,7 @@ export function PricingView({ onCtaClick }: { onCtaClick?: () => void }) {
         </p>
       </div>
       <div className="mt-10">
-        <PricingPlans onCtaClick={onCtaClick} />
+        <PricingPlans currentTier={currentTier} onCtaClick={onCtaClick} />
       </div>
     </div>
   );
