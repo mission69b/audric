@@ -38,6 +38,7 @@ import {
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
+import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import {
   Tooltip,
   TooltipContent,
@@ -124,6 +125,7 @@ function PureMultimodalInput({
   onCancelEdit?: () => void;
 }) {
   const router = useRouter();
+  const { openUpgrade } = useUpgradeModal();
   const { status: authStatus } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
   const { setTheme, resolvedTheme } = useTheme();
@@ -656,11 +658,7 @@ function PureMultimodalInput({
             </Button>
             <Button
               className="h-7 rounded-lg px-2.5 text-[12px]"
-              onClick={() =>
-                router.push(
-                  `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/settings/billing`
-                )
-              }
+              onClick={openUpgrade}
               size="sm"
             >
               Upgrade Plan
@@ -904,7 +902,7 @@ function PureModelSelectorCompact({
   canUsePremium: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
+  const { openUpgrade } = useUpgradeModal();
   const { status: authStatus } = useZkLogin();
   const isAuthed = authStatus === "authenticated";
   const { data: modelsData } = useSWR(
@@ -1042,9 +1040,7 @@ function PureModelSelectorCompact({
                         }
                         if (locked) {
                           setOpen(false);
-                          router.push(
-                            isAuthed ? "/settings/billing" : "/pricing"
-                          );
+                          openUpgrade();
                           return;
                         }
                         onModelChange?.(model.id);

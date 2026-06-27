@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 import { DataStreamProvider } from "@/components/chat/data-stream-provider";
 import { ChatShell } from "@/components/chat/shell";
+import { UpgradeModalProvider } from "@/components/pricing/upgrade-modal";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ActiveChatProvider } from "@/hooks/use-active-chat";
 import { auth } from "../(auth)/auth";
@@ -31,23 +32,25 @@ async function SidebarShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user} />
-      <SidebarInset>
-        <Toaster
-          position="top-center"
-          theme="system"
-          toastOptions={{
-            className:
-              "!bg-card !text-foreground !border-border/50 !shadow-[var(--shadow-float)]",
-          }}
-        />
-        <Suspense fallback={<div className="flex h-dvh" />}>
-          <ActiveChatProvider>
-            <ChatShell />
-          </ActiveChatProvider>
-        </Suspense>
-        {children}
-      </SidebarInset>
+      <UpgradeModalProvider>
+        <AppSidebar user={session?.user} />
+        <SidebarInset>
+          <Toaster
+            position="top-center"
+            theme="system"
+            toastOptions={{
+              className:
+                "!bg-card !text-foreground !border-border/50 !shadow-[var(--shadow-float)]",
+            }}
+          />
+          <Suspense fallback={<div className="flex h-dvh" />}>
+            <ActiveChatProvider>
+              <ChatShell />
+            </ActiveChatProvider>
+          </Suspense>
+          {children}
+        </SidebarInset>
+      </UpgradeModalProvider>
     </SidebarProvider>
   );
 }

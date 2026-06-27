@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { memo, useState } from "react";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
+import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -20,6 +21,7 @@ import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
  * → /pricing; subscribers see their tier → manage in billing. Authed-only. */
 function PlanBadge() {
   const router = useRouter();
+  const { openUpgrade } = useUpgradeModal();
   const { status } = useZkLogin();
   const { data } = useSWR<{ tier?: string; configured: boolean }>(
     status === "authenticated" ? "/api/credit/balance" : null,
@@ -45,7 +47,7 @@ function PlanBadge() {
   return (
     <button
       className="flex items-center gap-1.5 rounded-full border border-border/50 px-2.5 py-1 text-[12px] transition-colors hover:bg-accent"
-      onClick={() => router.push("/pricing")}
+      onClick={openUpgrade}
       type="button"
     >
       <span className="text-muted-foreground">Free plan</span>
