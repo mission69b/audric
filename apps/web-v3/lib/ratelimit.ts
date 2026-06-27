@@ -3,7 +3,13 @@ import { createClient } from "redis";
 import { isProductionEnvironment } from "@/lib/constants";
 import { ChatbotError } from "@/lib/errors";
 
-const MAX_MESSAGES = 10;
+// THE live anonymous (not-signed-in) cap — anon has no user row, so it's gated
+// here by IP, NOT by the per-user daily cap in the chat route. This is the wall
+// that triggers the sign-in nudge, so it's the real conversion lever: a guest
+// gets a small taste, then signing up unlocks the 20/day free tier. Hourly (not
+// daily) on purpose — shared IPs (offices, mobile NAT) make a daily IP cap
+// risky; the hourly reset is a safety valve against blocking innocent users.
+const MAX_MESSAGES = 5;
 const TTL_SECONDS = 60 * 60;
 
 let client: ReturnType<typeof createClient> | null = null;
