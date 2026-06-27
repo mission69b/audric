@@ -169,7 +169,11 @@ function PureMultimodalInput({
   // when the out-of-credit banner is up, and persistently dismissible).
   const [upgradeNudgeDismissed, setUpgradeNudgeDismissed] =
     useLocalStorage<boolean>("upgrade-nudge-dismissed", false);
-  const isFreeTier = isAuthed && (credit?.tier ?? "free") === "free";
+  // Gate on the balance SWR having RESOLVED (credit !== undefined) — otherwise
+  // `tier ?? "free"` defaults to free during load and the nudge flashes for paid
+  // users on a hard refresh before their tier arrives.
+  const isFreeTier =
+    isAuthed && credit !== undefined && (credit.tier ?? "free") === "free";
   const showUpgradeNudge =
     isFreeTier && !showCreditBanner && !upgradeNudgeDismissed;
   // Active-model capabilities — used to hint on image paste to a non-vision
