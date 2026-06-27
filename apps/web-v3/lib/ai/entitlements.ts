@@ -1,16 +1,17 @@
 import type { UserType } from "@/app/(auth)/auth";
 
-// Per-hour message cap. Anonymous is IP-rate-limited separately; authed users
-// are capped here. The cap is TIER-AWARE (§4b): Free keeps an acquisition cap;
-// any PAID plan is effectively unlimited ("effectively unlimited on Pro").
-const GUEST_HOURLY = 30;
+// Per-hour message cap = an anti-abuse BURST guard (stops scripted spam within
+// an hour). NOT the product cap — the DAILY caps below are the real limits and
+// almost always bind first. The cap is TIER-AWARE (§4b): any PAID plan is
+// effectively unlimited.
+const GUEST_HOURLY = 30; // burst guard only — guests are really capped at 5/day
 const FREE_HOURLY = 100; // authed, no paid plan
 const PAID_HOURLY = 10_000; // any paid tier → effectively unlimited
 
-// Free-tier DAILY text-prompt cap (authed, no paid plan). Bounds worst-case
-// free-model (Kimi) burn — the swing cost in SPEC_AUDRIC_ECONOMICS — while
-// staying 2× more generous than Venice's 10/day. Paid tiers are exempt.
-export const FREE_DAILY_TEXT_LIMIT = 20;
+// DAILY text-prompt caps (the real product limits; paid tiers are exempt).
+// Guests get a small taste that drives the sign-in funnel; signing up unlocks 4×.
+export const GUEST_DAILY_TEXT_LIMIT = 5; // not signed in → hits the sign-in nudge fast
+export const FREE_DAILY_TEXT_LIMIT = 20; // authed, no paid plan
 
 export function maxMessagesPerHour(
   userType: UserType,

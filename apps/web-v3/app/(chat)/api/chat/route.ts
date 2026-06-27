@@ -13,6 +13,7 @@ import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import {
   FREE_DAILY_TEXT_LIMIT,
+  GUEST_DAILY_TEXT_LIMIT,
   maxMessagesPerHour,
 } from "@/lib/ai/entitlements";
 import { prepareAttachments } from "@/lib/ai/inline-attachments";
@@ -324,17 +325,20 @@ export async function POST(request: Request) {
         return new ChatbotError("rate_limit:chat").toResponse();
       }
 
-      // Free-tier DAILY text cap (authed, unpaid) — bounds worst-case free-model
-      // burn; paid tiers (sub OR positive credit) exempt. 3× Venice's 10/day.
+      // DAILY text cap (the real product limit) — paid tiers (sub OR positive
+      // credit) exempt. Guests get a small taste (5) that drives the sign-in
+      // funnel; authed-free gets 20 (4× more — signing up actually unlocks more).
       const isPaidUser =
         (dbUser?.subscriptionTier && dbUser.subscriptionTier !== "free") ||
         creditMicros > 0;
       if (!isPaidUser) {
+        const dailyLimit =
+          userType === "guest" ? GUEST_DAILY_TEXT_LIMIT : FREE_DAILY_TEXT_LIMIT;
         const dailyCount = await getMessageCountByUserId({
           id: session.user.id,
           differenceInHours: 24,
         });
-        if (dailyCount > FREE_DAILY_TEXT_LIMIT) {
+        if (dailyCount > dailyLimit) {
           return new ChatbotError("rate_limit:chat").toResponse();
         }
       }
