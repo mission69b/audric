@@ -1,8 +1,13 @@
 import { generateText, streamText } from "ai";
 import { getModelPricing } from "@/lib/ai/models";
-import { getLanguageModel } from "@/lib/ai/providers";
 import { authenticateApiKey, openAiError } from "@/lib/api/keys";
 import { apiMarginFor, isApiModel } from "@/lib/api/models";
+import {
+  getInferenceModel,
+  getPhalaPricing,
+  isConfidentialConfigured,
+  isConfidentialModel,
+} from "@/lib/api/providers";
 import { debitMicrosForUsage } from "@/lib/credit/meter";
 import { recordCredit } from "@/lib/db/queries";
 import { generateUUID } from "@/lib/utils";
@@ -70,7 +75,13 @@ export async function POST(request: Request) {
   }
 
   const model = body.model;
-  if (!model || !isApiModel(model)) {
+  // Confidential (phala/*) models are only available when the Phala key is
+  // configured — otherwise they're effectively not in the catalog (404, not 500).
+  const modelUnavailable =
+    !model ||
+    !isApiModel(model) ||
+    (isConfidentialModel(model) && !isConfidentialConfigured());
+  if (modelUnavailable) {
     return openAiError(
       404,
       `The model \`${model ?? ""}\` does not exist or you do not have access to it. See GET /v1/models.`,
@@ -100,9 +111,10 @@ export async function POST(request: Request) {
       content: partsToText(m.content),
     }));
 
+  const confidential = isConfidentialModel(model);
   const maxOutputTokens = body.max_completion_tokens ?? body.max_tokens;
   const shared = {
-    model: getLanguageModel(model),
+    model: getInferenceModel(model),
     ...(system ? { instructions: system } : {}),
     messages,
     ...(typeof body.temperature === "number"
@@ -110,12 +122,35 @@ export async function POST(request: Request) {
       : {}),
     ...(typeof body.top_p === "number" ? { topP: body.top_p } : {}),
     ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
-    // ZDR by default — only ZDR-bound providers (the "Private" rung).
-    providerOptions: { gateway: { zeroDataRetention: true } },
+    // "Private" rung = ZDR via the Gateway. The "confidential" rung (phala/*)
+    // is hardware-isolated by construction, so the Gateway ZDR flag doesn't
+    // apply (and would be meaningless to a non-Gateway provider).
+    ...(confidential
+      ? {}
+      : { providerOptions: { gateway: { zeroDataRetention: true } } }),
   };
 
   const id = `chatcmpl-${generateUUID()}`;
   const created = Math.floor(Date.now() / 1000);
+
+  // Resolve the CHARGED price ONCE before generating — confidential (phala/*)
+  // from Phala's catalog, everything else from the Vercel Gateway, both per-1M.
+  const pricing = confidential
+    ? (await getPhalaPricing())[model]
+    : (await getModelPricing())[model];
+
+  // Fail CLOSED for confidential when unpriceable (units-guard drop / not live)
+  // — `/v1/models` already omits it, so serving it would be silent free
+  // inference. Private models stay resilient: a Gateway-pricing blip is
+  // transient, so we serve + warn rather than 503 the whole API.
+  if (confidential && !pricing) {
+    return openAiError(
+      503,
+      "This model is temporarily unavailable.",
+      "api_error",
+      "model_unavailable"
+    );
+  }
 
   // Debit the same CreditLedger as in-app turns. `ref = completion id` →
   // idempotent (one debit per completion). Best-effort: a metering hiccup must
@@ -125,7 +160,12 @@ export async function POST(request: Request) {
     outputTokens?: number;
   }) => {
     try {
-      const pricing = (await getModelPricing())[model];
+      if (!pricing) {
+        console.warn(
+          `[/v1/chat/completions] no pricing for ${model} — served UNMETERED`
+        );
+        return;
+      }
       const debit = debitMicrosForUsage(usage, pricing, apiMarginFor(model));
       if (debit > 0) {
         await recordCredit({
@@ -144,26 +184,33 @@ export async function POST(request: Request) {
   // ── Non-streaming ──────────────────────────────────────────────────────────
   if (!body.stream) {
     try {
-      const { text, usage, finishReason } = await generateText(shared);
+      const { text, usage, finishReason, response } =
+        await generateText(shared);
       await meter(usage);
-      return Response.json({
-        id,
-        object: "chat.completion",
-        created,
-        model,
-        choices: [
-          {
-            index: 0,
-            message: { role: "assistant", content: text },
-            finish_reason: mapFinishReason(finishReason),
+      // Confidential calls return an x-receipt-id (TEE attestation receipt) —
+      // pass it through so callers can later verify the run (v3 verifier).
+      const receiptId = response?.headers?.["x-receipt-id"];
+      return Response.json(
+        {
+          id,
+          object: "chat.completion",
+          created,
+          model,
+          choices: [
+            {
+              index: 0,
+              message: { role: "assistant", content: text },
+              finish_reason: mapFinishReason(finishReason),
+            },
+          ],
+          usage: {
+            prompt_tokens: usage.inputTokens ?? 0,
+            completion_tokens: usage.outputTokens ?? 0,
+            total_tokens: usage.totalTokens ?? 0,
           },
-        ],
-        usage: {
-          prompt_tokens: usage.inputTokens ?? 0,
-          completion_tokens: usage.outputTokens ?? 0,
-          total_tokens: usage.totalTokens ?? 0,
         },
-      });
+        receiptId ? { headers: { "x-receipt-id": receiptId } } : undefined
+      );
     } catch (error) {
       console.error("[/v1/chat/completions] non-stream error", error);
       return openAiError(
@@ -203,6 +250,9 @@ export async function POST(request: Request) {
 
         const usage = await result.usage;
         if (includeUsage) {
+          // Streaming can't add trailing HTTP headers, so the TEE receipt rides
+          // the final usage chunk (when present) for confidential calls.
+          const receiptId = (await result.response)?.headers?.["x-receipt-id"];
           controller.enqueue(
             encoder.encode(
               `data: ${JSON.stringify({
@@ -216,6 +266,7 @@ export async function POST(request: Request) {
                   completion_tokens: usage.outputTokens ?? 0,
                   total_tokens: usage.totalTokens ?? 0,
                 },
+                ...(receiptId ? { x_receipt_id: receiptId } : {}),
               })}\n\n`
             )
           );

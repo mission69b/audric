@@ -86,6 +86,12 @@ const serverSchema = z.object({
   // boot failure). The SAME key powers the Phase-3 uncensored image set
   // (SPEC_AUDRIC_IMAGE_PIPELINE §2.2/§12) — provisioned once, reused. Server-only.
   FAL_API_KEY: optionalString,
+  // Confidential inference (Phala-direct, GPU-TEE) — OPTIONAL: enables the
+  // Private API's "confidential" model tier (SPEC_AUDRIC_API v1.5). Calls to
+  // `phala/*` models route to inference.phala.com (OpenAI-compatible) instead of
+  // the Vercel Gateway. Unset → the confidential tier is hidden (no boot
+  // failure); ZDR models keep working. Server-only.
+  PHALA_API_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -121,6 +127,7 @@ const runtimeEnv = {
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   CMC_API_KEY: process.env.CMC_API_KEY,
   FAL_API_KEY: process.env.FAL_API_KEY,
+  PHALA_API_KEY: process.env.PHALA_API_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
