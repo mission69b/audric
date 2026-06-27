@@ -4,9 +4,8 @@ import { COMING_SOON, EVERY_PLAN, TIERS } from "@/lib/credit/tiers";
 import { cn } from "@/lib/utils";
 
 /**
- * The single source of plan UI (SPEC_AUDRIC_CONVERSION §1a). Rendered in BOTH
- * the anon `/pricing` page AND the in-app full-screen upgrade overlay (via
- * <PricingView>) so the surfaces can never drift. Presentational +
+ * The single source of plan UI (SPEC_AUDRIC_CONVERSION §1a), rendered via
+ * <PricingView> inside the in-app full-screen upgrade overlay. Presentational +
  * server-compatible (no hooks) — CTAs are plain links to the existing
  * `/checkout?plan=` flow. `onCtaClick` lets the overlay close itself on navigate.
  */

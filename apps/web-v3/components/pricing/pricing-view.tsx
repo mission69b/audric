@@ -1,11 +1,10 @@
 import { PricingPlans } from "./pricing-plans";
 
 /**
- * The shared pricing BODY (header + plans), rendered identically by the
- * `/pricing` route AND the in-app full-screen upgrade overlay — so there's one
- * pricing surface, two entry points (SPEC_AUDRIC_CONVERSION §1a/§1b). Each
- * context supplies its own chrome (the page adds a back-link + footer; the
- * overlay adds a close button). `onCtaClick` lets the overlay close on navigate.
+ * The shared pricing BODY (header + plans), rendered by the in-app full-screen
+ * upgrade overlay (SPEC_AUDRIC_CONVERSION §1b). The standalone `/pricing` route
+ * was removed (2026-06-27) — every entry point opens the overlay now, so this is
+ * the single pricing surface. `onCtaClick` lets the overlay close on navigate.
  */
 export function PricingView({ onCtaClick }: { onCtaClick?: () => void }) {
   return (

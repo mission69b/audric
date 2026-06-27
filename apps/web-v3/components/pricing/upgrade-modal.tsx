@@ -12,11 +12,10 @@ import {
 import { PricingView } from "./pricing-view";
 
 /**
- * One instant upgrade surface (SPEC_AUDRIC_CONVERSION §1b). A FULL-SCREEN overlay
- * rendering the exact `/pricing` layout (<PricingView>) — so the in-app upgrade
- * and the public page are one and the same, just different entry points (no thin
- * modal, no drift). Anything that wants to prompt an upgrade calls
- * `useUpgradeModal().openUpgrade()`.
+ * The single pricing surface (SPEC_AUDRIC_CONVERSION §1b). A FULL-SCREEN overlay
+ * rendering the shared <PricingView> — every upgrade entry point (locked model,
+ * out-of-credit banner/card, header plan badge, sidebar) opens this; the
+ * standalone `/pricing` route was removed. Call `useUpgradeModal().openUpgrade()`.
  */
 type UpgradeModalContextValue = { openUpgrade: () => void };
 
