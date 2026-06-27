@@ -26,6 +26,7 @@ function modelDisplayName(id: string): string {
   return MODEL_NAMES.get(id) ?? id.split("/").pop() ?? id;
 }
 
+import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { useArtifact } from "@/hooks/use-artifact";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
@@ -35,18 +36,20 @@ import { SendTransferTool } from "./send-transfer-tool";
 
 /** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
 function ImageLimitCard({ message }: { message: string }) {
+  const { openUpgrade } = useUpgradeModal();
   return (
     <div className="flex w-[min(100%,420px)] flex-col gap-3 rounded-xl border border-border/40 bg-gradient-to-br from-secondary to-muted p-4">
       <div className="flex items-start gap-2.5">
         <SparklesIcon size={16} />
         <p className="text-[13px] text-foreground leading-relaxed">{message}</p>
       </div>
-      <a
+      <button
         className="inline-flex w-fit items-center justify-center rounded-lg bg-foreground px-3.5 py-1.5 font-medium text-[13px] text-background transition-opacity hover:opacity-90"
-        href="/pricing"
+        onClick={openUpgrade}
+        type="button"
       >
         Upgrade
-      </a>
+      </button>
     </div>
   );
 }

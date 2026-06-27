@@ -1,7 +1,6 @@
 "use client";
 
 import { PanelLeftIcon, ShieldCheckIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { memo, useState } from "react";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
@@ -17,10 +16,10 @@ import {
 import { fetcher } from "@/lib/utils";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
 
-/** Plan pill (Perplexity-style, top-left) — free users see "Free plan · Upgrade"
- * → /pricing; subscribers see their tier → manage in billing. Authed-only. */
+/** Plan pill (Perplexity-style, top-left) — free users see "Free plan · Upgrade",
+ * subscribers see their tier; both open the pricing overlay (manage billing via
+ * the sidebar user menu). Authed-only. */
 function PlanBadge() {
-  const router = useRouter();
   const { openUpgrade } = useUpgradeModal();
   const { status } = useZkLogin();
   const { data } = useSWR<{ tier?: string; configured: boolean }>(
@@ -37,7 +36,7 @@ function PlanBadge() {
     return (
       <button
         className="rounded-full border border-border/50 px-2.5 py-1 text-[12px] text-muted-foreground capitalize transition-colors hover:bg-accent hover:text-foreground"
-        onClick={() => router.push("/settings/billing")}
+        onClick={openUpgrade}
         type="button"
       >
         {paidTier} plan

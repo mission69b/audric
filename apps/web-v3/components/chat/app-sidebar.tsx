@@ -20,6 +20,7 @@ import {
   SidebarHistory,
 } from "@/components/chat/sidebar-history";
 import { SidebarUserNav } from "@/components/chat/sidebar-user-nav";
+import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import {
   Sidebar,
   SidebarContent,
@@ -49,6 +50,7 @@ import { AudricMark } from "./icons";
 
 export function AppSidebar({ user }: { user: SessionUser | undefined }) {
   const router = useRouter();
+  const { openUpgrade } = useUpgradeModal();
   const { setOpenMobile, toggleSidebar } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
@@ -146,7 +148,7 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
                       className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                       onClick={() => {
                         setOpenMobile(false);
-                        router.push("/pricing");
+                        openUpgrade();
                       }}
                       tooltip="See plans and pricing"
                     >
