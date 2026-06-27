@@ -167,6 +167,14 @@ export async function recordCredit(entry: {
   description?: string;
   ref?: string;
 }): Promise<boolean> {
+  // Invariant: a debit must never be positive (balance = SUM(amountMicros), so a
+  // positive debit silently INFLATES the balance — the S.502 video sign bug).
+  // Fail loud at the single chokepoint every credit path flows through.
+  if (entry.type === "debit" && entry.amountMicros > 0) {
+    throw new Error(
+      `recordCredit: a debit must be <= 0, got ${entry.amountMicros} (${entry.description ?? ""})`
+    );
+  }
   const inserted = await db
     .insert(creditLedger)
     .values({
