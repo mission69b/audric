@@ -30,6 +30,12 @@ const CASES: Case[] = [
     expect: false,
   },
   { label: "upscale", text: "upscale this and make it sharper", expect: false },
+  {
+    // "movie/film POSTER" is a still-image request — must stay on generate_image.
+    label: "movie poster (image, not video)",
+    text: "turn it into a full movie poster with a title and tagline",
+    expect: false,
+  },
   { label: "plain chat", text: "what's the meaning of life?", expect: false },
   {
     label: "research",
@@ -49,6 +55,13 @@ const CASES: Case[] = [
     expect: true,
   },
   { label: "bring to life", text: "bring this photo to life", expect: true },
+  {
+    // The founder-caught miss: "turn it into a movie" was refused pre-fix.
+    label: "turn it into a movie",
+    text: "cool can you turn it into a epic movie now?",
+    expect: true,
+  },
+  { label: "make a film", text: "make a film of this scene", expect: true },
 ];
 
 let passed = 0;

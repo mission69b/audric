@@ -14,8 +14,11 @@
 
 // Words that signal the user wants a VIDEO (not a still image). Broad enough to
 // catch the real asks; absent from image-edit/gen prompts (the incident class).
+// `movie`/`film` are included but NOT when followed by "poster" — "make a movie
+// poster" is a still-IMAGE request (a real prior-turn case), so it must stay on
+// generate_image, while "turn it into a movie" / "make a film" open the gate.
 const VIDEO_VERBS =
-  /\b(video|animate|animated|animation|clip|footage|motion|cinemagraph|gif|moving image|bring .* to life)\b/i;
+  /\b(?:video|animate|animated|animation|clip|footage|motion|cinemagraph|gif|moving image|trailer|bring .* to life)\b|\b(?:movie|film)s?\b(?!\s+posters?)/i;
 
 export function hasVideoIntent(opts: { text: string }): boolean {
   return VIDEO_VERBS.test(opts.text);
