@@ -27,6 +27,9 @@
     "reset-billing": "tsx scripts/reset-billing.ts",
     "check-billing": "tsx scripts/check-billing.ts",
     "backfill-handles": "tsx scripts/backfill-handles.ts",
+    "stats": "tsx scripts/stats.ts",
+    "stats:detail": "tsx scripts/stats-detail.ts",
+    "inspect-user": "tsx scripts/inspect-user.ts",
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {
