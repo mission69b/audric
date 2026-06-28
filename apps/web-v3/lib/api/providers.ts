@@ -4,6 +4,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 import type { ModelPricing } from "@/lib/ai/models";
 import { getLanguageModel } from "@/lib/ai/providers";
+import { apiModels, getApiModel } from "@/lib/api/models";
 import { env } from "@/lib/env";
 
 /**
@@ -47,7 +48,9 @@ function getPhalaProvider() {
  */
 export function getInferenceModel(modelId: string): LanguageModel {
   if (isConfidentialModel(modelId)) {
-    return getPhalaProvider().chatModel(modelId);
+    // Translate our `phala/*` alias → the real Phala upstream slug.
+    const upstream = getApiModel(modelId)?.upstream ?? modelId;
+    return getPhalaProvider().chatModel(upstream);
   }
   return getLanguageModel(modelId);
 }
@@ -58,25 +61,25 @@ export function getInferenceModel(modelId: string): LanguageModel {
 // vetted fallback) rather than risk a ~1000× overcharge (financial-amounts rule).
 const PHALA_MAX_PLAUSIBLE_PER_1M = 100;
 
-// Vetted fallback prices (USD per 1M tokens, from Phala's published catalog,
-// 2026-06). CRITICAL: the native OpenAI `/v1/models` spec has NO pricing field,
-// so if Phala's endpoint omits it, the live fetch yields nothing — without this
-// seed, confidential calls would meter at $0 (a revenue leak) and the models
-// would vanish from `/v1/models`. The live fetch OVERRIDES these when present.
-// Keep in sync with the confidential entries in `lib/api/models.ts`.
+// Vetted fallback prices (USD per 1M tokens), keyed by OUR `phala/*` alias id,
+// from Phala's live catalog (2026-06). The live fetch overrides these, but they
+// guarantee confidential calls NEVER meter at $0 (revenue leak) and never vanish
+// from `/v1/models` if the live fetch fails. Keep in sync with the confidential
+// entries in `lib/api/models.ts`.
 const PHALA_FALLBACK_PRICING: Record<string, ModelPricing> = {
-  "phala/gpt-oss-120b": { inputPer1M: 0.1, outputPer1M: 0.49 },
-  "phala/glm-4.7-flash": { inputPer1M: 0.1, outputPer1M: 0.43 },
+  "phala/glm-5.2": { inputPer1M: 1.4, outputPer1M: 4.4 },
+  "phala/gpt-oss-120b": { inputPer1M: 0.15, outputPer1M: 0.6 },
+  "phala/deepseek-v3.2": { inputPer1M: 1.0, outputPer1M: 1.0 },
   "phala/qwen3.5-27b": { inputPer1M: 0.3, outputPer1M: 2.4 },
   "phala/uncensored-24b": { inputPer1M: 0.2, outputPer1M: 0.9 },
 };
 
 /**
- * Per-model pricing for the confidential (Phala) catalog (USD per 1M tokens).
- * Seeded with vetted fallbacks (so metering is NEVER $0), then overridden by a
- * live fetch of `inference.phala.com/v1/models` when it returns OpenAI/
- * OpenRouter-shaped pricing (`pricing.{prompt,completion}` as USD-per-token).
- * Cached 24h. Returns {} only when the key is unset (tier hidden); on any fetch
+ * Per-model pricing for the confidential (Phala) catalog (USD per 1M tokens),
+ * keyed by OUR `phala/*` alias id. Seeded with vetted fallbacks (so metering is
+ * NEVER $0), then overridden by a live fetch of `inference.phala.com/v1/models`
+ * (`pricing.{prompt,completion}` as USD-per-token), matched by each model's
+ * UPSTREAM slug. Cached 24h. Returns {} only when the key is unset; on any fetch
  * failure the fallbacks remain — never throws, never zeroes.
  */
 export async function getPhalaPricing(): Promise<Record<string, ModelPricing>> {
@@ -84,6 +87,10 @@ export async function getPhalaPricing(): Promise<Record<string, ModelPricing>> {
     return {};
   }
   const out: Record<string, ModelPricing> = { ...PHALA_FALLBACK_PRICING };
+  // upstream slug → our alias id (only confidential models have `upstream`).
+  const upstreamToAlias = new Map(
+    apiModels.filter((m) => m.upstream).map((m) => [m.upstream as string, m.id])
+  );
   try {
     const res = await fetch(`${PHALA_BASE_URL}/models`, {
       headers: { Authorization: `Bearer ${env.PHALA_API_KEY}` },
@@ -99,6 +106,10 @@ export async function getPhalaPricing(): Promise<Record<string, ModelPricing>> {
       context_window?: number;
       pricing?: { prompt?: string; completion?: string };
     }>) {
+      const alias = upstreamToAlias.get(m.id);
+      if (!alias) {
+        continue;
+      }
       const input = Number(m.pricing?.prompt) * 1_000_000;
       const output = Number(m.pricing?.completion) * 1_000_000;
       // Only override the fallback with a live price that is present AND sane.
@@ -109,7 +120,7 @@ export async function getPhalaPricing(): Promise<Record<string, ModelPricing>> {
       ) {
         continue;
       }
-      out[m.id] = {
+      out[alias] = {
         inputPer1M: input,
         outputPer1M: output,
         contextWindow: m.context_window ?? m.context_length,

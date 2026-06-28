@@ -30,13 +30,19 @@ export type ApiModelTier = "open" | "frontier";
 export type ApiModelPrivacy = "private" | "confidential";
 
 export type ApiModel = {
-  /** Live model id — Vercel Gateway (provider/model) or Phala (`phala/*`). */
+  /** Our public catalog id. Confidential models use a `phala/*` alias namespace
+   *  (our own), because Phala's real slugs (`openai/…`, `z-ai/…`) COLLIDE with
+   *  the Vercel Gateway's — the alias keeps backend routing unambiguous. */
   id: string;
   name: string;
   tier: ApiModelTier;
   privacy: ApiModelPrivacy;
   /** charged = base × margin (see meter.ts `debitMicrosForUsage`). */
   margin: number;
+  /** Confidential only: the REAL upstream slug to call on inference.phala.com
+   *  (differs from our alias `id` and from the Gateway's slug for the same
+   *  model). Used for the Phala request + the live-pricing lookup. */
+  upstream?: string;
 };
 
 export const apiModels: ApiModel[] = [
@@ -112,25 +118,37 @@ export const apiModels: ApiModel[] = [
     privacy: "private",
     margin: 1.1,
   },
-  // ── Confidential (v1.5) — GPU-TEE via Phala-direct (`phala/*`) ──────────────
-  // Open-weight models in a hardware enclave. Surfaced only when PHALA_API_KEY
-  // is set AND the id is live in Phala's catalog (the route intersects both).
+  // ── Confidential (v1.5) — GPU-TEE via Phala-direct ─────────────────────────
+  // Our public ids use a `phala/*` alias; `upstream` is the REAL slug we call on
+  // inference.phala.com (which keeps standard provider prefixes that collide
+  // with the Gateway's). Surfaced only when PHALA_API_KEY is set.
+  {
+    id: "phala/glm-5.2",
+    upstream: "z-ai/glm-5.2",
+    name: "GLM 5.2 (Confidential)",
+    tier: "open",
+    privacy: "confidential",
+    margin: 1.4,
+  },
   {
     id: "phala/gpt-oss-120b",
+    upstream: "openai/gpt-oss-120b",
     name: "GPT-OSS 120B (Confidential)",
     tier: "open",
     privacy: "confidential",
     margin: 1.4,
   },
   {
-    id: "phala/glm-4.7-flash",
-    name: "GLM 4.7 Flash (Confidential)",
+    id: "phala/deepseek-v3.2",
+    upstream: "deepseek/deepseek-v3.2",
+    name: "DeepSeek V3.2 (Confidential)",
     tier: "open",
     privacy: "confidential",
     margin: 1.4,
   },
   {
     id: "phala/qwen3.5-27b",
+    upstream: "qwen/qwen3.5-27b",
     name: "Qwen3.5 27B (Confidential)",
     tier: "open",
     privacy: "confidential",
@@ -138,6 +156,7 @@ export const apiModels: ApiModel[] = [
   },
   {
     id: "phala/uncensored-24b",
+    upstream: "phala/uncensored-24b",
     name: "Uncensored 24B (Confidential)",
     tier: "open",
     privacy: "confidential",
