@@ -34,11 +34,13 @@ export function Sidebar({
   address,
   balance,
   onToggle,
+  onNavigate,
 }: {
   email: string | null;
   address: string;
   balance: string;
   onToggle?: () => void;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
 
@@ -86,6 +88,7 @@ export function Sidebar({
               )}
               href={href}
               key={href}
+              onClick={onNavigate}
             >
               <Icon className="size-4" />
               {label}
@@ -107,6 +110,7 @@ export function Sidebar({
         <Link
           className="block rounded-md px-2.5 py-2 transition-colors hover:bg-sidebar-accent"
           href="/billing"
+          onClick={onNavigate}
         >
           <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wide">
             Credit
