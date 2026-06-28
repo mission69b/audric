@@ -79,10 +79,6 @@ export function ApiKeysSection() {
 
   return (
     <div className="rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-      <div className="text-[var(--dim)] text-xs uppercase tracking-wide">
-        API keys
-      </div>
-
       {data && !data.canIssue ? (
         <p className="mt-2 text-[var(--muted)] text-sm">
           Add credit (or a plan) to mint a key — fund your balance below to get

@@ -45,10 +45,7 @@ export function ModelsSection() {
 
   return (
     <div className="rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-      <div className="text-[var(--dim)] text-xs uppercase tracking-wide">
-        Models
-      </div>
-      <p className="mt-2 text-[var(--muted)] text-sm">
+      <p className="text-[var(--muted)] text-sm">
         Every model behind one key — private by default. Prices are USD per 1M
         tokens (what you pay).
       </p>

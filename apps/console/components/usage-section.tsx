@@ -59,10 +59,7 @@ export function UsageSection() {
 
   return (
     <div className="rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-      <div className="flex items-center justify-between">
-        <div className="text-[var(--dim)] text-xs uppercase tracking-wide">
-          Usage
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex gap-1">
           {(["24h", "30d"] as Window[]).map((w) => (
             <button

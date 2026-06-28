@@ -15,7 +15,8 @@
         "noUnknownAtRules": "off"
       },
       "style": {
-        "noMagicNumbers": "off"
+        "noMagicNumbers": "off",
+        "useConsistentTypeDefinitions": "off"
       },
       "nursery": {
         "useSortedClasses": "off"

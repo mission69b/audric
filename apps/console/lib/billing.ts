@@ -2,7 +2,6 @@ import "server-only";
 
 import { getUserById, setStripeCustomerId } from "@audric/accounts";
 import Stripe from "stripe";
-import { CONSOLE_PLANS, type ConsolePlanId } from "./plans";
 
 // Thin Stripe glue for the console (funding edge only). The money-critical
 // logic — granting credit / activating plans — lives in the ONE shared webhook
@@ -49,14 +48,4 @@ export async function getOrCreateCustomer(
   });
   await setStripeCustomerId(userId, customer.id);
   return customer.id;
-}
-
-/** Resolve the configured Stripe Price ID for a plan (undefined = not seeded →
- *  subscribe is inert). Read at runtime (server-only); not inlined. */
-export function priceIdForTier(tier: ConsolePlanId): string | undefined {
-  const plan = CONSOLE_PLANS.find((p) => p.id === tier);
-  if (!plan) {
-    return;
-  }
-  return process.env[plan.priceEnv] || undefined;
 }
