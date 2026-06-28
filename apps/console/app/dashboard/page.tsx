@@ -1,8 +1,9 @@
-import { getCreditBalanceMicros } from "@audric/accounts";
+import { getCreditBalanceMicros, getUserById } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
 import { ApiKeysSection } from "@/components/api-keys-section";
 import { BillingSection } from "@/components/billing-section";
+import { PlansSection } from "@/components/plans-section";
 import { SignOutButton } from "@/components/sign-out-button";
 
 function shortAddress(address: string): string {
@@ -17,9 +18,13 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  const balanceMicros = await getCreditBalanceMicros(session.user.id);
+  const [balanceMicros, user] = await Promise.all([
+    getCreditBalanceMicros(session.user.id),
+    getUserById(session.user.id),
+  ]);
   // Floor to 2dp — never display more credit than the ledger holds.
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
+  const currentTier = user?.subscriptionTier ?? null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col px-6 py-16">
@@ -64,6 +69,10 @@ export default async function DashboardPage() {
 
       <div className="mt-8">
         <BillingSection />
+      </div>
+
+      <div className="mt-8">
+        <PlansSection currentTier={currentTier} />
       </div>
 
       <div className="mt-8">
