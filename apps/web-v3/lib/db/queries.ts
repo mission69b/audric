@@ -1,6 +1,9 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
+// `db` + the two account queries CALLED in-file (getUserById, recordCredit) need
+// local bindings; all nine are re-exported below for `@/lib/db/queries` consumers.
+import { db, getUserById, recordCredit } from "@audric/accounts";
 import {
   and,
   asc,
@@ -17,8 +20,6 @@ import {
   sql,
   sum,
 } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
 import {
@@ -27,8 +28,6 @@ import {
 } from "@/lib/referral/constants";
 import { ChatbotError } from "../errors";
 import {
-  type ApiKey,
-  apiKey,
   type Chat,
   chat,
   creditLedger,
@@ -44,8 +43,20 @@ import {
   vote,
 } from "./schema";
 
-const client = postgres(process.env.POSTGRES_URL ?? "");
-const db = drizzle(client);
+// The identity · credit · API-key account queries now live in @audric/accounts
+// (shared with apps/console — SPEC_T2000_API_V2 §2), using the package's shared
+// `db`. Re-exported so existing `@/lib/db/queries` imports keep working unchanged.
+export {
+  createApiKey,
+  getApiKeyByHash,
+  getCreditBalanceMicros,
+  getUserById,
+  listApiKeys,
+  listCreditLedger,
+  recordCredit,
+  revokeApiKey,
+  touchApiKey,
+} from "@audric/accounts";
 
 /**
  * Upsert the user row keyed by the zkLogin Sui address (Audric v3). Called at
@@ -92,13 +103,6 @@ export async function markWelcomeSent(userId: string): Promise<void> {
     .where(and(eq(user.id, userId), isNull(user.welcomeEmailSentAt)));
 }
 
-// ── Credit rail (Phase 5) ────────────────────────────────────────────────
-
-export async function getUserById(id: string): Promise<User | undefined> {
-  const [row] = await db.select().from(user).where(eq(user.id, id)).limit(1);
-  return row;
-}
-
 /** Fast collision check for an @audric handle (the DB mirror of the leaf). */
 export async function getUserByUsername(
   username: string
@@ -139,137 +143,6 @@ export async function incrementMemoryEpoch(userId: string): Promise<number> {
     .where(eq(user.id, userId))
     .returning({ memoryEpoch: user.memoryEpoch });
   return row?.memoryEpoch ?? 0;
-}
-
-/** Current credit balance in micro-USD (SUM of the append-only ledger). */
-export async function getCreditBalanceMicros(userId: string): Promise<number> {
-  const [row] = await db
-    .select({ total: sum(creditLedger.amountMicros) })
-    .from(creditLedger)
-    .where(eq(creditLedger.userId, userId));
-  return row?.total ? Number(row.total) : 0;
-}
-
-/**
- * Append a ledger entry. `ref` (Stripe event/session/turn id) is unique, so a
- * duplicate webhook or re-metered turn is a no-op. Returns true if it actually
- * wrote (false = already applied → idempotent skip).
- */
-export async function recordCredit(entry: {
-  userId: string;
-  amountMicros: number;
-  type:
-    | "topup"
-    | "debit"
-    | "recharge"
-    | "grant"
-    | "refund"
-    | "adjustment"
-    | "referral";
-  description?: string;
-  ref?: string;
-}): Promise<boolean> {
-  // Invariant: a debit must never be positive (balance = SUM(amountMicros), so a
-  // positive debit silently INFLATES the balance — the S.502 video sign bug).
-  // Fail loud at the single chokepoint every credit path flows through.
-  if (entry.type === "debit" && entry.amountMicros > 0) {
-    throw new Error(
-      `recordCredit: a debit must be <= 0, got ${entry.amountMicros} (${entry.description ?? ""})`
-    );
-  }
-  const inserted = await db
-    .insert(creditLedger)
-    .values({
-      userId: entry.userId,
-      amountMicros: Math.round(entry.amountMicros),
-      type: entry.type,
-      description: entry.description,
-      ref: entry.ref,
-    })
-    .onConflictDoNothing({ target: creditLedger.ref })
-    .returning({ id: creditLedger.id });
-  return inserted.length > 0;
-}
-
-export async function listCreditLedger(userId: string, limit = 50) {
-  return await db
-    .select()
-    .from(creditLedger)
-    .where(eq(creditLedger.userId, userId))
-    .orderBy(desc(creditLedger.createdAt))
-    .limit(limit);
-}
-
-// ── Private Inference API keys (SPEC_AUDRIC_API v1) ──────────────────────────
-
-/** Persist a new API key (hash + display prefix). The plaintext secret is
- *  returned to the caller ONCE at creation and never stored. */
-export async function createApiKey(entry: {
-  userId: string;
-  hashedKey: string;
-  keyPrefix: string;
-  name?: string;
-}): Promise<ApiKey> {
-  const [row] = await db
-    .insert(apiKey)
-    .values({
-      userId: entry.userId,
-      hashedKey: entry.hashedKey,
-      keyPrefix: entry.keyPrefix,
-      name: entry.name,
-    })
-    .returning();
-  return row;
-}
-
-/** Look up a LIVE (non-revoked) key by its hash — the auth hot path. */
-export async function getApiKeyByHash(
-  hashedKey: string
-): Promise<ApiKey | undefined> {
-  const [row] = await db
-    .select()
-    .from(apiKey)
-    .where(and(eq(apiKey.hashedKey, hashedKey), isNull(apiKey.revokedAt)))
-    .limit(1);
-  return row;
-}
-
-/** A user's keys (newest first), for the settings list. Revoked included so the
- *  UI can show history; the secret is never present (only the prefix). */
-export async function listApiKeys(userId: string): Promise<ApiKey[]> {
-  return await db
-    .select()
-    .from(apiKey)
-    .where(eq(apiKey.userId, userId))
-    .orderBy(desc(apiKey.createdAt));
-}
-
-/** Revoke a key (soft-delete). Scoped to the owner so a user can't revoke
- *  another's key. Returns true when a row actually flipped. */
-export async function revokeApiKey(
-  id: string,
-  userId: string
-): Promise<boolean> {
-  const rows = await db
-    .update(apiKey)
-    .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(apiKey.id, id),
-        eq(apiKey.userId, userId),
-        isNull(apiKey.revokedAt)
-      )
-    )
-    .returning({ id: apiKey.id });
-  return rows.length > 0;
-}
-
-/** Best-effort "last used" stamp (fire-and-forget from the auth path). */
-export async function touchApiKey(id: string): Promise<void> {
-  await db
-    .update(apiKey)
-    .set({ lastUsedAt: new Date() })
-    .where(eq(apiKey.id, id));
 }
 
 // ── Referrals ("Give $X, Get $X") ───────────────────────────────────────────
