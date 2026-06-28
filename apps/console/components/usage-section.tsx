@@ -22,6 +22,18 @@ function fmtTokens(n: number): string {
   return String(n);
 }
 
+// Spend display: 2dp at/above $0.01, 4dp for sub-cent usage (so a handful of
+// tokens isn't misleadingly "$0.00"). Floored — never overstate actual spend.
+function fmtSpend(micros: number): string {
+  if (micros <= 0) {
+    return "$0.00";
+  }
+  if (micros >= 10_000) {
+    return `$${(Math.floor(micros / 10_000) / 100).toFixed(2)}`;
+  }
+  return `$${(Math.floor(micros / 100) / 10_000).toFixed(4)}`;
+}
+
 export function UsageSection() {
   const [window, setWindow] = useState<Window>("30d");
   const [rows, setRows] = useState<UsageRow[] | null>(null);
@@ -84,7 +96,7 @@ export function UsageSection() {
                 Spend
               </div>
               <div className="font-semibold text-[var(--foreground)] text-xl">
-                ${(Math.floor(totalSpend / 10_000) / 100).toFixed(2)}
+                {fmtSpend(totalSpend)}
               </div>
             </div>
             <div>
@@ -122,7 +134,7 @@ export function UsageSection() {
                     {fmtTokens(r.inputTokens + r.outputTokens)}
                   </td>
                   <td className="py-2 text-right text-[var(--muted)]">
-                    ${(Math.floor(r.costMicros / 10_000) / 100).toFixed(2)}
+                    {fmtSpend(r.costMicros)}
                   </td>
                 </tr>
               ))}
