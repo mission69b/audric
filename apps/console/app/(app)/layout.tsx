@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default async function AppLayout({
   children,
@@ -25,17 +26,19 @@ export default async function AppLayout({
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <AppSidebar
-        address={session.user.id}
-        balance={balance}
-        email={session.user.email}
-      />
-      <SidebarInset>
-        <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-10">
-          {children}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+    <TooltipProvider delayDuration={0}>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <AppSidebar
+          address={session.user.id}
+          balance={balance}
+          email={session.user.email}
+        />
+        <SidebarInset>
+          <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-10">
+            {children}
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
