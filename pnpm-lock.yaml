@@ -59,6 +59,9 @@ importers:
       react-dom:
         specifier: 19.0.1
         version: 19.0.1(react@19.0.1)
+      stripe:
+        specifier: ^22.2.1
+        version: 22.2.1(@types/node@22.19.15)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
