@@ -1,5 +1,4 @@
 import { getModelPricing } from "@/lib/ai/models";
-import { authenticateApiKey } from "@/lib/api/keys";
 import { apiMarginFor, apiModels } from "@/lib/api/models";
 import { getPhalaPricing } from "@/lib/api/providers";
 
@@ -8,12 +7,12 @@ import { getPhalaPricing } from "@/lib/api/providers";
 // (Vercel Gateway for "private"/ZDR models, Phala for "confidential"/TEE ones),
 // so we never advertise a model a backend can't serve. Each is annotated with
 // the CHARGED price (base × per-model margin), context window, and privacy tier.
-export async function GET(request: Request) {
-  const auth = await authenticateApiKey(request);
-  if (!auth.ok) {
-    return auth.response;
-  }
-
+//
+// PUBLIC (no key) — a model + pricing catalog is public info (every AI gateway
+// exposes one), and the console (platform.t2000.ai) renders it for browsing
+// before a dev has a key. The OpenAI SDK's models.list() still works (it sends
+// the key, which is simply ignored here). The completions endpoint stays gated.
+export async function GET() {
   const [gatewayPricing, phalaPricing] = await Promise.all([
     getModelPricing(),
     getPhalaPricing(),
