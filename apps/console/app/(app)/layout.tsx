@@ -1,7 +1,7 @@
 import { getCreditBalanceMicros } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/sidebar";
+import { ConsoleHeader } from "@/components/console-header";
 
 export default async function AppLayout({
   children,
@@ -17,15 +17,9 @@ export default async function AppLayout({
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
 
   return (
-    <div className="flex min-h-dvh">
-      <Sidebar
-        address={session.user.id}
-        balance={balance}
-        email={session.user.email}
-      />
-      <main className="flex-1 overflow-x-hidden">
-        <div className="mx-auto max-w-4xl px-8 py-10">{children}</div>
-      </main>
+    <div className="min-h-dvh">
+      <ConsoleHeader balance={balance} email={session.user.email} />
+      <main className="mx-auto max-w-3xl space-y-4 px-4 py-8">{children}</main>
     </div>
   );
 }

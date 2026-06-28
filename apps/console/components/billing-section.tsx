@@ -1,7 +1,8 @@
 "use client";
 
-import { Button, Card, CardContent, cn } from "@t2000/ui";
 import { useCallback, useEffect, useState } from "react";
+import { Section } from "@/components/section";
+import { Button } from "@/components/ui";
 
 const TOPUP_AMOUNTS = [5, 10, 25, 50];
 
@@ -12,16 +13,51 @@ type AutoRecharge = {
   hasCard: boolean;
 };
 
-export function BillingSection() {
+type PaymentMethod = {
+  id: string;
+  type: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  email: string | null;
+  isDefault: boolean;
+};
+
+type Invoice = {
+  id: string;
+  created: number;
+  amountPaid: number;
+  receiptUrl: string | null;
+};
+
+type Overview = { invoices: Invoice[]; paymentMethods: PaymentMethod[] };
+
+function fmtDate(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+export function BillingSection({ balance }: { balance: string }) {
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ar, setAr] = useState<AutoRecharge | null>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
 
-  const loadAr = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/billing/auto-recharge");
-      if (res.ok) {
-        setAr((await res.json()) as AutoRecharge);
+      const [arRes, ovRes] = await Promise.all([
+        fetch("/api/billing/auto-recharge"),
+        fetch("/api/billing/overview"),
+      ]);
+      if (arRes.ok) {
+        setAr((await arRes.json()) as AutoRecharge);
+      }
+      if (ovRes.ok) {
+        setOverview((await ovRes.json()) as Overview);
       }
     } catch {
       // transient
@@ -29,8 +65,8 @@ export function BillingSection() {
   }, []);
 
   useEffect(() => {
-    loadAr();
-  }, [loadAr]);
+    load();
+  }, [load]);
 
   async function topUp(amountUsd: number) {
     setBusy(amountUsd);
@@ -69,64 +105,127 @@ export function BillingSection() {
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-6 pt-6">
-        <div>
-          <p className="text-muted-foreground text-sm">
-            Pay-as-you-go — top up with a card and spend per-token across every
-            model. Same balance as your Audric account.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {TOPUP_AMOUNTS.map((amt) => (
-              <Button
-                disabled={busy !== null}
-                key={amt}
-                onClick={() => topUp(amt)}
-                variant="outline"
-              >
-                {busy === amt ? "…" : `$${amt}`}
-              </Button>
-            ))}
-          </div>
-          {error ? (
-            <p className="mt-2 text-destructive text-sm">{error}</p>
-          ) : null}
-          <p className="mt-3 text-muted-foreground text-xs">
-            Credit is closed-loop: non-refundable, non-withdrawable,
-            non-transferable. Card processed securely by Stripe.
-          </p>
+    <div className="space-y-4">
+      <Section>
+        <div className="text-muted-foreground text-xs">t2000 credit</div>
+        <div className="mt-1 font-semibold text-3xl text-foreground tabular-nums">
+          ${balance}
         </div>
+        <p className="mt-1 text-muted-foreground text-xs">
+          Pay-as-you-go across every model. Same balance as your Audric account.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {TOPUP_AMOUNTS.map((amt) => (
+            <Button
+              disabled={busy !== null}
+              key={amt}
+              onClick={() => topUp(amt)}
+              size="sm"
+              variant="outline"
+            >
+              {busy === amt ? "…" : `+ $${amt}`}
+            </Button>
+          ))}
+        </div>
+        {error ? <p className="mt-2 text-red-500 text-xs">{error}</p> : null}
+        <p className="mt-3 text-[11px] text-muted-foreground/60">
+          Closed-loop credit: non-refundable, non-withdrawable,
+          non-transferable. Card processed securely by Stripe.
+        </p>
+      </Section>
 
-        <div className="flex items-center justify-between gap-3 border-border border-t pt-5">
+      <Section>
+        <div className="flex items-center justify-between gap-4">
           <div>
             <div className="font-medium text-foreground text-sm">
               Auto-recharge
             </div>
-            <div className="text-muted-foreground text-xs">
+            <p className="mt-0.5 text-muted-foreground text-xs">
               {ar?.hasCard
-                ? `Add $${ar.amountUsd} when balance drops below $${ar.thresholdUsd}.`
+                ? `When credit drops below $${ar.thresholdUsd}, add $${ar.amountUsd} automatically.`
                 : "Top up once to save a card, then enable auto-recharge."}
-            </div>
+            </p>
           </div>
-          <button
-            aria-pressed={ar?.enabled ?? false}
-            className={cn(
-              "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50",
-              ar?.enabled ? "bg-accent" : "bg-muted"
-            )}
+          <Button
             disabled={!ar?.hasCard}
             onClick={() => toggleAutoRecharge(!ar?.enabled)}
-            type="button"
+            size="sm"
+            variant={ar?.enabled ? "default" : "outline"}
           >
-            <span
-              className={cn(
-                "absolute top-0.5 size-5 rounded-full bg-white transition-transform",
-                ar?.enabled ? "translate-x-5" : "translate-x-0.5"
-              )}
-            />
-          </button>
+            {ar?.enabled ? "On" : "Off"}
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </Section>
+
+      <Section title="Payment methods">
+        {overview?.paymentMethods?.length ? (
+          <div className="space-y-2">
+            {overview.paymentMethods.map((pm) => (
+              <div
+                className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2 text-sm"
+                key={pm.id}
+              >
+                <span className="font-medium capitalize">{pm.brand}</span>
+                {pm.type === "card" ? (
+                  <>
+                    <span className="text-muted-foreground tabular-nums">
+                      •••• {pm.last4}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+                      {pm.expMonth}/{pm.expYear}
+                    </span>
+                  </>
+                ) : (
+                  pm.email && (
+                    <span className="text-muted-foreground text-xs">
+                      {pm.email}
+                    </span>
+                  )
+                )}
+                {pm.isDefault && (
+                  <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
+                    Default
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            No cards saved yet — a card you top up with is saved automatically.
+          </p>
+        )}
+      </Section>
+
+      {overview?.invoices?.length ? (
+        <Section title="Billing history">
+          <div className="space-y-1.5">
+            {overview.invoices.map((inv) => (
+              <div
+                className="flex items-center justify-between text-sm"
+                key={inv.id}
+              >
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="tabular-nums">{fmtDate(inv.created)}</span>
+                  <span className="text-foreground tabular-nums">
+                    ${(Math.floor(inv.amountPaid) / 100).toFixed(2)}
+                  </span>
+                </div>
+                {inv.receiptUrl && (
+                  <a
+                    className="text-muted-foreground text-xs underline transition-colors hover:text-foreground"
+                    href={inv.receiptUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Receipt
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+    </div>
   );
 }

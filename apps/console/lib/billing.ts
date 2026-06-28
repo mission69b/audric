@@ -49,3 +49,105 @@ export async function getOrCreateCustomer(
   await setStripeCustomerId(userId, customer.id);
   return customer.id;
 }
+
+export type InvoiceRow = {
+  id: string;
+  created: number;
+  amountPaid: number;
+  receiptUrl: string | null;
+};
+
+export type PaymentMethodRow = {
+  id: string;
+  type: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+  email: string | null;
+  isDefault: boolean;
+};
+
+export type BillingOverview = {
+  invoices: InvoiceRow[];
+  paymentMethods: PaymentMethodRow[];
+};
+
+async function existingCustomerId(userId: string): Promise<string | null> {
+  const u = await getUserById(userId);
+  return u?.stripeCustomerId ?? null;
+}
+
+function dedupePaymentMethods(
+  pms: Stripe.PaymentMethod[],
+  defaultPm: string | null
+): PaymentMethodRow[] {
+  const seen = new Map<string, PaymentMethodRow>();
+  for (const pm of pms) {
+    const card = pm.type === "card" ? pm.card : undefined;
+    const key =
+      pm.type === "card"
+        ? `card:${card?.fingerprint ?? pm.id}`
+        : pm.type === "link"
+          ? `link:${pm.link?.email ?? pm.id}`
+          : pm.id;
+    const isDefault = pm.id === defaultPm;
+    if (seen.has(key)) {
+      if (isDefault) {
+        const row = seen.get(key);
+        if (row) {
+          row.isDefault = true;
+        }
+      }
+      continue;
+    }
+    seen.set(key, {
+      id: pm.id,
+      type: pm.type,
+      brand: card?.brand ?? (pm.type === "link" ? "Link" : pm.type),
+      last4: card?.last4 ?? "",
+      expMonth: card?.exp_month ?? 0,
+      expYear: card?.exp_year ?? 0,
+      email: pm.type === "link" ? (pm.link?.email ?? null) : null,
+      isDefault,
+    });
+  }
+  return [...seen.values()];
+}
+
+/** Read-only billing snapshot for the console — saved cards + payment history.
+ * Never throws; empty when there's no Stripe customer yet. */
+export async function getBillingOverview(
+  userId: string
+): Promise<BillingOverview> {
+  const empty: BillingOverview = { invoices: [], paymentMethods: [] };
+  const customerId = await existingCustomerId(userId);
+  if (!(customerId && isCreditConfigured())) {
+    return empty;
+  }
+  try {
+    const stripe = getStripe();
+    const [customer, charges, pms] = await Promise.all([
+      stripe.customers.retrieve(customerId),
+      stripe.charges.list({ customer: customerId, limit: 12 }),
+      stripe.customers.listPaymentMethods(customerId, { limit: 20 }),
+    ]);
+    const defaultPm =
+      customer && !customer.deleted
+        ? (customer.invoice_settings?.default_payment_method as string | null)
+        : null;
+    return {
+      invoices: charges.data
+        .filter((c) => c.status === "succeeded")
+        .map((c) => ({
+          id: c.id,
+          created: c.created,
+          amountPaid: c.amount,
+          receiptUrl: c.receipt_url ?? null,
+        })),
+      paymentMethods: dedupePaymentMethods(pms.data, defaultPm),
+    };
+  } catch {
+    return empty;
+  }
+}

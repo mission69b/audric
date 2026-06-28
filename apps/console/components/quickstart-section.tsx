@@ -1,16 +1,15 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
+import { Section } from "@/components/section";
 import {
   Button,
-  Card,
-  CardContent,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@t2000/ui";
-import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+} from "@/components/ui";
 
 const BASE_URL = "https://api.t2000.ai/v1";
 
@@ -70,43 +69,40 @@ export function QuickstartSection() {
   }
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <p className="mb-4 text-muted-foreground text-sm">
-          OpenAI-compatible. Create a key, drop it in — first call in under a
-          minute.
-        </p>
-        <Tabs defaultValue="curl">
-          <TabsList>
-            {SNIPPETS.map((s) => (
-              <TabsTrigger key={s.id} value={s.id}>
-                {s.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+    <Section
+      description="OpenAI-compatible. Create a key, drop it in — first call in under a minute."
+      title="Quickstart"
+    >
+      <Tabs defaultValue="curl">
+        <TabsList>
           {SNIPPETS.map((s) => (
-            <TabsContent key={s.id} value={s.id}>
-              <div className="relative">
-                <Button
-                  className="absolute top-2 right-2"
-                  onClick={() => copy(s.id, s.code)}
-                  size="sm"
-                  variant="outline"
-                >
-                  {copied === s.id ? (
-                    <Check className="size-3.5" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                </Button>
-                <pre className="overflow-x-auto rounded-lg border border-border bg-muted/40 p-4 font-mono text-foreground text-xs leading-relaxed">
-                  <code>{s.code}</code>
-                </pre>
-              </div>
-            </TabsContent>
+            <TabsTrigger key={s.id} value={s.id}>
+              {s.label}
+            </TabsTrigger>
           ))}
-        </Tabs>
-      </CardContent>
-    </Card>
+        </TabsList>
+        {SNIPPETS.map((s) => (
+          <TabsContent key={s.id} value={s.id}>
+            <div className="relative">
+              <Button
+                className="absolute top-2 right-2"
+                onClick={() => copy(s.id, s.code)}
+                size="sm"
+                variant="outline"
+              >
+                {copied === s.id ? (
+                  <Check className="size-3.5" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </Button>
+              <pre className="overflow-x-auto rounded-lg border border-border/40 bg-muted/40 p-4 font-mono text-[11px] text-foreground/90 leading-relaxed">
+                <code>{s.code}</code>
+              </pre>
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </Section>
   );
 }

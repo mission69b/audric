@@ -1,8 +1,9 @@
 "use client";
 
-import { Button, Card, CardContent } from "@t2000/ui";
 import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Section } from "@/components/section";
+import { Button } from "@/components/ui";
 
 type ApiKeyRow = {
   id: string;
@@ -80,91 +81,92 @@ export function ApiKeysSection() {
   const keys = data?.keys ?? [];
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        {data && !data.canIssue ? (
-          <p className="text-muted-foreground text-sm">
-            Add credit (or a plan) to mint a key — fund your balance in Billing
-            to get started. Every model is pay-as-you-go from your credit.
+    <Section title="API keys">
+      {data && !data.canIssue ? (
+        <p className="text-muted-foreground text-xs">
+          Add credit (or a plan) to mint a key — fund your balance in Billing to
+          get started. Every model is pay-as-you-go from your credit.
+        </p>
+      ) : (
+        <>
+          <p className="text-muted-foreground text-xs">
+            OpenAI-compatible — point any SDK at{" "}
+            <code className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-foreground text-[11px]">
+              {API_BASE_URL}
+            </code>
+            . Private (zero data retention), metered per-token.
           </p>
-        ) : (
-          <>
-            <p className="text-muted-foreground text-sm">
-              OpenAI-compatible — point any SDK at{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground text-xs">
-                {API_BASE_URL}
-              </code>
-              . Private (zero data retention), metered per-token.
-            </p>
 
-            {keys.length > 0 && (
-              <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
-                {keys.map((k) => (
-                  <li
-                    className="flex items-center justify-between gap-3 px-4 py-3"
-                    key={k.id}
-                  >
-                    <div className="min-w-0">
-                      <div className="font-mono text-foreground text-sm">
-                        {k.keyPrefix}
-                      </div>
-                      <div className="text-muted-foreground text-xs">
-                        {k.lastUsedAt
-                          ? `last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
-                          : "never used"}
-                      </div>
+          {keys.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {keys.map((k) => (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/40 px-3 py-2"
+                  key={k.id}
+                >
+                  <div className="min-w-0">
+                    <div className="font-mono text-foreground/80 text-xs">
+                      {k.keyPrefix}
                     </div>
-                    <Button
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => revoke(k.id)}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      Revoke
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <Button className="mt-4" disabled={creating} onClick={createKey}>
-              {creating ? "Creating…" : "Create API key"}
-            </Button>
-
-            {error ? (
-              <p className="mt-2 text-destructive text-sm">{error}</p>
-            ) : null}
-
-            {newSecret ? (
-              <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
-                <div className="text-foreground text-xs">
-                  Copy your key now — for your security, this is the only time
-                  it's shown.
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <code className="min-w-0 flex-1 break-all font-mono text-foreground text-xs">
-                    {newSecret}
-                  </code>
-                  <Button onClick={copySecret} size="sm" variant="outline">
-                    {copied ? (
-                      <Check className="size-3.5" />
-                    ) : (
-                      <Copy className="size-3.5" />
-                    )}
-                  </Button>
+                    <div className="text-[11px] text-muted-foreground">
+                      {k.lastUsedAt
+                        ? `last used ${new Date(k.lastUsedAt).toLocaleDateString()}`
+                        : "never used"}
+                    </div>
+                  </div>
                   <Button
-                    onClick={() => setNewSecret(null)}
+                    className="shrink-0 text-red-500 hover:text-red-500"
+                    onClick={() => revoke(k.id)}
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                   >
-                    Done
+                    Revoke
                   </Button>
                 </div>
+              ))}
+            </div>
+          )}
+
+          <Button
+            className="mt-3"
+            disabled={creating}
+            onClick={createKey}
+            size="sm"
+          >
+            {creating ? "Creating…" : "Create API key"}
+          </Button>
+
+          {error ? <p className="mt-2 text-red-500 text-xs">{error}</p> : null}
+
+          {newSecret ? (
+            <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3">
+              <div className="text-foreground text-xs">
+                Copy your key now — for your security, this is the only time
+                it's shown.
               </div>
-            ) : null}
-          </>
-        )}
-      </CardContent>
-    </Card>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-foreground/80">
+                  {newSecret}
+                </code>
+                <Button onClick={copySecret} size="sm" variant="outline">
+                  {copied ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                </Button>
+                <Button
+                  onClick={() => setNewSecret(null)}
+                  size="sm"
+                  variant="ghost"
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
+    </Section>
   );
 }
