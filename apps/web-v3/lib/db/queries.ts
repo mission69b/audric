@@ -49,10 +49,12 @@ import {
 export {
   createApiKey,
   getApiKeyByHash,
+  getApiUsageByModel,
   getCreditBalanceMicros,
   getUserById,
   listApiKeys,
   listCreditLedger,
+  recordApiUsage,
   recordCredit,
   revokeApiKey,
   touchApiKey,

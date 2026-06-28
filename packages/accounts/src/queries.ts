@@ -1,8 +1,15 @@
 import "server-only";
 
-import { and, desc, eq, isNull, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull, sum } from "drizzle-orm";
 import { db } from "./db";
-import { type ApiKey, apiKey, creditLedger, type User, user } from "./schema";
+import {
+  type ApiKey,
+  apiKey,
+  apiUsageEvent,
+  creditLedger,
+  type User,
+  user,
+} from "./schema";
 
 // ── Identity ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +77,66 @@ export async function listCreditLedger(userId: string, limit = 50) {
     .where(eq(creditLedger.userId, userId))
     .orderBy(desc(creditLedger.createdAt))
     .limit(limit);
+}
+
+// ── API usage events (SPEC_T2000_API_V2 §6) ─────────────────────────────────
+
+/**
+ * Record one structured usage event per metered completion. `ref` (= completion
+ * id) is unique → idempotent (a re-metered turn is a no-op), mirroring the
+ * matching CreditLedger debit. Best-effort caller; never block the response.
+ */
+export async function recordApiUsage(event: {
+  userId: string;
+  keyId: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  costMicros: number;
+  privacyTier: "private" | "confidential";
+  ref?: string;
+}): Promise<void> {
+  await db
+    .insert(apiUsageEvent)
+    .values({
+      userId: event.userId,
+      keyId: event.keyId,
+      model: event.model,
+      inputTokens: event.inputTokens,
+      outputTokens: event.outputTokens,
+      costMicros: Math.max(0, Math.round(event.costMicros)),
+      privacyTier: event.privacyTier,
+      ref: event.ref,
+    })
+    .onConflictDoNothing({ target: apiUsageEvent.ref });
+}
+
+/** Aggregate usage by model since `sinceMs` — powers the console My-usage screen. */
+export async function getApiUsageByModel(userId: string, sinceMs: number) {
+  const rows = await db
+    .select({
+      model: apiUsageEvent.model,
+      requests: count(),
+      inputTokens: sum(apiUsageEvent.inputTokens),
+      outputTokens: sum(apiUsageEvent.outputTokens),
+      costMicros: sum(apiUsageEvent.costMicros),
+    })
+    .from(apiUsageEvent)
+    .where(
+      and(
+        eq(apiUsageEvent.userId, userId),
+        gte(apiUsageEvent.createdAt, new Date(sinceMs))
+      )
+    )
+    .groupBy(apiUsageEvent.model)
+    .orderBy(desc(sum(apiUsageEvent.costMicros)));
+  return rows.map((r) => ({
+    model: r.model,
+    requests: Number(r.requests ?? 0),
+    inputTokens: Number(r.inputTokens ?? 0),
+    outputTokens: Number(r.outputTokens ?? 0),
+    costMicros: Number(r.costMicros ?? 0),
+  }));
 }
 
 // ── Private Inference API keys (SPEC_AUDRIC_API v1) ──────────────────────────

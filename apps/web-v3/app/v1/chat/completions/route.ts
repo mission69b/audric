@@ -9,7 +9,7 @@ import {
   isConfidentialModel,
 } from "@/lib/api/providers";
 import { debitMicrosForUsage } from "@/lib/credit/meter";
-import { recordCredit } from "@/lib/db/queries";
+import { recordApiUsage, recordCredit } from "@/lib/db/queries";
 import { maybeAutoRecharge } from "@/lib/stripe";
 import { generateUUID } from "@/lib/utils";
 
@@ -205,6 +205,18 @@ export async function POST(request: Request) {
         // before the serverless function can freeze post-response.
         await maybeAutoRecharge(auth.userId);
       }
+      // Structured usage event (My-usage screen) — idempotent on the completion
+      // id, mirrors the debit. Written even for $0 debits (token counts matter).
+      await recordApiUsage({
+        userId: auth.userId,
+        keyId: auth.keyId,
+        model: model ?? "",
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        costMicros: debit,
+        privacyTier: confidential ? "confidential" : "private",
+        ref: id,
+      });
     } catch (error) {
       console.error("[/v1/chat/completions] meter error", error);
     }

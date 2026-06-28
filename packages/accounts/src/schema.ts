@@ -151,3 +151,43 @@ export const apiKey = pgTable(
 );
 
 export type ApiKey = InferSelectModel<typeof apiKey>;
+
+// Structured per-request usage events for the Private API (SPEC_T2000_API_V2 §6).
+// The /v1 route WRITES one row per metered completion; the console READS them
+// for the My-usage screen (tokens by model · spend · requests). Distinct from
+// CreditLedger (which only carries a debit + description string) so dashboards
+// have queryable dimensions. `ref` (= completion id) is unique → idempotent,
+// mirrors the matching ledger debit.
+export const apiUsageEvent = pgTable(
+  "ApiUsageEvent",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id),
+    /** The ApiKey row that authenticated the call (soft-deleted on revoke). */
+    keyId: uuid("keyId")
+      .notNull()
+      .references(() => apiKey.id),
+    model: varchar("model", { length: 96 }).notNull(),
+    inputTokens: integer("inputTokens").notNull().default(0),
+    outputTokens: integer("outputTokens").notNull().default(0),
+    /** Micro-USD charged for this request (positive magnitude of the debit). */
+    costMicros: bigint("costMicros", { mode: "number" }).notNull().default(0),
+    privacyTier: varchar("privacyTier", {
+      enum: ["private", "confidential"],
+    }).notNull(),
+    /** Completion id — unique, mirrors the CreditLedger debit ref (idempotent). */
+    ref: text("ref"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    userTimeIdx: index("ApiUsageEvent_userId_createdAt_idx").on(
+      t.userId,
+      t.createdAt
+    ),
+    refUnique: uniqueIndex("ApiUsageEvent_ref_unique").on(t.ref),
+  })
+);
+
+export type ApiUsageEvent = InferSelectModel<typeof apiUsageEvent>;

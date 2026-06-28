@@ -21,7 +21,9 @@ import {
 // orchestrated here (drizzle.config reads this file, which surfaces the tables).
 export {
   type ApiKey,
+  type ApiUsageEvent,
   apiKey,
+  apiUsageEvent,
   type CreditLedger,
   creditLedger,
   type User,
