@@ -8,8 +8,8 @@
     "./schema": "./src/schema.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.34.0",
-    "postgres": "^3.4.4",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9",
     "server-only": "^0.0.1"
   }
 }
