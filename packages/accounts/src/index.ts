@@ -1,4 +1,5 @@
 export { db } from "./db";
+export { generateApiKey, hashKey, isPaidTier } from "./keys";
 export {
   createApiKey,
   getApiKeyByHash,

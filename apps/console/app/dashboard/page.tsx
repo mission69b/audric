@@ -1,6 +1,7 @@
 import { getCreditBalanceMicros } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
+import { ApiKeysSection } from "@/components/api-keys-section";
 import { SignOutButton } from "@/components/sign-out-button";
 
 function shortAddress(address: string): string {
@@ -60,18 +61,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-        <div className="text-[var(--dim)] text-xs uppercase tracking-wide">
-          API keys
-        </div>
-        <p className="mt-2 text-[var(--muted)] text-sm">
-          Key management + usage is coming next. For now, manage keys in the
-          Audric settings — they work against{" "}
-          <span className="font-mono text-[var(--foreground)]">
-            api.t2000.ai/v1
-          </span>
-          .
-        </p>
+      <div className="mt-8">
+        <ApiKeysSection />
       </div>
     </main>
   );

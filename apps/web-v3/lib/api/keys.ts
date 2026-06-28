@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes } from "node:crypto";
+import { hashKey, isPaidTier } from "@audric/accounts";
 import {
   getApiKeyByHash,
   getCreditBalanceMicros,
@@ -9,37 +9,10 @@ import {
 } from "@/lib/db/queries";
 import { isCreditConfigured } from "@/lib/stripe";
 
-// Pro/Max are the paid tiers that may use the API (the issuance gate). The free
-// tier never gets a key (`subscriptionTier === 'free'`). `proPlus` is included
-// for forward-compat with the media tier.
-const PAID_TIERS = new Set(["pro", "proPlus", "max"]);
-
-/** Is this subscription tier allowed to mint + use API keys? */
-export function isPaidTier(tier: string | null | undefined): boolean {
-  return tier ? PAID_TIERS.has(tier) : false;
-}
-
-/** Mint a new secret. Returns the plaintext ONCE (shown to the user, never
- *  stored) plus the hash + display prefix we persist. */
-export function generateApiKey(): {
-  secret: string;
-  hashedKey: string;
-  keyPrefix: string;
-} {
-  // 32 random bytes → url-safe base64 (~43 chars). `sk-` prefix = OpenAI-style.
-  const secret = `sk-${randomBytes(32).toString("base64url")}`;
-  return {
-    secret,
-    hashedKey: hashKey(secret),
-    // Display tail only — e.g. "sk-…AbC9" (never reveals the secret).
-    keyPrefix: `sk-…${secret.slice(-4)}`,
-  };
-}
-
-/** SHA-256 hex of the full secret — what we store + look up (never the secret). */
-export function hashKey(secret: string): string {
-  return createHash("sha256").update(secret).digest("hex");
-}
+// The key primitives (generate/hash/tier-gate) now live in @audric/accounts
+// (shared with apps/console, which mints keys against the SAME hash — M1).
+// Re-exported so existing `@/lib/api/keys` imports keep working unchanged.
+export { generateApiKey, hashKey, isPaidTier } from "@audric/accounts";
 
 export type ApiAuthResult =
   | { ok: true; userId: string; keyId: string }
