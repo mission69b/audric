@@ -1,4 +1,4 @@
-import { setDefaultPaymentMethodId } from "@audric/accounts";
+import { getUserById, setDefaultPaymentMethodId } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import {
   createAddCardCheckout,
@@ -54,6 +54,15 @@ export async function POST(request: Request) {
 
     if (body.action === "detach" && body.paymentMethodIds?.length) {
       await detachPaymentMethods(body.paymentMethodIds);
+      // Clear the stored default if we just removed it, so auto-recharge
+      // doesn't target a detached card (it would silently fail otherwise).
+      const u = await getUserById(session.user.id);
+      if (
+        u?.defaultPaymentMethodId &&
+        body.paymentMethodIds.includes(u.defaultPaymentMethodId)
+      ) {
+        await setDefaultPaymentMethodId(session.user.id, "");
+      }
       return Response.json({ ok: true });
     }
 
