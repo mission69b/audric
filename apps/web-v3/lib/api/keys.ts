@@ -1,10 +1,9 @@
 import "server-only";
 
-import { hashKey, isPaidTier } from "@audric/accounts";
+import { hashKey } from "@audric/accounts";
 import {
   getApiKeyByHash,
   getCreditBalanceMicros,
-  getUserById,
   touchApiKey,
 } from "@/lib/db/queries";
 import { isCreditConfigured } from "@/lib/stripe";
@@ -12,7 +11,12 @@ import { isCreditConfigured } from "@/lib/stripe";
 // The key primitives (generate/hash/tier-gate) now live in @audric/accounts
 // (shared with apps/console, which mints keys against the SAME hash — M1).
 // Re-exported so existing `@/lib/api/keys` imports keep working unchanged.
-export { generateApiKey, hashKey, isPaidTier } from "@audric/accounts";
+export {
+  canUseApi,
+  generateApiKey,
+  hashKey,
+  isPaidTier,
+} from "@audric/accounts";
 
 export type ApiAuthResult =
   | { ok: true; userId: string; keyId: string }
@@ -20,8 +24,14 @@ export type ApiAuthResult =
 
 /**
  * Authenticate an `Authorization: Bearer sk-…` request for the Private API.
- * Fails closed with OpenAI-shaped errors at every gate: bad/missing key → 401,
- * non-subscriber → 403, out of credit → 402.
+ * Fails closed with OpenAI-shaped errors: bad/missing key → 401, out of
+ * credit → 402.
+ *
+ * v2 gate (SPEC_T2000_API_V2 M3.6): NO plan requirement — a valid key + a
+ * positive credit balance is enough, so top-up devs (no sub) can call. A paid
+ * plan grants monthly credit into the same ledger, so subs pass the balance
+ * check too; a sub that has exhausted its credit gets the same 402 (top up /
+ * wait for renewal).
  */
 export async function authenticateApiKey(
   request: Request
@@ -53,20 +63,8 @@ export async function authenticateApiKey(
     };
   }
 
-  const user = await getUserById(row.userId);
-  if (!(user && isPaidTier(user.subscriptionTier))) {
-    return {
-      ok: false,
-      response: openAiError(
-        403,
-        "The Private API is available on the Pro and Max plans. Upgrade at audric.ai to use your key.",
-        "insufficient_quota",
-        "plan_required"
-      ),
-    };
-  }
-
-  // Fail closed at $0 (like in-app premium). Inert when the credit rail is off.
+  // Fail closed at $0 (covers top-up devs AND subs whose credit is spent).
+  // Inert when the credit rail is off (dev/unconfigured).
   if (isCreditConfigured()) {
     const balance = await getCreditBalanceMicros(row.userId);
     if (balance <= 0) {
@@ -74,7 +72,7 @@ export async function authenticateApiKey(
         ok: false,
         response: openAiError(
           402,
-          "Insufficient credit. Top up at audric.ai to continue.",
+          "Insufficient credit. Add credit or a plan at platform.t2000.ai to continue.",
           "insufficient_quota",
           "insufficient_credit"
         ),

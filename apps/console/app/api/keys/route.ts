@@ -1,8 +1,9 @@
 import {
+  canUseApi,
   createApiKey,
   generateApiKey,
+  getCreditBalanceMicros,
   getUserById,
-  isPaidTier,
   listApiKeys,
   revokeApiKey,
 } from "@audric/accounts";
@@ -21,11 +22,14 @@ export async function GET() {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const user = await getUserById(session.user.id);
-  const keys = await listApiKeys(session.user.id);
+  const [user, balance, keys] = await Promise.all([
+    getUserById(session.user.id),
+    getCreditBalanceMicros(session.user.id),
+    listApiKeys(session.user.id),
+  ]);
 
   return Response.json({
-    paid: isPaidTier(user?.subscriptionTier),
+    canIssue: canUseApi(user?.subscriptionTier, balance),
     keys: keys
       .filter((k) => !k.revokedAt)
       .map((k) => ({
@@ -44,11 +48,17 @@ export async function POST() {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const user = await getUserById(session.user.id);
-  if (!isPaidTier(user?.subscriptionTier)) {
+  const [user, balance] = await Promise.all([
+    getUserById(session.user.id),
+    getCreditBalanceMicros(session.user.id),
+  ]);
+  if (!canUseApi(user?.subscriptionTier, balance)) {
     return Response.json(
-      { error: "The Private API is available on the Pro and Max plans." },
-      { status: 403 }
+      {
+        error:
+          "Add credit (or a plan) to mint a key — fund your balance to get started.",
+      },
+      { status: 402 }
     );
   }
 

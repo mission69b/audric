@@ -37,7 +37,7 @@ type ApiKeyRow = {
 
 export function ApiKeysSection() {
   const router = useRouter();
-  const { data, mutate } = useSWR<{ paid: boolean; keys: ApiKeyRow[] }>(
+  const { data, mutate } = useSWR<{ canIssue: boolean; keys: ApiKeyRow[] }>(
     `${BASE}/api/keys`,
     fetcher,
     { revalidateOnFocus: false }
@@ -86,14 +86,14 @@ export function ApiKeysSection() {
     toast.success(`${label} copied`);
   }
 
-  // Free users: upgrade prompt, no generator.
-  if (data && !data.paid) {
+  // No credit + no plan: fund prompt, no generator.
+  if (data && !data.canIssue) {
     return (
       <Section>
         <p className="text-muted-foreground text-xs">
           Call every model behind <strong>one key</strong>, private by default,
-          pay-as-you-go from your credit — OpenAI-compatible. Available on the{" "}
-          <strong>Pro</strong> and <strong>Max</strong> plans.
+          pay-as-you-go from your credit — OpenAI-compatible. Add credit or a
+          plan to mint a key.
         </p>
         <Button
           className="mt-3"
@@ -101,7 +101,7 @@ export function ApiKeysSection() {
           size="sm"
           type="button"
         >
-          Upgrade to get a key
+          Add credit or a plan
         </Button>
       </Section>
     );

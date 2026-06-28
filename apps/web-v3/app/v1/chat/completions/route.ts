@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/providers";
 import { debitMicrosForUsage } from "@/lib/credit/meter";
 import { recordCredit } from "@/lib/db/queries";
+import { maybeAutoRecharge } from "@/lib/stripe";
 import { generateUUID } from "@/lib/utils";
 
 // Web-search-class turns aside, raw inference can still run long on big outputs.
@@ -197,6 +198,12 @@ export async function POST(request: Request) {
           description: `api · ${model} · ${usage.inputTokens ?? 0}+${usage.outputTokens ?? 0} tok`,
           ref: id,
         });
+        // Refill from a saved card if auto-recharge is on + balance fell below
+        // the threshold. The Audric chat path does this too; without it an
+        // API-only user could hit $0 with no top-up. Self-gates cheaply (no-op
+        // unless enabled + below threshold); never throws. Awaited so it runs
+        // before the serverless function can freeze post-response.
+        await maybeAutoRecharge(auth.userId);
       }
     } catch (error) {
       console.error("[/v1/chat/completions] meter error", error);

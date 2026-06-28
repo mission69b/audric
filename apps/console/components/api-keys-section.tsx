@@ -10,7 +10,7 @@ type ApiKeyRow = {
   createdAt: string;
 };
 
-type KeysResponse = { paid: boolean; keys: ApiKeyRow[] };
+type KeysResponse = { canIssue: boolean; keys: ApiKeyRow[] };
 
 const API_BASE_URL = "https://api.t2000.ai/v1";
 
@@ -83,16 +83,10 @@ export function ApiKeysSection() {
         API keys
       </div>
 
-      {data && !data.paid ? (
+      {data && !data.canIssue ? (
         <p className="mt-2 text-[var(--muted)] text-sm">
-          The Private API is available on the Pro and Max plans. Upgrade at{" "}
-          <a
-            className="text-[var(--accent)] underline underline-offset-4"
-            href="https://audric.ai"
-          >
-            audric.ai
-          </a>{" "}
-          to mint a key.
+          Add credit (or a plan) to mint a key — fund your balance below to get
+          started. Every model is pay-as-you-go from your credit.
         </p>
       ) : (
         <>
