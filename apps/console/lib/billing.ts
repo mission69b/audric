@@ -59,6 +59,7 @@ export type InvoiceRow = {
 
 export type PaymentMethodRow = {
   id: string;
+  ids: string[];
   type: string;
   brand: string;
   last4: string;
@@ -93,16 +94,19 @@ function dedupePaymentMethods(
           : pm.id;
     const isDefault = pm.id === defaultPm;
     if (seen.has(key)) {
-      if (isDefault) {
-        const row = seen.get(key);
-        if (row) {
+      const row = seen.get(key);
+      if (row) {
+        row.ids.push(pm.id);
+        if (isDefault) {
           row.isDefault = true;
+          row.id = pm.id;
         }
       }
       continue;
     }
     seen.set(key, {
       id: pm.id,
+      ids: [pm.id],
       type: pm.type,
       brand: card?.brand ?? (pm.type === "link" ? "Link" : pm.type),
       last4: card?.last4 ?? "",
@@ -150,4 +154,47 @@ export async function getBillingOverview(
   } catch {
     return empty;
   }
+}
+
+/** Hosted Stripe Checkout in SETUP mode — saves a card to the customer without
+ * a charge. Stripe attaches the PM on completion; it then shows in the list. */
+export async function createAddCardCheckout(
+  userId: string,
+  email: string | null,
+  origin: string
+): Promise<string | null> {
+  const customerId = await getOrCreateCustomer(userId, email);
+  const checkout = await getStripe().checkout.sessions.create({
+    mode: "setup",
+    customer: customerId,
+    success_url: `${origin}/billing?card=added`,
+    cancel_url: `${origin}/billing`,
+  });
+  return checkout.url;
+}
+
+/** Set a card as the Stripe customer default (used for invoices). */
+export async function setStripeDefaultPaymentMethod(
+  userId: string,
+  paymentMethodId: string
+): Promise<void> {
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return;
+  }
+  await getStripe().customers.update(customerId, {
+    invoice_settings: { default_payment_method: paymentMethodId },
+  });
+}
+
+/** Detach saved payment methods (accepts the whole deduped group). */
+export async function detachPaymentMethods(ids: string[]): Promise<void> {
+  const stripe = getStripe();
+  await Promise.all(
+    ids.map((id) =>
+      stripe.paymentMethods.detach(id).catch(() => {
+        // already detached / unknown — ignore
+      })
+    )
+  );
 }

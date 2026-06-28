@@ -13,6 +13,7 @@ export {
   recordCredit,
   revokeApiKey,
   setAutoRecharge,
+  setDefaultPaymentMethodId,
   setStripeCustomerId,
   touchApiKey,
 } from "./queries";

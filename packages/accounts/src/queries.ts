@@ -109,6 +109,14 @@ export async function setAutoRecharge(
     .where(eq(user.id, userId));
 }
 
+/** Persist the user's default card for off-session auto-recharge. */
+export async function setDefaultPaymentMethodId(userId: string, pmId: string) {
+  await db
+    .update(user)
+    .set({ defaultPaymentMethodId: pmId, updatedAt: new Date() })
+    .where(eq(user.id, userId));
+}
+
 /** Record closed-loop credit terms acceptance (at first top-up/subscribe). */
 export async function acceptClosedLoopTerms(userId: string) {
   await db

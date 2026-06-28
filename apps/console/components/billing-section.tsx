@@ -15,6 +15,7 @@ type AutoRecharge = {
 
 type PaymentMethod = {
   id: string;
+  ids: string[];
   type: string;
   brand: string;
   last4: string;
@@ -88,6 +89,24 @@ export function BillingSection({ balance }: { balance: string }) {
     }
   }
 
+  async function pmAction(body: Record<string, unknown>) {
+    try {
+      const res = await fetch("/api/billing/payment-method", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (body.action === "add" && j.url) {
+        window.location.href = j.url;
+        return;
+      }
+      await load();
+    } catch {
+      setError("Something went wrong.");
+    }
+  }
+
   async function toggleAutoRecharge(enabled: boolean) {
     if (!ar) {
       return;
@@ -157,42 +176,79 @@ export function BillingSection({ balance }: { balance: string }) {
         </div>
       </Section>
 
-      <Section title="Payment methods">
+      <Section>
+        <div className="flex items-center justify-between">
+          <div className="font-medium text-foreground text-sm">
+            Payment methods
+          </div>
+          <Button
+            onClick={() => pmAction({ action: "add" })}
+            size="sm"
+            variant="outline"
+          >
+            Add card
+          </Button>
+        </div>
         {overview?.paymentMethods?.length ? (
-          <div className="space-y-2">
+          <div className="mt-3 space-y-2">
             {overview.paymentMethods.map((pm) => (
               <div
-                className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-2 rounded-lg border border-border/40 px-3 py-2 text-sm"
                 key={pm.id}
               >
-                <span className="font-medium capitalize">{pm.brand}</span>
-                {pm.type === "card" ? (
-                  <>
-                    <span className="text-muted-foreground tabular-nums">
-                      •••• {pm.last4}
+                <div className="flex items-center gap-2">
+                  <span className="font-medium capitalize">{pm.brand}</span>
+                  {pm.type === "card" ? (
+                    <>
+                      <span className="text-muted-foreground tabular-nums">
+                        •••• {pm.last4}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+                        {pm.expMonth}/{pm.expYear}
+                      </span>
+                    </>
+                  ) : (
+                    pm.email && (
+                      <span className="text-muted-foreground text-xs">
+                        {pm.email}
+                      </span>
+                    )
+                  )}
+                  {pm.isDefault && (
+                    <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
+                      Default
                     </span>
-                    <span className="text-[11px] text-muted-foreground/60 tabular-nums">
-                      {pm.expMonth}/{pm.expYear}
-                    </span>
-                  </>
-                ) : (
-                  pm.email && (
-                    <span className="text-muted-foreground text-xs">
-                      {pm.email}
-                    </span>
-                  )
-                )}
-                {pm.isDefault && (
-                  <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] text-foreground/70">
-                    Default
-                  </span>
-                )}
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {pm.isDefault ? null : (
+                    <button
+                      className="rounded px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+                      onClick={() =>
+                        pmAction({ action: "default", paymentMethodId: pm.id })
+                      }
+                      type="button"
+                    >
+                      Make default
+                    </button>
+                  )}
+                  <button
+                    className="rounded px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() =>
+                      pmAction({ action: "detach", paymentMethodIds: pm.ids })
+                    }
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground text-xs">
-            No cards saved yet — a card you top up with is saved automatically.
+          <p className="mt-3 text-muted-foreground text-xs">
+            No cards saved yet — add one, or top up (a card you top up with is
+            saved automatically).
           </p>
         )}
       </Section>
