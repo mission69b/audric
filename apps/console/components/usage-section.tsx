@@ -2,17 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 type UsageRow = {
   model: string;
@@ -84,12 +74,23 @@ export function UsageSection() {
             </div>
           </div>
         </div>
-        <Tabs onValueChange={(v) => setWindow(v as Window)} value={window}>
-          <TabsList>
-            <TabsTrigger value="24h">24h</TabsTrigger>
-            <TabsTrigger value="30d">30d</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
+          {(["24h", "30d"] as Window[]).map((w) => (
+            <button
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs transition-colors",
+                window === w
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              key={w}
+              onClick={() => setWindow(w)}
+              type="button"
+            >
+              {w}
+            </button>
+          ))}
+        </div>
       </div>
 
       {rows && rows.length === 0 ? (
@@ -100,32 +101,37 @@ export function UsageSection() {
       ) : null}
 
       {rows && rows.length > 0 ? (
-        <Table className="mt-4">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Model</TableHead>
-              <TableHead className="text-right">Reqs</TableHead>
-              <TableHead className="text-right">Tokens</TableHead>
-              <TableHead className="text-right">Spend</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <table className="mt-4 w-full text-sm">
+          <thead>
+            <tr className="border-border border-b text-left text-[11px] text-muted-foreground uppercase tracking-wide">
+              <th className="pb-2 font-medium">Model</th>
+              <th className="pb-2 text-right font-medium">Reqs</th>
+              <th className="pb-2 text-right font-medium">Tokens</th>
+              <th className="pb-2 text-right font-medium">Spend</th>
+            </tr>
+          </thead>
+          <tbody>
             {rows.map((r) => (
-              <TableRow key={r.model}>
-                <TableCell className="font-mono text-xs">{r.model}</TableCell>
-                <TableCell className="text-right text-muted-foreground tabular-nums">
+              <tr
+                className="border-border/50 border-b last:border-0"
+                key={r.model}
+              >
+                <td className="py-2.5 font-mono text-foreground text-xs">
+                  {r.model}
+                </td>
+                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
                   {r.requests}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground tabular-nums">
+                </td>
+                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
                   {fmtTokens(r.inputTokens + r.outputTokens)}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground tabular-nums">
+                </td>
+                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
                   {fmtSpend(r.costMicros)}
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       ) : null}
     </Section>
   );

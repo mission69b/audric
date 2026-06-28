@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 
 const TOPUP_AMOUNTS = [5, 10, 25, 50];
 

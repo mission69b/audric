@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@audric/auth/server";
 import Link from "next/link";
 import { SignInButton } from "@/components/sign-in-button";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 
 export default async function Home() {
   const session = await getCurrentUser();

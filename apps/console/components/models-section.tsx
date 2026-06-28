@@ -2,15 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Section } from "@/components/section";
-import {
-  Badge,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
 
 type ApiModel = {
   id: string;
@@ -44,43 +36,44 @@ export function ModelsSection() {
       title="Models"
     >
       {models && models.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Model</TableHead>
-              <TableHead>Privacy</TableHead>
-              <TableHead className="text-right">In / 1M</TableHead>
-              <TableHead className="text-right">Out / 1M</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-border border-b text-left text-[11px] text-muted-foreground uppercase tracking-wide">
+              <th className="pb-2 font-medium">Model</th>
+              <th className="pb-2 font-medium">Privacy</th>
+              <th className="pb-2 text-right font-medium">In / 1M</th>
+              <th className="pb-2 text-right font-medium">Out / 1M</th>
+            </tr>
+          </thead>
+          <tbody>
             {models.map((m) => (
-              <TableRow key={m.id}>
-                <TableCell>
+              <tr
+                className="border-border/50 border-b last:border-0"
+                key={m.id}
+              >
+                <td className="py-2.5">
                   <div className="text-foreground">{m.name}</div>
                   <div className="font-mono text-[11px] text-muted-foreground">
                     {m.id}
                   </div>
-                </TableCell>
-                <TableCell>
+                </td>
+                <td className="py-2.5">
                   {m.privacy === "confidential" ? (
-                    <Badge className="border-transparent bg-accent/15 text-accent">
-                      Confidential
-                    </Badge>
+                    <Badge variant="default">Confidential</Badge>
                   ) : (
                     <Badge variant="secondary">Private</Badge>
                   )}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground tabular-nums">
+                </td>
+                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
                   ${m.pricing.input_per_1m.toFixed(2)}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground tabular-nums">
+                </td>
+                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
                   ${m.pricing.output_per_1m.toFixed(2)}
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       ) : (
         <p className="text-muted-foreground text-xs">Loading catalog…</p>
       )}

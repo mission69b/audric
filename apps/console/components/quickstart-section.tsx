@@ -3,13 +3,8 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { Section } from "@/components/section";
-import {
-  Button,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const BASE_URL = "https://api.t2000.ai/v1";
 
@@ -60,12 +55,14 @@ console.log(resp.choices[0].message.content);`,
 ];
 
 export function QuickstartSection() {
-  const [copied, setCopied] = useState<string | null>(null);
+  const [tab, setTab] = useState(SNIPPETS[0].id);
+  const [copied, setCopied] = useState(false);
+  const active = SNIPPETS.find((s) => s.id === tab) ?? SNIPPETS[0];
 
-  function copy(id: string, code: string) {
-    navigator.clipboard.writeText(code);
-    setCopied(id);
-    setTimeout(() => setCopied(null), 1500);
+  function copy() {
+    navigator.clipboard.writeText(active.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   return (
@@ -73,36 +70,41 @@ export function QuickstartSection() {
       description="OpenAI-compatible. Create a key, drop it in — first call in under a minute."
       title="Quickstart"
     >
-      <Tabs defaultValue="curl">
-        <TabsList>
-          {SNIPPETS.map((s) => (
-            <TabsTrigger key={s.id} value={s.id}>
-              {s.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">
         {SNIPPETS.map((s) => (
-          <TabsContent key={s.id} value={s.id}>
-            <div className="relative">
-              <Button
-                className="absolute top-2 right-2"
-                onClick={() => copy(s.id, s.code)}
-                size="sm"
-                variant="outline"
-              >
-                {copied === s.id ? (
-                  <Check className="size-3.5" />
-                ) : (
-                  <Copy className="size-3.5" />
-                )}
-              </Button>
-              <pre className="overflow-x-auto rounded-lg border border-border/40 bg-muted/40 p-4 font-mono text-[11px] text-foreground/90 leading-relaxed">
-                <code>{s.code}</code>
-              </pre>
-            </div>
-          </TabsContent>
+          <button
+            className={cn(
+              "rounded-md px-3 py-1 text-xs transition-colors",
+              tab === s.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            key={s.id}
+            onClick={() => setTab(s.id)}
+            type="button"
+          >
+            {s.label}
+          </button>
         ))}
-      </Tabs>
+      </div>
+
+      <div className="relative mt-3">
+        <Button
+          className="absolute top-2 right-2"
+          onClick={copy}
+          size="sm"
+          variant="outline"
+        >
+          {copied ? (
+            <Check className="size-3.5" />
+          ) : (
+            <Copy className="size-3.5" />
+          )}
+        </Button>
+        <pre className="overflow-x-auto rounded-lg border border-border/50 bg-muted/40 p-4 font-mono text-[11px] text-foreground/90 leading-relaxed">
+          <code>{active.code}</code>
+        </pre>
+      </div>
     </Section>
   );
 }

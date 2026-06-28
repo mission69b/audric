@@ -3,7 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 
 type ApiKeyRow = {
   id: string;

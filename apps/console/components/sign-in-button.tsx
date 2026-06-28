@@ -1,8 +1,8 @@
 "use client";
 
 import { startLogin } from "@audric/auth/client";
-import { Button } from "@t2000/ui";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ZK_CONFIG } from "@/lib/zk-config";
 
 export function SignInButton() {
