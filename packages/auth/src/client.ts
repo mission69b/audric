@@ -15,9 +15,13 @@
  * radius is time-bounded by `maxEpoch` (~days) + the JWT exp. The pre-OAuth
  * handoff lives in `sessionStorage` (tab-scoped, single-use).
  *
- * Env: read from `process.env` directly (NEXT_PUBLIC_* are statically inlined
- * by each consuming app's build via `transpilePackages`). Each app validates
- * them at boot via its own Zod `env.ts` gate.
+ * Config: the caller passes `ZkLoginConfig` (Enoki key + Google client id +
+ * network). The values must NOT be read from `process.env` inside this package
+ * — `NEXT_PUBLIC_*` static replacement does NOT fire inside a `transpilePackages`
+ * dependency (Turbopack shims `process`, so the ref stays a runtime lookup that
+ * resolves to "" on the client → empty Enoki key → 400). Each consuming app
+ * reads its OWN inlined `env.NEXT_PUBLIC_*` (where replacement works) and hands
+ * them in here.
  */
 
 import { EnokiClient } from "@mysten/enoki";
@@ -34,16 +38,17 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 // use the returned `estimatedExpiration` as the source of truth either way.
 const ADDITIONAL_EPOCHS = 7;
 
-type EnokiNetwork = "mainnet" | "testnet" | "devnet";
+export type EnokiNetwork = "mainnet" | "testnet" | "devnet";
 
-function network(): EnokiNetwork {
-  return (process.env.NEXT_PUBLIC_SUI_NETWORK ?? "mainnet") as EnokiNetwork;
+/** Caller-supplied client config — the app's inlined `NEXT_PUBLIC_*` values. */
+export interface ZkLoginConfig {
+  enokiApiKey: string;
+  googleClientId: string;
+  network: EnokiNetwork;
 }
 
-function enoki(): EnokiClient {
-  return new EnokiClient({
-    apiKey: process.env.NEXT_PUBLIC_ENOKI_API_KEY ?? "",
-  });
+function enoki(apiKey: string): EnokiClient {
+  return new EnokiClient({ apiKey });
 }
 
 export interface ZkLoginSession {
@@ -116,12 +121,9 @@ function redirectUri(): string {
   return `${window.location.origin}/auth/callback`;
 }
 
-function buildGoogleOAuthUrl(nonce: string): string {
+function buildGoogleOAuthUrl(nonce: string, clientId: string): string {
   const url = new URL(GOOGLE_AUTH_URL);
-  url.searchParams.set(
-    "client_id",
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ""
-  );
+  url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri());
   url.searchParams.set("response_type", "id_token");
   url.searchParams.set("scope", "openid email");
@@ -141,14 +143,15 @@ function extractJwtFromUrl(): string | null {
  * Begin sign-in: create an ephemeral keypair, get an Enoki-issued nonce
  * (binds the key + maxEpoch), stash the pre-auth handoff, redirect to Google.
  */
-export async function startLogin(): Promise<void> {
+export async function startLogin(config: ZkLoginConfig): Promise<void> {
   const keypair = new Ed25519Keypair();
-  const { nonce, randomness, maxEpoch, estimatedExpiration } =
-    await enoki().createZkLoginNonce({
-      network: network(),
-      ephemeralPublicKey: keypair.getPublicKey(),
-      additionalEpochs: ADDITIONAL_EPOCHS,
-    });
+  const { nonce, randomness, maxEpoch, estimatedExpiration } = await enoki(
+    config.enokiApiKey
+  ).createZkLoginNonce({
+    network: config.network,
+    ephemeralPublicKey: keypair.getPublicKey(),
+    additionalEpochs: ADDITIONAL_EPOCHS,
+  });
 
   const pending: PendingAuth = {
     ephemeralSecret: keypair.getSecretKey(),
@@ -158,7 +161,7 @@ export async function startLogin(): Promise<void> {
   };
   sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 
-  window.location.href = buildGoogleOAuthUrl(nonce);
+  window.location.href = buildGoogleOAuthUrl(nonce, config.googleClientId);
 }
 
 function getPending(): PendingAuth | null {
@@ -175,9 +178,12 @@ function getPending(): PendingAuth | null {
  * (Enoki salt holder) + ZK proof, persist the session. `onStep` drives the
  * loading UI (the proof step is the slow ~2-4s one).
  */
-export async function completeLogin(opts?: {
-  onStep?: (step: ZkLoginStep) => void;
-}): Promise<ZkLoginSession> {
+export async function completeLogin(
+  config: ZkLoginConfig,
+  opts?: {
+    onStep?: (step: ZkLoginStep) => void;
+  }
+): Promise<ZkLoginSession> {
   const onStep = opts?.onStep ?? (() => undefined);
 
   const jwt = extractJwtFromUrl();
@@ -192,11 +198,11 @@ export async function completeLogin(opts?: {
 
   const keypair = Ed25519Keypair.fromSecretKey(pending.ephemeralSecret);
 
-  const { address } = await enoki().getZkLogin({ jwt });
+  const { address } = await enoki(config.enokiApiKey).getZkLogin({ jwt });
   onStep("address");
 
-  const proof = (await enoki().createZkLoginZkp({
-    network: network(),
+  const proof = (await enoki(config.enokiApiKey).createZkLoginZkp({
+    network: config.network,
     jwt,
     ephemeralPublicKey: keypair.getPublicKey(),
     randomness: pending.randomness,

@@ -4,11 +4,13 @@
 export {
   clearSession,
   completeLogin,
+  type EnokiNetwork,
   isSessionExpired,
   loadSession,
   saveSession,
   startLogin,
   toZkLoginSigner,
+  type ZkLoginConfig,
   type ZkLoginSession,
   type ZkLoginStep,
 } from "@audric/auth/client";

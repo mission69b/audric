@@ -9,15 +9,27 @@ import {
   useMemo,
   useState,
 } from "react";
+import { env } from "@/lib/env";
 import {
   clearSession,
   completeLogin,
+  type EnokiNetwork,
   isSessionExpired,
   loadSession,
   startLogin,
+  type ZkLoginConfig,
   type ZkLoginSession,
   type ZkLoginStep,
 } from "@/lib/zklogin";
+
+// Built from this app's inlined NEXT_PUBLIC_* (the @audric/auth package cannot
+// read these from process.env — static replacement doesn't fire inside a
+// transpilePackages dep; see packages/auth/src/client.ts).
+const ZK_CONFIG: ZkLoginConfig = {
+  enokiApiKey: env.NEXT_PUBLIC_ENOKI_API_KEY,
+  googleClientId: env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  network: env.NEXT_PUBLIC_SUI_NETWORK as EnokiNetwork,
+};
 
 export type ZkLoginStatus =
   | "loading" // checking localStorage on mount
@@ -105,7 +117,7 @@ export function ZkLoginProvider({ children }: { children: ReactNode }) {
         }
       }
       setStatus("redirecting");
-      await startLogin();
+      await startLogin(ZK_CONFIG);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start sign-in");
       setStatus("unauthenticated");
@@ -116,7 +128,9 @@ export function ZkLoginProvider({ children }: { children: ReactNode }) {
     try {
       setError(null);
       setStatus("proving");
-      const newSession = await completeLogin({ onStep: setProvingStep });
+      const newSession = await completeLogin(ZK_CONFIG, {
+        onStep: setProvingStep,
+      });
       // Mint the server session (httpOnly cookie) — the per-request identity.
       const res = await fetch("/api/auth/session", {
         method: "POST",

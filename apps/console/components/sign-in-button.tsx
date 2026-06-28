@@ -2,6 +2,7 @@
 
 import { startLogin } from "@audric/auth/client";
 import { useState } from "react";
+import { ZK_CONFIG } from "@/lib/zk-config";
 
 export function SignInButton() {
   const [loading, setLoading] = useState(false);
@@ -13,7 +14,7 @@ export function SignInButton() {
       onClick={async () => {
         setLoading(true);
         try {
-          await startLogin();
+          await startLogin(ZK_CONFIG);
         } catch {
           setLoading(false);
         }

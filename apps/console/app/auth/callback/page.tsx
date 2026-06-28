@@ -3,6 +3,7 @@
 import { completeLogin } from "@audric/auth/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { ZK_CONFIG } from "@/lib/zk-config";
 
 export default function CallbackPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function CallbackPage() {
 
     (async () => {
       try {
-        const session = await completeLogin();
+        const session = await completeLogin(ZK_CONFIG);
         // Mint the server session (httpOnly cookie scoped to this domain).
         const res = await fetch("/api/auth/session", {
           method: "POST",
