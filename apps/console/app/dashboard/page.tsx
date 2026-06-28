@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { ApiKeysSection } from "@/components/api-keys-section";
 import { BillingSection } from "@/components/billing-section";
 import { PlansSection } from "@/components/plans-section";
+import { QuickstartSection } from "@/components/quickstart-section";
 import { SignOutButton } from "@/components/sign-out-button";
+import { UsageSection } from "@/components/usage-section";
 
 function shortAddress(address: string): string {
   return address.length > 12
@@ -77,6 +79,14 @@ export default async function DashboardPage() {
 
       <div className="mt-8">
         <ApiKeysSection />
+      </div>
+
+      <div className="mt-8">
+        <QuickstartSection />
+      </div>
+
+      <div className="mt-8">
+        <UsageSection />
       </div>
     </main>
   );
