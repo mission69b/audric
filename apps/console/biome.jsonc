@@ -12,7 +12,8 @@
   "linter": {
     "rules": {
       "suspicious": {
-        "noUnknownAtRules": "off"
+        "noUnknownAtRules": "off",
+        "noDocumentCookie": "off"
       },
       "style": {
         "noMagicNumbers": "off",
@@ -26,7 +27,8 @@
         "useSortedClasses": "off"
       },
       "performance": {
-        "noBarrelFile": "off"
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off"
       }
     }
   }
