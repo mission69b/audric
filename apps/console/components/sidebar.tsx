@@ -9,6 +9,7 @@ import {
   KeyRound,
   LayoutGrid,
   LogOut,
+  PanelLeftClose,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,10 +33,12 @@ export function Sidebar({
   email,
   address,
   balance,
+  onToggle,
 }: {
   email: string | null;
   address: string;
   balance: string;
+  onToggle?: () => void;
 }) {
   const pathname = usePathname();
 
@@ -49,13 +52,25 @@ export function Sidebar({
 
   return (
     <aside className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground">
-      <div className="flex h-14 items-center gap-2 px-4">
-        <span className="font-semibold text-sidebar-accent-foreground tracking-tight">
-          t2000
-        </span>
-        <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/70">
-          platform
-        </span>
+      <div className="flex h-14 items-center justify-between gap-2 px-4">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sidebar-accent-foreground tracking-tight">
+            t2000
+          </span>
+          <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/70">
+            platform
+          </span>
+        </div>
+        {onToggle ? (
+          <button
+            aria-label="Collapse sidebar"
+            className="rounded-md p-1.5 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            onClick={onToggle}
+            type="button"
+          >
+            <PanelLeftClose className="size-4" />
+          </button>
+        ) : null}
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-2 py-2">
