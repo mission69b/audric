@@ -25,6 +25,32 @@ function getClient() {
   return client;
 }
 
+// Per-API-key requests-per-minute cap for the Private API (/v1) — closes the
+// v1 no-rate-limit gap so a leaked/runaway key can't hammer the API
+// (SPEC_T2000_API_V2 M4.10). Fails OPEN: if Redis is down/unconfigured (e.g.
+// local dev with no REDIS_URL), it never blocks legitimate traffic. Returns
+// true = allowed, false = over the cap (the caller returns a 429).
+const API_RPM = 120;
+const API_RPM_TTL_SECONDS = 60;
+
+export async function checkApiRateLimit(keyId: string): Promise<boolean> {
+  const redis = getClient();
+  if (!redis?.isReady) {
+    return true;
+  }
+  try {
+    const key = `api-rpm:${keyId}`;
+    const [count] = await redis
+      .multi()
+      .incr(key)
+      .expire(key, API_RPM_TTL_SECONDS, "NX")
+      .exec();
+    return !(typeof count === "number" && count > API_RPM);
+  } catch {
+    return true;
+  }
+}
+
 export async function checkIpRateLimit(ip: string | undefined) {
   if (!isProductionEnvironment || !ip) {
     return;

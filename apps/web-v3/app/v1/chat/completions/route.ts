@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/providers";
 import { debitMicrosForUsage } from "@/lib/credit/meter";
 import { recordApiUsage, recordCredit } from "@/lib/db/queries";
+import { checkApiRateLimit } from "@/lib/ratelimit";
 import { maybeAutoRecharge } from "@/lib/stripe";
 import { generateUUID } from "@/lib/utils";
 
@@ -83,6 +84,16 @@ export async function POST(request: Request) {
   const auth = await authenticateApiKey(request);
   if (!auth.ok) {
     return auth.response;
+  }
+
+  // Per-key RPM abuse cap (M4.10). Fails open if Redis is unavailable.
+  if (!(await checkApiRateLimit(auth.keyId))) {
+    return openAiError(
+      429,
+      "Rate limit exceeded — slow down (max 120 requests/minute per key).",
+      "rate_limit_error",
+      "rate_limit_exceeded"
+    );
   }
 
   let body: CompletionsBody;
