@@ -52,6 +52,28 @@ function mapFinishReason(reason: string): string {
   return "stop";
 }
 
+/**
+ * Map an AI SDK call error to its real upstream status + message instead of a
+ * generic 502 — better DX for a developer API (and self-diagnosing: an upstream
+ * 401 surfaces as 401 "Invalid API key", not an opaque "Upstream model error").
+ */
+function upstreamError(error: unknown): {
+  status: number;
+  message: string;
+} {
+  const e = error as { statusCode?: number; message?: string };
+  const status =
+    typeof e?.statusCode === "number" &&
+    e.statusCode >= 400 &&
+    e.statusCode < 600
+      ? e.statusCode
+      : 502;
+  return {
+    status,
+    message: e?.message?.slice(0, 500) || "Upstream model error.",
+  };
+}
+
 // POST /v1/chat/completions — OpenAI-compatible raw inference (SPEC_AUDRIC_API
 // v1). Pure model passthrough over the Vercel Gateway (ZDR), metered per token
 // against the same CreditLedger as in-app turns. No Audric tools / agent loop —
@@ -213,12 +235,8 @@ export async function POST(request: Request) {
       );
     } catch (error) {
       console.error("[/v1/chat/completions] non-stream error", error);
-      return openAiError(
-        502,
-        "Upstream model error.",
-        "api_error",
-        "upstream_error"
-      );
+      const { status, message } = upstreamError(error);
+      return openAiError(status, message, "api_error", "upstream_error");
     }
   }
 
@@ -282,7 +300,7 @@ export async function POST(request: Request) {
           encoder.encode(
             `data: ${JSON.stringify({
               error: {
-                message: "Upstream model error.",
+                message: upstreamError(error).message,
                 type: "api_error",
                 code: "upstream_error",
               },
