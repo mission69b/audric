@@ -1,17 +1,23 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* t2000 brand tokens — same source as t2000.ai (SPEC_T2000_API_V2 §3). */
+/* t2000 design system — Geist DS tokens + themed shadcn primitives (same
+   source as t2000.ai). The `theme` import is the tailwind v4 @theme block that
+   maps shadcn semantic colors (bg-background, bg-card, text-muted-foreground,
+   border-border, …) onto Geist values. */
 @import "@t2000/ui/tokens";
 @import "@t2000/ui/tokens/page";
 @import "@t2000/ui/tokens/responsive";
 @import "@t2000/ui/tokens/theme";
 
+/* Tailwind v4 skips node_modules by default — explicitly scan the @t2000/ui
+   compiled components so their utility classes are emitted. */
+@source "../node_modules/@t2000/ui/dist";
+
 :root {
+  /* Brand accent + one-tier-down hover (consumed by @t2000/ui's @theme). */
   --t2k-accent: var(--ds-blue-700);
   --t2k-accent-hover: var(--ds-blue-800);
-  --t2k-accent-bg: rgba(0, 114, 245, 0.08);
-  --t2k-accent-hi: rgba(0, 114, 245, 0.2);
 
   --ds-font-sans:
     var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -19,26 +25,11 @@
   --ds-font-mono:
     var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco,
     "Liberation Mono", monospace;
-
-  --background: var(--ds-background-100);
-  --surface: var(--ds-gray-100);
-  --foreground: var(--fg);
-  --muted: var(--fg-muted);
-  --dim: var(--fg-subtle);
-  --border-bright: var(--ds-gray-alpha-600);
-  --accent: var(--t2k-accent);
-}
-
-@theme inline {
-  --color-surface: var(--surface);
-  --color-dim: var(--dim);
-  --color-border-bright: var(--border-bright);
 }
 
 body {
   font-family: var(--ds-font-sans);
-  font-size: 15px;
-  line-height: 1.6;
-  color: var(--foreground);
-  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  color: var(--fg);
+  background: var(--ds-background-100);
 }

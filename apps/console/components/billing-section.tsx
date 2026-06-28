@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, Card, CardContent, cn } from "@t2000/ui";
 import { useCallback, useEffect, useState } from "react";
 
 const TOPUP_AMOUNTS = [5, 10, 25, 50];
@@ -68,44 +69,40 @@ export function BillingSection() {
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-      <div className="text-[var(--dim)] text-xs uppercase tracking-wide">
-        Add credit
-      </div>
-      <p className="mt-2 text-[var(--muted)] text-sm">
-        Pay-as-you-go — top up with a card and spend per-token across every
-        model. Same balance as your Audric account.
-      </p>
+    <Card>
+      <CardContent className="space-y-6 pt-6">
+        <div>
+          <p className="text-muted-foreground text-sm">
+            Pay-as-you-go — top up with a card and spend per-token across every
+            model. Same balance as your Audric account.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {TOPUP_AMOUNTS.map((amt) => (
+              <Button
+                disabled={busy !== null}
+                key={amt}
+                onClick={() => topUp(amt)}
+                variant="outline"
+              >
+                {busy === amt ? "…" : `$${amt}`}
+              </Button>
+            ))}
+          </div>
+          {error ? (
+            <p className="mt-2 text-destructive text-sm">{error}</p>
+          ) : null}
+          <p className="mt-3 text-muted-foreground text-xs">
+            Credit is closed-loop: non-refundable, non-withdrawable,
+            non-transferable. Card processed securely by Stripe.
+          </p>
+        </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {TOPUP_AMOUNTS.map((amt) => (
-          <button
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-[var(--border-bright)] px-4 font-medium text-[var(--foreground)] text-sm transition-colors hover:border-[var(--accent)] disabled:opacity-60"
-            disabled={busy !== null}
-            key={amt}
-            onClick={() => topUp(amt)}
-            type="button"
-          >
-            {busy === amt ? "…" : `$${amt}`}
-          </button>
-        ))}
-      </div>
-
-      {error ? <p className="mt-2 text-[13px] text-red-400">{error}</p> : null}
-
-      <p className="mt-3 text-[11px] text-[var(--dim)]">
-        Credit is closed-loop: non-refundable, non-withdrawable,
-        non-transferable. Card processed securely by Stripe.
-      </p>
-
-      {/* Auto-recharge */}
-      <div className="mt-5 border-[var(--border-bright)] border-t pt-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 border-border border-t pt-5">
           <div>
-            <div className="text-[var(--foreground)] text-sm">
+            <div className="font-medium text-foreground text-sm">
               Auto-recharge
             </div>
-            <div className="text-[11px] text-[var(--dim)]">
+            <div className="text-muted-foreground text-xs">
               {ar?.hasCard
                 ? `Add $${ar.amountUsd} when balance drops below $${ar.thresholdUsd}.`
                 : "Top up once to save a card, then enable auto-recharge."}
@@ -113,21 +110,23 @@ export function BillingSection() {
           </div>
           <button
             aria-pressed={ar?.enabled ?? false}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-              ar?.enabled ? "bg-[var(--accent)]" : "bg-[var(--border-bright)]"
-            } disabled:opacity-50`}
+            className={cn(
+              "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50",
+              ar?.enabled ? "bg-accent" : "bg-muted"
+            )}
             disabled={!ar?.hasCard}
             onClick={() => toggleAutoRecharge(!ar?.enabled)}
             type="button"
           >
             <span
-              className={`absolute top-0.5 size-5 rounded-full bg-white transition-transform ${
+              className={cn(
+                "absolute top-0.5 size-5 rounded-full bg-white transition-transform",
                 ar?.enabled ? "translate-x-5" : "translate-x-0.5"
-              }`}
+              )}
             />
           </button>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

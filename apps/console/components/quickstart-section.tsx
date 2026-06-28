@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  Button,
+  Card,
+  CardContent,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@t2000/ui";
+import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
 const BASE_URL = "https://api.t2000.ai/v1";
@@ -51,57 +61,52 @@ console.log(resp.choices[0].message.content);`,
 ];
 
 export function QuickstartSection() {
-  const [tab, setTab] = useState(SNIPPETS[0].id);
-  const [copied, setCopied] = useState(false);
-  const active = SNIPPETS.find((s) => s.id === tab) ?? SNIPPETS[0];
+  const [copied, setCopied] = useState<string | null>(null);
 
-  function copy() {
-    navigator.clipboard.writeText(active.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  function copy(id: string, code: string) {
+    navigator.clipboard.writeText(code);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 1500);
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-      <div className="flex items-center justify-between">
-        <div className="text-[var(--dim)] text-xs uppercase tracking-wide">
-          Quickstart
-        </div>
-        <div className="flex gap-1">
+    <Card>
+      <CardContent className="pt-6">
+        <p className="mb-4 text-muted-foreground text-sm">
+          OpenAI-compatible. Create a key, drop it in — first call in under a
+          minute.
+        </p>
+        <Tabs defaultValue="curl">
+          <TabsList>
+            {SNIPPETS.map((s) => (
+              <TabsTrigger key={s.id} value={s.id}>
+                {s.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           {SNIPPETS.map((s) => (
-            <button
-              className={`rounded-md px-2 py-1 text-[12px] transition-colors ${
-                tab === s.id
-                  ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-              key={s.id}
-              onClick={() => setTab(s.id)}
-              type="button"
-            >
-              {s.label}
-            </button>
+            <TabsContent key={s.id} value={s.id}>
+              <div className="relative">
+                <Button
+                  className="absolute top-2 right-2"
+                  onClick={() => copy(s.id, s.code)}
+                  size="sm"
+                  variant="outline"
+                >
+                  {copied === s.id ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                </Button>
+                <pre className="overflow-x-auto rounded-lg border border-border bg-muted/40 p-4 font-mono text-foreground text-xs leading-relaxed">
+                  <code>{s.code}</code>
+                </pre>
+              </div>
+            </TabsContent>
           ))}
-        </div>
-      </div>
-
-      <p className="mt-2 text-[var(--muted)] text-sm">
-        OpenAI-compatible. Create a key above, then drop it in — first call in
-        under a minute.
-      </p>
-
-      <div className="relative mt-3">
-        <button
-          className="absolute top-2 right-2 rounded-md border border-[var(--border-bright)] bg-[var(--background)] px-2 py-1 text-[12px] text-[var(--muted)] transition-colors hover:text-[var(--foreground)]"
-          onClick={copy}
-          type="button"
-        >
-          {copied ? "Copied" : "Copy"}
-        </button>
-        <pre className="overflow-x-auto rounded-lg border border-[var(--border-bright)] bg-[var(--background)] p-4 font-mono text-[12px] text-[var(--foreground)] leading-relaxed">
-          <code>{active.code}</code>
-        </pre>
-      </div>
-    </div>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 }

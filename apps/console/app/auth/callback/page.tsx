@@ -42,16 +42,16 @@ export default function CallbackPage() {
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center px-6 text-center">
       {error ? (
         <div className="space-y-4">
-          <p className="text-[var(--foreground)]">{error}</p>
+          <p className="text-foreground">{error}</p>
           <a
-            className="text-[var(--accent)] text-sm underline underline-offset-4"
+            className="text-accent text-sm underline underline-offset-4"
             href="/"
           >
             Try again
           </a>
         </div>
       ) : (
-        <p className="text-[var(--muted)]">Signing you in…</p>
+        <p className="text-muted-foreground">Signing you in…</p>
       )}
     </main>
   );

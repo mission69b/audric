@@ -50,6 +50,9 @@ importers:
       geist:
         specifier: ^1.7.0
         version: 1.7.2(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))
+      lucide-react:
+        specifier: ^0.469.0
+        version: 0.469.0(react@19.0.1)
       next:
         specifier: 16.2.0
         version: 16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)

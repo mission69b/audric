@@ -1,5 +1,18 @@
 "use client";
 
+import {
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@t2000/ui";
 import { useCallback, useEffect, useState } from "react";
 
 type UsageRow = {
@@ -22,8 +35,6 @@ function fmtTokens(n: number): string {
   return String(n);
 }
 
-// Spend display: 2dp at/above $0.01, 4dp for sub-cent usage (so a handful of
-// tokens isn't misleadingly "$0.00"). Floored — never overstate actual spend.
 function fmtSpend(micros: number): string {
   if (micros <= 0) {
     return "$0.00";
@@ -58,87 +69,71 @@ export function UsageSection() {
   const totalReq = (rows ?? []).reduce((s, r) => s + r.requests, 0);
 
   return (
-    <div className="rounded-xl border border-[var(--border-bright)] bg-[var(--surface)] p-5">
-      <div className="flex items-center justify-end">
-        <div className="flex gap-1">
-          {(["24h", "30d"] as Window[]).map((w) => (
-            <button
-              className={`rounded-md px-2 py-1 text-[12px] transition-colors ${
-                window === w
-                  ? "bg-[var(--accent)] text-white"
-                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
-              }`}
-              key={w}
-              onClick={() => setWindow(w)}
-              type="button"
-            >
-              {w}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {rows && rows.length === 0 ? (
-        <p className="mt-3 text-[var(--muted)] text-sm">
-          No API usage in this window yet. Make a call with your key to see it
-          here.
-        </p>
-      ) : null}
-
-      {rows && rows.length > 0 ? (
-        <>
-          <div className="mt-4 grid grid-cols-2 gap-4">
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex gap-8">
             <div>
-              <div className="text-[var(--dim)] text-[11px] uppercase">
+              <div className="text-muted-foreground text-xs uppercase">
                 Spend
               </div>
-              <div className="font-semibold text-[var(--foreground)] text-xl">
+              <div className="font-semibold text-foreground text-xl">
                 {fmtSpend(totalSpend)}
               </div>
             </div>
             <div>
-              <div className="text-[var(--dim)] text-[11px] uppercase">
+              <div className="text-muted-foreground text-xs uppercase">
                 Requests
               </div>
-              <div className="font-semibold text-[var(--foreground)] text-xl">
+              <div className="font-semibold text-foreground text-xl">
                 {totalReq}
               </div>
             </div>
           </div>
+          <Tabs onValueChange={(v) => setWindow(v as Window)} value={window}>
+            <TabsList>
+              <TabsTrigger value="24h">24h</TabsTrigger>
+              <TabsTrigger value="30d">30d</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
-          <table className="mt-4 w-full text-sm">
-            <thead>
-              <tr className="text-[var(--dim)] text-[11px] uppercase">
-                <th className="pb-2 text-left font-medium">Model</th>
-                <th className="pb-2 text-right font-medium">Reqs</th>
-                <th className="pb-2 text-right font-medium">Tokens</th>
-                <th className="pb-2 text-right font-medium">Spend</th>
-              </tr>
-            </thead>
-            <tbody>
+        {rows && rows.length === 0 ? (
+          <p className="mt-6 text-muted-foreground text-sm">
+            No API usage in this window yet. Make a call with your key to see it
+            here.
+          </p>
+        ) : null}
+
+        {rows && rows.length > 0 ? (
+          <Table className="mt-4">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Model</TableHead>
+                <TableHead className="text-right">Reqs</TableHead>
+                <TableHead className="text-right">Tokens</TableHead>
+                <TableHead className="text-right">Spend</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((r) => (
-                <tr
-                  className="border-[var(--border-bright)] border-t"
-                  key={r.model}
-                >
-                  <td className="py-2 font-mono text-[12px] text-[var(--foreground)]">
-                    {r.model}
-                  </td>
-                  <td className="py-2 text-right text-[var(--muted)]">
+                <TableRow key={r.model}>
+                  <TableCell className="font-mono text-xs">{r.model}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">
                     {r.requests}
-                  </td>
-                  <td className="py-2 text-right text-[var(--muted)]">
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
                     {fmtTokens(r.inputTokens + r.outputTokens)}
-                  </td>
-                  <td className="py-2 text-right text-[var(--muted)]">
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
                     {fmtSpend(r.costMicros)}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </>
-      ) : null}
-    </div>
+            </TableBody>
+          </Table>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
