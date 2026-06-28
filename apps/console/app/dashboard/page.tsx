@@ -2,6 +2,7 @@ import { getCreditBalanceMicros } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
 import { ApiKeysSection } from "@/components/api-keys-section";
+import { BillingSection } from "@/components/billing-section";
 import { SignOutButton } from "@/components/sign-out-button";
 
 function shortAddress(address: string): string {
@@ -59,6 +60,10 @@ export default async function DashboardPage() {
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="mt-8">
+        <BillingSection />
       </div>
 
       <div className="mt-8">

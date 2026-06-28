@@ -1,6 +1,7 @@
 export { db } from "./db";
 export { canUseApi, generateApiKey, hashKey, isPaidTier } from "./keys";
 export {
+  acceptClosedLoopTerms,
   createApiKey,
   getApiKeyByHash,
   getApiUsageByModel,
@@ -11,6 +12,8 @@ export {
   recordApiUsage,
   recordCredit,
   revokeApiKey,
+  setAutoRecharge,
+  setStripeCustomerId,
   touchApiKey,
 } from "./queries";
 export {

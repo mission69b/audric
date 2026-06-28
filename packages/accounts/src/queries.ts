@@ -79,6 +79,44 @@ export async function listCreditLedger(userId: string, limit = 50) {
     .limit(limit);
 }
 
+// ── Billing config (shared User mutations — funding edge) ────────────────────
+
+/** Persist the user's Stripe customer id (set once, never clobbered). */
+export async function setStripeCustomerId(userId: string, customerId: string) {
+  await db
+    .update(user)
+    .set({ stripeCustomerId: customerId, updatedAt: new Date() })
+    .where(eq(user.id, userId));
+}
+
+/** Toggle/configure card auto-recharge (the "never runs dry" config). */
+export async function setAutoRecharge(
+  userId: string,
+  opts: { enabled: boolean; thresholdUsd?: number; amountUsd?: number }
+) {
+  await db
+    .update(user)
+    .set({
+      autoRechargeEnabled: opts.enabled,
+      ...(opts.thresholdUsd !== undefined && {
+        autoRechargeThresholdUsd: opts.thresholdUsd,
+      }),
+      ...(opts.amountUsd !== undefined && {
+        autoRechargeAmountUsd: opts.amountUsd,
+      }),
+      updatedAt: new Date(),
+    })
+    .where(eq(user.id, userId));
+}
+
+/** Record closed-loop credit terms acceptance (at first top-up/subscribe). */
+export async function acceptClosedLoopTerms(userId: string) {
+  await db
+    .update(user)
+    .set({ closedLoopAcceptedAt: new Date(), updatedAt: new Date() })
+    .where(eq(user.id, userId));
+}
+
 // ── API usage events (SPEC_T2000_API_V2 §6) ─────────────────────────────────
 
 /**

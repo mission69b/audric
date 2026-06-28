@@ -17,6 +17,17 @@ const requiredString = z
   .trim()
   .min(1, "must be a non-empty string (Vercel may have stored an empty value)");
 
+const optionalString = z
+  .string()
+  .optional()
+  .transform((v) => {
+    if (v === undefined) {
+      return;
+    }
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
 // Server-only — never referenced from client components (the proxy throws).
 const serverSchema = z.object({
   /** HS256 secret for minting the app session (must match audric.ai so the
@@ -24,6 +35,9 @@ const serverSchema = z.object({
   AUTH_SECRET: requiredString,
   /** Shared Postgres (the @audric/accounts substrate — same DB as audric.ai). */
   POSTGRES_URL: requiredString,
+  /** Stripe secret key — OPTIONAL: unset → billing/top-up is off (503), no boot
+   * failure. Same value + Stripe account as audric.ai (one shared webhook). */
+  STRIPE_SECRET_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -42,6 +56,7 @@ const clientSchema = z.object({
 const runtimeEnv = {
   AUTH_SECRET: process.env.AUTH_SECRET,
   POSTGRES_URL: process.env.POSTGRES_URL,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

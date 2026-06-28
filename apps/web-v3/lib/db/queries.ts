@@ -47,6 +47,7 @@ import {
 // (shared with apps/console — SPEC_T2000_API_V2 §2), using the package's shared
 // `db`. Re-exported so existing `@/lib/db/queries` imports keep working unchanged.
 export {
+  acceptClosedLoopTerms,
   createApiKey,
   getApiKeyByHash,
   getApiUsageByModel,
@@ -57,6 +58,8 @@ export {
   recordApiUsage,
   recordCredit,
   revokeApiKey,
+  setAutoRecharge,
+  setStripeCustomerId,
   touchApiKey,
 } from "@audric/accounts";
 
@@ -347,13 +350,6 @@ export async function getReferralStats(referrerId: string): Promise<{
   };
 }
 
-export async function setStripeCustomerId(userId: string, customerId: string) {
-  await db
-    .update(user)
-    .set({ stripeCustomerId: customerId, updatedAt: new Date() })
-    .where(eq(user.id, userId));
-}
-
 /** Set (or clear, with null) the user's standing custom instructions. */
 export async function setCustomInstructions(
   userId: string,
@@ -369,32 +365,6 @@ export async function setDefaultPaymentMethod(userId: string, pmId: string) {
   await db
     .update(user)
     .set({ defaultPaymentMethodId: pmId, updatedAt: new Date() })
-    .where(eq(user.id, userId));
-}
-
-export async function setAutoRecharge(
-  userId: string,
-  opts: { enabled: boolean; thresholdUsd?: number; amountUsd?: number }
-) {
-  await db
-    .update(user)
-    .set({
-      autoRechargeEnabled: opts.enabled,
-      ...(opts.thresholdUsd !== undefined && {
-        autoRechargeThresholdUsd: opts.thresholdUsd,
-      }),
-      ...(opts.amountUsd !== undefined && {
-        autoRechargeAmountUsd: opts.amountUsd,
-      }),
-      updatedAt: new Date(),
-    })
-    .where(eq(user.id, userId));
-}
-
-export async function acceptClosedLoopTerms(userId: string) {
-  await db
-    .update(user)
-    .set({ closedLoopAcceptedAt: new Date(), updatedAt: new Date() })
     .where(eq(user.id, userId));
 }
 
