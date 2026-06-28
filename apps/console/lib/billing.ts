@@ -167,6 +167,8 @@ export async function createAddCardCheckout(
   const checkout = await getStripe().checkout.sessions.create({
     mode: "setup",
     customer: customerId,
+    currency: "usd",
+    payment_method_types: ["card"],
     success_url: `${origin}/billing?card=added`,
     cancel_url: `${origin}/billing`,
   });

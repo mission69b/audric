@@ -90,6 +90,7 @@ export function BillingSection({ balance }: { balance: string }) {
   }
 
   async function pmAction(body: Record<string, unknown>) {
+    setError(null);
     try {
       const res = await fetch("/api/billing/payment-method", {
         method: "POST",
@@ -97,6 +98,10 @@ export function BillingSection({ balance }: { balance: string }) {
         body: JSON.stringify(body),
       });
       const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(j.error ?? "Something went wrong.");
+        return;
+      }
       if (body.action === "add" && j.url) {
         window.location.href = j.url;
         return;
