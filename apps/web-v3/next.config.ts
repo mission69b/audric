@@ -4,9 +4,9 @@ import type { NextConfig } from "next";
 const basePath = process.env.IS_DEMO === "1" ? "/demo" : "";
 
 const nextConfig: NextConfig = {
-  // Workspace package consumed as TS source (the shared identity/credit/key
-  // substrate — SPEC_T2000_API_V2 §2).
-  transpilePackages: ["@audric/accounts"],
+  // Workspace packages consumed as TS source (the shared identity/credit/key
+  // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
+  transpilePackages: ["@audric/accounts", "@audric/auth"],
   ...(basePath
     ? {
         basePath,
