@@ -1,4 +1,9 @@
-export default function Home() {
+import { getCurrentUser } from "@audric/auth/server";
+import { SignInButton } from "@/components/sign-in-button";
+
+export default async function Home() {
+  const session = await getCurrentUser();
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center px-6 py-16">
       <div className="font-mono text-[13px] text-[var(--dim)] tracking-wide">
@@ -22,12 +27,16 @@ export default function Home() {
       </div>
 
       <div className="mt-8 flex items-center gap-4">
-        <span
-          aria-disabled="true"
-          className="inline-flex h-10 cursor-default items-center justify-center rounded-lg bg-[var(--accent)] px-5 font-medium text-sm text-white opacity-60"
-        >
-          Sign in — coming soon
-        </span>
+        {session ? (
+          <a
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-[var(--accent)] px-5 font-medium text-sm text-white transition-opacity hover:opacity-90"
+            href="/dashboard"
+          >
+            Go to dashboard →
+          </a>
+        ) : (
+          <SignInButton />
+        )}
         <a
           className="text-[var(--muted)] text-sm underline underline-offset-4 transition-colors hover:text-[var(--foreground)]"
           href="https://developers.t2000.ai"

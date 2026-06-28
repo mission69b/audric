@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Shared workspace package consumed as TS source (identity/credit/key
-  // substrate — SPEC_T2000_API_V2 §2).
-  transpilePackages: ["@audric/accounts"],
+  // Shared workspace packages consumed as TS source (identity/credit/key
+  // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
+  transpilePackages: ["@audric/accounts", "@audric/auth"],
   poweredByHeader: false,
   async headers() {
     return [
