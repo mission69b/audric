@@ -27,3 +27,8 @@ export {
   type User,
   user,
 } from "./schema";
+export {
+  getTreasuryAddress,
+  recordStablecoinTopup,
+  type StablecoinTopupResult,
+} from "./topup";

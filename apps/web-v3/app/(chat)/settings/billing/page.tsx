@@ -18,6 +18,7 @@ import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { Button } from "@/components/ui/button";
 import { COMING_SOON, EVERY_PLAN, TOPUP_PRESETS_USD } from "@/lib/credit/tiers";
 import { fetcher } from "@/lib/utils";
+import { payStablecoinTopup, type TopupAsset } from "@/lib/wallet/usdc-topup";
 
 type BillingOverview = {
   configured: boolean;
@@ -89,8 +90,31 @@ export default function BillingPage() {
   );
   const [terms, setTerms] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [usdcBusy, setUsdcBusy] = useState<number | null>(null);
+  const [usdcAsset, setUsdcAsset] = useState<TopupAsset>("USDC");
 
   const needsTerms = data?.configured && !data?.acceptedTerms;
+
+  async function payStable(amount: number) {
+    if (needsTerms && !terms) {
+      toast.error("Please accept the credit terms first.");
+      return;
+    }
+    setUsdcBusy(amount);
+    try {
+      const res = await payStablecoinTopup(amount, usdcAsset);
+      toast.success(
+        res.credited
+          ? `Added $${res.amountUsd} — credited from ${res.asset}.`
+          : "That payment was already credited."
+      );
+      await mutate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Top-up failed.");
+    } finally {
+      setUsdcBusy(null);
+    }
+  }
 
   // Both flows now go to the in-app embedded /checkout page (on audric.ai),
   // which mounts Stripe Embedded Checkout (Link / saved cards / one-click intact)
@@ -211,6 +235,48 @@ export default function BillingPage() {
               variant="outline"
             >
               + ${amt}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Pay with stablecoin (Sui) — gasless, from the Passport. Same balance. */}
+      <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="font-medium text-foreground text-sm">
+          Pay with stablecoin (Sui)
+        </div>
+        <p className="mt-0.5 text-muted-foreground text-xs">
+          Top up gaslessly from your Passport — no card. You sign the transfer;
+          we credit the exact amount received. 1 USDC / USDsui = $1.
+        </p>
+        <div className="mt-3 inline-flex rounded-lg border border-border/50 p-0.5">
+          {(["USDC", "USDsui"] as TopupAsset[]).map((a) => (
+            <button
+              className={
+                usdcAsset === a
+                  ? "rounded-md bg-foreground/10 px-2.5 py-1 font-medium text-foreground text-xs"
+                  : "rounded-md px-2.5 py-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
+              }
+              disabled={usdcBusy !== null}
+              key={a}
+              onClick={() => setUsdcAsset(a)}
+              type="button"
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {TOPUP_PRESETS_USD.map((amt) => (
+            <Button
+              disabled={usdcBusy !== null || (needsTerms && !terms)}
+              key={amt}
+              onClick={() => payStable(amt)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {usdcBusy === amt ? "Confirming…" : `${amt} ${usdcAsset}`}
             </Button>
           ))}
         </div>

@@ -3,8 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
+import { payStablecoinTopup, type TopupAsset } from "@/lib/usdc-topup";
 
 const TOPUP_AMOUNTS = [5, 10, 25, 50];
+const USDC_AMOUNTS = [5, 10, 25, 50];
+const TOPUP_ASSETS: TopupAsset[] = ["USDC", "USDsui"];
+
+function shortAddress(address: string): string {
+  return address.length > 12
+    ? `${address.slice(0, 6)}…${address.slice(-4)}`
+    : address;
+}
 
 type AutoRecharge = {
   enabled: boolean;
@@ -42,11 +51,21 @@ function fmtDate(unixSeconds: number): string {
   });
 }
 
-export function BillingSection({ balance }: { balance: string }) {
+export function BillingSection({
+  balance,
+  address,
+}: {
+  balance: string;
+  address: string;
+}) {
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ar, setAr] = useState<AutoRecharge | null>(null);
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [usdcBusy, setUsdcBusy] = useState<number | null>(null);
+  const [usdcError, setUsdcError] = useState<string | null>(null);
+  const [usdcDone, setUsdcDone] = useState<string | null>(null);
+  const [usdcAsset, setUsdcAsset] = useState<TopupAsset>("USDC");
 
   const load = useCallback(async () => {
     try {
@@ -112,6 +131,26 @@ export function BillingSection({ balance }: { balance: string }) {
     }
   }
 
+  async function payUsdc(amount: number) {
+    setUsdcBusy(amount);
+    setUsdcError(null);
+    setUsdcDone(null);
+    try {
+      const res = await payStablecoinTopup(amount, usdcAsset);
+      setUsdcDone(
+        res.credited
+          ? `Added $${res.amountUsd} — balance $${res.balanceUsd}.`
+          : "That payment was already credited."
+      );
+      // Reflect the new balance (server-rendered) without a hard refresh edge case.
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e) {
+      setUsdcError(e instanceof Error ? e.message : "USDC top-up failed.");
+    } finally {
+      setUsdcBusy(null);
+    }
+  }
+
   async function toggleAutoRecharge(enabled: boolean) {
     if (!ar) {
       return;
@@ -155,6 +194,60 @@ export function BillingSection({ balance }: { balance: string }) {
         <p className="mt-3 text-[11px] text-muted-foreground/60">
           Closed-loop credit: non-refundable, non-withdrawable,
           non-transferable. Card processed securely by Stripe.
+        </p>
+      </Section>
+
+      <Section>
+        <div className="font-medium text-foreground text-sm">
+          Pay with stablecoin (Sui)
+        </div>
+        <p className="mt-0.5 text-muted-foreground text-xs">
+          Top up gaslessly from your Passport — same balance, no card. Fund your
+          Passport (
+          <span className="font-mono text-foreground/70">
+            {shortAddress(address)}
+          </span>
+          ) with USDC or USDsui on Sui first.
+        </p>
+        <div className="mt-3 inline-flex rounded-lg border border-border/50 p-0.5">
+          {TOPUP_ASSETS.map((a) => (
+            <button
+              className={
+                usdcAsset === a
+                  ? "rounded-md bg-foreground/10 px-2.5 py-1 font-medium text-foreground text-xs"
+                  : "rounded-md px-2.5 py-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
+              }
+              disabled={usdcBusy !== null}
+              key={a}
+              onClick={() => setUsdcAsset(a)}
+              type="button"
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {USDC_AMOUNTS.map((amt) => (
+            <Button
+              disabled={usdcBusy !== null}
+              key={amt}
+              onClick={() => payUsdc(amt)}
+              size="sm"
+              variant="outline"
+            >
+              {usdcBusy === amt ? "Confirming…" : `${amt} ${usdcAsset}`}
+            </Button>
+          ))}
+        </div>
+        {usdcError ? (
+          <p className="mt-2 text-red-500 text-xs">{usdcError}</p>
+        ) : null}
+        {usdcDone ? (
+          <p className="mt-2 text-emerald-500 text-xs">{usdcDone}</p>
+        ) : null}
+        <p className="mt-3 text-[11px] text-muted-foreground/60">
+          You sign the transfer from your Passport; we credit the exact amount
+          received on-chain. 1 USDC / USDsui = $1 credit.
         </p>
       </Section>
 

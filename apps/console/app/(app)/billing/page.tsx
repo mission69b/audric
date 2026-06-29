@@ -11,5 +11,5 @@ export default async function BillingPage() {
   const balanceMicros = await getCreditBalanceMicros(session.user.id);
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
 
-  return <BillingSection balance={balance} />;
+  return <BillingSection address={session.user.id} balance={balance} />;
 }
