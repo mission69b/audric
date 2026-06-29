@@ -1,6 +1,16 @@
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { openAiError } from "@/lib/api/keys";
-import { recordStablecoinTopup, upsertUser } from "@/lib/db/queries";
+import {
+  getTreasuryAddress,
+  recordStablecoinTopup,
+  upsertUser,
+} from "@/lib/db/queries";
+
+// GET /v1/agent/topup → { treasury } — the server-authoritative wallet a client
+// sends USDC/USDsui to before calling POST (so the CLI/SDK never hardcodes it).
+export function GET() {
+  return Response.json({ treasury: getTreasuryAddress() });
+}
 
 // POST /v1/agent/topup { address, digest }
 // Agent ID Phase A — fund a keypair agent's account headlessly. NO signature
