@@ -63,8 +63,10 @@ export async function POST(request: Request) {
   let address: string;
   let endpointProvided = false;
   let methodsProvided = false;
+  let priceProvided = false;
   let mcpEndpoint: string | null = null;
   let paymentMethods: string[] = [];
+  let priceUsdc: string | null = null;
   try {
     const body = await request.json();
     address = normalizeSuiAddress(String(body?.address ?? "").trim());
@@ -86,6 +88,19 @@ export async function POST(request: Request) {
       methodsProvided = true;
       paymentMethods = m;
     }
+    if (body?.priceUsdc !== undefined && body?.priceUsdc !== null) {
+      priceProvided = true;
+      const n = Number(body.priceUsdc);
+      if (!Number.isFinite(n) || n <= 0 || n > 1000) {
+        return openAiError(
+          400,
+          "priceUsdc must be a positive USDC amount (≤ 1000).",
+          "invalid_request_error",
+          "invalid_price"
+        );
+      }
+      priceUsdc = String(body.priceUsdc).trim();
+    }
   } catch {
     return openAiError(
       400,
@@ -103,10 +118,10 @@ export async function POST(request: Request) {
       "invalid_address"
     );
   }
-  if (!(endpointProvided || methodsProvided)) {
+  if (!(endpointProvided || methodsProvided || priceProvided)) {
     return openAiError(
       400,
-      "Provide at least one of mcpEndpoint or paymentMethods.",
+      "Provide at least one of mcpEndpoint, paymentMethods, or priceUsdc.",
       "invalid_request_error",
       "bad_request"
     );
@@ -142,6 +157,9 @@ export async function POST(request: Request) {
     kind: "service",
     mcpEndpoint: finalEndpoint,
     paymentMethods: finalMethods,
+    // Off-chain commerce price: write-through only when provided (preserve
+    // otherwise). null in meta = "no change".
+    priceUsdc: priceProvided ? priceUsdc : null,
   });
   if (res.ok) {
     return Response.json({ nonce: res.nonce, txBytes: res.txBytes });

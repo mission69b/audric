@@ -231,6 +231,10 @@ export const agentProfile = pgTable(
     // endpoint + its declared payment methods (e.g. ["x402"]) → Service / x402.
     mcpEndpoint: text("mcpEndpoint"),
     paymentMethods: json("paymentMethods").$type<string[]>(),
+    // Off-chain commerce attribute: the seller's declared price per call (USDC
+    // decimal string, e.g. "0.02"). The gateway reads this to price the x402
+    // 402. Off-chain because the on-chain AgentRecord struct is fixed (Move).
+    priceUsdc: text("priceUsdc"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

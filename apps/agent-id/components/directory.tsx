@@ -15,6 +15,7 @@ export type AgentRow = {
   active: boolean;
   service: string | null;
   x402: boolean;
+  priceUsdc: string | null;
   createdAt: string;
 };
 
@@ -128,6 +129,11 @@ export function Directory({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2 text-xs">
+                {a.priceUsdc && (
+                  <span className="font-medium text-foreground">
+                    ${a.priceUsdc}
+                  </span>
+                )}
                 {a.service && <Badge variant="outline">{a.service}</Badge>}
                 {a.x402 && <Badge variant="secondary">x402</Badge>}
                 <span className="hidden w-20 text-right text-muted-foreground/60 sm:inline">

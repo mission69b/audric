@@ -17,6 +17,7 @@ type Profile = {
   metadataUri?: string;
   mcpEndpoint?: string;
   paymentMethods?: string[];
+  priceUsdc?: string;
   createdAt?: string;
   registrations?: { agentId?: number; agentRegistry?: string }[];
 };
@@ -113,6 +114,9 @@ export default async function AgentProfilePage({
           value={numericId == null ? "—" : `#${numericId}`}
         />
         <Field label="Registered" value={formatDate(profile.createdAt)} />
+        {profile.priceUsdc && (
+          <Field label="Price" value={`$${profile.priceUsdc} USDC / call`} />
+        )}
         {profile.mcpEndpoint && (
           <Field label="MCP endpoint" mono value={profile.mcpEndpoint} />
         )}

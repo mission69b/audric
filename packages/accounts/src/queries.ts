@@ -40,6 +40,10 @@ export async function upsertAgentProfile(opts: {
   metadataUri?: string | null;
   mcpEndpoint?: string | null;
   paymentMethods?: string[] | null;
+  /** Off-chain commerce price (USDC decimal string). NOT on-chain, so the cron
+   *  has no authority over it — always preserve-on-undefined (never cleared by a
+   *  reconcile), set only when the service write-through provides it. */
+  priceUsdc?: string | null;
   /** When true (the cron, which reads full chain state), null values CLEAR the
    *  field (e.g. pendingOwner cleared after a confirm). Write-through omits it,
    *  so a bare touch never clobbers. */
@@ -63,6 +67,7 @@ export async function upsertAgentProfile(opts: {
       metadataUri: opts.metadataUri ?? null,
       mcpEndpoint: opts.mcpEndpoint ?? null,
       paymentMethods: opts.paymentMethods ?? null,
+      priceUsdc: opts.priceUsdc ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -75,6 +80,8 @@ export async function upsertAgentProfile(opts: {
         metadataUri: pick(opts.metadataUri),
         mcpEndpoint: pick(opts.mcpEndpoint),
         paymentMethods: pick(opts.paymentMethods),
+        // Off-chain: always preserve-on-undefined (cron never clears it).
+        priceUsdc: opts.priceUsdc ?? undefined,
         updatedAt: now,
       },
     });

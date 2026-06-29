@@ -63,6 +63,8 @@ export async function POST(request: Request) {
         address,
         mcpEndpoint: (res.meta.mcpEndpoint as string | null) ?? null,
         paymentMethods: (res.meta.paymentMethods as string[] | null) ?? null,
+        // null = no change (preserve); a string = the new declared price.
+        priceUsdc: (res.meta.priceUsdc as string | null) ?? undefined,
       });
     }
     return Response.json({ ok: true, digest: res.digest });

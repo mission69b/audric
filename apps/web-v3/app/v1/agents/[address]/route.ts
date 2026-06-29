@@ -34,6 +34,7 @@ export async function GET(
     metadataUri: profile.metadataUri ?? undefined,
     mcpEndpoint: profile.mcpEndpoint ?? undefined,
     paymentMethods: profile.paymentMethods ?? undefined,
+    priceUsdc: profile.priceUsdc ?? undefined,
     createdAt: profile.createdAt,
     registrations: [
       {

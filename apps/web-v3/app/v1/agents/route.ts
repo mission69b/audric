@@ -28,6 +28,7 @@ export async function GET(request: Request) {
       x402: Array.isArray(a.paymentMethods)
         ? a.paymentMethods.includes("x402")
         : false,
+      priceUsdc: a.priceUsdc,
       createdAt: a.createdAt,
     })),
   });
