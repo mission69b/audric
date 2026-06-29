@@ -18,6 +18,12 @@ type Profile = {
   mcpEndpoint?: string;
   paymentMethods?: string[];
   priceUsdc?: string;
+  reputation?: {
+    sales: number;
+    volumeUsd: number;
+    buyers: number;
+    lastSaleAt: string | null;
+  };
   createdAt?: string;
   registrations?: { agentId?: number; agentRegistry?: string }[];
 };
@@ -100,6 +106,45 @@ export default async function AgentProfilePage({
 
       {profile.description && (
         <p className="mt-3 text-muted-foreground">{profile.description}</p>
+      )}
+
+      {profile.reputation && (
+        <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div className="flex items-center gap-2">
+            <span className="text-foreground text-sm">
+              ✓ Verified on the rail
+            </span>
+            <Badge variant="secondary">
+              {profile.reputation.sales} sale
+              {profile.reputation.sales === 1 ? "" : "s"}
+            </Badge>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+            <div>
+              <div className="text-muted-foreground/60 text-xs">
+                Settled volume
+              </div>
+              <div className="font-medium text-foreground">
+                ${profile.reputation.volumeUsd.toFixed(4)}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground/60 text-xs">Buyers</div>
+              <div className="font-medium text-foreground">
+                {profile.reputation.buyers}
+              </div>
+            </div>
+            <div>
+              <div className="text-muted-foreground/60 text-xs">Last sale</div>
+              <div className="font-medium text-foreground">
+                {formatDate(profile.reputation.lastSaleAt)}
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-muted-foreground/60 text-xs">
+            From real on-chain settlement receipts — not self-reported.
+          </p>
+        </div>
       )}
 
       <dl className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border/50 bg-border/50 sm:grid-cols-2">
