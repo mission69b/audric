@@ -1,4 +1,4 @@
-import { upsertAgentProfile } from "@audric/accounts";
+import { setAgentServiceFields } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { submitSponsoredTx } from "@/lib/agent/sponsored";
 import { openAiError } from "@/lib/api/keys";
@@ -59,11 +59,11 @@ export async function POST(request: Request) {
   });
   if (res.ok) {
     if (res.meta?.kind === "service") {
-      await upsertAgentProfile({
-        address,
+      await setAgentServiceFields(address, {
+        // The on-chain update just set these → write exactly (null clears).
         mcpEndpoint: (res.meta.mcpEndpoint as string | null) ?? null,
         paymentMethods: (res.meta.paymentMethods as string[] | null) ?? null,
-        // null = no change (preserve); a string = the new declared price.
+        // Off-chain price: null in meta = preserve; a string = the new price.
         priceUsdc: (res.meta.priceUsdc as string | null) ?? undefined,
       });
     }

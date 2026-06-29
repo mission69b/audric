@@ -122,6 +122,42 @@ export async function setAgentProfileFields(
     });
 }
 
+/** Write the service fields right after an on-chain `update` (instant, no cron
+ *  lag). `mcpEndpoint` + `paymentMethods` are the new on-chain truth → written
+ *  EXACTLY (null/[] clears them — fixes "can't clear an endpoint"). `priceUsdc`
+ *  is off-chain → written only when provided (undefined = preserve). */
+export async function setAgentServiceFields(
+  address: string,
+  fields: {
+    mcpEndpoint?: string | null;
+    paymentMethods?: string[] | null;
+    priceUsdc?: string;
+  }
+): Promise<void> {
+  const now = new Date();
+  await db
+    .insert(agentProfile)
+    .values({
+      address,
+      name: defaultAgentName(address),
+      mcpEndpoint: fields.mcpEndpoint ?? null,
+      paymentMethods: fields.paymentMethods ?? null,
+      priceUsdc: fields.priceUsdc ?? null,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: agentProfile.address,
+      set: {
+        // On-chain truth — always written (null/[] clears).
+        mcpEndpoint: fields.mcpEndpoint ?? null,
+        paymentMethods: fields.paymentMethods ?? null,
+        // Off-chain — preserve unless explicitly provided.
+        ...(fields.priceUsdc !== undefined ? { priceUsdc: fields.priceUsdc } : {}),
+        updatedAt: now,
+      },
+    });
+}
+
 /** Agents related to `owner`: confirmed-owned + awaiting this owner's confirm.
  *  Powers the console "My agents" surface (gate 8b). */
 export async function listAgentsForOwner(owner: string): Promise<{
