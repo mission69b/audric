@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/ui/badge";
 
 // Public Agent ID profile (gate 8a). Reads /v1/agents/:address (ERC-8004
@@ -14,6 +15,7 @@ type Profile = {
   address: string;
   owner?: string;
   metadataUri?: string;
+  createdAt?: string;
   registrations?: { agentId?: number; agentRegistry?: string }[];
 };
 
@@ -72,16 +74,11 @@ export default async function AgentProfilePage({
       </Link>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        {profile.image && (
-          // biome-ignore lint/performance/noImgElement: external agent avatar URL
-          <img
-            alt=""
-            className="size-12 rounded-full border border-border/50 object-cover"
-            height={48}
-            src={profile.image}
-            width={48}
-          />
-        )}
+        <AgentAvatar
+          address={profile.address}
+          imageUrl={profile.image}
+          size={48}
+        />
         <h1 className="font-semibold text-3xl text-foreground tracking-tight">
           {profile.name}
         </h1>
@@ -109,6 +106,18 @@ export default async function AgentProfilePage({
         <Field
           label="Agent ID"
           value={numericId == null ? "—" : `#${numericId}`}
+        />
+        <Field
+          label="Registered"
+          value={
+            profile.createdAt
+              ? new Date(profile.createdAt).toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
+              : "—"
+          }
         />
         <Field label="Registry" value="Sui mainnet · agent_id::registry" />
       </dl>

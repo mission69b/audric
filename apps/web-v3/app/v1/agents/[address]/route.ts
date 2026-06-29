@@ -32,6 +32,7 @@ export async function GET(
     address: profile.address,
     owner: profile.owner ?? undefined,
     metadataUri: profile.metadataUri ?? undefined,
+    createdAt: profile.createdAt,
     registrations: [
       {
         agentId: profile.numericId ?? undefined,

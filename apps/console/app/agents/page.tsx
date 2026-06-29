@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/ui/badge";
 
 // Public Agent ID directory list (gate 8a). Reads /v1/agents (api.t2000.ai)
@@ -73,18 +74,11 @@ export default async function AgentsPage({
               key={a.address}
             >
               <div className="flex min-w-0 items-center gap-3">
-                {a.imageUrl ? (
-                  // biome-ignore lint/performance/noImgElement: external agent avatar URL
-                  <img
-                    alt=""
-                    className="size-9 shrink-0 rounded-full border border-border/50 object-cover"
-                    height={36}
-                    src={a.imageUrl}
-                    width={36}
-                  />
-                ) : (
-                  <div className="size-9 shrink-0 rounded-full border border-border/50 bg-muted/30" />
-                )}
+                <AgentAvatar
+                  address={a.address}
+                  imageUrl={a.imageUrl}
+                  size={36}
+                />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-foreground">
