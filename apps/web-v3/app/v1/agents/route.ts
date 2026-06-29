@@ -23,6 +23,11 @@ export async function GET(request: Request) {
       imageUrl: a.imageUrl,
       owner: a.owner,
       active: a.active,
+      // Directory columns (8004scan-style): service type + x402 support.
+      service: a.mcpEndpoint ? "MCP" : null,
+      x402: Array.isArray(a.paymentMethods)
+        ? a.paymentMethods.includes("x402")
+        : false,
       createdAt: a.createdAt,
     })),
   });

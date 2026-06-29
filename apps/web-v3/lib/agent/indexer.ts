@@ -27,6 +27,8 @@ type AgentRecordJson = {
   pending_owner?: string | null;
   active?: boolean;
   metadata_uri?: string | null;
+  mcp_endpoint?: string | null;
+  payment_methods?: string[] | null;
 };
 
 function grpcClient(): SuiGrpcClient {
@@ -75,6 +77,10 @@ export async function reconcileAgentDirectory(): Promise<{ synced: number }> {
           pendingOwner: rec.pending_owner ?? null,
           active: rec.active !== false,
           metadataUri: rec.metadata_uri ?? null,
+          mcpEndpoint: rec.mcp_endpoint ?? null,
+          paymentMethods: Array.isArray(rec.payment_methods)
+            ? rec.payment_methods
+            : null,
           // The cron reads full chain state → null clears (e.g. pendingOwner
           // after a confirm).
           authoritative: true,

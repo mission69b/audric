@@ -32,6 +32,8 @@ export async function GET(
     address: profile.address,
     owner: profile.owner ?? undefined,
     metadataUri: profile.metadataUri ?? undefined,
+    mcpEndpoint: profile.mcpEndpoint ?? undefined,
+    paymentMethods: profile.paymentMethods ?? undefined,
     createdAt: profile.createdAt,
     registrations: [
       {

@@ -4,6 +4,7 @@ import {
   boolean,
   index,
   integer,
+  json,
   pgTable,
   text,
   timestamp,
@@ -226,6 +227,10 @@ export const agentProfile = pgTable(
     displayName: text("displayName"),
     imageUrl: text("imageUrl"),
     description: text("description"),
+    // Synced from chain by the cron (directory columns): the agent's MCP service
+    // endpoint + its declared payment methods (e.g. ["x402"]) → Service / x402.
+    mcpEndpoint: text("mcpEndpoint"),
+    paymentMethods: json("paymentMethods").$type<string[]>(),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

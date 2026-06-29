@@ -38,6 +38,8 @@ export async function upsertAgentProfile(opts: {
   pendingOwner?: string | null;
   active?: boolean;
   metadataUri?: string | null;
+  mcpEndpoint?: string | null;
+  paymentMethods?: string[] | null;
   /** When true (the cron, which reads full chain state), null values CLEAR the
    *  field (e.g. pendingOwner cleared after a confirm). Write-through omits it,
    *  so a bare touch never clobbers. */
@@ -59,6 +61,8 @@ export async function upsertAgentProfile(opts: {
       pendingOwner: opts.pendingOwner ?? null,
       active: opts.active ?? true,
       metadataUri: opts.metadataUri ?? null,
+      mcpEndpoint: opts.mcpEndpoint ?? null,
+      paymentMethods: opts.paymentMethods ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -69,6 +73,8 @@ export async function upsertAgentProfile(opts: {
         pendingOwner: pick(opts.pendingOwner),
         active: opts.active ?? undefined,
         metadataUri: pick(opts.metadataUri),
+        mcpEndpoint: pick(opts.mcpEndpoint),
+        paymentMethods: pick(opts.paymentMethods),
         updatedAt: now,
       },
     });
