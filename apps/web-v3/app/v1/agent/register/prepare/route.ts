@@ -74,7 +74,12 @@ export async function POST(request: Request) {
       "build_failed"
     );
   }
+  // Idempotent: already on-chain → nothing to sign.
+  if (prepared.alreadyRegistered) {
+    return Response.json({ alreadyRegistered: true });
+  }
   return Response.json({
+    alreadyRegistered: false,
     regNonce: prepared.regNonce,
     txBytes: prepared.txBytes,
   });

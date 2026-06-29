@@ -59,8 +59,15 @@ function makeGrpcClient(): SuiGrpcClient {
 }
 
 export type PrepareResult =
-  | { ok: true; regNonce: string; txBytes: string }
+  | { ok: true; alreadyRegistered: false; regNonce: string; txBytes: string }
+  | { ok: true; alreadyRegistered: true }
   | { ok: false; reason: "unconfigured" | "build_failed" };
+
+/** The gRPC `build()` resolves via simulation, so a re-register surfaces the
+ *  `EAlreadyRegistered` (abort code 0) abort HERE, at prepare — not submit. */
+function isAlreadyRegisteredError(message: string): boolean {
+  return /abort code: 0\b/.test(message) && /registry::register/.test(message);
+}
 
 /**
  * Build the sponsored register tx for `address` and stash the bytes under a
@@ -101,8 +108,13 @@ export async function prepareSponsoredRegister(opts: {
       JSON.stringify({ address: opts.address, txBytes }),
       { EX: REG_TTL_SECONDS }
     );
-    return { ok: true, regNonce, txBytes };
-  } catch {
+    return { ok: true, alreadyRegistered: false, regNonce, txBytes };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Idempotent: a re-register aborts at build-time simulation.
+    if (isAlreadyRegisteredError(msg)) {
+      return { ok: true, alreadyRegistered: true };
+    }
     return { ok: false, reason: "build_failed" };
   }
 }
@@ -174,9 +186,9 @@ export async function submitSponsoredRegister(opts: {
         typeof errObj?.message === "string"
           ? errObj.message
           : "transaction failed";
-      // Double-register aborts with EAlreadyRegistered (code 0) in `registry`
+      // Race: registered between prepare + submit → EAlreadyRegistered (code 0)
       // — treat as idempotent success (the identity already exists).
-      if (errObj?.$kind === "MoveAbort" && /\b0\b/.test(errMsg)) {
+      if (errObj?.$kind === "MoveAbort") {
         return { ok: true, digest: txn.digest, alreadyRegistered: true };
       }
       return { ok: false, reason: "failed", error: errMsg };
