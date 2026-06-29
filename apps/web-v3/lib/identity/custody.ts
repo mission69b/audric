@@ -1,7 +1,7 @@
 import "server-only";
 
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
@@ -48,12 +48,44 @@ function leafName(label: string): string {
 }
 
 function makeClients() {
-  const suiClient = new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl(NETWORK),
-    network: NETWORK,
-  });
+  // gRPC (the migrated transport — JSON-RPC fullnode sunsets 2026-07-31).
+  // SuinsClient accepts any `ClientWithCoreApi`, so the gRPC client serves both
+  // building the leaf tx and executing via `core.*`.
+  const baseUrl =
+    NETWORK === "testnet"
+      ? "https://fullnode.testnet.sui.io"
+      : "https://fullnode.mainnet.sui.io";
+  const suiClient = new SuiGrpcClient({ baseUrl, network: NETWORK });
   const suinsClient = new SuinsClient({ client: suiClient, network: NETWORK });
   return { suiClient, suinsClient };
+}
+
+/** Sign `tx` with the custody key + submit via the unified core API
+ *  (transport-agnostic). Returns the digest; throws on a reverted effect. */
+async function signAndSubmit(
+  suiClient: SuiGrpcClient,
+  keypair: Ed25519Keypair,
+  tx: Transaction
+): Promise<string> {
+  tx.setSender(keypair.toSuiAddress());
+  const bytes = await tx.build({ client: suiClient });
+  const { signature } = await keypair.signTransaction(bytes);
+  const result = await suiClient.core.executeTransaction({
+    transaction: bytes,
+    signatures: [signature],
+    include: { effects: true },
+  });
+  const txn =
+    result.$kind === "Transaction"
+      ? result.Transaction
+      : result.FailedTransaction;
+  await suiClient.core.waitForTransaction({ digest: txn.digest });
+  if (!txn.effects?.status?.success) {
+    throw new Error(
+      `Leaf tx reverted: ${txn.effects?.status?.error ?? "unknown"}`
+    );
+  }
+  return txn.digest;
 }
 
 /**
@@ -93,17 +125,7 @@ export async function setLeafHandle({
     targetAddress: normalizeSuiAddress(targetAddress),
   });
 
-  const result = await suiClient.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  if (result.effects?.status?.status !== "success") {
-    throw new Error(
-      `Leaf mint reverted: ${result.effects?.status?.error ?? "unknown"}`
-    );
-  }
-  return result.digest;
+  return await signAndSubmit(suiClient, keypair, tx);
 }
 
 /** Best-effort revoke of a leaf (rollback when the DB write loses a race). */
@@ -119,8 +141,6 @@ export async function revokeLeafHandle(label: string): Promise<void> {
     parentNft: AUDRIC_PARENT_NFT_ID,
     name: leafName(label),
   });
-  await suiClient.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-  });
+  // Best-effort rollback — swallow failures (the caller already errored).
+  await signAndSubmit(suiClient, keypair, tx).catch(() => undefined);
 }
