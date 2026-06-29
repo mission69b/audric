@@ -82,6 +82,41 @@ export async function checkApiRateLimit(keyId: string): Promise<boolean> {
   }
 }
 
+// Per-IP cap for the unauthenticated agent endpoints (/v1/agent/*). They're
+// individually guarded (topup needs a real on-chain deposit, keys needs a
+// valid signature + funded account + single-use nonce), but topup amplifies
+// into GraphQL reads, so a per-IP cap blunts spam. Fails OPEN (Redis down /
+// no IP → never block legit traffic).
+const AGENT_IP_RPM = 30;
+
+export async function checkAgentIpRateLimit(
+  ip: string | undefined
+): Promise<boolean> {
+  if (!ip) {
+    return true;
+  }
+  const redis = getRedisClient();
+  if (!redis?.isReady) {
+    return true;
+  }
+  try {
+    const key = `agent-ip-rpm:${ip}`;
+    const [count] = await redis.multi().incr(key).expire(key, 60, "NX").exec();
+    return !(typeof count === "number" && count > AGENT_IP_RPM);
+  } catch {
+    return true;
+  }
+}
+
+/** Best-effort client IP from the standard proxy headers (Vercel sets both). */
+export function clientIp(request: Request): string | undefined {
+  const fwd = request.headers.get("x-forwarded-for");
+  if (fwd) {
+    return fwd.split(",")[0]?.trim() || undefined;
+  }
+  return request.headers.get("x-real-ip") ?? undefined;
+}
+
 export async function checkIpRateLimit(ip: string | undefined) {
   if (!isProductionEnvironment || !ip) {
     return;

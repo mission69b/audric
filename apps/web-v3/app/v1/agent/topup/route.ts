@@ -5,6 +5,7 @@ import {
   recordStablecoinTopup,
   upsertUser,
 } from "@/lib/db/queries";
+import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
 // GET /v1/agent/topup → { treasury } — the server-authoritative wallet a client
 // sends USDC/USDsui to before calling POST (so the CLI/SDK never hardcodes it).
@@ -20,6 +21,15 @@ export function GET() {
 // also CREATES the agent account (upsert) on first fund — an account is born
 // from a real payment (no free farming).
 export async function POST(request: Request) {
+  if (!(await checkAgentIpRateLimit(clientIp(request)))) {
+    return openAiError(
+      429,
+      "Too many requests — slow down.",
+      "rate_limit_error",
+      "rate_limit_exceeded"
+    );
+  }
+
   let address: string;
   let digest: string;
   try {

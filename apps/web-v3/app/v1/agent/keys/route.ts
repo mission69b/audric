@@ -7,6 +7,7 @@ import {
 import { consumeNonce } from "@/lib/agent/nonce";
 import { canUseApi, generateApiKey, openAiError } from "@/lib/api/keys";
 import { getCreditBalanceMicros, getUserById } from "@/lib/db/queries";
+import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
 // POST /v1/agent/keys { address, nonce, signature } → { key, prefix }
 // Agent ID Phase A — mint an API key for a keypair agent, headless. Proves
@@ -14,6 +15,15 @@ import { getCreditBalanceMicros, getUserById } from "@/lib/db/queries";
 // SAME credit gate as the console (must be funded first via /v1/agent/topup).
 // The secret is returned ONCE.
 export async function POST(request: Request) {
+  if (!(await checkAgentIpRateLimit(clientIp(request)))) {
+    return openAiError(
+      429,
+      "Too many requests — slow down.",
+      "rate_limit_error",
+      "rate_limit_exceeded"
+    );
+  }
+
   let address: string;
   let nonce: string;
   let signature: string;
