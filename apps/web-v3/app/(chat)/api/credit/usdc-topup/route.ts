@@ -1,5 +1,10 @@
 import { auth } from "@/app/(auth)/auth";
-import { getTreasuryAddress, recordStablecoinTopup } from "@/lib/db/queries";
+import {
+  getTreasuryAddress,
+  recordStablecoinTopup,
+  rewardReferralOnPaidAction,
+} from "@/lib/db/queries";
+import { REFERRAL_TOPUP_FLOOR_USD } from "@/lib/referral/constants";
 import { isCreditConfigured } from "@/lib/stripe";
 
 // USDC → credit top-up (the crypto-native funding rail, shared with the t2000
@@ -56,6 +61,17 @@ export async function POST(request: Request) {
         status: result.code === "not_found" ? 409 : 400,
       }
     );
+  }
+
+  // A qualifying stablecoin top-up is a paid action → reward a pending referral
+  // (idempotent + non-fatal, mirroring the Stripe-webhook topup path; USDC
+  // bypasses Stripe, so the reward must be triggered here).
+  if (result.amountUsd >= REFERRAL_TOPUP_FLOOR_USD) {
+    try {
+      await rewardReferralOnPaidAction(session.user.id);
+    } catch (e) {
+      console.error("[usdc-topup] referral reward failed", e);
+    }
   }
 
   return Response.json({
