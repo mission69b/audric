@@ -69,10 +69,16 @@ export type SponsoredPrepareResult =
  * under a single-use nonce. The gRPC `build()` resolves via simulation, so a tx
  * that would Move-abort surfaces HERE (build_failed + message) — callers can
  * classify the abort (e.g. register → already-registered).
+ *
+ * `meta` is opaque server-set context persisted alongside the bytes and handed
+ * back on submit — used for write-through after execution (e.g. the service
+ * declaration's mcpEndpoint/paymentMethods) WITHOUT trusting client-supplied
+ * fields at submit time.
  */
 export async function prepareSponsoredTx(
   actor: string,
-  tx: Transaction
+  tx: Transaction,
+  meta?: Record<string, unknown>
 ): Promise<SponsoredPrepareResult> {
   const sponsor = loadSponsorKeypair();
   if (!sponsor) {
@@ -89,9 +95,11 @@ export async function prepareSponsoredTx(
     tx.setGasBudget(SPONSORED_GAS_BUDGET);
     const txBytes = toBase64(await tx.build({ client }));
     const nonce = randomBytes(24).toString("base64url");
-    await redis.set(`${PREFIX}${nonce}`, JSON.stringify({ actor, txBytes }), {
-      EX: TTL_SECONDS,
-    });
+    await redis.set(
+      `${PREFIX}${nonce}`,
+      JSON.stringify({ actor, txBytes, meta: meta ?? null }),
+      { EX: TTL_SECONDS }
+    );
     return { ok: true, nonce, txBytes };
   } catch (e) {
     return {
@@ -103,7 +111,7 @@ export async function prepareSponsoredTx(
 }
 
 export type SponsoredSubmitResult =
-  | { ok: true; digest: string }
+  | { ok: true; digest: string; meta: Record<string, unknown> | null }
   | { ok: false; reason: "unconfigured" }
   | { ok: false; reason: "expired" }
   | { ok: false; reason: "aborted"; digest: string; message: string }
@@ -133,7 +141,11 @@ export async function submitSponsoredTx(opts: {
   if (!raw) {
     return { ok: false, reason: "expired" };
   }
-  let stored: { actor: string; txBytes: string };
+  let stored: {
+    actor: string;
+    txBytes: string;
+    meta?: Record<string, unknown> | null;
+  };
   try {
     stored = JSON.parse(raw);
   } catch {
@@ -173,7 +185,7 @@ export async function submitSponsoredTx(opts: {
       return { ok: false, reason: "failed", message };
     }
     await client.core.waitForTransaction({ digest: txn.digest });
-    return { ok: true, digest: txn.digest };
+    return { ok: true, digest: txn.digest, meta: stored.meta ?? null };
   } catch (e) {
     return {
       ok: false,

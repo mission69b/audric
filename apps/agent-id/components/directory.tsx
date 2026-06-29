@@ -30,38 +30,71 @@ export function Directory({
   pageSize: number;
 }) {
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "services" | "x402">("all");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) {
-      return agents;
-    }
-    return agents.filter(
-      (a) =>
+    return agents.filter((a) => {
+      if (filter === "services" && !a.service) {
+        return false;
+      }
+      if (filter === "x402" && !a.x402) {
+        return false;
+      }
+      if (!q) {
+        return true;
+      }
+      return (
         a.name.toLowerCase().includes(q) ||
         a.address.toLowerCase().includes(q) ||
         (a.numericId != null && `#${a.numericId}`.includes(q))
-    );
-  }, [agents, query]);
+      );
+    });
+  }, [agents, query, filter]);
 
   const hasPrev = offset > 0;
   const hasNext = offset + pageSize < total;
+  const filtering = Boolean(query) || filter !== "all";
+
+  const FILTERS: { id: typeof filter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "services", label: "Services" },
+    { id: "x402", label: "x402" },
+  ];
 
   return (
     <>
-      <input
-        className="mt-8 w-full rounded-xl border border-border/60 bg-card/40 px-4 py-2.5 text-foreground text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring"
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by name, address, or #id…"
-        type="search"
-        value={query}
-      />
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+          className="w-full flex-1 rounded-xl border border-border/60 bg-card/40 px-4 py-2.5 text-foreground text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring"
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, address, or #id…"
+          type="search"
+          value={query}
+        />
+        <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/60 bg-card/40 p-1">
+          {FILTERS.map((f) => (
+            <button
+              className={`rounded-lg px-3 py-1.5 font-medium text-xs transition-colors ${
+                filter === f.id
+                  ? "bg-secondary text-secondary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              type="button"
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-4 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
         {filtered.length === 0 ? (
           <div className="p-6 text-muted-foreground text-sm">
-            {query
-              ? "No agents match your search."
+            {filtering
+              ? "No agents match your filter."
               : "No agents registered yet."}
           </div>
         ) : (
@@ -106,7 +139,7 @@ export function Directory({
         )}
       </div>
 
-      {(hasPrev || hasNext) && !query && (
+      {(hasPrev || hasNext) && !filtering && (
         <div className="mt-6 flex items-center justify-between text-sm">
           {hasPrev ? (
             <Link
