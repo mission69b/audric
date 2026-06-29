@@ -191,3 +191,41 @@ export const apiUsageEvent = pgTable(
 );
 
 export type ApiUsageEvent = InferSelectModel<typeof apiUsageEvent>;
+
+// Agent ID directory index (SPEC_AGENT_ID B.1 gate 6 — the "default profile"
+// layer). A lightweight, queryable cache of on-chain `agent_id::registry`
+// identities so agents are browsable/searchable (the Sui-native 8004scan) WITHOUT
+// reading the chain per view. Keyed by the agent's Sui address (= the identity).
+// Write-through on register (instant for agents onboarded via us); a poll-cron
+// backfills numericId + third-party registrations + active/owner (fast-follow).
+// Rich/owned profile (services, image) lives off-chain via metadataUri (Walrus,
+// gate 8); this table holds only the cheap, directory-level fields.
+export const agentProfile = pgTable(
+  "AgentProfile",
+  {
+    /** The agent's Sui address — the canonical identity + primary key. */
+    address: text("address").primaryKey().notNull(),
+    /** ERC-8004-style numeric id (from the registry counter). Null until the
+     *  cron decodes the AgentRegistered event (write-through doesn't have it). */
+    numericId: integer("numericId"),
+    /** Display name — defaults to a generated `agent-<6hex>`; the agent can
+     *  override via its owned profile (gate 8). */
+    name: text("name").notNull(),
+    /** The confirmed owner Passport (set by OwnerLinked); null = autonomous. */
+    owner: text("owner"),
+    /** Off-chain rich profile pointer (registration-v1 JSON on Walrus). */
+    metadataUri: text("metadataUri"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    activeCreatedIdx: index("AgentProfile_active_createdAt_idx").on(
+      t.active,
+      t.createdAt
+    ),
+    ownerIdx: index("AgentProfile_owner_idx").on(t.owner),
+  })
+);
+
+export type AgentProfile = InferSelectModel<typeof agentProfile>;

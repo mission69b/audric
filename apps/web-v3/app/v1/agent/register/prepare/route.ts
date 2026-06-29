@@ -1,3 +1,4 @@
+import { upsertAgentProfile } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { prepareSponsoredRegister } from "@/lib/agent/register";
 import { openAiError } from "@/lib/api/keys";
@@ -74,8 +75,10 @@ export async function POST(request: Request) {
       "build_failed"
     );
   }
-  // Idempotent: already on-chain → nothing to sign.
+  // Idempotent: already on-chain → nothing to sign. Backfill the directory
+  // index (covers agents registered before the index existed / via 3rd parties).
   if (prepared.alreadyRegistered) {
+    await upsertAgentProfile({ address }).catch(() => undefined);
     return Response.json({ alreadyRegistered: true });
   }
   return Response.json({

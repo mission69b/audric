@@ -3,10 +3,13 @@ export { canUseApi, generateApiKey, hashKey, isPaidTier } from "./keys";
 export {
   acceptClosedLoopTerms,
   createApiKey,
+  defaultAgentName,
+  getAgentProfile,
   getApiKeyByHash,
   getApiUsageByModel,
   getCreditBalanceMicros,
   getUserById,
+  listAgentProfiles,
   listApiKeys,
   listCreditLedger,
   recordApiUsage,
@@ -16,8 +19,11 @@ export {
   setDefaultPaymentMethodId,
   setStripeCustomerId,
   touchApiKey,
+  upsertAgentProfile,
 } from "./queries";
 export {
+  type AgentProfile,
+  agentProfile,
   type ApiKey,
   type ApiUsageEvent,
   apiKey,

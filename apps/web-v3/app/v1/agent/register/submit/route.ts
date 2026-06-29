@@ -1,3 +1,4 @@
+import { upsertAgentProfile } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { submitSponsoredRegister } from "@/lib/agent/register";
 import { openAiError } from "@/lib/api/keys";
@@ -81,6 +82,10 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+  // Write-through into the directory index (best-effort — the on-chain
+  // register already succeeded; a DB hiccup must not fail the response).
+  await upsertAgentProfile({ address }).catch(() => undefined);
+
   return Response.json({
     registered: true,
     alreadyRegistered: result.alreadyRegistered,

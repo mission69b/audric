@@ -57,6 +57,13 @@
       "when": 1782649479262,
       "tag": "0007_messy_owl",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782732062760,
+      "tag": "0008_soft_strong_guy",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,8 @@ import "server-only";
 import { and, count, desc, eq, gte, isNull, sum } from "drizzle-orm";
 import { db } from "./db";
 import {
+  type AgentProfile,
+  agentProfile,
   type ApiKey,
   apiKey,
   apiUsageEvent,
@@ -16,6 +18,77 @@ import {
 export async function getUserById(id: string): Promise<User | undefined> {
   const [row] = await db.select().from(user).where(eq(user.id, id)).limit(1);
   return row;
+}
+
+// ── Agent ID directory (gate 6) ──────────────────────────────────────────────
+
+/** A generated default display name from the address (e.g. `agent-3948c`). The
+ *  agent overrides it via its owned profile (gate 8). */
+export function defaultAgentName(address: string): string {
+  return `agent-${address.replace(/^0x/, "").slice(0, 6)}`;
+}
+
+/** Write-through upsert on register. Sets a generated name on first insert;
+ *  re-registers/refreshes are a no-op-ish touch (name preserved). The cron
+ *  later backfills numericId/owner/active. */
+export async function upsertAgentProfile(opts: {
+  address: string;
+  numericId?: number | null;
+  owner?: string | null;
+  active?: boolean;
+}): Promise<void> {
+  const now = new Date();
+  await db
+    .insert(agentProfile)
+    .values({
+      address: opts.address,
+      name: defaultAgentName(opts.address),
+      numericId: opts.numericId ?? null,
+      owner: opts.owner ?? null,
+      active: opts.active ?? true,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: agentProfile.address,
+      // Only overwrite fields we actually have (don't clobber a name/numericId
+      // with null on a re-touch).
+      set: {
+        numericId: opts.numericId ?? undefined,
+        owner: opts.owner ?? undefined,
+        active: opts.active ?? undefined,
+        updatedAt: now,
+      },
+    });
+}
+
+export async function getAgentProfile(
+  address: string
+): Promise<AgentProfile | undefined> {
+  const [row] = await db
+    .select()
+    .from(agentProfile)
+    .where(eq(agentProfile.address, address))
+    .limit(1);
+  return row;
+}
+
+/** Browse the directory, newest first (paginated). */
+export async function listAgentProfiles(opts?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ agents: AgentProfile[]; total: number }> {
+  const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
+  const offset = Math.max(opts?.offset ?? 0, 0);
+  const [rows, [totalRow]] = await Promise.all([
+    db
+      .select()
+      .from(agentProfile)
+      .orderBy(desc(agentProfile.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ value: count() }).from(agentProfile),
+  ]);
+  return { agents: rows, total: totalRow?.value ?? 0 };
 }
 
 // ── Credit rail (Phase 5) ────────────────────────────────────────────────────

@@ -1,0 +1,27 @@
+import { listAgentProfiles } from "@audric/accounts";
+
+// GET /v1/agents?limit&offset → the public Agent ID directory (newest first).
+// Agent ID B.1 gate 6 — the browsable index (our Sui-native 8004scan list).
+// Lightweight, directory-level fields only; rich profile is per-agent (gate 8).
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const limit = Number.parseInt(url.searchParams.get("limit") ?? "50", 10);
+  const offset = Number.parseInt(url.searchParams.get("offset") ?? "0", 10);
+
+  const { agents, total } = await listAgentProfiles({
+    limit: Number.isNaN(limit) ? 50 : limit,
+    offset: Number.isNaN(offset) ? 0 : offset,
+  });
+
+  return Response.json({
+    total,
+    agents: agents.map((a) => ({
+      address: a.address,
+      numericId: a.numericId,
+      name: a.name,
+      owner: a.owner,
+      active: a.active,
+      createdAt: a.createdAt,
+    })),
+  });
+}
