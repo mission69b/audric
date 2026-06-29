@@ -60,6 +60,11 @@ const serverSchema = z.object({
   // still works). The parent-NFT custody key (Bech32 suiprivkey1…) signs the
   // gas-paid SuiNS leaf-subname mint/revoke. Server-only.
   AUDRIC_PARENT_NFT_PRIVATE_KEY: optionalString,
+  // Agent ID handles (<label>.agent-id.sui) — OPTIONAL: unset → agent handle
+  // minting off (the /v1/agent/handle route 503s). The agent-id parent-NFT
+  // custody key (Bech32 suiprivkey1…, address 0x6988…) signs + gas-pays the
+  // SuiNS leaf-subname mint. Server-only. DISTINCT from the @audric parent key.
+  AGENT_ID_PARENT_NFT_PRIVATE_KEY: optionalString,
   // web_search titles — OPTIONAL: a direct Perplexity API key. When set,
   // web_search calls Perplexity directly to get `search_results` (title + url +
   // date) so source rows show real page titles. Unset → falls back to the
@@ -122,6 +127,7 @@ const runtimeEnv = {
   STRIPE_PRICE_PRO: process.env.STRIPE_PRICE_PRO,
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
+  AGENT_ID_PARENT_NFT_PRIVATE_KEY: process.env.AGENT_ID_PARENT_NFT_PRIVATE_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,

@@ -15,6 +15,16 @@ export function agentKeyChallengeMessage(nonce: string): string {
   return `t2000-agent-keys:${nonce}`;
 }
 
+/** The message to sign to claim `<label>.agent-id.sui`. Bound to BOTH the nonce
+ *  AND the label, so a captured signature can't be redirected to a different
+ *  handle (or to key-minting). */
+export function agentHandleChallengeMessage(
+  nonce: string,
+  label: string
+): string {
+  return `t2000-agent-handle:${nonce}:${label}`;
+}
+
 /** Verify a Sui personal-message signature proves ownership of `address`. */
 export async function verifyAgentSignature(opts: {
   address: string;
