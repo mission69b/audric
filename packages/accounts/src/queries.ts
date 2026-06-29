@@ -36,6 +36,7 @@ export async function upsertAgentProfile(opts: {
   numericId?: number | null;
   owner?: string | null;
   active?: boolean;
+  metadataUri?: string | null;
 }): Promise<void> {
   const now = new Date();
   await db
@@ -46,16 +47,18 @@ export async function upsertAgentProfile(opts: {
       numericId: opts.numericId ?? null,
       owner: opts.owner ?? null,
       active: opts.active ?? true,
+      metadataUri: opts.metadataUri ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: agentProfile.address,
-      // Only overwrite fields we actually have (don't clobber a name/numericId
-      // with null on a re-touch).
+      // Only overwrite fields we actually have (don't clobber name/numericId
+      // with null on a bare write-through touch).
       set: {
         numericId: opts.numericId ?? undefined,
         owner: opts.owner ?? undefined,
         active: opts.active ?? undefined,
+        metadataUri: opts.metadataUri ?? undefined,
         updatedAt: now,
       },
     });

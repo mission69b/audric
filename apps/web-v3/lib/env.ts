@@ -65,6 +65,10 @@ const serverSchema = z.object({
   // custody key (Bech32 suiprivkey1…, address 0x6988…) signs + gas-pays the
   // SuiNS leaf-subname mint. Server-only. DISTINCT from the @audric parent key.
   AGENT_ID_PARENT_NFT_PRIVATE_KEY: optionalString,
+  // Vercel Cron auth — OPTIONAL. When set, Vercel sends it as a Bearer token on
+  // cron invocations (e.g. the agent-directory reconcile) and the route enforces
+  // it. Unset → the cron route runs unguarded (fine for dev; set it in prod).
+  CRON_SECRET: optionalString,
   // web_search titles — OPTIONAL: a direct Perplexity API key. When set,
   // web_search calls Perplexity directly to get `search_results` (title + url +
   // date) so source rows show real page titles. Unset → falls back to the
@@ -128,6 +132,7 @@ const runtimeEnv = {
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
   AUDRIC_PARENT_NFT_PRIVATE_KEY: process.env.AUDRIC_PARENT_NFT_PRIVATE_KEY,
   AGENT_ID_PARENT_NFT_PRIVATE_KEY: process.env.AGENT_ID_PARENT_NFT_PRIVATE_KEY,
+  CRON_SECRET: process.env.CRON_SECRET,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
