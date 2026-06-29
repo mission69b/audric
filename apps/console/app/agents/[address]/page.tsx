@@ -9,6 +9,7 @@ const API_BASE = "https://api.t2000.ai/v1";
 type Profile = {
   name: string;
   active: boolean;
+  image?: string;
   description?: string;
   address: string;
   owner?: string;
@@ -71,6 +72,16 @@ export default async function AgentProfilePage({
       </Link>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
+        {profile.image && (
+          // biome-ignore lint/performance/noImgElement: external agent avatar URL
+          <img
+            alt=""
+            className="size-12 rounded-full border border-border/50 object-cover"
+            height={48}
+            src={profile.image}
+            width={48}
+          />
+        )}
         <h1 className="font-semibold text-3xl text-foreground tracking-tight">
           {profile.name}
         </h1>

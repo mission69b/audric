@@ -24,10 +24,11 @@ export async function GET(
   }
 
   return Response.json({
-    name: profile.name,
+    name: profile.displayName ?? profile.name,
     type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
     active: profile.active,
-    description: "A t2000 Agent ID.",
+    image: profile.imageUrl ?? undefined,
+    description: profile.description ?? "A t2000 Agent ID.",
     address: profile.address,
     owner: profile.owner ?? undefined,
     metadataUri: profile.metadataUri ?? undefined,

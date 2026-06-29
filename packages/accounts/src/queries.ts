@@ -74,6 +74,41 @@ export async function upsertAgentProfile(opts: {
     });
 }
 
+/** Set the editable rich-profile fields (gate 8c). Only provided fields are
+ *  written (undefined = leave as-is; pass null to clear). Auth (agent signature
+ *  or owner session) is enforced by the caller. */
+export async function setAgentProfileFields(
+  address: string,
+  fields: {
+    displayName?: string | null;
+    imageUrl?: string | null;
+    description?: string | null;
+  }
+): Promise<void> {
+  const now = new Date();
+  // Ensure the row exists (an agent may set a profile before the cron indexes
+  // it), then apply only the provided fields.
+  await db
+    .insert(agentProfile)
+    .values({
+      address,
+      name: defaultAgentName(address),
+      displayName: fields.displayName ?? null,
+      imageUrl: fields.imageUrl ?? null,
+      description: fields.description ?? null,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: agentProfile.address,
+      set: {
+        displayName: fields.displayName,
+        imageUrl: fields.imageUrl,
+        description: fields.description,
+        updatedAt: now,
+      },
+    });
+}
+
 /** Agents related to `owner`: confirmed-owned + awaiting this owner's confirm.
  *  Powers the console "My agents" surface (gate 8b). */
 export async function listAgentsForOwner(owner: string): Promise<{

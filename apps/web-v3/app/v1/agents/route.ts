@@ -18,7 +18,9 @@ export async function GET(request: Request) {
     agents: agents.map((a) => ({
       address: a.address,
       numericId: a.numericId,
-      name: a.name,
+      // Effective display name: the agent's chosen name, else the generated one.
+      name: a.displayName ?? a.name,
+      imageUrl: a.imageUrl,
       owner: a.owner,
       active: a.active,
       createdAt: a.createdAt,

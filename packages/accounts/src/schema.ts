@@ -220,6 +220,12 @@ export const agentProfile = pgTable(
     /** Off-chain rich profile pointer (registration-v1 JSON on Walrus). */
     metadataUri: text("metadataUri"),
     active: boolean("active").notNull().default(true),
+    // Editable rich-profile fields (gate 8c — DB-backed "owned profile"). Set by
+    // the agent (signed request) now; owner-editable + Walrus-pinned later (paid).
+    // Identity stays on-chain; this is the convenience presentation layer.
+    displayName: text("displayName"),
+    imageUrl: text("imageUrl"),
+    description: text("description"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

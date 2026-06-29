@@ -10,6 +10,7 @@ type AgentRow = {
   address: string;
   numericId: number | null;
   name: string;
+  imageUrl: string | null;
   owner: string | null;
   active: boolean;
   createdAt: string;
@@ -71,18 +72,34 @@ export default async function AgentsPage({
               href={`/agents/${a.address}`}
               key={a.address}
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">{a.name}</span>
-                  {a.numericId != null && (
-                    <span className="font-mono text-muted-foreground/60 text-xs">
-                      #{a.numericId}
+              <div className="flex min-w-0 items-center gap-3">
+                {a.imageUrl ? (
+                  // biome-ignore lint/performance/noImgElement: external agent avatar URL
+                  <img
+                    alt=""
+                    className="size-9 shrink-0 rounded-full border border-border/50 object-cover"
+                    height={36}
+                    src={a.imageUrl}
+                    width={36}
+                  />
+                ) : (
+                  <div className="size-9 shrink-0 rounded-full border border-border/50 bg-muted/30" />
+                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground">
+                      {a.name}
                     </span>
-                  )}
-                  {!a.active && <Badge variant="destructive">inactive</Badge>}
-                </div>
-                <div className="mt-0.5 font-mono text-muted-foreground text-xs">
-                  {short(a.address)}
+                    {a.numericId != null && (
+                      <span className="font-mono text-muted-foreground/60 text-xs">
+                        #{a.numericId}
+                      </span>
+                    )}
+                    {!a.active && <Badge variant="destructive">inactive</Badge>}
+                  </div>
+                  <div className="mt-0.5 font-mono text-muted-foreground text-xs">
+                    {short(a.address)}
+                  </div>
                 </div>
               </div>
               <div className="shrink-0 text-muted-foreground/60 text-xs">

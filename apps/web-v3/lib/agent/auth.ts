@@ -34,6 +34,11 @@ export function agentHandleReleaseChallengeMessage(
   return `t2000-agent-handle-release:${nonce}:${label}`;
 }
 
+/** The message to sign to edit the agent's (DB-backed) display profile. */
+export function agentProfileChallengeMessage(nonce: string): string {
+  return `t2000-agent-profile:${nonce}`;
+}
+
 /** Verify a Sui personal-message signature proves ownership of `address`. */
 export async function verifyAgentSignature(opts: {
   address: string;

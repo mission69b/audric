@@ -16,6 +16,7 @@ export {
   recordApiUsage,
   recordCredit,
   revokeApiKey,
+  setAgentProfileFields,
   setAutoRecharge,
   setDefaultPaymentMethodId,
   setStripeCustomerId,
