@@ -14,7 +14,10 @@ const TTL_SECONDS = 60 * 60;
 
 let client: ReturnType<typeof createClient> | null = null;
 
-function getClient() {
+/** The shared Redis singleton (rate limits + agent-auth nonces). Null when
+ *  REDIS_URL is unset (callers degrade: rate limits fail-open, agent-auth
+ *  fails-closed). */
+export function getRedisClient() {
   if (!client && process.env.REDIS_URL) {
     client = createClient({ url: process.env.REDIS_URL });
     client.on("error", () => undefined);
@@ -34,7 +37,7 @@ const API_RPM = 120;
 const API_RPM_TTL_SECONDS = 60;
 
 export async function checkApiRateLimit(keyId: string): Promise<boolean> {
-  const redis = getClient();
+  const redis = getRedisClient();
   if (!redis?.isReady) {
     return true;
   }
@@ -56,7 +59,7 @@ export async function checkIpRateLimit(ip: string | undefined) {
     return;
   }
 
-  const redis = getClient();
+  const redis = getRedisClient();
   if (!redis?.isReady) {
     return;
   }
