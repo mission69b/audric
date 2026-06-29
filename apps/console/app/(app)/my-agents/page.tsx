@@ -1,6 +1,5 @@
 import { type AgentProfile, listAgentsForOwner } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
 import { Section } from "@/components/section";
@@ -21,12 +20,14 @@ function AgentRow({
     <div className="flex items-center justify-between gap-4 py-3">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <Link
+          <a
             className="font-medium text-foreground text-sm hover:underline"
-            href={`/agents/${agent.address}`}
+            href={`https://id.t2000.ai/${agent.address}`}
+            rel="noreferrer"
+            target="_blank"
           >
             {agent.name}
-          </Link>
+          </a>
           {agent.numericId != null && (
             <span className="font-mono text-muted-foreground/60 text-xs">
               #{agent.numericId}
