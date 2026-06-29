@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,17 @@ export function BillingSection({
   const [usdcError, setUsdcError] = useState<string | null>(null);
   const [usdcDone, setUsdcDone] = useState<string | null>(null);
   const [usdcAsset, setUsdcAsset] = useState<TopupAsset>("USDC");
+  const [copied, setCopied] = useState(false);
+
+  async function copyAddress() {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable — no-op
+    }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -202,13 +214,22 @@ export function BillingSection({
           Pay with stablecoin (Sui)
         </div>
         <p className="mt-0.5 text-muted-foreground text-xs">
-          Top up gaslessly from your Passport — same balance, no card. Fund your
-          Passport (
-          <span className="font-mono text-foreground/70">
-            {shortAddress(address)}
-          </span>
-          ) with USDC or USDsui on Sui first.
+          Top up gaslessly from your Passport — same balance, no card. Send USDC
+          or USDsui to your Passport on Sui first:
         </p>
+        <button
+          className="mt-2 inline-flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-2.5 py-1.5 font-mono text-foreground/80 text-xs transition-colors hover:bg-muted"
+          onClick={copyAddress}
+          title="Copy your Passport address"
+          type="button"
+        >
+          {shortAddress(address)}
+          {copied ? (
+            <Check className="size-3.5 text-emerald-500" />
+          ) : (
+            <Copy className="size-3.5 text-muted-foreground" />
+          )}
+        </button>
         <div className="mt-3 inline-flex rounded-lg border border-border/50 p-0.5">
           {TOPUP_ASSETS.map((a) => (
             <button
@@ -235,7 +256,7 @@ export function BillingSection({
               size="sm"
               variant="outline"
             >
-              {usdcBusy === amt ? "Confirming…" : `${amt} ${usdcAsset}`}
+              {usdcBusy === amt ? "Confirming…" : `+ ${amt} ${usdcAsset}`}
             </Button>
           ))}
         </div>

@@ -8,11 +8,12 @@
  * tease. Closed-loop terms are accepted at the first top-up (§6b).
  */
 
-import { CheckIcon, XIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
+import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { AddCard } from "@/components/chat/billing/add-card";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,12 @@ function fmtUsd(n: number | null | undefined): string {
   return `$${(Math.floor(n * 100) / 100).toFixed(2)}`;
 }
 
+function shortAddress(address: string): string {
+  return address.length > 12
+    ? `${address.slice(0, 6)}…${address.slice(-4)}`
+    : address;
+}
+
 export default function BillingPage() {
   const router = useRouter();
   const { openUpgrade } = useUpgradeModal();
@@ -92,6 +99,21 @@ export default function BillingPage() {
   const [busy, setBusy] = useState(false);
   const [usdcBusy, setUsdcBusy] = useState<number | null>(null);
   const [usdcAsset, setUsdcAsset] = useState<TopupAsset>("USDC");
+  const [copied, setCopied] = useState(false);
+  const { address } = useZkLogin();
+
+  async function copyAddress() {
+    if (!address) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable — no-op
+    }
+  }
 
   const needsTerms = data?.configured && !data?.acceptedTerms;
 
@@ -246,9 +268,24 @@ export default function BillingPage() {
           Pay with stablecoin (Sui)
         </div>
         <p className="mt-0.5 text-muted-foreground text-xs">
-          Top up gaslessly from your Passport — no card. You sign the transfer;
-          we credit the exact amount received. 1 USDC / USDsui = $1.
+          Top up gaslessly from your Passport — no card. Send USDC or USDsui to
+          your Passport on Sui first:
         </p>
+        {address ? (
+          <button
+            className="mt-2 inline-flex items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-2.5 py-1.5 font-mono text-foreground/80 text-xs transition-colors hover:bg-muted"
+            onClick={copyAddress}
+            title="Copy your Passport address"
+            type="button"
+          >
+            {shortAddress(address)}
+            {copied ? (
+              <CheckIcon className="size-3.5 text-emerald-500" />
+            ) : (
+              <CopyIcon className="size-3.5 text-muted-foreground" />
+            )}
+          </button>
+        ) : null}
         <div className="mt-3 inline-flex rounded-lg border border-border/50 p-0.5">
           {(["USDC", "USDsui"] as TopupAsset[]).map((a) => (
             <button
@@ -276,7 +313,7 @@ export default function BillingPage() {
               type="button"
               variant="outline"
             >
-              {usdcBusy === amt ? "Confirming…" : `${amt} ${usdcAsset}`}
+              {usdcBusy === amt ? "Confirming…" : `+ ${amt} ${usdcAsset}`}
             </Button>
           ))}
         </div>
