@@ -25,6 +25,15 @@ export function agentHandleChallengeMessage(
   return `t2000-agent-handle:${nonce}:${label}`;
 }
 
+/** The message to sign to release (revoke) `<label>.agent-id.sui`. Distinct
+ *  action prefix so a claim signature can't be replayed to release. */
+export function agentHandleReleaseChallengeMessage(
+  nonce: string,
+  label: string
+): string {
+  return `t2000-agent-handle-release:${nonce}:${label}`;
+}
+
 /** Verify a Sui personal-message signature proves ownership of `address`. */
 export async function verifyAgentSignature(opts: {
   address: string;
