@@ -11,11 +11,13 @@ export function ConsoleShell({
   email,
   address,
   balance,
+  handle,
   children,
 }: {
   email: string | null;
   address: string;
   balance: string;
+  handle: string | null;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
@@ -80,6 +82,7 @@ export function ConsoleShell({
               address={address}
               balance={balance}
               email={email}
+              handle={handle}
               onNavigate={handleNavigate}
               onToggle={toggle}
             />
@@ -98,6 +101,7 @@ export function ConsoleShell({
             address={address}
             balance={balance}
             email={email}
+            handle={handle}
             onNavigate={handleNavigate}
             onToggle={toggle}
           />

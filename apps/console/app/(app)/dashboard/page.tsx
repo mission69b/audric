@@ -1,5 +1,6 @@
-import { getCreditBalanceMicros } from "@audric/accounts";
+import { getCreditBalanceMicros, getUserById } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
+import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { QuickstartSection } from "@/components/quickstart-section";
@@ -16,8 +17,12 @@ export default async function OverviewPage() {
   if (!session) {
     redirect("/");
   }
-  const balanceMicros = await getCreditBalanceMicros(session.user.id);
+  const [balanceMicros, user] = await Promise.all([
+    getCreditBalanceMicros(session.user.id),
+    getUserById(session.user.id),
+  ]);
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
+  const handle = user?.username ? displayHandle(user.username) : null;
 
   return (
     <>
@@ -36,12 +41,17 @@ export default async function OverviewPage() {
         </Section>
         <Section>
           <div className="text-muted-foreground text-xs">Passport</div>
-          <div
-            className="mt-1 font-mono text-foreground text-sm"
-            title={session.user.id}
-          >
-            {shortAddress(session.user.id)}
+          <div className="mt-1 font-mono text-foreground text-sm">
+            {handle ?? shortAddress(session.user.id)}
           </div>
+          {handle ? (
+            <div
+              className="mt-0.5 font-mono text-muted-foreground text-xs"
+              title={session.user.id}
+            >
+              {shortAddress(session.user.id)}
+            </div>
+          ) : null}
           {session.user.email ? (
             <div className="mt-0.5 text-muted-foreground text-xs">
               {session.user.email}

@@ -33,12 +33,14 @@ export function Sidebar({
   email,
   address,
   balance,
+  handle,
   onToggle,
   onNavigate,
 }: {
   email: string | null;
   address: string;
   balance: string;
+  handle?: string | null;
   onToggle?: () => void;
   onNavigate?: () => void;
 }) {
@@ -120,9 +122,16 @@ export function Sidebar({
           </div>
         </Link>
         <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
-          <span className="truncate text-sidebar-foreground/70 text-xs">
-            {email ?? shortAddress(address)}
-          </span>
+          <div className="min-w-0 leading-tight">
+            <div className="truncate font-mono text-sidebar-foreground/80 text-xs">
+              {handle ?? shortAddress(address)}
+            </div>
+            {email ? (
+              <div className="truncate text-[11px] text-sidebar-foreground/45">
+                {email}
+              </div>
+            ) : null}
+          </div>
           <button
             className="shrink-0 text-sidebar-foreground/50 transition-colors hover:text-sidebar-accent-foreground"
             onClick={signOut}
