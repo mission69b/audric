@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import { getRedisClient } from "@/lib/ratelimit";
+import { getReadyRedisClient } from "@/lib/ratelimit";
 
 // Single-use challenge nonces for agent (keypair) auth — Agent ID Phase A.
 // A keypair proves it owns its address by signing a server-issued nonce; the
@@ -17,8 +17,8 @@ const NONCE_PREFIX = "agent-nonce:";
 export async function issueNonce(
   address: string
 ): Promise<{ nonce: string; expiresAt: number } | null> {
-  const redis = getRedisClient();
-  if (!redis?.isReady) {
+  const redis = await getReadyRedisClient();
+  if (!redis) {
     return null;
   }
   const nonce = randomBytes(24).toString("base64url");
@@ -37,8 +37,8 @@ export async function consumeNonce(
   nonce: string,
   address: string
 ): Promise<boolean> {
-  const redis = getRedisClient();
-  if (!redis?.isReady) {
+  const redis = await getReadyRedisClient();
+  if (!redis) {
     return false;
   }
   const stored = await redis.getDel(`${NONCE_PREFIX}${nonce}`);

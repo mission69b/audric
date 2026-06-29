@@ -13,19 +13,47 @@ const MAX_MESSAGES = 5;
 const TTL_SECONDS = 60 * 60;
 
 let client: ReturnType<typeof createClient> | null = null;
+let connectPromise: Promise<unknown> | null = null;
 
-/** The shared Redis singleton (rate limits + agent-auth nonces). Null when
- *  REDIS_URL is unset (callers degrade: rate limits fail-open, agent-auth
- *  fails-closed). */
-export function getRedisClient() {
+function ensureClient() {
   if (!client && process.env.REDIS_URL) {
     client = createClient({ url: process.env.REDIS_URL });
     client.on("error", () => undefined);
-    client.connect().catch(() => {
+    // Fire-and-forget connect; the promise is awaited by getReadyRedisClient.
+    // The .catch resets the singleton so a failed connect can be retried.
+    connectPromise = client.connect().catch(() => {
       client = null;
+      connectPromise = null;
     });
   }
+}
+
+/** Sync accessor — may return a not-yet-ready client. Fine for the rate
+ *  limiters (they fail OPEN on `!isReady`, so readiness is irrelevant). */
+export function getRedisClient() {
+  ensureClient();
   return client;
+}
+
+/**
+ * Async accessor that AWAITS the connection. For fail-CLOSED callers (agent-
+ * auth nonces) that must tell "Redis down" apart from "not connected yet" —
+ * on a cold serverless invocation `connect()` is still in flight on the first
+ * request, so the sync getter would (wrongly) look unavailable. Returns null
+ * only when Redis is genuinely unconfigured/unreachable.
+ */
+export async function getReadyRedisClient() {
+  ensureClient();
+  if (!client) {
+    return null;
+  }
+  if (client.isReady) {
+    return client;
+  }
+  if (connectPromise) {
+    await connectPromise;
+  }
+  return client?.isReady ? client : null;
 }
 
 // Per-API-key requests-per-minute cap for the Private API (/v1) — closes the
