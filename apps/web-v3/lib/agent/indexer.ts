@@ -24,6 +24,7 @@ type AgentRecordJson = {
   agent?: string;
   numeric_id?: string | number | null;
   owner?: string | null;
+  pending_owner?: string | null;
   active?: boolean;
   metadata_uri?: string | null;
 };
@@ -71,8 +72,12 @@ export async function reconcileAgentDirectory(): Promise<{ synced: number }> {
           address: rec.agent,
           numericId: rec.numeric_id == null ? null : Number(rec.numeric_id),
           owner: rec.owner ?? null,
+          pendingOwner: rec.pending_owner ?? null,
           active: rec.active !== false,
           metadataUri: rec.metadata_uri ?? null,
+          // The cron reads full chain state → null clears (e.g. pendingOwner
+          // after a confirm).
+          authoritative: true,
         });
         synced++;
       } catch {

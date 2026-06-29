@@ -213,6 +213,10 @@ export const agentProfile = pgTable(
     name: text("name").notNull(),
     /** The confirmed owner Passport (set by OwnerLinked); null = autonomous. */
     owner: text("owner"),
+    /** A proposed owner awaiting confirmation (two-sided link). Null once
+     *  confirmed (→ owner) or never proposed. Powers "agents awaiting your
+     *  confirmation" in the console. */
+    pendingOwner: text("pendingOwner"),
     /** Off-chain rich profile pointer (registration-v1 JSON on Walrus). */
     metadataUri: text("metadataUri"),
     active: boolean("active").notNull().default(true),
@@ -225,6 +229,7 @@ export const agentProfile = pgTable(
       t.createdAt
     ),
     ownerIdx: index("AgentProfile_owner_idx").on(t.owner),
+    pendingOwnerIdx: index("AgentProfile_pendingOwner_idx").on(t.pendingOwner),
   })
 );
 

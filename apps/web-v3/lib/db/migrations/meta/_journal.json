@@ -64,6 +64,13 @@
       "when": 1782732062760,
       "tag": "0008_soft_strong_guy",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782735646165,
+      "tag": "0009_colorful_lucky_pierre",
+      "breakpoints": true
     }
   ]
 }

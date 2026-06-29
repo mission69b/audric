@@ -35,10 +35,20 @@ export async function upsertAgentProfile(opts: {
   address: string;
   numericId?: number | null;
   owner?: string | null;
+  pendingOwner?: string | null;
   active?: boolean;
   metadataUri?: string | null;
+  /** When true (the cron, which reads full chain state), null values CLEAR the
+   *  field (e.g. pendingOwner cleared after a confirm). Write-through omits it,
+   *  so a bare touch never clobbers. */
+  authoritative?: boolean;
 }): Promise<void> {
   const now = new Date();
+  const auth = opts.authoritative === true;
+  // `pick`: the cron (authoritative) writes nulls through to clear; the
+  // write-through path leaves unset fields untouched (undefined).
+  const pick = <T>(v: T | null | undefined): T | null | undefined =>
+    auth ? (v ?? null) : (v ?? undefined);
   await db
     .insert(agentProfile)
     .values({
@@ -46,22 +56,43 @@ export async function upsertAgentProfile(opts: {
       name: defaultAgentName(opts.address),
       numericId: opts.numericId ?? null,
       owner: opts.owner ?? null,
+      pendingOwner: opts.pendingOwner ?? null,
       active: opts.active ?? true,
       metadataUri: opts.metadataUri ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: agentProfile.address,
-      // Only overwrite fields we actually have (don't clobber name/numericId
-      // with null on a bare write-through touch).
       set: {
-        numericId: opts.numericId ?? undefined,
-        owner: opts.owner ?? undefined,
+        numericId: pick(opts.numericId),
+        owner: pick(opts.owner),
+        pendingOwner: pick(opts.pendingOwner),
         active: opts.active ?? undefined,
-        metadataUri: opts.metadataUri ?? undefined,
+        metadataUri: pick(opts.metadataUri),
         updatedAt: now,
       },
     });
+}
+
+/** Agents related to `owner`: confirmed-owned + awaiting this owner's confirm.
+ *  Powers the console "My agents" surface (gate 8b). */
+export async function listAgentsForOwner(owner: string): Promise<{
+  owned: AgentProfile[];
+  pending: AgentProfile[];
+}> {
+  const [owned, pending] = await Promise.all([
+    db
+      .select()
+      .from(agentProfile)
+      .where(eq(agentProfile.owner, owner))
+      .orderBy(desc(agentProfile.createdAt)),
+    db
+      .select()
+      .from(agentProfile)
+      .where(eq(agentProfile.pendingOwner, owner))
+      .orderBy(desc(agentProfile.createdAt)),
+  ]);
+  return { owned, pending };
 }
 
 export async function getAgentProfile(

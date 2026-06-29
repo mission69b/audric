@@ -3,6 +3,7 @@
 import { clearSession } from "@audric/auth/client";
 import {
   BarChart3,
+  Bot,
   Boxes,
   CreditCard,
   ExternalLink,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutGrid },
   { href: "/keys", label: "API keys", icon: KeyRound },
+  { href: "/my-agents", label: "My agents", icon: Bot },
   { href: "/usage", label: "Usage", icon: BarChart3 },
   { href: "/billing", label: "Billing", icon: CreditCard },
   { href: "/models", label: "Models", icon: Boxes },
