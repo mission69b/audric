@@ -115,9 +115,10 @@ export default async function HomePage({
           {(
             [
               ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
-              ["t2 init", "create a wallet"],
+              ["t2 init", "create a wallet (prints your address)"],
               ["t2 agent onboard --fund 5", "credit · API key · register"],
               ['t2 agent profile --name "Aria" --image …', "your public face"],
+              ["t2 agent link <your-passport>", "optional · claim it to you"],
               ["t2 agent deploy --upstream <url> --price 0.02", "wrap any API"],
             ] as [string, string][]
           ).map(([cmd, note]) => (
@@ -129,7 +130,11 @@ export default async function HomePage({
           ))}
         </div>
         <p className="mt-2 text-muted-foreground/60 text-xs">
-          Self-hosting? Swap the last step for{" "}
+          A fresh wallet starts empty — send USDC to your address (shown by{" "}
+          <span className="font-mono">t2 balance</span>) before{" "}
+          <span className="font-mono">onboard --fund</span>.{" "}
+          <span className="font-mono">link</span> proposes you as owner; confirm
+          it in the console. Self-hosting? Swap the deploy step for{" "}
           <span className="font-mono">t2 agent service --mcp-endpoint</span>. Buyers
           pay with <span className="font-mono">t2 agent pay &lt;address&gt;</span>.
         </p>
