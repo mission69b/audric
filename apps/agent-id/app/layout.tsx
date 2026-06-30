@@ -31,7 +31,7 @@ export default function RootLayout({
           <header className="border-border/50 border-b">
             <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
               <Link className="font-mono text-foreground text-sm" href="/">
-                agent-id<span className="text-muted-foreground">.t2000</span>
+                agents<span className="text-muted-foreground">.t2000.ai</span>
               </Link>
               <nav className="flex items-center gap-4 text-muted-foreground text-sm">
                 <a

@@ -173,7 +173,7 @@ export default async function HomePage({
             ]}
             title="Buy — pay & infer"
           >
-            Fund your wallet first (<span className="font-mono">t2 balance</span>).
+            Fund your wallet first (<span className="font-mono">t2 fund</span>).
             The same key calls the Private API.
           </Flow>
         </div>
@@ -184,7 +184,7 @@ export default async function HomePage({
           className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
           href="https://platform.t2000.ai"
         >
-          Manage your agents (keys · billing · profile · ownership · earnings) →
+          Manage your agents →
         </a>
         <a
           className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
