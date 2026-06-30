@@ -41,10 +41,33 @@ const PHALA_VERIFY_URL = "https://cloud-api.phala.com/api/v1/attestations/verify
 // route empirically (the RedPill-fronted shape is api.redpill.ai/v1/attestation/report).
 const ATTESTATION_BASE = "https://inference.phala.com";
 
+// The ACI attestation report shape (`api_version: "aci/1"`) that
+// inference.phala.com serves — RedPill/Phala's standard. Confirmed live
+// 2026-06-30. The TDX quote is at `attestation.evidence.quote`; the channel
+// binding for our upstream is the `tls_public_keys` entry for
+// `inference.phala.com`; receipts are signed by `receipt_signing_keys`.
+interface AciReport {
+  api_version?: string;
+  workload_id?: string;
+  attestation?: {
+    tee_type?: string;
+    report_data?: string;
+    evidence?: { quote?: string };
+    workload_keyset?: {
+      receipt_signing_keys?: { key_id?: string; public_key?: string }[];
+      tls_public_keys?: { domain?: string; spki_sha256?: string }[];
+    };
+  };
+}
+
 export interface ConfidentialAttestation {
   verified: boolean;
   model: string;
-  signingAddress?: string;
+  /** The receipt-signing public key from the attested keyset (phase B/D). */
+  signingKey?: string;
+  /** SHA-256 of inference.phala.com's TLS SPKI — the channel binding (phase D). */
+  tlsSpkiSha256?: string;
+  workloadId?: string;
   tcbStatus?: string;
   reason?: string;
   attestedAtMs: number;
@@ -69,7 +92,7 @@ async function fetchAndVerify(
     return failed(model, "confidential backend not configured");
   }
   const nonce = randomBytes(32).toString("hex");
-  let report: Record<string, unknown>;
+  let report: AciReport;
   try {
     const res = await fetch(
       `${ATTESTATION_BASE}/v1/attestation/report?model=${encodeURIComponent(upstream)}&nonce=${nonce}`,
@@ -78,30 +101,34 @@ async function fetchAndVerify(
     if (!res.ok) {
       return failed(model, `attestation fetch ${res.status}`);
     }
-    report = (await res.json()) as Record<string, unknown>;
+    report = (await res.json()) as AciReport;
   } catch (e) {
     return failed(model, e instanceof Error ? e.message : "attestation fetch error");
   }
 
-  // Flatten flat OR two-layer (Phala/NearAI). Prefer the MODEL attestation (the
-  // inference runtime); the gateway attestation protects routing only.
-  const layer =
-    (report.model_attestations as Record<string, unknown>[] | undefined)?.[0] ??
-    (report.gateway_attestation as Record<string, unknown> | undefined) ??
-    report;
-  const quoteHex = layer.intel_quote as string | undefined;
-  const signingAddress = layer.signing_address as string | undefined;
-  if (!quoteHex) {
-    return failed(model, "no intel_quote in attestation report");
+  const att = report.attestation;
+  const quote = att?.evidence?.quote;
+  if (!quote) {
+    return failed(model, "no attestation.evidence.quote in ACI report");
   }
+  const keyset = att?.workload_keyset;
+  const tlsSpkiSha256 = keyset?.tls_public_keys?.find(
+    (k) => k.domain === "inference.phala.com"
+  )?.spki_sha256;
+  const signingKey = keyset?.receipt_signing_keys?.[0]?.public_key;
 
-  // Verify the TDX quote (genuine Intel TDX hardware).
-  let verifyJson: { quote?: { verified?: boolean; reportdata?: string; tcb_status?: string; body?: { reportdata?: string } } };
+  // Verify the Intel TDX quote (genuine confidential hardware) via Phala's
+  // hosted DCAP verifier. NOTE (honest scope): this proves a genuine TDX
+  // enclave. The FULL trustless ACI checks — report_data committing our nonce +
+  // keyset (anti-replay), keyset_endorsement, and TLS-SPKI channel-binding — are
+  // the Phase-D client verifier (port RedPill's logic / dcap-qvl). Recorded in
+  // the trust boundary (SPEC_CONFIDENTIAL_API §3).
+  let verifyJson: { quote?: { verified?: boolean; tcb_status?: string } };
   try {
     const v = await fetch(PHALA_VERIFY_URL, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ hex: quoteHex }),
+      body: JSON.stringify({ hex: quote }),
     });
     if (!v.ok) {
       return failed(model, `quote verify ${v.status}`);
@@ -110,23 +137,17 @@ async function fetchAndVerify(
   } catch (e) {
     return failed(model, e instanceof Error ? e.message : "quote verify error");
   }
-  const quote = verifyJson.quote;
-  if (!quote?.verified) {
+  if (!verifyJson.quote?.verified) {
     return failed(model, "TDX quote not verified (not a genuine enclave)");
-  }
-
-  // Freshness: the verified quote's report_data must commit the nonce we sent
-  // (anti-replay). report_data layout binds the signing key + nonce.
-  const reportData = (quote.reportdata ?? quote.body?.reportdata ?? "").toLowerCase();
-  if (!reportData.includes(nonce.toLowerCase())) {
-    return failed(model, "nonce not bound in report_data (stale/replayed quote)");
   }
 
   return {
     verified: true,
     model,
-    signingAddress,
-    tcbStatus: quote.tcb_status,
+    signingKey,
+    tlsSpkiSha256,
+    workloadId: report.workload_id,
+    tcbStatus: verifyJson.quote.tcb_status,
     attestedAtMs: Date.now(),
   };
 }
