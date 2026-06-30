@@ -36,7 +36,8 @@ const ATTESTATION_TTL_MS = 10 * 60 * 1000;
 const FAILED_TTL_MS = 60 * 1000;
 // Phala's hosted DCAP verifier (server-side gate). Trustless local verification
 // (dcap-qvl, chains to Intel PCS) is the Phase-D client verifier.
-const PHALA_VERIFY_URL = "https://cloud-api.phala.com/api/v1/attestations/verify";
+const PHALA_VERIFY_URL =
+  "https://cloud-api.phala.com/api/v1/attestations/verify";
 // The attestation report endpoint. Phala-direct default; ⚠️ confirm the exact
 // route empirically (the RedPill-fronted shape is api.redpill.ai/v1/attestation/report).
 const ATTESTATION_BASE = "https://inference.phala.com";
@@ -48,7 +49,6 @@ const ATTESTATION_BASE = "https://inference.phala.com";
 // `inference.phala.com`; receipts are signed by `receipt_signing_keys`.
 interface AciReport {
   api_version?: string;
-  workload_id?: string;
   attestation?: {
     tee_type?: string;
     report_data?: string;
@@ -58,19 +58,20 @@ interface AciReport {
       tls_public_keys?: { domain?: string; spki_sha256?: string }[];
     };
   };
+  workload_id?: string;
 }
 
 export interface ConfidentialAttestation {
-  verified: boolean;
+  attestedAtMs: number;
   model: string;
+  reason?: string;
   /** The receipt-signing public key from the attested keyset (phase B/D). */
   signingKey?: string;
+  tcbStatus?: string;
   /** SHA-256 of inference.phala.com's TLS SPKI — the channel binding (phase D). */
   tlsSpkiSha256?: string;
+  verified: boolean;
   workloadId?: string;
-  tcbStatus?: string;
-  reason?: string;
-  attestedAtMs: number;
 }
 
 const cache = new Map<string, ConfidentialAttestation>();
@@ -103,7 +104,10 @@ async function fetchAndVerify(
     }
     report = (await res.json()) as AciReport;
   } catch (e) {
-    return failed(model, e instanceof Error ? e.message : "attestation fetch error");
+    return failed(
+      model,
+      e instanceof Error ? e.message : "attestation fetch error"
+    );
   }
 
   const att = report.attestation;

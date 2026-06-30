@@ -1,10 +1,10 @@
 import { generateText, streamText } from "ai";
 import { getModelPricing } from "@/lib/ai/models";
-import { authenticateApiKey, openAiError } from "@/lib/api/keys";
 import {
   isAttestationEnforced,
   verifyConfidentialUpstream,
 } from "@/lib/api/attestation";
+import { authenticateApiKey, openAiError } from "@/lib/api/keys";
 import { apiMarginFor, getApiModel, isApiModel } from "@/lib/api/models";
 import {
   getInferenceModel,
