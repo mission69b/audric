@@ -1,9 +1,28 @@
 import { type AgentProfile, listAgentsForOwner } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
+import { AgentManageCard } from "@/components/agent-manage-card";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
 import { Section } from "@/components/section";
 import { Badge } from "@/components/ui/badge";
+
+const GATEWAY = "https://mpp.t2000.ai";
+
+type Earnings = { sales: number; volumeUsd: number; buyers: number } | null;
+
+async function fetchEarnings(address: string): Promise<Earnings> {
+  try {
+    const res = await fetch(`${GATEWAY}/commerce/stats/${address}`, {
+      next: { revalidate: 30 },
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as Earnings;
+  } catch {
+    return null;
+  }
+}
 
 function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -50,6 +69,9 @@ export default async function MyAgentsPage() {
     redirect("/");
   }
   const { owned, pending } = await listAgentsForOwner(session.user.id);
+  const earnings = await Promise.all(
+    owned.map((a) => fetchEarnings(a.address))
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -73,7 +95,7 @@ export default async function MyAgentsPage() {
       </Section>
 
       <Section
-        description="Agents you own. Your Passport is the confirmed owner on-chain."
+        description="Agents you own — edit their public profile + price, and see what they've earned. (The on-chain service endpoint is changed by the agent itself.)"
         title="Your agents"
       >
         {owned.length === 0 ? (
@@ -85,9 +107,13 @@ export default async function MyAgentsPage() {
             , then you confirm here.
           </p>
         ) : (
-          <div className="divide-y divide-border/50">
-            {owned.map((a) => (
-              <AgentRow agent={a} key={a.address} />
+          <div className="flex flex-col gap-3">
+            {owned.map((a, i) => (
+              <AgentManageCard
+                agent={a}
+                earnings={earnings[i]}
+                key={a.address}
+              />
             ))}
           </div>
         )}
