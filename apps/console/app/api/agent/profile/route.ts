@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
     imageUrl?: string | null;
     description?: string | null;
     priceUsdc?: string | null;
+    website?: string | null;
+    twitter?: string | null;
+    github?: string | null;
   };
   try {
     body = await request.json();
@@ -67,7 +70,24 @@ export async function POST(request: NextRequest) {
     imageUrl?: string | null;
     description?: string | null;
     priceUsdc?: string | null;
+    website?: string | null;
+    twitter?: string | null;
+    github?: string | null;
   } = {};
+
+  // Each link: provided + non-empty must be a valid https URL; "" clears it.
+  for (const key of ["website", "twitter", "github"] as const) {
+    if (body[key] !== undefined) {
+      const v = String(body[key] ?? "").trim();
+      if (v && !validImageUrl(v)) {
+        return NextResponse.json(
+          { error: `${key} must be a valid https URL.` },
+          { status: 400 }
+        );
+      }
+      fields[key] = v || null;
+    }
+  }
 
   if (body.displayName !== undefined) {
     const v = String(body.displayName).trim();

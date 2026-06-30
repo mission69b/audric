@@ -114,6 +114,10 @@ export async function setAgentProfileFields(
     // Off-chain commerce price — owner-editable from the console alongside the
     // display fields (the on-chain endpoint stays agent-keypair-only).
     priceUsdc?: string | null;
+    // Off-chain social links (full https URLs).
+    website?: string | null;
+    twitter?: string | null;
+    github?: string | null;
   }
 ): Promise<void> {
   const now = new Date();
@@ -128,6 +132,9 @@ export async function setAgentProfileFields(
       imageUrl: fields.imageUrl ?? null,
       description: fields.description ?? null,
       priceUsdc: fields.priceUsdc ?? null,
+      website: fields.website ?? null,
+      twitter: fields.twitter ?? null,
+      github: fields.github ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -137,6 +144,9 @@ export async function setAgentProfileFields(
         imageUrl: fields.imageUrl,
         description: fields.description,
         priceUsdc: fields.priceUsdc,
+        website: fields.website,
+        twitter: fields.twitter,
+        github: fields.github,
         updatedAt: now,
       },
     });

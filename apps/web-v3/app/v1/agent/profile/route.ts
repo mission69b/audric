@@ -14,7 +14,7 @@ import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 // challenge. Owner-editing + Walrus-sovereign = the paid upgrade (later).
 //
 // Field semantics: omit a field to leave it; pass "" to clear it.
-const MAX = { name: 60, image: 400, description: 500 };
+const MAX = { name: 60, image: 400, description: 500, link: 200 };
 
 function clip(v: unknown, max: number): string | null | undefined {
   if (v === undefined) {
@@ -22,6 +22,11 @@ function clip(v: unknown, max: number): string | null | undefined {
   }
   const s = String(v).trim();
   return s.length === 0 ? null : s.slice(0, max);
+}
+
+// A clipped value is a valid link if it's null (clear) or an https URL.
+function isLink(v: string | null | undefined): boolean {
+  return v == null || v.startsWith("https://");
 }
 
 export async function POST(request: Request) {
@@ -40,6 +45,9 @@ export async function POST(request: Request) {
   let displayName: string | null | undefined;
   let imageUrl: string | null | undefined;
   let description: string | null | undefined;
+  let website: string | null | undefined;
+  let twitter: string | null | undefined;
+  let github: string | null | undefined;
   try {
     const body = await request.json();
     address = normalizeSuiAddress(String(body?.address ?? "").trim());
@@ -48,6 +56,9 @@ export async function POST(request: Request) {
     displayName = clip(body?.displayName, MAX.name);
     imageUrl = clip(body?.imageUrl, MAX.image);
     description = clip(body?.description, MAX.description);
+    website = clip(body?.website, MAX.link);
+    twitter = clip(body?.twitter, MAX.link);
+    github = clip(body?.github, MAX.link);
   } catch {
     return openAiError(
       400,
@@ -81,6 +92,14 @@ export async function POST(request: Request) {
       "invalid_image"
     );
   }
+  if (!(isLink(website) && isLink(twitter) && isLink(github))) {
+    return openAiError(
+      400,
+      "Links (website, twitter, github) must be https URLs.",
+      "invalid_request_error",
+      "invalid_link"
+    );
+  }
 
   const consumed = await consumeNonce(nonce, address);
   if (!consumed) {
@@ -105,6 +124,13 @@ export async function POST(request: Request) {
     );
   }
 
-  await setAgentProfileFields(address, { displayName, imageUrl, description });
+  await setAgentProfileFields(address, {
+    displayName,
+    imageUrl,
+    description,
+    website,
+    twitter,
+    github,
+  });
   return Response.json({ ok: true });
 }

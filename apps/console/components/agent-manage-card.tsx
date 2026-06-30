@@ -10,6 +10,9 @@ type Agent = {
   imageUrl: string | null;
   description: string | null;
   priceUsdc: string | null;
+  website: string | null;
+  twitter: string | null;
+  github: string | null;
   mcpEndpoint: string | null;
   active: boolean;
 };
@@ -53,6 +56,9 @@ export function AgentManageCard({
   const [imageUrl, setImageUrl] = useState(agent.imageUrl ?? "");
   const [description, setDescription] = useState(agent.description ?? "");
   const [priceUsdc, setPriceUsdc] = useState(agent.priceUsdc ?? "");
+  const [website, setWebsite] = useState(agent.website ?? "");
+  const [twitter, setTwitter] = useState(agent.twitter ?? "");
+  const [github, setGithub] = useState(agent.github ?? "");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle"
   );
@@ -71,6 +77,9 @@ export function AgentManageCard({
           imageUrl,
           description,
           priceUsdc,
+          website,
+          twitter,
+          github,
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { error?: string };
@@ -150,6 +159,30 @@ export function AgentManageCard({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What this agent does."
             value={description}
+          />
+        </Field>
+        <Field label="Website (https)">
+          <input
+            className={inputCls}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="https://…"
+            value={website}
+          />
+        </Field>
+        <Field label="X / Twitter (https)">
+          <input
+            className={inputCls}
+            onChange={(e) => setTwitter(e.target.value)}
+            placeholder="https://x.com/…"
+            value={twitter}
+          />
+        </Field>
+        <Field label="GitHub (https)">
+          <input
+            className={inputCls}
+            onChange={(e) => setGithub(e.target.value)}
+            placeholder="https://github.com/…"
+            value={github}
           />
         </Field>
       </div>

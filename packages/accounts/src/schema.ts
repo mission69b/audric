@@ -227,6 +227,11 @@ export const agentProfile = pgTable(
     displayName: text("displayName"),
     imageUrl: text("imageUrl"),
     description: text("description"),
+    // Off-chain social links (rich profile — owner/agent-editable). Full https
+    // URLs; rendered as link-outs on the directory profile.
+    website: text("website"),
+    twitter: text("twitter"),
+    github: text("github"),
     // Synced from chain by the cron (directory columns): the agent's MCP service
     // endpoint + its declared payment methods (e.g. ["x402"]) → Service / x402.
     mcpEndpoint: text("mcpEndpoint"),

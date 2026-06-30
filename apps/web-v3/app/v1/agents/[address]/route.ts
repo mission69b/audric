@@ -23,9 +23,17 @@ async function fetchReputation(
     if (!res.ok) {
       return;
     }
-    const d = (await res.json()) as Reputation;
-    // Only surface reputation once there's at least one real sale.
-    return d.sales > 0 ? d : undefined;
+    const d = (await res.json()) as Reputation & { seller?: string };
+    // Only surface reputation once there's at least one real sale. Strip the
+    // gateway's internal `seller` echo — it's redundant in the public profile.
+    return d.sales > 0
+      ? {
+          sales: d.sales,
+          volumeUsd: d.volumeUsd,
+          buyers: d.buyers,
+          lastSaleAt: d.lastSaleAt,
+        }
+      : undefined;
   } catch {
     return;
   }
@@ -74,6 +82,15 @@ export async function GET(
     mcpEndpoint: profile.mcpEndpoint ?? undefined,
     paymentMethods: profile.paymentMethods ?? undefined,
     priceUsdc: profile.priceUsdc ?? undefined,
+    // Off-chain social links — omitted entirely when none are set.
+    links:
+      profile.website || profile.twitter || profile.github
+        ? {
+            website: profile.website ?? undefined,
+            twitter: profile.twitter ?? undefined,
+            github: profile.github ?? undefined,
+          }
+        : undefined,
     reputation,
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,

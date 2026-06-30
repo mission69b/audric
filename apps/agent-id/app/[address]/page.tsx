@@ -22,6 +22,7 @@ type Profile = {
   mcpEndpoint?: string;
   paymentMethods?: string[];
   priceUsdc?: string;
+  links?: { website?: string; twitter?: string; github?: string };
   reputation?: {
     sales: number;
     volumeUsd: number;
@@ -149,6 +150,44 @@ export default async function AgentProfilePage({
       {profile.description && (
         <p className="mt-3 text-muted-foreground">{profile.description}</p>
       )}
+
+      {profile.links &&
+        (profile.links.website ||
+          profile.links.twitter ||
+          profile.links.github) && (
+          <div className="mt-3 flex flex-wrap gap-4 text-sm">
+            {profile.links.website && (
+              <a
+                className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                href={profile.links.website}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Website
+              </a>
+            )}
+            {profile.links.twitter && (
+              <a
+                className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                href={profile.links.twitter}
+                rel="noreferrer"
+                target="_blank"
+              >
+                X
+              </a>
+            )}
+            {profile.links.github && (
+              <a
+                className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                href={profile.links.github}
+                rel="noreferrer"
+                target="_blank"
+              >
+                GitHub
+              </a>
+            )}
+          </div>
+        )}
 
       {profile.reputation && (
         <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
