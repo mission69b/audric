@@ -118,6 +118,7 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
         tx.pure.string(wireHash),
         tx.pure.string(workloadId),
         tx.pure.u64(servedAtMs),
+        tx.object("0x6"), // Clock — on-chain anchored_at_ms
       ],
     });
     const client = grpcClient();
