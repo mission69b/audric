@@ -84,7 +84,12 @@ export async function POST(request: Request) {
   }
   // Write-through into the directory index (best-effort — the on-chain
   // register already succeeded; a DB hiccup must not fail the response).
-  await upsertAgentProfile({ address }).catch(() => undefined);
+  // Capture the register digest (CREATED TX) only on a fresh register — a
+  // double-register's digest isn't the original, so don't overwrite.
+  await upsertAgentProfile({
+    address,
+    registerDigest: result.alreadyRegistered ? undefined : result.digest,
+  }).catch(() => undefined);
 
   return Response.json({
     registered: true,

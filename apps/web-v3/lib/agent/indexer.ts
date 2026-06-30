@@ -29,6 +29,7 @@ type AgentRecordJson = {
   metadata_uri?: string | null;
   mcp_endpoint?: string | null;
   payment_methods?: string[] | null;
+  updated_at_ms?: string | number | null;
 };
 
 function grpcClient(): SuiGrpcClient {
@@ -81,6 +82,9 @@ export async function reconcileAgentDirectory(): Promise<{ synced: number }> {
           paymentMethods: Array.isArray(rec.payment_methods)
             ? rec.payment_methods
             : null,
+          // Honest LAST UPDATED = on-chain `updated_at_ms` (not "last synced").
+          chainUpdatedAtMs:
+            rec.updated_at_ms == null ? null : Number(rec.updated_at_ms),
           // The cron reads full chain state → null clears (e.g. pendingOwner
           // after a confirm).
           authoritative: true,

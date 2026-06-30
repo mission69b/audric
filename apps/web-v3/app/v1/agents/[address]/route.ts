@@ -61,6 +61,14 @@ export async function GET(
     image: profile.imageUrl ?? undefined,
     description: profile.description ?? "A t2000 Agent ID.",
     address: profile.address,
+    // Self-sovereign: the agent registers itself, so the creator IS the agent
+    // address (sender == agent in registry::register). The human `owner` below
+    // is the separately-linked Passport (optional) — richer than chains that
+    // collapse owner=creator=wallet into one.
+    creator: profile.address,
+    chain: "sui:mainnet",
+    registry: AGENT_ID_REGISTRY_ID,
+    registerDigest: profile.registerDigest ?? undefined,
     owner: profile.owner ?? undefined,
     metadataUri: profile.metadataUri ?? undefined,
     mcpEndpoint: profile.mcpEndpoint ?? undefined,
@@ -68,6 +76,7 @@ export async function GET(
     priceUsdc: profile.priceUsdc ?? undefined,
     reputation,
     createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
     registrations: [
       {
         agentId: profile.numericId ?? undefined,

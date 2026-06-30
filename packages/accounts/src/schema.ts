@@ -235,6 +235,10 @@ export const agentProfile = pgTable(
     // decimal string, e.g. "0.02"). The gateway reads this to price the x402
     // 402. Off-chain because the on-chain AgentRecord struct is fixed (Move).
     priceUsdc: text("priceUsdc"),
+    /** The register transaction digest (CREATED TX) — captured at submit-time
+     *  write-through. Null for third-party agents we didn't sponsor (the cron
+     *  has no cheap way to backfill it); surfaced as a Suiscan link when set. */
+    registerDigest: text("registerDigest"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

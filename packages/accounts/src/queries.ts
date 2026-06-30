@@ -44,6 +44,14 @@ export async function upsertAgentProfile(opts: {
    *  has no authority over it — always preserve-on-undefined (never cleared by a
    *  reconcile), set only when the service write-through provides it. */
   priceUsdc?: string | null;
+  /** The register tx digest (CREATED TX). Only the register write-through has
+   *  it — always preserve-on-undefined (the cron + third-party path never
+   *  carry it, so they must not clobber a captured digest). */
+  registerDigest?: string | null;
+  /** The on-chain `updated_at_ms` (the cron reads it from the record). When
+   *  provided, `updatedAt` reflects real chain-state-change time rather than
+   *  "last synced" — gives an honest 8004scan-style LAST UPDATED. */
+  chainUpdatedAtMs?: number | null;
   /** When true (the cron, which reads full chain state), null values CLEAR the
    *  field (e.g. pendingOwner cleared after a confirm). Write-through omits it,
    *  so a bare touch never clobbers. */
@@ -55,6 +63,10 @@ export async function upsertAgentProfile(opts: {
   // write-through path leaves unset fields untouched (undefined).
   const pick = <T>(v: T | null | undefined): T | null | undefined =>
     auth ? (v ?? null) : (v ?? undefined);
+  // LAST UPDATED tracks on-chain state changes (chain `updated_at_ms`); fall
+  // back to wall-clock for the bare write-through that has no chain timestamp.
+  const updatedAt =
+    opts.chainUpdatedAtMs != null ? new Date(opts.chainUpdatedAtMs) : now;
   await db
     .insert(agentProfile)
     .values({
@@ -68,7 +80,8 @@ export async function upsertAgentProfile(opts: {
       mcpEndpoint: opts.mcpEndpoint ?? null,
       paymentMethods: opts.paymentMethods ?? null,
       priceUsdc: opts.priceUsdc ?? null,
-      updatedAt: now,
+      registerDigest: opts.registerDigest ?? null,
+      updatedAt,
     })
     .onConflictDoUpdate({
       target: agentProfile.address,
@@ -82,7 +95,9 @@ export async function upsertAgentProfile(opts: {
         paymentMethods: pick(opts.paymentMethods),
         // Off-chain: always preserve-on-undefined (cron never clears it).
         priceUsdc: opts.priceUsdc ?? undefined,
-        updatedAt: now,
+        // CREATED TX never changes; preserve unless this writer supplies it.
+        registerDigest: opts.registerDigest ?? undefined,
+        updatedAt,
       },
     });
 }

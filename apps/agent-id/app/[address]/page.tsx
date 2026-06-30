@@ -13,6 +13,10 @@ type Profile = {
   image?: string;
   description?: string;
   address: string;
+  creator?: string;
+  chain?: string;
+  registry?: string;
+  registerDigest?: string;
   owner?: string;
   metadataUri?: string;
   mcpEndpoint?: string;
@@ -25,27 +29,65 @@ type Profile = {
     lastSaleAt: string | null;
   };
   createdAt?: string;
+  updatedAt?: string;
   registrations?: { agentId?: number; agentRegistry?: string }[];
 };
+
+const SUISCAN = "https://suiscan.xyz/mainnet";
+
+function short(v: string): string {
+  return v.length > 16 ? `${v.slice(0, 8)}…${v.slice(-6)}` : v;
+}
 
 function Field({
   label,
   value,
   mono,
+  href,
 }: {
   label: string;
   value: string;
   mono?: boolean;
+  href?: string;
 }) {
+  const cls = `mt-1 break-all text-foreground text-sm ${mono ? "font-mono" : ""}`;
   return (
     <div className="bg-card/40 p-4">
       <dt className="text-muted-foreground/60 text-xs">{label}</dt>
-      <dd
-        className={`mt-1 break-all text-foreground text-sm ${mono ? "font-mono" : ""}`}
-      >
-        {value}
-      </dd>
+      {href ? (
+        <dd className={cls}>
+          <a
+            className="underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+            href={href}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {value}
+          </a>
+        </dd>
+      ) : (
+        <dd className={cls}>{value}</dd>
+      )}
     </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        {title}
+      </h2>
+      <dl className="mt-3 grid gap-px overflow-hidden rounded-2xl border border-border/50 bg-border/50 sm:grid-cols-2">
+        {children}
+      </dl>
+    </section>
   );
 }
 
@@ -147,41 +189,99 @@ export default async function AgentProfilePage({
         </div>
       )}
 
-      <dl className="mt-8 grid gap-px overflow-hidden rounded-2xl border border-border/50 bg-border/50 sm:grid-cols-2">
-        <Field label="Address" mono value={profile.address} />
+      {/* Identity — the on-chain anchor (everything Suiscan-verifiable). */}
+      <Section title="Identity">
+        <Field label="Agent ID" value={numericId == null ? "—" : `#${numericId}`} />
         <Field
-          label="Owner"
-          mono={Boolean(profile.owner)}
-          value={profile.owner ?? "Autonomous (no owner)"}
+          label="Chain"
+          value={profile.chain === "sui:mainnet" ? "Sui · mainnet" : "Sui"}
         />
         <Field
-          label="Agent ID"
-          value={numericId == null ? "—" : `#${numericId}`}
+          href={`${SUISCAN}/account/${profile.address}`}
+          label="Agent wallet"
+          mono
+          value={short(profile.address)}
         />
-        <Field label="Registered" value={formatDate(profile.createdAt)} />
-        {profile.priceUsdc && (
-          <Field label="Price" value={`$${profile.priceUsdc} USDC / call`} />
-        )}
-        {profile.mcpEndpoint && (
-          <Field label="MCP endpoint" mono value={profile.mcpEndpoint} />
-        )}
-        {profile.paymentMethods && profile.paymentMethods.length > 0 && (
+        {profile.owner ? (
           <Field
-            label="Payment methods"
-            value={profile.paymentMethods.join(", ")}
+            href={`${SUISCAN}/account/${profile.owner}`}
+            label="Owner (Passport)"
+            mono
+            value={short(profile.owner)}
+          />
+        ) : (
+          <Field label="Owner" value="Autonomous (no linked owner)" />
+        )}
+        <Field
+          href={`${SUISCAN}/account/${profile.creator ?? profile.address}`}
+          label="Creator"
+          mono
+          value={short(profile.creator ?? profile.address)}
+        />
+        {profile.registry && (
+          <Field
+            href={`${SUISCAN}/object/${profile.registry}`}
+            label="Registry"
+            mono
+            value={short(profile.registry)}
           />
         )}
-        <Field label="Registry" value="Sui mainnet · agent_id::registry" />
-      </dl>
+        {profile.registerDigest && (
+          <Field
+            href={`${SUISCAN}/tx/${profile.registerDigest}`}
+            label="Created tx"
+            mono
+            value={short(profile.registerDigest)}
+          />
+        )}
+        <Field
+          label="Status"
+          value={profile.active ? "Active" : "Inactive"}
+        />
+      </Section>
 
-      <a
-        className="mt-6 inline-block text-muted-foreground text-sm underline underline-offset-4 transition-colors hover:text-foreground"
-        href={`https://suiscan.xyz/mainnet/account/${profile.address}`}
-        rel="noreferrer"
-        target="_blank"
-      >
-        View on Sui explorer →
-      </a>
+      {/* Service — only when the agent has declared something sellable. */}
+      {(profile.mcpEndpoint ||
+        profile.priceUsdc ||
+        (profile.paymentMethods && profile.paymentMethods.length > 0)) && (
+        <Section title="Service">
+          {profile.mcpEndpoint && (
+            <Field label="Endpoint" mono value={profile.mcpEndpoint} />
+          )}
+          {profile.priceUsdc && (
+            <Field label="Price" value={`$${profile.priceUsdc} USDC / call`} />
+          )}
+          {profile.paymentMethods && profile.paymentMethods.length > 0 && (
+            <Field
+              label="Payment methods"
+              value={profile.paymentMethods.join(", ")}
+            />
+          )}
+        </Section>
+      )}
+
+      {/* Metadata — on-chain pointer vs off-chain registration-v1 JSON. */}
+      <Section title="Metadata">
+        <Field
+          href={`${API_BASE}/agents/${profile.address}`}
+          label="Off-chain (registration-v1)"
+          value="View JSON →"
+        />
+        {profile.metadataUri ? (
+          <Field label="On-chain metadata URI" mono value={profile.metadataUri} />
+        ) : (
+          <Field
+            label="On-chain metadata URI"
+            value="— (DB-indexed; Walrus-pinned later)"
+          />
+        )}
+      </Section>
+
+      {/* Timestamps. */}
+      <Section title="Timestamps">
+        <Field label="Created" value={formatDate(profile.createdAt)} />
+        <Field label="Last updated" value={formatDate(profile.updatedAt)} />
+      </Section>
     </>
   );
 }
