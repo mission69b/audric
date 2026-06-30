@@ -76,9 +76,16 @@ export interface ConfidentialAttestation {
 
 const cache = new Map<string, ConfidentialAttestation>();
 
-/** True when fail-closed enforcement is on (else observe-only). */
+/**
+ * True when fail-closed enforcement is on. **Enforced by DEFAULT** (secure with
+ * zero config). The flag is a KILL-SWITCH: set
+ * `CONFIDENTIAL_ATTESTATION_ENFORCE="false"` to fall back to observe-mode IF
+ * Phala's external attestation / DCAP-verify services have an outage — so a
+ * third-party verifier blip can't take down the whole confidential tier.
+ * (Verified results cache 10m, absorbing brief blips without the switch.)
+ */
 export function isAttestationEnforced(): boolean {
-  return env.CONFIDENTIAL_ATTESTATION_ENFORCE === "true";
+  return env.CONFIDENTIAL_ATTESTATION_ENFORCE !== "false";
 }
 
 function failed(model: string, reason: string): ConfidentialAttestation {

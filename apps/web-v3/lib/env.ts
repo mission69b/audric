@@ -101,10 +101,10 @@ const serverSchema = z.object({
   // the Vercel Gateway. Unset → the confidential tier is hidden (no boot
   // failure); ZDR models keep working. Server-only.
   PHALA_API_KEY: optionalString,
-  // v3.0 Phase A: when "true", confidential (phala/*) calls FAIL-CLOSED if the
-  // upstream attestation can't be verified. Default (unset) = observe-mode
-  // (verify + log, still serve) — flip on only after a real attestation
-  // response confirms the verification. Server-only.
+  // v3.0 Phase A: confidential (phala/*) calls FAIL-CLOSED if the upstream
+  // attestation can't be verified — ENFORCED BY DEFAULT. Kill-switch: set to
+  // "false" to fall back to observe-mode (verify + log, still serve) if Phala's
+  // external attestation/verify services have an outage. Server-only.
   CONFIDENTIAL_ATTESTATION_ENFORCE: optionalString,
 });
 
