@@ -49,7 +49,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = await prepareSponsoredTx(address, buildSetPendingOwnerTx(owner));
+  const res = await prepareSponsoredTx(address, buildSetPendingOwnerTx(owner), {
+    kind: "owner-propose",
+    agent: address,
+    pendingOwner: owner,
+  });
   if (res.ok) {
     return Response.json({ nonce: res.nonce, txBytes: res.txBytes });
   }

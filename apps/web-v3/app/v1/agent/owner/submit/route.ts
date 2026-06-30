@@ -1,3 +1,4 @@
+import { setAgentOwnership } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { submitSponsoredTx } from "@/lib/agent/sponsored";
 import { openAiError } from "@/lib/api/keys";
@@ -56,6 +57,20 @@ export async function POST(request: Request) {
     actorSignature: signature,
   });
   if (res.ok) {
+    // Write-through the directory index so the link reflects instantly (the
+    // hourly reconcile cron is the backstop). Best-effort — the on-chain tx
+    // already succeeded; a DB hiccup must not fail the response.
+    const meta = res.meta;
+    if (meta?.kind === "owner-propose") {
+      await setAgentOwnership(meta.agent as string, {
+        pendingOwner: meta.pendingOwner as string,
+      }).catch(() => undefined);
+    } else if (meta?.kind === "owner-confirm") {
+      await setAgentOwnership(meta.agent as string, {
+        owner: meta.owner as string,
+        pendingOwner: null,
+      }).catch(() => undefined);
+    }
     return Response.json({ ok: true, digest: res.digest });
   }
   if (res.reason === "unconfigured") {

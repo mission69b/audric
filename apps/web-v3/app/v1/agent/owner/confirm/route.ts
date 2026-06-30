@@ -50,7 +50,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const res = await prepareSponsoredTx(owner, buildConfirmOwnershipTx(agent));
+  const res = await prepareSponsoredTx(owner, buildConfirmOwnershipTx(agent), {
+    kind: "owner-confirm",
+    agent,
+    owner,
+  });
   if (res.ok) {
     return Response.json({ nonce: res.nonce, txBytes: res.txBytes });
   }

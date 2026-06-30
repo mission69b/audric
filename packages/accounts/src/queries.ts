@@ -188,6 +188,36 @@ export async function setAgentServiceFields(
     });
 }
 
+/** Write-through the ownership-link fields right after the on-chain propose /
+ *  confirm (instant, no cron lag). Only the provided fields are touched (null
+ *  clears — e.g. `pendingOwner: null` on confirm). The cron stays the backstop
+ *  + the authority for third-party links it never saw. */
+export async function setAgentOwnership(
+  address: string,
+  fields: { owner?: string | null; pendingOwner?: string | null }
+): Promise<void> {
+  const now = new Date();
+  await db
+    .insert(agentProfile)
+    .values({
+      address,
+      name: defaultAgentName(address),
+      owner: fields.owner ?? null,
+      pendingOwner: fields.pendingOwner ?? null,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: agentProfile.address,
+      set: {
+        ...(fields.owner !== undefined ? { owner: fields.owner } : {}),
+        ...(fields.pendingOwner !== undefined
+          ? { pendingOwner: fields.pendingOwner }
+          : {}),
+        updatedAt: now,
+      },
+    });
+}
+
 /** Agents related to `owner`: confirmed-owned + awaiting this owner's confirm.
  *  Powers the console "My agents" surface (gate 8b). */
 export async function listAgentsForOwner(owner: string): Promise<{

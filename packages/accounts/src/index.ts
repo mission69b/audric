@@ -16,6 +16,7 @@ export {
   recordApiUsage,
   recordCredit,
   revokeApiKey,
+  setAgentOwnership,
   setAgentProfileFields,
   setAgentServiceFields,
   setAutoRecharge,
