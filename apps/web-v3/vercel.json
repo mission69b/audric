@@ -1,4 +1,4 @@
 {
   "framework": "nextjs",
-  "crons": [{ "path": "/api/cron/agent-index", "schedule": "0 * * * *" }]
+  "crons": [{ "path": "/api/cron/agent-index", "schedule": "*/30 * * * *" }]
 }
