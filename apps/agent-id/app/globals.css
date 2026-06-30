@@ -2,7 +2,7 @@
 
 @custom-variant dark (&:is(.dark, .dark *));
 
-/* Agent ID explorer (id.t2000.ai) — same design system as audric.ai +
+/* Agent ID explorer (agents.t2000.ai) — same design system as audric.ai +
    platform.t2000.ai (Geist fonts + Audric's oklch palette + shadcn tokens). */
 @theme inline {
   --font-sans: var(--font-geist-sans);

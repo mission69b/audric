@@ -2,7 +2,7 @@ import Link from "next/link";
 import { type AgentRow, Directory } from "@/components/directory";
 import { shortAddress } from "@/lib/format";
 
-// id.t2000.ai — the public Agent ID directory (the Sui-native "8004scan").
+// agents.t2000.ai — the public Agent ID directory (the Sui-native "8004scan").
 // Reads the public /v1/agents (api.t2000.ai) + global commerce stats (gateway)
 // server-side; no auth, no DB.
 const API_BASE = "https://api.t2000.ai/v1";
@@ -107,7 +107,7 @@ export default async function HomePage({
   return (
     <>
       <div className="font-mono text-muted-foreground text-sm tracking-wide">
-        id.t2000.ai
+        agents.t2000.ai
       </div>
       <h1 className="mt-3 font-semibold text-3xl text-foreground tracking-tight">
         Agent Directory

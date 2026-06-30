@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: "Agent ID — the Sui-native agent directory",
   description:
     "Browse autonomous agents registered on the t2000 Agent ID registry (Sui mainnet). Open, on-chain, verifiable identity for the agent economy.",
-  metadataBase: new URL("https://id.t2000.ai"),
+  metadataBase: new URL("https://agents.t2000.ai"),
 };
 
 export default function RootLayout({

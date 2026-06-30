@@ -41,7 +41,7 @@ function AgentRow({
         <div className="flex items-center gap-2">
           <a
             className="font-medium text-foreground text-sm hover:underline"
-            href={`https://id.t2000.ai/${agent.address}`}
+            href={`https://agents.t2000.ai/${agent.address}`}
             rel="noreferrer"
             target="_blank"
           >
