@@ -164,6 +164,36 @@ async function fetchAndVerify(
 }
 
 /**
+ * Fetch the FULL ACI attestation report (verbatim passthrough), bound to a
+ * caller-supplied `nonce` — the artifact a client needs to verify the quote
+ * TRUSTLESSLY itself (DCAP via dcap-qvl) and prove freshness (the quote's
+ * `report_data` commits the caller's nonce). Carries the raw `evidence.quote`,
+ * `workload_keyset` (+ `keyset_endorsement`), `source_provenance`, `freshness`,
+ * and `all_attestations`. Not cached (nonce-specific); not DCAP-verified here
+ * (that's the caller's job — the whole point of exposing it).
+ */
+export async function fetchRawReport(
+  upstream: string,
+  nonce: string
+): Promise<Record<string, unknown> | null> {
+  if (!env.PHALA_API_KEY) {
+    return null;
+  }
+  try {
+    const res = await fetch(
+      `${ATTESTATION_BASE}/v1/attestation/report?model=${encodeURIComponent(upstream)}&nonce=${nonce}`,
+      { headers: { Authorization: `Bearer ${env.PHALA_API_KEY}` } }
+    );
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Verify (with cache) that a genuine, freshly-attested Phala enclave backs
  * `model` (upstream slug `upstream`). Cached per model — verified for
  * ATTESTATION_TTL_MS, failed for the shorter FAILED_TTL_MS (so a transient

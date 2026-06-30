@@ -1,4 +1,6 @@
+import { randomBytes } from "node:crypto";
 import {
+  fetchRawReport,
   isAttestationEnforced,
   verifyConfidentialUpstream,
 } from "@/lib/api/attestation";
@@ -18,7 +20,21 @@ import {
 // (No `export const dynamic` — web-v3 uses Next `cacheComponents`, which
 // rejects it; reading searchParams + fetching makes the route dynamic anyway.)
 export async function GET(request: Request) {
-  const model = new URL(request.url).searchParams.get("model");
+  const params = new URL(request.url).searchParams;
+  const model = params.get("model");
+  // Caller-supplied nonce → the full report's quote binds it (client freshness).
+  // 32–64 hex bytes; reject anything else. When present (or ?full=true), we also
+  // return the raw report so a client can DCAP-verify the quote itself.
+  const rawNonce = params.get("nonce");
+  const wantsFull = rawNonce !== null || params.get("full") === "true";
+  if (rawNonce !== null && !/^[0-9a-fA-F]{32,128}$/.test(rawNonce)) {
+    return openAiError(
+      400,
+      "`nonce` must be 16–64 bytes of hex.",
+      "invalid_request_error",
+      "invalid_nonce"
+    );
+  }
   if (!(model && isConfidentialModel(model))) {
     return openAiError(
       400,
@@ -39,6 +55,16 @@ export async function GET(request: Request) {
   const upstream = getApiModel(model)?.upstream ?? model;
   const att = await verifyConfidentialUpstream(model, upstream);
 
+  // The verifiable artifact: the full ACI report bound to the caller's nonce
+  // (quote + keyset + endorsement + provenance + freshness). Workload keys are
+  // nonce-stable, so the summary fields above stay consistent with it.
+  let nonce: string | undefined;
+  let report: Record<string, unknown> | null = null;
+  if (wantsFull) {
+    nonce = rawNonce ?? randomBytes(32).toString("hex");
+    report = await fetchRawReport(upstream, nonce);
+  }
+
   return Response.json({
     model: att.model,
     verified: att.verified,
@@ -51,5 +77,8 @@ export async function GET(request: Request) {
     tcbStatus: att.tcbStatus,
     ...(att.reason ? { reason: att.reason } : {}),
     attestedAt: new Date(att.attestedAtMs).toISOString(),
+    // Full client-verifiable report (only when ?nonce / ?full requested).
+    ...(nonce ? { nonce } : {}),
+    ...(report ? { report } : {}),
   });
 }
