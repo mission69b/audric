@@ -15,8 +15,8 @@ import {
 // attested Phala GPU-TEE backs the model (verified via DCAP), plus the
 // channel-binding (`tlsSpkiSha256`) + receipt-signing key for client-side
 // verification. Cached (verify 10m / fail 60s) — no key required.
-export const dynamic = "force-dynamic";
-
+// (No `export const dynamic` — web-v3 uses Next `cacheComponents`, which
+// rejects it; reading searchParams + fetching makes the route dynamic anyway.)
 export async function GET(request: Request) {
   const model = new URL(request.url).searchParams.get("model");
   if (!(model && isConfidentialModel(model))) {
