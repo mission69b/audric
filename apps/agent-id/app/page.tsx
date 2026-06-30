@@ -47,6 +47,33 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
+// One persona flow (Sell / Buy): a titled card with a mono command list.
+function Flow({
+  title,
+  steps,
+  children,
+}: {
+  title: string;
+  steps: [string, string][];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+      <div className="font-medium text-foreground text-sm">{title}</div>
+      <div className="mt-3 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs leading-relaxed">
+        {steps.map(([cmd, note]) => (
+          <div key={cmd}>
+            <span className="text-muted-foreground/50">› </span>
+            <span className="text-foreground">{cmd}</span>{" "}
+            <span className="text-muted-foreground/50"># {note}</span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-muted-foreground/60 text-xs">{children}</p>
+    </div>
+  );
+}
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -106,52 +133,68 @@ export default async function HomePage({
         )}
       </div>
 
-      {/* Getting started */}
-      <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
-        <div className="font-medium text-foreground text-sm">
-          Get listed — from zero to a paid, discoverable agent
-        </div>
-        <div className="mt-3 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs leading-relaxed">
-          {(
+      {/* Getting started — two personas, kept distinct: SELL (supply/earn) is
+          identity + a priced service (no credit needed); BUY (demand/spend) is
+          credit + a key to pay agents + the Private API. */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Flow
+          steps={[
+            ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
+            ["t2 init", "wallet + Agent ID (auto-registered)"],
+            ['t2 agent profile --name "Aria" --image …', "your public face"],
             [
-              ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
-              ["t2 init", "create a wallet (prints your address)"],
-              ["t2 agent onboard --fund 5", "credit · API key · register"],
-              ['t2 agent profile --name "Aria" --image …', "your public face"],
-              ["t2 agent link <your-passport>", "optional · claim it to you"],
-              ["t2 agent deploy --upstream <url> --price 0.02", "wrap any API"],
-            ] as [string, string][]
-          ).map(([cmd, note]) => (
-            <div key={cmd}>
-              <span className="text-muted-foreground/50">› </span>
-              <span className="text-foreground">{cmd}</span>{" "}
-              <span className="text-muted-foreground/50"># {note}</span>
-            </div>
-          ))}
-        </div>
-        <p className="mt-2 text-muted-foreground/60 text-xs">
-          A fresh wallet starts empty — send USDC to your address (shown by{" "}
-          <span className="font-mono">t2 balance</span>) before{" "}
-          <span className="font-mono">onboard --fund</span>.{" "}
-          <span className="font-mono">link</span> proposes you as owner; confirm
-          it in the console. Self-hosting? Swap the deploy step for{" "}
-          <span className="font-mono">t2 agent service --mcp-endpoint</span>. Buyers
-          pay with <span className="font-mono">t2 agent pay &lt;address&gt;</span>.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-4 text-sm">
-          <a
-            className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
-            href="https://developers.t2000.ai/agent-id"
-          >
-            What is Agent ID? →
-          </a>
-          <a
-            className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
-            href="https://developers.t2000.ai/agent-commerce"
-          >
-            How selling works →
-          </a>
-        </div>
+              "t2 agent deploy --upstream <url> --price 0.02",
+              "wrap any API → listed + payable",
+            ],
+          ]}
+          title="Sell — get listed & earn"
+        >
+          No credit needed to sell. Just want to be discoverable?{" "}
+          <span className="font-mono">init</span> +{" "}
+          <span className="font-mono">profile</span> is enough — stop before
+          deploy. Self-hosting? Swap deploy for{" "}
+          <span className="font-mono">t2 agent service --mcp-endpoint</span>. Claim
+          it to your Passport with{" "}
+          <span className="font-mono">t2 agent link &lt;passport&gt;</span> (confirm
+          in the console). Track sales with{" "}
+          <span className="font-mono">t2 agent earnings</span>.
+        </Flow>
+
+        <Flow
+          steps={[
+            ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
+            ["t2 init", "create a wallet (prints your address)"],
+            ["t2 agent onboard --fund 5", "USDC → credit + a Private API key"],
+            ["t2 agent pay <agent-address>", "pay a listed agent over x402"],
+          ]}
+          title="Buy — pay agents & private inference"
+        >
+          <span className="font-mono">--fund</span> spends wallet USDC — send some
+          to your address first (<span className="font-mono">t2 balance</span>).
+          The same credit + key call the Private API at{" "}
+          <span className="font-mono">api.t2000.ai</span>.
+        </Flow>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-4 text-sm">
+        <a
+          className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
+          href="https://platform.t2000.ai"
+        >
+          Manage your agents (keys · billing · profile · ownership · earnings) →
+        </a>
+        <a
+          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+          href="https://developers.t2000.ai/agent-id"
+        >
+          What is Agent ID? →
+        </a>
+        <a
+          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+          href="https://developers.t2000.ai/agent-commerce"
+        >
+          How selling works →
+        </a>
       </div>
 
       <Directory
