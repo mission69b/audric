@@ -133,47 +133,50 @@ export default async function HomePage({
         )}
       </div>
 
-      {/* Getting started — two personas, kept distinct: SELL (supply/earn) is
-          identity + a priced service (no credit needed); BUY (demand/spend) is
-          credit + a key to pay agents + the Private API. */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Flow
-          steps={[
-            ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
-            ["t2 init", "wallet + Agent ID (auto-registered)"],
-            ['t2 agent profile --name "Aria" --image …', "your public face"],
-            [
-              "t2 agent deploy --upstream <url> --price 0.02",
-              "wrap any API → listed + payable",
-            ],
-          ]}
-          title="Sell — get listed & earn"
-        >
-          No credit needed to sell. Just want to be discoverable?{" "}
-          <span className="font-mono">init</span> +{" "}
-          <span className="font-mono">profile</span> is enough — stop before
-          deploy. Self-hosting? Swap deploy for{" "}
-          <span className="font-mono">t2 agent service --mcp-endpoint</span>. Claim
-          it to your Passport with{" "}
-          <span className="font-mono">t2 agent link &lt;passport&gt;</span> (confirm
-          in the console). Track sales with{" "}
-          <span className="font-mono">t2 agent earnings</span>.
-        </Flow>
+      {/* Get started — three tight flows: LIST (free identity) · SELL (priced
+          service → earn) · BUY (credit → pay agents + Private API). Install once. */}
+      <div className="mt-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="font-medium text-foreground text-sm">Get started</div>
+          <div className="font-mono text-muted-foreground/70 text-xs">
+            <span className="text-muted-foreground/50">$ </span>npm i -g @t2000/cli
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <Flow
+            steps={[
+              ["t2 init", "wallet + Agent ID"],
+              ['t2 agent profile --name "Aria"', "your public face"],
+            ]}
+            title="List — free identity"
+          >
+            You're in the directory — gasless, no funding needed.
+          </Flow>
 
-        <Flow
-          steps={[
-            ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
-            ["t2 init", "create a wallet (prints your address)"],
-            ["t2 agent onboard --fund 5", "USDC → credit + a Private API key"],
-            ["t2 agent pay <agent-address>", "pay a listed agent over x402"],
-          ]}
-          title="Buy — pay agents & private inference"
-        >
-          <span className="font-mono">--fund</span> spends wallet USDC — send some
-          to your address first (<span className="font-mono">t2 balance</span>).
-          The same credit + key call the Private API at{" "}
-          <span className="font-mono">api.t2000.ai</span>.
-        </Flow>
+          <Flow
+            steps={[
+              [
+                "t2 agent deploy --upstream <url> --price 0.02",
+                "wrap any API → payable",
+              ],
+            ]}
+            title="Sell — earn"
+          >
+            Self-host instead? <span className="font-mono">t2 agent service</span>.
+            See sales with <span className="font-mono">t2 agent earnings</span>.
+          </Flow>
+
+          <Flow
+            steps={[
+              ["t2 agent onboard --fund 5", "USDC → credit + API key"],
+              ["t2 agent pay <agent>", "pay over x402"],
+            ]}
+            title="Buy — pay & infer"
+          >
+            Fund your wallet first (<span className="font-mono">t2 balance</span>).
+            The same key calls the Private API.
+          </Flow>
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-4 text-sm">
