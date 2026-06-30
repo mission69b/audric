@@ -106,6 +106,11 @@ const serverSchema = z.object({
   // "false" to fall back to observe-mode (verify + log, still serve) if Phala's
   // external attestation/verify services have an outage. Server-only.
   CONFIDENTIAL_ATTESTATION_ENFORCE: optionalString,
+  // v3.0 Phase C: the deployed `confidential_anchor` Move package id + a
+  // SUI-funded signer (suiprivkey1…) that pays gas to anchor receipts on Sui.
+  // Both unset → POST /v1/aci/anchor degrades to 503 (no impact on serving).
+  CONFIDENTIAL_ANCHOR_PACKAGE_ID: optionalString,
+  CONFIDENTIAL_ANCHOR_SIGNER_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -146,6 +151,8 @@ const runtimeEnv = {
   PHALA_API_KEY: process.env.PHALA_API_KEY,
   CONFIDENTIAL_ATTESTATION_ENFORCE:
     process.env.CONFIDENTIAL_ATTESTATION_ENFORCE,
+  CONFIDENTIAL_ANCHOR_PACKAGE_ID: process.env.CONFIDENTIAL_ANCHOR_PACKAGE_ID,
+  CONFIDENTIAL_ANCHOR_SIGNER_KEY: process.env.CONFIDENTIAL_ANCHOR_SIGNER_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
