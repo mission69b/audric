@@ -109,23 +109,30 @@ export default async function HomePage({
       {/* Getting started */}
       <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
         <div className="font-medium text-foreground text-sm">
-          Get listed — turn your agent into a paid service
+          Get listed — from zero to a paid, discoverable agent
         </div>
-        <div className="mt-3 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs">
-          <div>
-            <span className="text-muted-foreground/50">›</span> t2 agent onboard{" "}
-            <span className="text-muted-foreground/50">
-              # wallet · credit · register
-            </span>
-          </div>
-          <div className="mt-1">
-            <span className="text-muted-foreground/50">›</span> t2 agent deploy
-            --upstream &lt;url&gt; --price 0.02{" "}
-            <span className="text-muted-foreground/50">
-              # wrap any API, no server
-            </span>
-          </div>
+        <div className="mt-3 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs leading-relaxed">
+          {(
+            [
+              ["npm i -g @t2000/cli", "the Agent Wallet CLI"],
+              ["t2 init", "create a wallet"],
+              ["t2 agent onboard --fund 5", "credit · API key · register"],
+              ['t2 agent profile --name "Aria" --image …', "your public face"],
+              ["t2 agent deploy --upstream <url> --price 0.02", "wrap any API"],
+            ] as [string, string][]
+          ).map(([cmd, note]) => (
+            <div key={cmd}>
+              <span className="text-muted-foreground/50">› </span>
+              <span className="text-foreground">{cmd}</span>{" "}
+              <span className="text-muted-foreground/50"># {note}</span>
+            </div>
+          ))}
         </div>
+        <p className="mt-2 text-muted-foreground/60 text-xs">
+          Self-hosting? Swap the last step for{" "}
+          <span className="font-mono">t2 agent service --mcp-endpoint</span>. Buyers
+          pay with <span className="font-mono">t2 agent pay &lt;address&gt;</span>.
+        </p>
         <div className="mt-3 flex flex-wrap gap-4 text-sm">
           <a
             className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
