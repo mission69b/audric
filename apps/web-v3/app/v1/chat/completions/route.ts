@@ -1,7 +1,11 @@
 import { generateText, streamText } from "ai";
 import { getModelPricing } from "@/lib/ai/models";
 import { authenticateApiKey, openAiError } from "@/lib/api/keys";
-import { apiMarginFor, isApiModel } from "@/lib/api/models";
+import {
+  isAttestationEnforced,
+  verifyConfidentialUpstream,
+} from "@/lib/api/attestation";
+import { apiMarginFor, getApiModel, isApiModel } from "@/lib/api/models";
 import {
   getInferenceModel,
   getPhalaPricing,
@@ -184,6 +188,29 @@ export async function POST(request: Request) {
       "api_error",
       "model_unavailable"
     );
+  }
+
+  // v3.0 Phase A — verify the confidential upstream is a genuine, freshly-
+  // attested Phala GPU-TEE BEFORE forwarding the prompt. Observe-mode by
+  // default (verify + log, still serve); fail-closed only when
+  // CONFIDENTIAL_ATTESTATION_ENFORCE=true (flip on after a real attestation
+  // response confirms the verification — see SPEC_CONFIDENTIAL_API §5 Phase A).
+  if (confidential && model) {
+    const upstream = getApiModel(model)?.upstream ?? model;
+    const att = await verifyConfidentialUpstream(model, upstream);
+    if (!att.verified) {
+      if (isAttestationEnforced()) {
+        return openAiError(
+          503,
+          "Confidential attestation could not be verified — request refused (fail-closed).",
+          "api_error",
+          "attestation_failed"
+        );
+      }
+      console.warn(
+        `[/v1/chat/completions] confidential attestation NOT verified for ${model} (observe-mode, served): ${att.reason}`
+      );
+    }
   }
 
   // Debit the same CreditLedger as in-app turns. `ref = completion id` →

@@ -101,6 +101,11 @@ const serverSchema = z.object({
   // the Vercel Gateway. Unset → the confidential tier is hidden (no boot
   // failure); ZDR models keep working. Server-only.
   PHALA_API_KEY: optionalString,
+  // v3.0 Phase A: when "true", confidential (phala/*) calls FAIL-CLOSED if the
+  // upstream attestation can't be verified. Default (unset) = observe-mode
+  // (verify + log, still serve) — flip on only after a real attestation
+  // response confirms the verification. Server-only.
+  CONFIDENTIAL_ATTESTATION_ENFORCE: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -139,6 +144,7 @@ const runtimeEnv = {
   CMC_API_KEY: process.env.CMC_API_KEY,
   FAL_API_KEY: process.env.FAL_API_KEY,
   PHALA_API_KEY: process.env.PHALA_API_KEY,
+  CONFIDENTIAL_ATTESTATION_ENFORCE: process.env.CONFIDENTIAL_ATTESTATION_ENFORCE,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
