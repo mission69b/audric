@@ -1,0 +1,121 @@
+import { getAgentProfile, setAgentProfileFields } from "@audric/accounts";
+import { getCurrentUser } from "@audric/auth/server";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
+import { type NextRequest, NextResponse } from "next/server";
+
+// POST /api/agent/profile — owner-side edit of an agent's OFF-CHAIN fields
+// (displayName · imageUrl · description · priceUsdc). Session-authed (the owner's
+// Passport) + ownership-gated (the agent's confirmed on-chain owner must equal
+// the session user). The on-chain endpoint stays agent-keypair-only; this is the
+// human "manage my agent" path for the directory/commerce display fields.
+
+const MAX_NAME = 80;
+const MAX_DESC = 600;
+
+function validImageUrl(url: string): boolean {
+  if (url.length > 512) {
+    return false;
+  }
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const session = await getCurrentUser();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+
+  let body: {
+    agent?: string;
+    displayName?: string | null;
+    imageUrl?: string | null;
+    description?: string | null;
+    priceUsdc?: string | null;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  }
+
+  let agent: string;
+  try {
+    agent = normalizeSuiAddress(String(body.agent ?? "").trim());
+  } catch {
+    return NextResponse.json({ error: "Invalid agent." }, { status: 400 });
+  }
+
+  // Ownership gate: the session user must be the agent's confirmed owner.
+  const profile = await getAgentProfile(agent);
+  if (!profile) {
+    return NextResponse.json({ error: "Agent not found." }, { status: 404 });
+  }
+  if (profile.owner !== session.user.id) {
+    return NextResponse.json(
+      { error: "You don't own this agent." },
+      { status: 403 }
+    );
+  }
+
+  // Build the field set — only what's provided (empty string = clear).
+  const fields: {
+    displayName?: string | null;
+    imageUrl?: string | null;
+    description?: string | null;
+    priceUsdc?: string | null;
+  } = {};
+
+  if (body.displayName !== undefined) {
+    const v = String(body.displayName).trim();
+    if (v.length > MAX_NAME) {
+      return NextResponse.json({ error: "Name too long." }, { status: 400 });
+    }
+    fields.displayName = v || null;
+  }
+  if (body.imageUrl !== undefined) {
+    const v = String(body.imageUrl).trim();
+    if (v && !validImageUrl(v)) {
+      return NextResponse.json(
+        { error: "Image must be a valid https URL." },
+        { status: 400 }
+      );
+    }
+    fields.imageUrl = v || null;
+  }
+  if (body.description !== undefined) {
+    const v = String(body.description).trim();
+    if (v.length > MAX_DESC) {
+      return NextResponse.json(
+        { error: "Description too long." },
+        { status: 400 }
+      );
+    }
+    fields.description = v || null;
+  }
+  if (body.priceUsdc !== undefined && body.priceUsdc !== null) {
+    const raw = String(body.priceUsdc).trim();
+    if (raw === "") {
+      fields.priceUsdc = null;
+    } else {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0 || n > 1000) {
+        return NextResponse.json(
+          { error: "Price must be a positive USDC amount (≤ 1000)." },
+          { status: 400 }
+        );
+      }
+      fields.priceUsdc = raw;
+    }
+  }
+
+  if (Object.keys(fields).length === 0) {
+    return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
+  }
+
+  await setAgentProfileFields(agent, fields);
+  return NextResponse.json({ ok: true });
+}
