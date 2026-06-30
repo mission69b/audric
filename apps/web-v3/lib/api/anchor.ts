@@ -5,6 +5,7 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { env } from "@/lib/env";
+import { getReadyRedisClient } from "@/lib/ratelimit";
 
 /**
  * Sui anchor for confidential receipts — SPEC_CONFIDENTIAL_API v3.0, Phase C
@@ -27,6 +28,32 @@ const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK ?? "mainnet") as
   | "testnet";
 const ACI_BASE = "https://inference.phala.com";
 const ANCHOR_GAS_BUDGET = 10_000_000n; // 0.01 SUI — one small event-emit MoveCall.
+const ANCHOR_KEY_PREFIX = "aci-anchor:";
+const ANCHOR_TTL_SECONDS = 60 * 60 * 24 * 365; // 1y — anchored once, kept for verify.
+
+/** The anchor tx digest for a receipt, if it's been anchored (else null). */
+export async function getAnchorDigest(
+  receiptId: string
+): Promise<string | null> {
+  const redis = await getReadyRedisClient();
+  if (!redis) {
+    return null;
+  }
+  return (await redis.get(`${ANCHOR_KEY_PREFIX}${receiptId}`)) as string | null;
+}
+
+async function storeAnchorDigest(
+  receiptId: string,
+  digest: string
+): Promise<void> {
+  const redis = await getReadyRedisClient();
+  if (!redis) {
+    return;
+  }
+  await redis.set(`${ANCHOR_KEY_PREFIX}${receiptId}`, digest, {
+    EX: ANCHOR_TTL_SECONDS,
+  });
+}
 
 export interface AnchorResult {
   anchored: boolean;
@@ -74,6 +101,13 @@ interface AciReceipt {
 
 /** Anchor the receipt `receiptId` on Sui. Returns the anchor tx digest. */
 export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
+  // Idempotent: a receipt is anchored once — return the existing digest rather
+  // than emit a duplicate event + burn gas.
+  const existing = await getAnchorDigest(receiptId);
+  if (existing) {
+    return { anchored: true, txDigest: existing };
+  }
+
   const pkg = env.CONFIDENTIAL_ANCHOR_PACKAGE_ID;
   const signer = loadSigner();
   if (!(pkg && signer && env.PHALA_API_KEY)) {
@@ -136,6 +170,7 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
     if (!txn.effects?.status?.success) {
       return { anchored: false, reason: "anchor tx reverted" };
     }
+    await storeAnchorDigest(receiptId, txn.digest);
     return { anchored: true, txDigest: txn.digest };
   } catch (e) {
     return {
