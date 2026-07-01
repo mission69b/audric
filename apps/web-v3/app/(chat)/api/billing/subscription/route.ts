@@ -3,10 +3,39 @@ import type { TierId } from "@/lib/credit/tiers";
 import {
   changeSubscriptionTier,
   isCreditConfigured,
+  previewSubscriptionChange,
   setSubscriptionCancel,
 } from "@/lib/stripe";
 
 const PAID_TIERS: TierId[] = ["pro", "max"];
+
+/**
+ * GET ?tier=pro|max — preview the exact proration a switch would charge now
+ * (positive = charged; negative = credited). Drives the confirm-dialog breakdown.
+ * Free (downgrade = cancel at period end) has no immediate charge → returns null.
+ */
+export async function GET(request: Request) {
+  const session = await auth();
+  if (!session?.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  if (!isCreditConfigured()) {
+    return Response.json({ preview: null });
+  }
+  const tier = new URL(request.url).searchParams.get("tier");
+  if (!PAID_TIERS.includes(tier as TierId)) {
+    return Response.json({ preview: null });
+  }
+  try {
+    const preview = await previewSubscriptionChange(
+      session.user.id,
+      tier as TierId
+    );
+    return Response.json({ preview });
+  } catch {
+    return Response.json({ preview: null });
+  }
+}
 
 /**
  * Manage the user's active subscription — the native replacement for the hosted

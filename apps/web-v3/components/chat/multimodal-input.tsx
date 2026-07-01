@@ -1411,6 +1411,7 @@ const ConfidentialToggle = memo(PureConfidentialToggle);
 type ConfidentialModelOption = {
   id: string;
   name: string;
+  provider?: string;
   reasoning?: boolean;
 };
 
@@ -1468,7 +1469,11 @@ function PureConfidentialModelSelector({
               value={m.id}
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <LockIcon className="size-3 shrink-0 text-emerald-500" />
+                {m.provider ? (
+                  <ModelSelectorLogo provider={m.provider} />
+                ) : (
+                  <LockIcon className="size-3 shrink-0 text-emerald-500" />
+                )}
                 <span className="truncate">
                   {m.name.replace(" (Confidential)", "")}
                 </span>

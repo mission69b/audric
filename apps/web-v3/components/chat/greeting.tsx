@@ -1,43 +1,27 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { LockIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-// Rotating, privacy/product-forward greetings on the empty state. Fixed height
-// avoids layout shift as lines swap.
-const GREETINGS: { title: string; subtitle: string }[] = [
-  {
-    title: "What can I help with?",
-    subtitle: "Ask a question, generate an image, or explore ideas.",
-  },
-  {
-    title: "Private by default.",
-    subtitle: "Your prompts aren't training data — yours stay yours.",
-  },
-  {
-    title: "Truly yours.",
-    subtitle: "Your wallet, your data, your memory — you own them.",
-  },
-  {
-    title: "Permissionless AI.",
-    subtitle: "No seed phrase, no bank, no one who can freeze it.",
-  },
-];
-
-const ROTATE_MS = 4500;
-
+// Minimal, Perplexity-style wordmark hero. Mode-aware: the empty state re-titles
+// itself when the composer's Confidential toggle flips (a polished mode switch,
+// like Perplexity's "perplexity" → "perplexity computer").
 export const Greeting = () => {
-  const [index, setIndex] = useState(0);
-
+  const [confidential, setConfidential] = useState(false);
   useEffect(() => {
-    const id = setInterval(
-      () => setIndex((prev) => (prev + 1) % GREETINGS.length),
-      ROTATE_MS
-    );
-    return () => clearInterval(id);
+    const read = () =>
+      setConfidential(
+        window.localStorage.getItem("audric-confidential") === "1"
+      );
+    read();
+    window.addEventListener("audric-confidential-change", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("audric-confidential-change", read);
+      window.removeEventListener("storage", read);
+    };
   }, []);
-
-  const greeting = GREETINGS[index];
 
   return (
     <div
@@ -49,15 +33,34 @@ export const Greeting = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           initial={{ opacity: 0, y: 8 }}
-          key={index}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          key={confidential ? "confidential" : "default"}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="font-semibold text-2xl text-foreground tracking-tight md:text-3xl">
-            {greeting.title}
-          </div>
-          <div className="mt-3 text-muted-foreground/80 text-sm">
-            {greeting.subtitle}
-          </div>
+          {confidential ? (
+            <>
+              <div className="flex items-center justify-center gap-2 font-semibold text-2xl tracking-tight md:text-3xl">
+                <LockIcon className="size-6 text-emerald-500" />
+                <span>
+                  audric{" "}
+                  <span className="font-normal text-emerald-500">
+                    confidential
+                  </span>
+                </span>
+              </div>
+              <div className="mt-3 text-muted-foreground/80 text-sm">
+                Sealed in a GPU-TEE — provably private, verifiable on Sui.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="font-semibold text-3xl text-foreground tracking-tight md:text-4xl">
+                audric
+              </div>
+              <div className="mt-3 text-muted-foreground/80 text-sm">
+                What can I help with?
+              </div>
+            </>
+          )}
         </motion.div>
       </AnimatePresence>
     </div>

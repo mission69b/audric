@@ -18,6 +18,31 @@ export type StarterChip = {
   authed?: boolean;
 };
 
+/** Confidential-mode starter chips — a pure in-TEE completion (no image/web/
+ * video/wallet), so themed for private document + drafting work. */
+export const confidentialChips: StarterChip[] = [
+  {
+    label: "Analyze a PDF",
+    starterPrompt:
+      "I'll paste a document (PDF or text) — analyze it privately and pull out the key points and anything I should watch for.",
+  },
+  {
+    label: "Review a term sheet",
+    starterPrompt:
+      "Review a term sheet or contract I'll paste. Summarize it in plain English and flag the important or unusual clauses.",
+  },
+  {
+    label: "Draft an email",
+    starterPrompt:
+      "Help me draft an email — ask me the key details, then write it.",
+  },
+  {
+    label: "Explain a concept",
+    starterPrompt:
+      "Explain a concept to me clearly and simply. I'll tell you the topic.",
+  },
+];
+
 export const starterChips: StarterChip[] = [
   {
     label: "Generate image",

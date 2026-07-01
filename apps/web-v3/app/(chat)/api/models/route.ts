@@ -22,6 +22,9 @@ async function confidentialCatalog() {
       return {
         id: m.id,
         name: m.name,
+        // Real upstream provider (moonshotai, deepseek, qwen, …) → the provider
+        // logo in the confidential switcher (matches the private switcher).
+        provider: m.upstream?.split("/")[0],
         reasoning: m.reasoning ?? false,
         inputPer1M: p ? p.inputPer1M * margin : undefined,
         outputPer1M: p ? p.outputPer1M * margin : undefined,

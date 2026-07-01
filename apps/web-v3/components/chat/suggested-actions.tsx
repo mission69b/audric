@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
-import { starterChips } from "@/lib/constants";
+import { confidentialChips, starterChips } from "@/lib/constants";
 
 type SuggestedActionsProps = {
   // Auto-send the chip's starter prompt (Venice-style) — a bare intent triggers
@@ -14,7 +14,26 @@ type SuggestedActionsProps = {
 function PureSuggestedActions({ onSend }: SuggestedActionsProps) {
   const { status } = useZkLogin();
   const isAuthed = status === "authenticated";
-  const chips = starterChips.filter((c) => !c.authed || isAuthed);
+  // Confidential mode swaps the chips (image/web/video/wallet don't work in a
+  // pure in-TEE completion) → doc/drafting chips instead. Tracks the composer
+  // toggle via localStorage + its custom change event.
+  const [confidential, setConfidential] = useState(false);
+  useEffect(() => {
+    const read = () =>
+      setConfidential(
+        window.localStorage.getItem("audric-confidential") === "1"
+      );
+    read();
+    window.addEventListener("audric-confidential-change", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("audric-confidential-change", read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
+  const chips = (confidential ? confidentialChips : starterChips).filter(
+    (c) => !c.authed || isAuthed
+  );
 
   return (
     <motion.div

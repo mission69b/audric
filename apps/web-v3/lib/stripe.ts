@@ -364,6 +364,45 @@ export async function changeSubscriptionTier(
   return true;
 }
 
+/**
+ * Preview what a switch to `tier` would charge NOW — Stripe computes the exact
+ * proration (positive = charged immediately for an upgrade; negative = credit
+ * for a downgrade). Powers the "you'll be charged ~$X now" breakdown in the
+ * confirm dialog. Returns null if there's no active sub / not configured.
+ */
+export async function previewSubscriptionChange(
+  userId: string,
+  tier: TierId
+): Promise<{ amountDueCents: number; currency: string } | null> {
+  const priceId = priceIdForTier(tier);
+  if (!priceId) {
+    return null;
+  }
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return null;
+  }
+  const subs = await getStripe().subscriptions.list({
+    customer: customerId,
+    status: "active",
+    limit: 1,
+  });
+  const sub = subs.data[0];
+  const itemId = sub?.items.data[0]?.id;
+  if (!(sub && itemId)) {
+    return null;
+  }
+  const preview = await getStripe().invoices.createPreview({
+    customer: customerId,
+    subscription: sub.id,
+    subscription_details: {
+      items: [{ id: itemId, price: priceId }],
+      proration_behavior: "always_invoice",
+    },
+  });
+  return { amountDueCents: preview.amount_due, currency: preview.currency };
+}
+
 /** Set a card as the customer's default (used for invoices + auto-recharge). */
 export async function setDefaultPaymentMethod(
   userId: string,

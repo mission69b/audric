@@ -6,6 +6,7 @@ import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -67,12 +68,66 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
     label: string;
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // The exact proration Stripe would charge/credit now (fetched when the confirm
+  // opens for a paid switch) — so the dialog shows a real number, not just "prorated".
+  const [preview, setPreview] = useState<{
+    amountDueCents: number;
+    currency: string;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  useEffect(() => {
+    if (!changing || changing.tier === "free") {
+      setPreview(null);
+      return;
+    }
+    let alive = true;
+    setPreview(null);
+    setPreviewLoading(true);
+    fetch(`/api/billing/subscription?tier=${encodeURIComponent(changing.tier)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (alive) {
+          setPreview(j.preview ?? null);
+        }
+      })
+      .catch(() => {
+        /* fall back to the generic note */
+      })
+      .finally(() => {
+        if (alive) {
+          setPreviewLoading(false);
+        }
+      });
+    return () => {
+      alive = false;
+    };
+  }, [changing]);
+
   const changeMessage =
     changing?.tier === "free"
       ? "Your current plan stays active until the end of your billing period, then switches to Free — no further charges."
       : changing?.label.startsWith("Upgrade")
-        ? "You'll be charged the prorated difference now and your new plan takes effect immediately."
-        : "You'll switch now — Stripe applies a prorated credit for the difference toward your next invoice.";
+        ? "Your new plan takes effect immediately."
+        : "You'll switch now, prorated to your next invoice.";
+  const amountLine = (() => {
+    if (!changing || changing.tier === "free") {
+      return null;
+    }
+    if (previewLoading) {
+      return "Calculating the exact amount…";
+    }
+    if (!preview) {
+      return null;
+    }
+    const dollars = `$${(Math.abs(preview.amountDueCents) / 100).toFixed(2)}`;
+    if (preview.amountDueCents > 0) {
+      return `You'll be charged about ${dollars} now (prorated for the rest of this cycle).`;
+    }
+    if (preview.amountDueCents < 0) {
+      return `You'll be credited about ${dollars} toward your next invoice.`;
+    }
+    return "No charge now — prorated to your next invoice.";
+  })();
 
   const confirmChange = async () => {
     if (!changing) {
@@ -145,7 +200,14 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{changing?.label}</AlertDialogTitle>
-            <AlertDialogDescription>{changeMessage}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {changeMessage}
+              {amountLine ? (
+                <span className="mt-2 block font-medium text-foreground">
+                  {amountLine}
+                </span>
+              ) : null}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
