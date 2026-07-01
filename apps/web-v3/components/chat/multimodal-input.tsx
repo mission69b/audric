@@ -32,7 +32,6 @@ import {
   ModelSelector,
   ModelSelectorContent,
   ModelSelectorGroup,
-  ModelSelectorInput,
   ModelSelectorItem,
   ModelSelectorList,
   ModelSelectorLogo,
@@ -1034,7 +1033,6 @@ function PureModelSelectorCompact({
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent>
-        <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>
           {(() => {
             const curatedIds = new Set(curatedList.map((m) => m.id));
