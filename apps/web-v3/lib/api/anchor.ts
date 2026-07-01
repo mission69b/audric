@@ -170,11 +170,23 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
   }
   const servedAtMs = BigInt((receipt.served_at ?? 0) * 1000);
 
-  // 2. Build + sign + execute the anchor MoveCall (signer pays gas).
-  try {
+  // 2. Build + sign + execute the anchor MoveCall.
+  //
+  // Prefer ADDRESS-BALANCE GAS (`setGasPayment([])`, SIP-58): gas is a withdrawal
+  // from the signer's SUI address balance, not a gas-coin object — so concurrent
+  // anchors don't equivocate on a shared coin. This is the only thing that makes
+  // the signer safe under serverless concurrency (separate invocations can't be
+  // serialized in-process). Requires the signer's SUI to be in its address
+  // BALANCE (accumulator). Falls back to coin gas if it isn't there yet, so the
+  // path never breaks pre-provisioning.
+  const client = grpcClient();
+  const buildAnchorTx = (addressBalanceGas: boolean): Transaction => {
     const tx = new Transaction();
     tx.setSender(signer.toSuiAddress());
     tx.setGasBudget(ANCHOR_GAS_BUDGET);
+    if (addressBalanceGas) {
+      tx.setGasPayment([]); // pay gas from the SUI address balance
+    }
     tx.moveCall({
       target: `${pkg}::anchor::anchor_receipt`,
       arguments: [
@@ -185,8 +197,10 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
         tx.object("0x6"), // Clock — on-chain anchored_at_ms
       ],
     });
-    const client = grpcClient();
-    const bytes = await tx.build({ client });
+    return tx;
+  };
+  const submit = async (addressBalanceGas: boolean): Promise<string> => {
+    const bytes = await buildAnchorTx(addressBalanceGas).build({ client });
     const { signature } = await signer.signTransaction(bytes);
     const result = await client.core.executeTransaction({
       transaction: bytes,
@@ -198,10 +212,25 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
         ? result.Transaction
         : result.FailedTransaction;
     if (!txn.effects?.status?.success) {
-      return { anchored: false, reason: "anchor tx reverted" };
+      throw new Error("anchor tx reverted");
     }
-    await storeAnchorDigest(receiptId, txn.digest);
-    return { anchored: true, txDigest: txn.digest };
+    return txn.digest;
+  };
+  try {
+    let digest: string;
+    try {
+      digest = await submit(true);
+    } catch (e) {
+      // No address balance yet (or a gas-path issue) → coin-gas fallback. Anchor
+      // is idempotent + event-only, so a fallback re-attempt is harmless.
+      console.warn(
+        "[anchor] address-balance gas failed → coin-gas fallback",
+        e instanceof Error ? e.message : e
+      );
+      digest = await submit(false);
+    }
+    await storeAnchorDigest(receiptId, digest);
+    return { anchored: true, txDigest: digest };
   } catch (e) {
     return {
       anchored: false,
