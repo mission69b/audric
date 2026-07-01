@@ -15,6 +15,7 @@ import {
   ToolOutput,
 } from "../ai-elements/tool";
 import { BalanceTool } from "./balance-tool";
+import { ConfidentialBadge } from "./confidential-badge";
 import { type CotItem, CotTimeline } from "./cot-timeline";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
@@ -630,6 +631,7 @@ const PurePreviewMessage = ({
         parts
       )}
       {modelBadge}
+      {isAssistant && <ConfidentialBadge message={message} />}
       {actions}
     </>
   );

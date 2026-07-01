@@ -31,6 +31,11 @@ export const messageMetadataSchema = z.object({
   totalTokens: z.number().optional(),
   reasoningTokens: z.number().optional(),
   cachedInputTokens: z.number().optional(),
+  // Confidential mode (GPU-TEE): set at stream start so the 🔒 badge shows
+  // immediately. The verifiable receipt id arrives at finish (also persisted as
+  // a `data-confidential` part so the badge + Verify survive a reload).
+  confidential: z.boolean().optional(),
+  receiptId: z.string().optional(),
 });
 
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
@@ -87,6 +92,9 @@ export type CustomUIDataTypes = {
   // A PDF attachment was extracted to text server-side (before the model ran) →
   // surfaced as a "Parsed <name>" step at the top of the turn's CoT timeline.
   "parsed-file": { name: string };
+  // Confidential (GPU-TEE) response receipt — carried as a persisted message
+  // part so the 🔒 badge + Verify work forever (metadata isn't persisted).
+  confidential: { receiptId: string; modelId: string };
 };
 
 export type ChatMessage = UIMessage<

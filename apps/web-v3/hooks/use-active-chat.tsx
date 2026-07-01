@@ -155,6 +155,9 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
         const useMemWal =
           typeof window !== "undefined" &&
           window.localStorage.getItem("audric-memory") === "1";
+        const confidential =
+          typeof window !== "undefined" &&
+          window.localStorage.getItem("audric-confidential") === "1";
 
         return {
           body: {
@@ -165,6 +168,7 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibility,
             useMemWal,
+            confidential,
             ...request.body,
           },
         };

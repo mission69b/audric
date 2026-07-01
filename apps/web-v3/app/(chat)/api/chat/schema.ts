@@ -56,6 +56,10 @@ export const postRequestBodySchema = z.object({
   // Private Memory opt-in (off by default) — recall this user's memories +
   // enable the save_memory tool for this turn.
   useMemWal: z.boolean().optional(),
+  // Confidential mode (off by default) — route this turn through a GPU-TEE
+  // (phala/*) as a pure in-TEE completion (no tools — they'd leak data out of
+  // the enclave), auto-anchored on Sui + a durable verifiable receipt.
+  confidential: z.boolean().optional(),
 });
 
 export type PostRequestBody = z.infer<typeof postRequestBodySchema>;

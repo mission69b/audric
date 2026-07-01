@@ -58,6 +58,7 @@ import { upscaleImage } from "@/lib/ai/tools/upscale-image";
 import { webScrape } from "@/lib/ai/tools/web-scrape";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import { hasVideoIntent } from "@/lib/ai/video-intent";
+import { confidentialChatResponse } from "@/lib/api/confidential-chat";
 import { isProductionEnvironment } from "@/lib/constants";
 import { debitMicrosForUsage, marginFor } from "@/lib/credit/meter";
 import {
@@ -165,6 +166,7 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       useMemWal,
+      confidential,
     } = requestBody;
 
     // Turn start — stamped ONCE here (server receive, ≈ user send) and reused for
@@ -642,6 +644,19 @@ export async function POST(request: Request) {
           await convertToModelMessages(inlinedMessages)
         )
       : await convertToModelMessages(inlinedMessages);
+
+    // Confidential mode — route this turn through a GPU-TEE as a pure in-TEE
+    // completion (no tools/memory/artifacts; those would leak data out of the
+    // enclave). Anchored on Sui + a durable verifiable receipt. Bypasses the
+    // agentic pipeline below entirely.
+    if (confidential) {
+      return confidentialChatResponse({
+        chatId: id,
+        userId: session?.user?.id,
+        modelMessages,
+        requestedModelId: selectedChatModel,
+      });
+    }
 
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,

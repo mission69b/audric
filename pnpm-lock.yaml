@@ -522,8 +522,8 @@ importers:
         specifier: 5.7.0
         version: 5.7.0(typescript@5.9.3)
       '@t2000/sdk':
-        specifier: ^5.7.0
-        version: 5.7.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+        specifier: ^5.22.0
+        version: 5.22.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))(react@19.0.1)
@@ -2129,6 +2129,20 @@ packages:
     resolution: {integrity: sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA==}
     engines: {node: '>=14'}
 
+  '@peculiar/asn1-schema@2.8.0':
+    resolution: {integrity: sha512-7YT0U/ze0tF2QOBbE15gKZwy5tvgGyLRiRHLzhlbOpf7BT032oBSd0haZqXn5W6l26WLlu3dyxzjM+2638/z2Q==}
+
+  '@peculiar/asn1-x509@2.8.0':
+    resolution: {integrity: sha512-N0CMuhWUzsWEVq6F1q9X6+VKUnWzSW+cSVg+aPaGGwDdbFoFWTYgin5MHwXgpWd6y9COMBxnfy/Qc+Xc7F0Zwg==}
+
+  '@peculiar/utils@2.0.3':
+    resolution: {integrity: sha512-+oL3HPFRIZ1St2K50lWCXiioIgSoxzz7R1J3uF6neO2yl1sgmpgY6XXJH4BdpoDkMWznQTeYF6oWNDZLCdQ4eQ==}
+
+  '@phala/dcap-qvl@0.5.2':
+    resolution: {integrity: sha512-AMOWcu7SjXzbSSRGfJiZ4RFJmL/RjzM7Pr03TZzCqZtRdxVr4EYL98xMnVEMm808xlcBB/bcLLPCucouX7l9WQ==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
+
   '@playwright/test@1.60.0':
     resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
     engines: {node: '>=18'}
@@ -3385,11 +3399,11 @@ packages:
   '@t2000/sdk@4.4.0':
     resolution: {integrity: sha512-9GBE0SmELDqOGV/PZpNApS0iT3crVJdjq4o4UBAYmd+cCGdpXK6l0fPlrl7pkqVbvn8g0daE4STQE4Z9aq53Wg==}
 
+  '@t2000/sdk@5.22.0':
+    resolution: {integrity: sha512-KuDICOWnxelE+Me1pMv+8/vYxwPQDB7TkG/61LSj7zlr8Ew+MV5a3fYG7I41p4fDecTb80aXOGNg5BWLkeQnYw==}
+
   '@t2000/sdk@5.6.1':
     resolution: {integrity: sha512-d4DbWBuS8/+3Z+qbeLDjHrCRCnBzIKXqQZGwWk7+0nz5eVZXCGnj809sueXDl3Cq9OFx23H1ofG7aalTm0cbVw==}
-
-  '@t2000/sdk@5.7.0':
-    resolution: {integrity: sha512-omxIrU97TNHkWy9QAZJ9mlwB+ptwTUrdeShOEmP6zhYJBhxlSFwv9EB7xzHRviHCbXe3e62DW4s6LTrWu3/SsQ==}
 
   '@t2000/ui@0.1.4':
     resolution: {integrity: sha512-isDx3wHtoczj8IiYOGm6FcSBV0I4CbNC9D7ijR8oYU8TEbyQ/hMkKjDw5dk1UV+LnEFl3laqTNdbhBXDn7D/Kw==}
@@ -4001,6 +4015,13 @@ packages:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
     engines: {node: '>=10'}
 
+  asn1.js@5.4.1:
+    resolution: {integrity: sha512-+I//4cYPccV8LdmBLiX8CYvf9Sp3vQsrqu2QNXRcrbiWvcx/UdlFiqUJJzxRQxgsZmvhXhn4cSKeSmoFjVdupA==}
+
+  asn1js@3.0.10:
+    resolution: {integrity: sha512-S2s3aOytiKdFRdulw2qPE51MzjzVOisppcVv7jVFR+Kw0kxwvFrDcYA0h7Ndqbmj0HkMIXYWaoj7fli8kgx1eg==}
+    engines: {node: '>=12.0.0'}
+
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
@@ -4057,6 +4078,9 @@ packages:
   bip39@3.1.0:
     resolution: {integrity: sha512-c9kiwdk45Do5GL0vJMe7tS95VjCii65mYAH7DfWl3uW8AVzXKQVUm64i3hzVybBDMp9r7j9iNxR85+ul8MdN/A==}
 
+  bn.js@4.12.4:
+    resolution: {integrity: sha512-njR1b+ixG2ufvL9Zn9JGneW+b5GV6jqpYyPPpg4QVt723b5kJPGUczkUyWEH9BwEA74UakJZ43I4FDLBF7ci0g==}
+
   bn.js@5.2.3:
     resolution: {integrity: sha512-EAcmnPkxpntVL+DS7bO1zhcZNvCkxqtkd0ZY53h06GNQ3DEkkGZ/gKgmDv6DdZQGj9BgfSPKtJJ7Dp1GPP8f7w==}
 
@@ -4078,6 +4102,9 @@ packages:
   brace-expansion@5.0.5:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
     engines: {node: 18 || 20 || >=22}
+
+  brorand@1.1.0:
+    resolution: {integrity: sha512-cKV8tMCEpQs4hK/ik71d6LrPOnpkpGBR0wzxqr68g2m/LB2GxVYQroAjMJZRVM1Y4BCjCKc3vAamxSzOY2RP+w==}
 
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
@@ -4654,6 +4681,9 @@ packages:
   effect@3.20.0:
     resolution: {integrity: sha512-qMLfDJscrNG8p/aw+IkT9W7fgj50Z4wG5bLBy0Txsxz8iUHjDIkOgO3SV0WZfnQbNG2VJYb0b+rDLMrhM4+Krw==}
 
+  elliptic@6.6.1:
+    resolution: {integrity: sha512-RaddvvMatK2LJHqFJ+YA4WysVN5Ita9E35botqIYspQ4TkRAlCicdzKOjlyv/1Za5RyTNn7di//eEV0uTAfe3g==}
+
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -4974,6 +5004,9 @@ packages:
     resolution: {integrity: sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==}
     engines: {node: '>= 0.4'}
 
+  hash.js@1.1.7:
+    resolution: {integrity: sha512-taOaskGt4z4SOANNseOviYDvjEJinIkRgmp7LbKP2YTTmVxWBl87s/uzK9r+44BclBSp2X7K1hqeNfz9JbBeXA==}
+
   hasown@2.0.2:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
@@ -5019,6 +5052,9 @@ packages:
 
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
+
+  hmac-drbg@1.0.1:
+    resolution: {integrity: sha512-Tti3gMqLdZfhOQY1Mzf/AanLiqh1WTiJgEj26ZuYQ9fbkLomzGchCws4FyrSd4VkpBfiNhaE1On+lOz894jvXg==}
 
   hono@4.12.12:
     resolution: {integrity: sha512-p1JfQMKaceuCbpJKAPKVqyqviZdS0eUxH9v82oWo1kb9xjQ5wA6iP3FNVAPDFlz5/p7d45lO+BpSk1tuSZMF4Q==}
@@ -5562,6 +5598,12 @@ packages:
     resolution: {integrity: sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A==}
     engines: {node: '>=18'}
 
+  minimalistic-assert@1.0.1:
+    resolution: {integrity: sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==}
+
+  minimalistic-crypto-utils@1.0.1:
+    resolution: {integrity: sha512-JIYlbt6g8i5jKfJ3xz7rF0LXmv2TkDxBLUkiBeZ7bAx4GnnNMr8xFpGnOxn6GhTEHx3SjRrZEoU+j04prX1ktg==}
+
   minimatch@10.2.5:
     resolution: {integrity: sha512-MULkVLfKGYDFYejP07QOurDLLQpcjk7Fw+7jXS2R2czRQzR56yHRveU5NDJEOviH+hETZKSkIk5c+T23GjFUMg==}
     engines: {node: 18 || 20 || >=22}
@@ -5977,6 +6019,13 @@ packages:
 
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
+
+  pvtsutils@1.3.6:
+    resolution: {integrity: sha512-PLgQXQ6H2FWCaeRak8vvk1GW462lMxB5s3Jm673N82zI4vqtVUPuZdffdZbPDFRoU8kAhItWFtPCWiPpp4/EDg==}
+
+  pvutils@1.1.5:
+    resolution: {integrity: sha512-KTqnxsgGiQ6ZAzZCVlJH5eOjSnvlyEgx1m8bkRJfOhmGRqfo5KLvmAlACQkrjEtOQ4B7wF9TdSLIs9O90MX9xA==}
+    engines: {node: '>=16.0.0'}
 
   qrcode@1.5.4:
     resolution: {integrity: sha512-1ca71Zgiu6ORjHqFBDpnSMTR2ReToX4l1Au1VFLyVeBTFavzQnv5JxMFr3ukHVKpSrSA2MCk0lNJSykjUfz7Zg==}
@@ -8046,6 +8095,36 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.28.0': {}
 
+  '@peculiar/asn1-schema@2.8.0':
+    dependencies:
+      '@peculiar/utils': 2.0.3
+      asn1js: 3.0.10
+      tslib: 2.8.1
+
+  '@peculiar/asn1-x509@2.8.0':
+    dependencies:
+      '@peculiar/asn1-schema': 2.8.0
+      '@peculiar/utils': 2.0.3
+      asn1js: 3.0.10
+      tslib: 2.8.1
+
+  '@peculiar/utils@2.0.3':
+    dependencies:
+      tslib: 2.8.1
+
+  '@phala/dcap-qvl@0.5.2':
+    dependencies:
+      '@peculiar/asn1-schema': 2.8.0
+      '@peculiar/asn1-x509': 2.8.0
+      asn1.js: 5.4.1
+      bn.js: 5.2.3
+      buffer: 6.0.3
+      elliptic: 6.6.1
+      hash.js: 1.1.7
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
+
   '@playwright/test@1.60.0':
     dependencies:
       playwright: 1.60.0
@@ -9420,6 +9499,35 @@ snapshots:
       - typescript
       - viem
 
+  '@t2000/sdk@5.22.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
+    dependencies:
+      '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
+      '@mysten/payment-kit': 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/sui': 2.17.0(typescript@5.9.3)
+      '@mysten/suins': 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/zklogin': 0.8.1(typescript@5.9.3)
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
+      '@phala/dcap-qvl': 0.5.2
+      '@suimpp/mpp': 0.8.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+      bn.js: 5.2.3
+      eventemitter3: 5.0.4
+    transitivePeerDependencies:
+      - '@cfworker/json-schema'
+      - '@gql.tada/svelte-support'
+      - '@gql.tada/vue-support'
+      - '@modelcontextprotocol/sdk'
+      - axios
+      - debug
+      - elysia
+      - encoding
+      - express
+      - hono
+      - openapi-types
+      - supports-color
+      - typescript
+      - viem
+
   '@t2000/sdk@5.6.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
@@ -9453,31 +9561,6 @@ snapshots:
       '@mysten/suins': 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/zklogin': 0.8.1(typescript@5.9.3)
       '@suimpp/mpp': 0.8.1(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))
-      bn.js: 5.2.3
-      eventemitter3: 5.0.4
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - '@modelcontextprotocol/sdk'
-      - axios
-      - debug
-      - elysia
-      - express
-      - hono
-      - openapi-types
-      - supports-color
-      - typescript
-      - viem
-
-  '@t2000/sdk@5.7.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
-    dependencies:
-      '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
-      '@mysten/payment-kit': 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
-      '@mysten/sui': 2.17.0(typescript@5.9.3)
-      '@mysten/suins': 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
-      '@mysten/zklogin': 0.8.1(typescript@5.9.3)
-      '@suimpp/mpp': 0.8.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       bn.js: 5.2.3
       eventemitter3: 5.0.4
     transitivePeerDependencies:
@@ -10132,6 +10215,19 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  asn1.js@5.4.1:
+    dependencies:
+      bn.js: 4.12.4
+      inherits: 2.0.4
+      minimalistic-assert: 1.0.1
+      safer-buffer: 2.1.2
+
+  asn1js@3.0.10:
+    dependencies:
+      pvtsutils: 1.3.6
+      pvutils: 1.1.5
+      tslib: 2.8.1
+
   assertion-error@2.0.1: {}
 
   async-retry@1.3.3:
@@ -10183,6 +10279,8 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
 
+  bn.js@4.12.4: {}
+
   bn.js@5.2.3: {}
 
   body-parser@2.2.2:
@@ -10207,6 +10305,8 @@ snapshots:
   brace-expansion@5.0.5:
     dependencies:
       balanced-match: 4.0.4
+
+  brorand@1.1.0: {}
 
   buffer-from@1.1.2: {}
 
@@ -10698,6 +10798,16 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
 
+  elliptic@6.6.1:
+    dependencies:
+      bn.js: 4.12.4
+      brorand: 1.1.0
+      hash.js: 1.1.7
+      hmac-drbg: 1.0.1
+      inherits: 2.0.4
+      minimalistic-assert: 1.0.1
+      minimalistic-crypto-utils: 1.0.1
+
   emoji-regex@8.0.0: {}
 
   empathic@2.0.0: {}
@@ -11073,6 +11183,11 @@ snapshots:
     dependencies:
       has-symbols: 1.1.0
 
+  hash.js@1.1.7:
+    dependencies:
+      inherits: 2.0.4
+      minimalistic-assert: 1.0.1
+
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
@@ -11202,6 +11317,12 @@ snapshots:
       hast-util-parse-selector: 4.0.0
       property-information: 7.1.0
       space-separated-tokens: 2.0.2
+
+  hmac-drbg@1.0.1:
+    dependencies:
+      hash.js: 1.1.7
+      minimalistic-assert: 1.0.1
+      minimalistic-crypto-utils: 1.0.1
 
   hono@4.12.12: {}
 
@@ -11949,6 +12070,10 @@ snapshots:
     dependencies:
       mime-db: 1.54.0
 
+  minimalistic-assert@1.0.1: {}
+
+  minimalistic-crypto-utils@1.0.1: {}
+
   minimatch@10.2.5:
     dependencies:
       brace-expansion: 5.0.5
@@ -12423,6 +12548,12 @@ snapshots:
   punycode@2.3.1: {}
 
   pure-rand@6.1.0: {}
+
+  pvtsutils@1.3.6:
+    dependencies:
+      tslib: 2.8.1
+
+  pvutils@1.1.5: {}
 
   qrcode@1.5.4:
     dependencies:

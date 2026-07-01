@@ -210,6 +210,20 @@ function PureMultimodalInput({
     ""
   );
 
+  // Confidential mode (GPU-TEE) — lifted here so the composer can "light up"
+  // when on. Persisted in localStorage + read per-request by the chat transport.
+  const [confidential, setConfidential] = useState(false);
+  useEffect(() => {
+    setConfidential(window.localStorage.getItem("audric-confidential") === "1");
+  }, []);
+  const toggleConfidential = useCallback(() => {
+    setConfidential((prev) => {
+      const next = !prev;
+      window.localStorage.setItem("audric-confidential", next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     if (textareaRef.current) {
       const domValue = textareaRef.current.value;
@@ -725,7 +739,12 @@ function PureMultimodalInput({
       )}
 
       <PromptInput
-        className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
+        className={cn(
+          "[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]",
+          // Confidential mode "lights up" the composer — an emerald lock glow.
+          confidential &&
+            "[&>div]:border-emerald-500/40 [&>div]:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_0_24px_-4px_rgba(16,185,129,0.35)]"
+        )}
         onSubmit={() => {
           if (input.startsWith("/")) {
             const query = input.slice(1).trim();
@@ -836,6 +855,10 @@ function PureMultimodalInput({
               selectedModelId={selectedModelId}
             />
             <MemoryToggle />
+            <ConfidentialToggle
+              on={confidential}
+              onToggle={toggleConfidential}
+            />
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -1239,10 +1262,14 @@ function PureModelSelectorCompact({
             <span className="rounded bg-teal-500/10 px-1 py-0.5 font-medium text-teal-600 dark:text-teal-400">
               Private · ZDR
             </span>
+            <span className="text-muted-foreground/30">→</span>
+            <span className="rounded bg-emerald-500/10 px-1 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">
+              Confidential · TEE
+            </span>
           </div>
           <p className="mt-1 text-[10px] text-muted-foreground/50">
-            Every chat is zero-retention — your prompts are never stored or
-            trained on.
+            Every chat is zero-retention. Confidential mode runs in a GPU-TEE —
+            provably private + verifiable on-chain.
           </p>
         </div>
       </ModelSelectorContent>
@@ -1305,6 +1332,47 @@ function PureMemoryToggle() {
 }
 
 const MemoryToggle = memo(PureMemoryToggle);
+
+// Confidential mode toggle (SPEC_CONFIDENTIAL_UI §6) — the composer's mode
+// switch. ON routes the turn through a GPU-TEE (phala/*) as a pure in-TEE
+// completion, auto-anchored on Sui with a verifiable receipt. The composer
+// "lights up" (emerald lock glow) via the parent. State is lifted to the
+// composer; this is the tap target.
+function PureConfidentialToggle({
+  on,
+  onToggle,
+}: {
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          className={cn(
+            "h-7 gap-1.5 rounded-lg px-2 text-[12px] transition-colors",
+            on
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-muted-foreground/50 hover:text-foreground"
+          )}
+          onClick={onToggle}
+          type="button"
+          variant="ghost"
+        >
+          <LockIcon className="size-3.5" />
+          {on ? "Confidential on" : "Confidential"}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[240px]">
+        {on
+          ? "Confidential · on — this turn runs inside a GPU-TEE, anchored on Sui with a verifiable receipt. No tools/web/memory (keeps it sealed in the enclave)."
+          : "Confidential mode — run inside a GPU-TEE (hardware-isolated), provably private + verifiable on-chain. Paid tier; no tools/web this mode."}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+const ConfidentialToggle = memo(PureConfidentialToggle);
 
 function PureStopButton({
   stop,
