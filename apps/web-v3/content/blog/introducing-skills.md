@@ -32,7 +32,7 @@ Skills **auto-route** — you never pick one. Ask naturally — *"top trending t
 
 They're **free for everyone**. Browse the full set on the [Skills](/skills) page and tap any example to drop it into the composer.
 
-This is just the start — Skills are how Audric keeps growing what it can do, with more on the way.
+This is just the start. More Skills are on the way.
 
 ## Private by default
 

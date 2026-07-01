@@ -5,9 +5,9 @@ description: A private, multi-model AI with a wallet built in — and it's yours
 author: funkii
 ---
 
-With most AI, your chats, history, and account live on someone else's servers, under their terms — and your conversations can become training data.
+Most AI runs on someone else's servers, on their terms. Your chats, your history, your account — and often your conversations, turned into training data.
 
-Audric is a private, multi-model AI assistant with a non-custodial wallet built in. Sign in with Google and, in about three seconds, you have the best open and frontier models, a wallet, and an account where your data stays yours — encrypted, never sold, and never used to train models.
+Audric is different. It's a private, multi-model AI with a wallet built in. Sign in with Google and in seconds you have every major model, a wallet, and an account where your data stays yours — encrypted, never sold, never used to train models.
 
 ![The Audric chat — private by default, with zero data retention.](/blog/empty-state.png)
 
@@ -25,7 +25,7 @@ What ties them together is **ownership** — none of it has to pass through us t
 
 When a company hosts your AI, they hold the leverage. They can change or remove the model, lock the context you've built up, read your chats, train on them, or revoke your access at any time.
 
-With Audric, you own the model access, the wallet, and the memory, and the parts that can be decentralized are. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
+With Audric, the model access, the wallet, and the memory are yours — and whatever can be decentralized is. That ownership is practical, not ideological: what you control can't be silently changed, read, or taken away.
 
 ## How your privacy works
 
@@ -74,7 +74,7 @@ Every account is an **Audric Passport** — a non-custodial wallet created from 
 
 ## Where privacy goes next
 
-Today's default is already strong. From here, each step adds privacy you can verify rather than take on trust:
+Today's default is strong. From here, each step adds privacy you can verify rather than take on trust:
 
 1. **Private · ZDR** — today's default: never retained, never trained on.
 2. **Confidential (TEE)** — **live:** flip the Confidential toggle and your turn runs in a GPU-secure enclave, where even the provider can't read your prompt — with a per-request proof anchored on Sui you can [verify yourself](https://verify.t2000.ai).
