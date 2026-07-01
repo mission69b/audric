@@ -1456,7 +1456,7 @@ function PureConfidentialModelSelector({
                 <LockIcon className="size-3.5 shrink-0 text-emerald-500" />
               )}
               <div className="flex min-w-0 flex-col">
-                <ModelSelectorName className="text-emerald-600 dark:text-emerald-400">
+                <ModelSelectorName>
                   {m.name.replace(" (Confidential)", "")}
                 </ModelSelectorName>
                 {m.bestFor && (
