@@ -77,7 +77,7 @@ Every account is an **Audric Passport** — a non-custodial wallet created from 
 Today's default is already strong. From here, each step adds privacy you can verify rather than take on trust:
 
 1. **Private · ZDR** — today's default: never retained, never trained on.
-2. **Confidential (TEE)** — *coming:* open models in secure enclaves, where even the provider can't read your prompt, with a per-request proof.
+2. **Confidential (TEE)** — **live:** flip the Confidential toggle and your turn runs in a GPU-secure enclave, where even the provider can't read your prompt — with a per-request proof anchored on Sui you can [verify yourself](https://verify.t2000.ai).
 3. **Sealed** — *coming:* end-to-end encrypted chats, readable only by you, backed up on Walrus.
 
 ## Under the hood

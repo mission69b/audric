@@ -144,8 +144,13 @@ export const chatModels: ChatModel[] = [
   // used for image editing is unaffected — different model, works fine.)
 ];
 
-/** Every selectable model. (Confidential/TEE tier deferred + removed 2026-06-24
- * — see SPEC_AUDRIC_AGENT_WEDGE; re-add when the TEE rung ships.) */
+/** Every selectable GATEWAY (ZDR) model. NOTE: the Confidential/TEE tier is NOT a
+ * gateway model here — it shipped 2026-07-01 (S.593) as a separate path: the
+ * composer "Confidential" toggle routes to a `phala/*` GPU-TEE model via
+ * `lib/api/providers.ts` `getInferenceModel` + `lib/api/confidential-chat.ts`
+ * (catalog in `lib/api/models.ts`, distinct from this gateway list). This
+ * `ModelPrivacyTier` union stays anon|private|local by design — confidential is a
+ * mode toggle, not a gateway privacy tier. */
 export const allChatModels: ChatModel[] = [...chatModels];
 
 export async function getCapabilities(): Promise<
