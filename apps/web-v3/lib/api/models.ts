@@ -125,10 +125,45 @@ export const apiModels: ApiModel[] = [
   // Our public ids use a `phala/*` alias; `upstream` is the REAL slug we call on
   // inference.phala.com (which keeps standard provider prefixes that collide
   // with the Gateway's). Surfaced only when PHALA_API_KEY is set.
+  // Every entry MUST return an attestation quote on inference.phala.com (probed
+  // 2026-07-01) — a model with no quote fails Phase-A fail-closed → 503 for every
+  // user. Re-probe before adding: GET /v1/attestation/report?model=<upstream>.
   {
     id: "phala/glm-5.2",
     upstream: "z-ai/glm-5.2",
     name: "GLM 5.2 (Confidential)",
+    tier: "open",
+    privacy: "confidential",
+    margin: 2.0,
+  },
+  {
+    id: "phala/kimi-k2.6",
+    upstream: "moonshotai/kimi-k2.6",
+    name: "Kimi K2.6 (Confidential)",
+    tier: "open",
+    privacy: "confidential",
+    margin: 2.0,
+  },
+  {
+    id: "phala/deepseek-v4-flash",
+    upstream: "deepseek/deepseek-v4-flash",
+    name: "DeepSeek V4 Flash (Confidential)",
+    tier: "open",
+    privacy: "confidential",
+    margin: 2.0,
+  },
+  {
+    id: "phala/qwen3.6-27b",
+    upstream: "qwen/qwen3.6-27b",
+    name: "Qwen3.6 27B (Confidential)",
+    tier: "open",
+    privacy: "confidential",
+    margin: 2.0,
+  },
+  {
+    id: "phala/llama-3.3-70b",
+    upstream: "meta-llama/llama-3.3-70b-instruct",
+    name: "Llama 3.3 70B (Confidential)",
     tier: "open",
     privacy: "confidential",
     margin: 2.0,
@@ -141,26 +176,21 @@ export const apiModels: ApiModel[] = [
     privacy: "confidential",
     margin: 2.0,
   },
-  {
-    id: "phala/deepseek-v3.2",
-    upstream: "deepseek/deepseek-v3.2",
-    name: "DeepSeek V3.2 (Confidential)",
-    tier: "open",
-    privacy: "confidential",
-    margin: 2.0,
-  },
-  {
-    id: "phala/qwen3.5-27b",
-    upstream: "qwen/qwen3.5-27b",
-    name: "Qwen3.5 27B (Confidential)",
-    tier: "open",
-    privacy: "confidential",
-    margin: 2.0,
-  },
+  // Uncensored / minimally-filtered — the closest thing to a "no-refusal" model
+  // for sensitive drafting (legal, security research). Phala has no dedicated
+  // "lawyer" model; these fill that role.
   {
     id: "phala/uncensored-24b",
     upstream: "phala/uncensored-24b",
     name: "Uncensored 24B (Confidential)",
+    tier: "open",
+    privacy: "confidential",
+    margin: 2.0,
+  },
+  {
+    id: "phala/qwen3.6-uncensored",
+    upstream: "phala/qwen3.6-35b-a3b-uncensored",
+    name: "Qwen3.6 35B Uncensored (Confidential)",
     tier: "open",
     privacy: "confidential",
     margin: 2.0,

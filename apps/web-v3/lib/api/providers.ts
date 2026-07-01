@@ -68,10 +68,13 @@ const PHALA_MAX_PLAUSIBLE_PER_1M = 100;
 // entries in `lib/api/models.ts`.
 const PHALA_FALLBACK_PRICING: Record<string, ModelPricing> = {
   "phala/glm-5.2": { inputPer1M: 1.4, outputPer1M: 4.4 },
+  "phala/kimi-k2.6": { inputPer1M: 1.09, outputPer1M: 4.6 },
+  "phala/deepseek-v4-flash": { inputPer1M: 0.2, outputPer1M: 0.4 },
+  "phala/qwen3.6-27b": { inputPer1M: 0.32, outputPer1M: 2.7 },
+  "phala/llama-3.3-70b": { inputPer1M: 2.0, outputPer1M: 2.0 },
   "phala/gpt-oss-120b": { inputPer1M: 0.15, outputPer1M: 0.6 },
-  "phala/deepseek-v3.2": { inputPer1M: 1.0, outputPer1M: 1.0 },
-  "phala/qwen3.5-27b": { inputPer1M: 0.3, outputPer1M: 2.4 },
   "phala/uncensored-24b": { inputPer1M: 0.2, outputPer1M: 0.9 },
+  "phala/qwen3.6-uncensored": { inputPer1M: 0.3, outputPer1M: 1.5 },
 };
 
 /**
