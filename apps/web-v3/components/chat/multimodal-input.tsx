@@ -839,8 +839,23 @@ function PureMultimodalInput({
           value={input}
         />
         <PromptInputFooter className="px-3 pb-3">
-          <PromptInputTools className="flex-wrap gap-y-1">
+          {/* Left: modes (Perplexity-style). Right: model + submit. */}
+          <PromptInputTools className="min-w-0 flex-wrap gap-y-1">
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+            <MemoryToggle />
+            <ConfidentialToggle
+              canUsePremium={canUsePremium}
+              on={confidential}
+              onToggle={toggleConfidential}
+            />
+            <ComputerPlaceholder />
+          </PromptInputTools>
+
+          <div className="flex shrink-0 items-center gap-1">
+            <ChatContextUsage
+              messages={messages as ChatMessage[]}
+              selectedModelId={selectedModelId}
+            />
             {confidential ? (
               <ConfidentialModelSelector
                 onSelect={pickConfidentialModel}
@@ -853,40 +868,28 @@ function PureMultimodalInput({
                 selectedModelId={selectedModelId}
               />
             )}
-            <ChatContextUsage
-              messages={messages as ChatMessage[]}
-              selectedModelId={selectedModelId}
-            />
-            <MemoryToggle />
-            <ConfidentialToggle
-              canUsePremium={canUsePremium}
-              on={confidential}
-              onToggle={toggleConfidential}
-            />
-            <ComputerPlaceholder />
-          </PromptInputTools>
-
-          {status === "submitted" ? (
-            <StopButton setMessages={setMessages} stop={stop} />
-          ) : (
-            <PromptInputSubmit
-              className={cn(
-                "h-7 w-7 rounded-xl transition-all duration-200",
-                input.trim() || attachments.length > 0
-                  ? "bg-foreground text-background hover:opacity-85 active:scale-95"
-                  : "bg-muted text-muted-foreground/25 cursor-not-allowed"
-              )}
-              data-testid="send-button"
-              disabled={
-                (!input.trim() && attachments.length === 0) ||
-                uploadQueue.length > 0
-              }
-              status={status}
-              variant="secondary"
-            >
-              <ArrowUpIcon className="size-4" />
-            </PromptInputSubmit>
-          )}
+            {status === "submitted" ? (
+              <StopButton setMessages={setMessages} stop={stop} />
+            ) : (
+              <PromptInputSubmit
+                className={cn(
+                  "h-7 w-7 rounded-xl transition-all duration-200",
+                  input.trim() || attachments.length > 0
+                    ? "bg-foreground text-background hover:opacity-85 active:scale-95"
+                    : "bg-muted text-muted-foreground/25 cursor-not-allowed"
+                )}
+                data-testid="send-button"
+                disabled={
+                  (!input.trim() && attachments.length === 0) ||
+                  uploadQueue.length > 0
+                }
+                status={status}
+                variant="secondary"
+              >
+                <ArrowUpIcon className="size-4" />
+              </PromptInputSubmit>
+            )}
+          </div>
         </PromptInputFooter>
       </PromptInput>
     </div>
@@ -1419,15 +1422,12 @@ function PureConfidentialModelSelector({
     <ModelSelector onOpenChange={setOpen} open={open}>
       <ModelSelectorTrigger asChild>
         <Button
-          className="h-7 max-w-[200px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-emerald-600 transition-colors dark:text-emerald-400"
+          className="h-7 max-w-[200px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
           type="button"
           variant="ghost"
         >
           <LockIcon className="size-3.5" />
           <ModelSelectorName>{label}</ModelSelectorName>
-          <span className="rounded bg-emerald-500/10 px-1 py-px text-[9px]">
-            TEE
-          </span>
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent>
@@ -1449,7 +1449,7 @@ function PureConfidentialModelSelector({
               {m.provider ? (
                 <ModelSelectorLogo provider={m.provider} />
               ) : (
-                <LockIcon className="size-3.5 shrink-0 text-emerald-500" />
+                <LockIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
               )}
               <div className="flex min-w-0 flex-col">
                 <ModelSelectorName>
