@@ -1,8 +1,10 @@
 import "server-only";
 
+import type { Signer } from "@mysten/sui/cryptography";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { Transaction } from "@mysten/sui/transactions";
 import { walrus } from "@mysten/walrus";
 import { env } from "@/lib/env";
 import { getReadyRedisClient } from "@/lib/ratelimit";
@@ -57,6 +59,34 @@ function loadSigner(): Ed25519Keypair | null {
   }
 }
 
+/**
+ * Wrap a keypair so the Walrus SDK's internal register + certify txs pay gas
+ * from the signer's SUI ADDRESS BALANCE (`setGasPayment([])`, SIP-58) instead
+ * of a gas coin — so concurrent pins don't equivocate on a shared coin. (WAL is
+ * already balance-drawable: the SDK pays it via `coinWithBalance`, which uses a
+ * parallelizable withdrawal when the WAL is in the address balance.) The SDK
+ * hands `signAndExecuteTransaction` a mutable `Transaction`, so we stamp the
+ * gas-payment override there. Requires the signer's SUI (+ WAL) in its address
+ * balance; `pinReceipt` falls back to coin gas if not, so it never regresses.
+ */
+function withAddressBalanceGas(signer: Ed25519Keypair): Signer {
+  return new Proxy(signer, {
+    get(target, prop, receiver) {
+      if (prop === "signAndExecuteTransaction") {
+        const original = target.signAndExecuteTransaction.bind(target);
+        return (args: Parameters<typeof original>[0]) => {
+          if (args.transaction instanceof Transaction) {
+            args.transaction.setGasPayment([]);
+          }
+          return original(args);
+        };
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
 /** The Walrus blob id a receipt was pinned to, if any. */
 export async function getReceiptBlobId(
   receiptId: string
@@ -95,17 +125,31 @@ export async function pinReceipt(
   if (existing) {
     return existing;
   }
-  try {
-    const client = new SuiGrpcClient({
-      baseUrl: FULLNODE,
-      network: NETWORK,
-    }).$extend(walrus());
-    const { blobId } = await client.walrus.writeBlob({
-      blob: new TextEncoder().encode(receiptJson),
+  const client = new SuiGrpcClient({
+    baseUrl: FULLNODE,
+    network: NETWORK,
+  }).$extend(walrus());
+  const blob = new TextEncoder().encode(receiptJson);
+  const write = (s: Signer) =>
+    client.walrus.writeBlob({
+      blob,
       deletable: false,
       epochs: RECEIPT_EPOCHS,
-      signer,
+      signer: s,
     });
+  try {
+    let blobId: string;
+    try {
+      // Address-balance gas (concurrent-safe). Falls back to coin gas if the
+      // signer's SUI isn't in its address balance yet.
+      ({ blobId } = await write(withAddressBalanceGas(signer)));
+    } catch (e) {
+      console.warn(
+        "[walrus] address-balance gas pin failed → coin-gas fallback",
+        e instanceof Error ? e.message : e
+      );
+      ({ blobId } = await write(signer));
+    }
     await storeBlobId(receiptId, blobId);
     return blobId;
   } catch (e) {
