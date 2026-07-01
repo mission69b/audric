@@ -39,6 +39,14 @@ function CheckRow({ check }: { check: VerifyCheck }) {
         •
       </span>
     );
+  // The DCAP quote is verified client-side by the CLI (Option A, §4) — don't
+  // surface the raw "skipped (--quick)" CLI wording in the web UI; frame it as
+  // "run it yourself below" so a skipped row reads as by-design, not broken.
+  const isDeferredQuote =
+    check.name.startsWith("TDX quote") && check.status === "skip";
+  const detail = isDeferredQuote
+    ? "Verified client-side by the CLI — run the command below to check the Intel TDX quote locally."
+    : check.detail;
   return (
     <div className="flex items-start gap-2">
       {icon}
@@ -51,9 +59,7 @@ function CheckRow({ check }: { check: VerifyCheck }) {
             </span>
           )}
         </div>
-        <div className="text-[11px] text-muted-foreground/70">
-          {check.detail}
-        </div>
+        <div className="text-[11px] text-muted-foreground/70">{detail}</div>
       </div>
     </div>
   );
