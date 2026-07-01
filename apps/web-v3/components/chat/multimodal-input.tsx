@@ -1028,7 +1028,10 @@ function PureModelSelectorCompact({
           ) : (
             provider && <ModelSelectorLogo provider={provider} />
           )}
-          <ModelSelectorName>{selectedModel.name}</ModelSelectorName>
+          {/* Mobile: provider icon only (Perplexity-style); name on desktop. */}
+          <ModelSelectorName className="hidden sm:inline">
+            {selectedModel.name}
+          </ModelSelectorName>
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent>
@@ -1413,10 +1416,8 @@ function PureConfidentialModelSelector({
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );
   const models: ConfidentialModelOption[] = data?.confidentialModels ?? [];
-  const label =
-    models
-      .find((m) => m.id === selectedId)
-      ?.name.replace(" (Confidential)", "") ?? "GPT-OSS 120B";
+  const selected = models.find((m) => m.id === selectedId);
+  const label = selected?.name.replace(" (Confidential)", "") ?? "GPT-OSS 120B";
 
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
@@ -1426,8 +1427,15 @@ function PureConfidentialModelSelector({
           type="button"
           variant="ghost"
         >
-          <LockIcon className="size-3.5" />
-          <ModelSelectorName>{label}</ModelSelectorName>
+          {selected?.provider ? (
+            <ModelSelectorLogo provider={selected.provider} />
+          ) : (
+            <LockIcon className="size-3.5" />
+          )}
+          {/* Mobile: provider icon only (Perplexity-style); name on desktop. */}
+          <ModelSelectorName className="hidden sm:inline">
+            {label}
+          </ModelSelectorName>
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent>
