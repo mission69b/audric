@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   // Workspace packages consumed as TS source (the shared identity/credit/key
   // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
   transpilePackages: ["@audric/accounts", "@audric/auth"],
-  // Server-only native/WASM deps — don't bundle (Next can't resolve the WASM
-  // during page-data collection). @mysten/walrus pulls @mysten/walrus-wasm for
-  // durable-receipt pinning (SPEC_CONFIDENTIAL_UI §3).
-  serverExternalPackages: ["@mysten/walrus", "@mysten/walrus-wasm"],
   ...(basePath
     ? {
         basePath,
