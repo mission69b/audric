@@ -1296,7 +1296,7 @@ function PureMemoryToggle() {
           className={cn(
             "h-7 gap-1.5 rounded-lg px-2 text-[12px] transition-colors",
             on
-              ? "text-foreground"
+              ? "bg-foreground/10 text-foreground"
               : "text-muted-foreground/50 hover:text-foreground"
           )}
           onClick={toggle}
@@ -1337,7 +1337,7 @@ function PureConfidentialToggle({
           className={cn(
             "h-7 gap-1.5 rounded-lg px-2 text-[12px] transition-colors",
             on
-              ? "text-emerald-600 dark:text-emerald-400"
+              ? "bg-foreground/10 text-foreground"
               : "text-muted-foreground/50 hover:text-foreground"
           )}
           onClick={onToggle}
