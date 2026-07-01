@@ -19,6 +19,12 @@ async function confidentialCatalog() {
     .map((m) => {
       const p = phalaPricing[m.id];
       const margin = apiMarginFor(m.id);
+      // Short two-line subtitle (mirrors the private switcher's `bestFor`).
+      const bestFor = m.reasoning
+        ? "Reasoning · deep"
+        : /uncensored/i.test(m.name)
+          ? "Uncensored · open"
+          : "Fast · open";
       return {
         id: m.id,
         name: m.name,
@@ -26,6 +32,7 @@ async function confidentialCatalog() {
         // logo in the confidential switcher (matches the private switcher).
         provider: m.upstream?.split("/")[0],
         reasoning: m.reasoning ?? false,
+        bestFor,
         inputPer1M: p ? p.inputPer1M * margin : undefined,
         outputPer1M: p ? p.outputPer1M * margin : undefined,
       };

@@ -54,7 +54,8 @@ export const Greeting = () => {
           ) : (
             <>
               <div className="font-semibold text-3xl text-foreground tracking-tight md:text-4xl">
-                audric
+                audric{" "}
+                <span className="font-normal text-teal-500">private</span>
               </div>
               <div className="mt-3 text-muted-foreground/80 text-sm">
                 What can I help with?

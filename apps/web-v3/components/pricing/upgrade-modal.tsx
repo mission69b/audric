@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TIERS } from "@/lib/credit/tiers";
 import { fetcher } from "@/lib/utils";
 import { PricingView } from "./pricing-view";
 
@@ -128,6 +129,15 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
     }
     return "No charge now — prorated to your next invoice.";
   })();
+  // Go-forward recurring price (the full monthly rate from the next cycle on) — so
+  // the confirm reads as a real breakdown, not just the one-off prorated amount.
+  const recurringLine = (() => {
+    if (!changing || changing.tier === "free") {
+      return null;
+    }
+    const price = TIERS.find((t) => t.id === changing.tier)?.priceUsd;
+    return price ? `Then $${price}/mo from your next billing cycle.` : null;
+  })();
 
   const confirmChange = async () => {
     if (!changing) {
@@ -205,6 +215,11 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
               {amountLine ? (
                 <span className="mt-2 block font-medium text-foreground">
                   {amountLine}
+                </span>
+              ) : null}
+              {recurringLine ? (
+                <span className="mt-1 block text-muted-foreground">
+                  {recurringLine}
                 </span>
               ) : null}
             </AlertDialogDescription>

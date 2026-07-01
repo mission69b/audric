@@ -1,11 +1,21 @@
 "use client";
 
-import { LockIcon, PanelLeftIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  CoinsIcon,
+  LockIcon,
+  PanelLeftIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { memo, useEffect, useState } from "react";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
   Tooltip,
@@ -55,6 +65,73 @@ function PlanBadge() {
   );
 }
 
+/** Credits/plan popover (top-right, Perplexity-style) — a compact affordance that
+ * shows the available credit + plan and routes to the pricing overlay. Replaces the
+ * invasive above-composer upgrade nudge (the plan is also on the top-left pill). */
+function CreditsMenu() {
+  const { openUpgrade } = useUpgradeModal();
+  const { status } = useZkLogin();
+  const { data } = useSWR<{
+    tier?: string;
+    balanceUsd?: number | null;
+    configured: boolean;
+  }>(status === "authenticated" ? "/api/credit/balance" : null, fetcher, {
+    revalidateOnFocus: false,
+  });
+  if (status !== "authenticated" || !data?.configured) {
+    return null;
+  }
+  const tier = data.tier ?? "free";
+  const isFree = tier === "free";
+  const balance = data.balanceUsd ?? 0;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          aria-label="Credits and plan"
+          className="flex items-center gap-1.5 rounded-full border border-border/40 px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          type="button"
+        >
+          <CoinsIcon className="size-3.5" />
+          <span className="hidden tabular-nums sm:inline">
+            ${balance.toFixed(2)}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        className="w-64 rounded-2xl p-3"
+        sideOffset={8}
+      >
+        <div className="flex items-center justify-between text-[13px]">
+          <span className="text-muted-foreground">Plan</span>
+          <span className="font-medium capitalize">{tier}</span>
+        </div>
+        <div className="mt-1.5 flex items-center justify-between text-[13px]">
+          <span className="text-muted-foreground">Available credit</span>
+          <span className="font-medium tabular-nums">
+            ${balance.toFixed(2)}
+          </span>
+        </div>
+        <div className="mt-3 rounded-xl border border-border/50 bg-muted/30 p-2.5">
+          <p className="text-[12px] text-muted-foreground">
+            {isFree
+              ? "Unlock every frontier model + a monthly credit that never expires."
+              : "Change plan or top up your monthly credit anytime."}
+          </p>
+          <Button
+            className="mt-2 h-7 w-full rounded-lg text-[12px]"
+            onClick={openUpgrade}
+            size="sm"
+          >
+            {isFree ? "Upgrade plan" : "Manage plan"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** Privacy indicator (top-right) — Audric is private by default (ZDR), so this is
  * an informational badge (not a toggle like Perplexity's incognito). Reinforces
  * the core differentiator on every screen. */
@@ -100,10 +177,8 @@ function PrivacyBadge() {
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent className="max-w-60 text-center" side="bottom">
-          {confidential
-            ? "Confidential mode — this turn runs in a GPU-TEE (hardware enclave); the response is anchored on Sui and you can verify it yourself. No web or tools this mode."
-            : "Private by default — zero data retention. Your chats are never used to train models; memory is encrypted and opt-in."}
+        <TooltipContent side="bottom">
+          {confidential ? "Confidential · TEE" : "Private · ZDR"}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -145,7 +220,8 @@ function PureChatHeader({
         />
       )}
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
+        <CreditsMenu />
         <PrivacyBadge />
       </div>
     </header>

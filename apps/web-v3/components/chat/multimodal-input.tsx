@@ -11,7 +11,6 @@ import {
   MonitorIcon,
   SparklesIcon,
   WrenchIcon,
-  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -168,17 +167,6 @@ function PureMultimodalInput({
   // #1 anon: after a few guest turns, proactively prompt sign-in (the hard
   // message-limit gate also triggers it, in use-active-chat's onError).
   const [anonTurns, setAnonTurns] = useLocalStorage<number>("anon-turns", 0);
-  // #2 signed-in free: a dismissible "upgrade" cue above the composer (not shown
-  // when the out-of-credit banner is up, and persistently dismissible).
-  const [upgradeNudgeDismissed, setUpgradeNudgeDismissed] =
-    useLocalStorage<boolean>("upgrade-nudge-dismissed", false);
-  // Gate on the balance SWR having RESOLVED (credit !== undefined) — otherwise
-  // `tier ?? "free"` defaults to free during load and the nudge flashes for paid
-  // users on a hard refresh before their tier arrives.
-  const isFreeTier =
-    isAuthed && credit !== undefined && (credit.tier ?? "free") === "free";
-  const showUpgradeNudge =
-    isFreeTier && !showCreditBanner && !upgradeNudgeDismissed;
   // Active-model capabilities — used to hint on image paste to a non-vision
   // model (the attach button is already gated; paste bypasses it).
   const { data: capsResponse } = useSWR<{
@@ -698,32 +686,6 @@ function PureMultimodalInput({
         )}
       </div>
 
-      {showUpgradeNudge && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] px-3 py-1.5 text-[12px]">
-          <span className="text-muted-foreground">
-            <span className="font-medium text-foreground">Upgrade</span> for
-            every frontier model + video — monthly credit that never expires.
-          </span>
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              className="h-6 rounded-lg px-2 text-[11px]"
-              onClick={openUpgrade}
-              size="sm"
-            >
-              See plans
-            </Button>
-            <button
-              aria-label="Dismiss"
-              className="rounded p-1 text-muted-foreground/50 transition-colors hover:text-foreground"
-              onClick={() => setUpgradeNudgeDismissed(true)}
-              type="button"
-            >
-              <XIcon className="size-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {showCreditBanner && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-card/70 px-3 py-2 text-[12px]">
           <span className="text-muted-foreground">
@@ -999,17 +961,17 @@ const PRIVACY_BADGE: Record<
   anon: {
     label: "Anon",
     className: "bg-muted text-muted-foreground",
-    tip: "Gateway-routed; upstream provider may retain anonymized prompts.",
+    tip: "Anonymized upstream",
   },
   private: {
     label: "Private",
     className: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    tip: "Zero data retention — your prompts are never stored or trained on.",
+    tip: "Zero data retention",
   },
   local: {
     label: "Local",
     className: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-    tip: "Self-hosted — prompts stay private.",
+    tip: "Self-hosted · private",
   },
 };
 
@@ -1227,8 +1189,8 @@ function PureModelSelectorCompact({
                             </TooltipTrigger>
                             <TooltipContent>
                               {isAuthed
-                                ? "Upgrade to use premium models"
-                                : "Sign up to use premium models"}
+                                ? "Upgrade to unlock"
+                                : "Sign up to unlock"}
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -1247,9 +1209,7 @@ function PureModelSelectorCompact({
                                 Free
                               </span>
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Free — included at no credit cost.
-                            </TooltipContent>
+                            <TooltipContent>No credit cost</TooltipContent>
                           </Tooltip>
                         )}
                         {model.privacy && (
@@ -1349,11 +1309,7 @@ function PureMemoryToggle() {
           </span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-[220px]">
-        {on
-          ? "Private Encrypted Memory · on — remembered across chats, deletable anytime."
-          : "Private Encrypted Memory · off — remember preferences across chats; encrypted, deletable."}
-      </TooltipContent>
+      <TooltipContent>Encrypted memory</TooltipContent>
     </Tooltip>
   );
 }
@@ -1399,11 +1355,7 @@ function PureConfidentialToggle({
           )}
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-[240px]">
-        {on
-          ? "Confidential · on — this turn runs inside a GPU-TEE, anchored on Sui with a verifiable receipt. No tools/web/memory (keeps it sealed in the enclave)."
-          : "Confidential mode — run inside a GPU-TEE (hardware-isolated), provably private + verifiable on-chain. Paid tier; no tools/web this mode."}
-      </TooltipContent>
+      <TooltipContent>GPU-TEE · verifiable</TooltipContent>
     </Tooltip>
   );
 }
@@ -1430,10 +1382,7 @@ function PureComputerPlaceholder() {
           </span>
         </button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-[240px]">
-        Audric Computer — agentic multi-step workflows (research, docs,
-        spreadsheets, trips) that run for you. Coming soon.
-      </TooltipContent>
+      <TooltipContent>Agentic money-native workflows</TooltipContent>
     </Tooltip>
   );
 }
@@ -1445,6 +1394,7 @@ type ConfidentialModelOption = {
   name: string;
   provider?: string;
   reasoning?: boolean;
+  bestFor?: string;
 };
 
 // Model picker shown IN PLACE of the normal selector when Confidential is on —
@@ -1489,7 +1439,7 @@ function PureConfidentialModelSelector({
           {models.map((m) => (
             <ModelSelectorItem
               className={cn(
-                "flex w-full items-center justify-between gap-2",
+                "flex w-full items-center gap-2",
                 m.id === selectedId &&
                   "border-foreground/50 border-b border-dashed"
               )}
@@ -1500,20 +1450,25 @@ function PureConfidentialModelSelector({
               }}
               value={m.id}
             >
-              <span className="flex min-w-0 items-center gap-1.5">
-                {m.provider ? (
-                  <ModelSelectorLogo provider={m.provider} />
-                ) : (
-                  <LockIcon className="size-3 shrink-0 text-emerald-500" />
-                )}
-                <span className="truncate">
+              {m.provider ? (
+                <ModelSelectorLogo provider={m.provider} />
+              ) : (
+                <LockIcon className="size-3.5 shrink-0 text-emerald-500" />
+              )}
+              <div className="flex min-w-0 flex-col">
+                <ModelSelectorName>
                   {m.name.replace(" (Confidential)", "")}
-                </span>
-              </span>
+                </ModelSelectorName>
+                {m.bestFor && (
+                  <span className="truncate text-[10px] text-muted-foreground/50">
+                    {m.bestFor}
+                  </span>
+                )}
+              </div>
               {m.reasoning && (
                 <BrainIcon
                   aria-label="Reasoning"
-                  className="size-3 shrink-0 text-muted-foreground/45"
+                  className="ml-auto size-3 shrink-0 text-muted-foreground/45"
                 />
               )}
             </ModelSelectorItem>
