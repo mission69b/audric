@@ -4,6 +4,7 @@ import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
+import { pinReceipt } from "@/lib/api/walrus";
 import { env } from "@/lib/env";
 import { getReadyRedisClient } from "@/lib/ratelimit";
 
@@ -30,6 +31,35 @@ const ACI_BASE = "https://inference.phala.com";
 const ANCHOR_GAS_BUDGET = 10_000_000n; // 0.01 SUI — one small event-emit MoveCall.
 const ANCHOR_KEY_PREFIX = "aci-anchor:";
 const ANCHOR_TTL_SECONDS = 60 * 60 * 24 * 365; // 1y — anchored once, kept for verify.
+
+/**
+ * Anchor-every + pin — the one background job fired after every confidential
+ * response (SPEC_CONFIDENTIAL_UI §2). Pins the signed receipt to Walrus
+ * (durable, §3) then anchors it on Sui. Best-effort + idempotent: the response
+ * already shipped; both steps no-op if already done. Fire via `after()` so it
+ * runs post-response without adding latency.
+ */
+export async function anchorAndPin(receiptId: string): Promise<void> {
+  try {
+    // Fetch the signed receipt once (while fresh) → pin to Walrus for durability.
+    if (env.PHALA_API_KEY) {
+      const res = await fetch(
+        `${ACI_BASE}/v1/aci/receipts/${encodeURIComponent(receiptId)}`,
+        { headers: { Authorization: `Bearer ${env.PHALA_API_KEY}` } }
+      );
+      if (res.ok) {
+        await pinReceipt(receiptId, await res.text());
+      }
+    }
+  } catch (e) {
+    console.error("[anchorAndPin] pin step failed", receiptId, e);
+  }
+  try {
+    await anchorReceipt(receiptId);
+  } catch (e) {
+    console.error("[anchorAndPin] anchor step failed", receiptId, e);
+  }
+}
 
 /** The anchor tx digest for a receipt, if it's been anchored (else null). */
 export async function getAnchorDigest(

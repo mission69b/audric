@@ -1,5 +1,6 @@
 import { openAiError } from "@/lib/api/keys";
 import { isConfidentialConfigured } from "@/lib/api/providers";
+import { fetchReceiptFromWalrus } from "@/lib/api/walrus";
 import { env } from "@/lib/env";
 
 // GET /v1/aci/receipts/{id} — fetch the signed per-response receipt for a
@@ -36,6 +37,23 @@ export async function GET(
       `${ACI_BASE}/v1/aci/receipts/${encodeURIComponent(id)}`,
       { headers: { Authorization: `Bearer ${env.PHALA_API_KEY}` } }
     );
+    if (res.ok) {
+      return new Response(res.body, {
+        status: res.status,
+        headers: {
+          "content-type": res.headers.get("content-type") ?? "application/json",
+        },
+      });
+    }
+    // Gateway TTL expired (or miss) → serve the durable Walrus copy if pinned
+    // (SPEC_CONFIDENTIAL_UI §3). Still trustless: the receipt is signed + anchored.
+    const durable = await fetchReceiptFromWalrus(id);
+    if (durable) {
+      return new Response(durable, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
     return new Response(res.body, {
       status: res.status,
       headers: {
@@ -43,6 +61,14 @@ export async function GET(
       },
     });
   } catch {
+    // Upstream errored — last-chance durable fallback.
+    const durable = await fetchReceiptFromWalrus(id);
+    if (durable) {
+      return new Response(durable, {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
     return openAiError(
       502,
       "Could not fetch the receipt.",

@@ -171,7 +171,7 @@ importers:
         version: 6.43.0
       '@mysten-incubation/memwal':
         specifier: 0.0.7
-        version: 0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)
+        version: 0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.3(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)
       '@mysten/dapp-kit':
         specifier: ^1.0.6
         version: 1.0.6(@mysten/sui@2.17.0(typescript@5.9.3))(@tanstack/react-query@5.100.11(react@19.0.1))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.0.1))
@@ -478,7 +478,7 @@ importers:
         version: 6.43.0
       '@mysten-incubation/memwal':
         specifier: 0.0.7
-        version: 0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@7.0.0(zod@3.25.76))(zod@3.25.76)
+        version: 0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.3(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@7.0.0(zod@3.25.76))(zod@3.25.76)
       '@mysten/enoki':
         specifier: ^1.1.0
         version: 1.1.0(@mysten/sui@2.17.0(typescript@5.9.3))(@types/react@19.2.14)(react@19.0.1)
@@ -488,6 +488,9 @@ importers:
       '@mysten/suins':
         specifier: ^1.1.1
         version: 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/walrus':
+        specifier: ^1.2.3
+        version: 1.2.3(@mysten/sui@2.17.0(typescript@5.9.3))
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.1
@@ -1957,8 +1960,8 @@ packages:
   '@mysten/walrus-wasm@0.3.0':
     resolution: {integrity: sha512-uuTbK4woj+R4bQILLcSxBJCy1rIL3EDELnA7jjWbC3Q9bsQZFzwEKOPVtei4DKb3nT7zeALD/ky24MkeUZyDNQ==}
 
-  '@mysten/walrus@1.2.1':
-    resolution: {integrity: sha512-vLV2b5dNbnzcFFn0k4I9cDvqR+jQD+UfvFC8dhWfoNiNmJBrqJMDKnSbetK9Ptxk8JB43vRvQfaUmSFtDf3X8Q==}
+  '@mysten/walrus@1.2.3':
+    resolution: {integrity: sha512-0Kai5o9ymXCriHv+S0R4plTF1DDhg6AtqKykTzO4sNnzjfOOTWF1xKAUoFiKo9q7whguU/JRiYEKXNVfVCuMyQ==}
     peerDependencies:
       '@mysten/sui': ^2.17.0
 
@@ -7727,25 +7730,25 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)':
+  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.3(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@6.0.182(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@mysten/seal': 1.2.1(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@noble/ed25519': 2.3.0
       '@noble/hashes': 2.2.0
     optionalDependencies:
-      '@mysten/walrus': 1.2.1(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/walrus': 1.2.3(@mysten/sui@2.17.0(typescript@5.9.3))
       ai: 6.0.182(zod@3.25.76)
       zod: 3.25.76
 
-  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@7.0.0(zod@3.25.76))(zod@3.25.76)':
+  '@mysten-incubation/memwal@0.0.7(@mysten/seal@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3)))(@mysten/sui@2.17.0(typescript@5.9.3))(@mysten/walrus@1.2.3(@mysten/sui@2.17.0(typescript@5.9.3)))(ai@7.0.0(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@mysten/seal': 1.2.1(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@noble/ed25519': 2.3.0
       '@noble/hashes': 2.2.0
     optionalDependencies:
-      '@mysten/walrus': 1.2.1(@mysten/sui@2.17.0(typescript@5.9.3))
+      '@mysten/walrus': 1.2.3(@mysten/sui@2.17.0(typescript@5.9.3))
       ai: 7.0.0(zod@3.25.76)
       zod: 3.25.76
 
@@ -7886,17 +7889,15 @@ snapshots:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@wallet-standard/core': 1.1.2
 
-  '@mysten/walrus-wasm@0.3.0':
-    optional: true
+  '@mysten/walrus-wasm@0.3.0': {}
 
-  '@mysten/walrus@1.2.1(@mysten/sui@2.17.0(typescript@5.9.3))':
+  '@mysten/walrus@1.2.3(@mysten/sui@2.17.0(typescript@5.9.3))':
     dependencies:
       '@mysten/bcs': 2.1.0
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@mysten/utils': 0.4.0
       '@mysten/walrus-wasm': 0.3.0
       dataloader: 2.2.3
-    optional: true
 
   '@mysten/webcrypto-signer@0.2.0(@mysten/sui@2.17.0(typescript@5.9.3))':
     dependencies:
@@ -10583,8 +10584,7 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
-  dataloader@2.2.3:
-    optional: true
+  dataloader@2.2.3: {}
 
   date-fns@4.1.0: {}
 

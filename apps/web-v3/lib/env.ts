@@ -111,6 +111,11 @@ const serverSchema = z.object({
   // Both unset → POST /v1/aci/anchor degrades to 503 (no impact on serving).
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: optionalString,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: optionalString,
+  // Walrus "pin & own" durable receipts (SPEC_CONFIDENTIAL_UI §3). A SUI+WAL-
+  // funded signer that pays for blob storage; unset → pins skipped (verify
+  // falls back to the gateway TTL window). Server-only.
+  WALRUS_SIGNER_KEY: optionalString,
+  WALRUS_RECEIPT_EPOCHS: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -153,6 +158,8 @@ const runtimeEnv = {
     process.env.CONFIDENTIAL_ATTESTATION_ENFORCE,
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: process.env.CONFIDENTIAL_ANCHOR_PACKAGE_ID,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: process.env.CONFIDENTIAL_ANCHOR_SIGNER_KEY,
+  WALRUS_SIGNER_KEY: process.env.WALRUS_SIGNER_KEY,
+  WALRUS_RECEIPT_EPOCHS: process.env.WALRUS_RECEIPT_EPOCHS,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
