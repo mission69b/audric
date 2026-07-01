@@ -223,6 +223,20 @@ function PureMultimodalInput({
       return next;
     });
   }, []);
+  // Which confidential (phala/*) model runs when Confidential is on — persisted
+  // + sent as the model id by the transport (default: the fast gpt-oss-120b).
+  const [confidentialModelId, setConfidentialModelId] =
+    useState("phala/gpt-oss-120b");
+  useEffect(() => {
+    const saved = window.localStorage.getItem("audric-confidential-model");
+    if (saved) {
+      setConfidentialModelId(saved);
+    }
+  }, []);
+  const pickConfidentialModel = useCallback((id: string) => {
+    setConfidentialModelId(id);
+    window.localStorage.setItem("audric-confidential-model", id);
+  }, []);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -854,11 +868,18 @@ function PureMultimodalInput({
         <PromptInputFooter className="px-3 pb-3">
           <PromptInputTools>
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-            <ModelSelectorCompact
-              canUsePremium={canUsePremium}
-              onModelChange={onModelChange}
-              selectedModelId={selectedModelId}
-            />
+            {confidential ? (
+              <ConfidentialModelSelector
+                onSelect={pickConfidentialModel}
+                selectedId={confidentialModelId}
+              />
+            ) : (
+              <ModelSelectorCompact
+                canUsePremium={canUsePremium}
+                onModelChange={onModelChange}
+                selectedModelId={selectedModelId}
+              />
+            )}
             <ChatContextUsage
               messages={messages as ChatMessage[]}
               selectedModelId={selectedModelId}
@@ -1390,6 +1411,84 @@ function PureConfidentialToggle({
 }
 
 const ConfidentialToggle = memo(PureConfidentialToggle);
+
+type ConfidentialModelOption = {
+  id: string;
+  name: string;
+  reasoning?: boolean;
+};
+
+// Model picker shown IN PLACE of the normal selector when Confidential is on —
+// lists only the GPU-TEE (phala/*) catalog, marked "TEE". The pick drives which
+// confidential model runs (persisted; sent as the model id by the transport).
+function PureConfidentialModelSelector({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data } = useSWR(
+    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
+  );
+  const models: ConfidentialModelOption[] = data?.confidentialModels ?? [];
+  const label =
+    models
+      .find((m) => m.id === selectedId)
+      ?.name.replace(" (Confidential)", "") ?? "GPT-OSS 120B";
+
+  return (
+    <ModelSelector onOpenChange={setOpen} open={open}>
+      <ModelSelectorTrigger asChild>
+        <Button
+          className="h-7 max-w-[200px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-emerald-600 transition-colors dark:text-emerald-400"
+          type="button"
+          variant="ghost"
+        >
+          <LockIcon className="size-3.5" />
+          <ModelSelectorName>{label}</ModelSelectorName>
+          <span className="rounded bg-emerald-500/10 px-1 py-px text-[9px]">
+            TEE
+          </span>
+        </Button>
+      </ModelSelectorTrigger>
+      <ModelSelectorContent>
+        <ModelSelectorList>
+          {models.map((m) => (
+            <ModelSelectorItem
+              className={cn(
+                "flex w-full items-center justify-between gap-2",
+                m.id === selectedId &&
+                  "border-foreground/50 border-b border-dashed"
+              )}
+              key={m.id}
+              onSelect={() => {
+                onSelect(m.id);
+                setOpen(false);
+              }}
+              value={m.id}
+            >
+              <span className="flex items-center gap-1.5">
+                <LockIcon className="size-3 text-emerald-500" />
+                {m.name.replace(" (Confidential)", "")}
+              </span>
+              {m.reasoning && (
+                <span className="text-[9px] text-muted-foreground/60">
+                  reasoning
+                </span>
+              )}
+            </ModelSelectorItem>
+          ))}
+        </ModelSelectorList>
+      </ModelSelectorContent>
+    </ModelSelector>
+  );
+}
+
+const ConfidentialModelSelector = memo(PureConfidentialModelSelector);
 
 function PureStopButton({
   stop,

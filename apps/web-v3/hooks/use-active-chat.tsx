@@ -158,6 +158,12 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
         const confidential =
           typeof window !== "undefined" &&
           window.localStorage.getItem("audric-confidential") === "1";
+        // When confidential, the chosen phala/* model drives the turn (the
+        // route uses it directly); otherwise the normal model selection.
+        const confidentialModel =
+          typeof window === "undefined"
+            ? null
+            : window.localStorage.getItem("audric-confidential-model");
 
         return {
           body: {
@@ -165,7 +171,10 @@ export function ActiveChatProvider({ children }: { children: ReactNode }) {
             ...(isToolApprovalContinuation
               ? { messages: request.messages }
               : { message: lastMessage }),
-            selectedChatModel: currentModelIdRef.current,
+            selectedChatModel:
+              confidential && confidentialModel
+                ? confidentialModel
+                : currentModelIdRef.current,
             selectedVisibilityType: visibility,
             useMemWal,
             confidential,

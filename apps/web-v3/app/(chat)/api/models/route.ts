@@ -4,8 +4,30 @@ import {
   getModelPricing,
   isDemo,
 } from "@/lib/ai/models";
+import { apiMarginFor, apiModels } from "@/lib/api/models";
+import { getPhalaPricing } from "@/lib/api/providers";
 import { marginFor } from "@/lib/credit/meter";
 import { isMemoryConfigured } from "@/lib/memwal";
+
+// The confidential (GPU-TEE) catalog, priced at the charged rate (Phala × the
+// 2.0× confidential margin) — surfaced so the composer's model picker can show
+// the TEE models when Confidential mode is on.
+async function confidentialCatalog() {
+  const phalaPricing = await getPhalaPricing();
+  return apiModels
+    .filter((m) => m.privacy === "confidential")
+    .map((m) => {
+      const p = phalaPricing[m.id];
+      const margin = apiMarginFor(m.id);
+      return {
+        id: m.id,
+        name: m.name,
+        reasoning: m.reasoning ?? false,
+        inputPer1M: p ? p.inputPer1M * margin : undefined,
+        outputPer1M: p ? p.outputPer1M * margin : undefined,
+      };
+    });
+}
 
 export async function GET() {
   // Short browser TTL + long shared TTL with background revalidation: the model
@@ -23,6 +45,7 @@ export async function GET() {
   ]);
 
   const memoryEnabled = isMemoryConfigured();
+  const confidentialModels = await confidentialCatalog();
 
   // Show the CHARGED rate (Gateway list × the model's margin), not raw cost — so
   // the switcher price matches what actually debits from credit (the meter applies
@@ -53,6 +76,7 @@ export async function GET() {
         models,
         pricing,
         memoryEnabled,
+        confidentialModels,
       },
       { headers }
     );
@@ -63,6 +87,7 @@ export async function GET() {
       capabilities,
       pricing,
       memoryEnabled,
+      confidentialModels,
     },
     { headers }
   );
