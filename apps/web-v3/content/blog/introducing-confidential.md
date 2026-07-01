@@ -1,5 +1,5 @@
 ---
-title: "Introducing Confidential: private you can prove"
+title: "Introducing Confidential: privacy you can prove"
 date: 2026-07-01
 description: Flip one toggle and your chat runs inside a secure enclave — even we can't read it. Every response comes with a proof, anchored on Sui, that you can check yourself.
 author: funkii
