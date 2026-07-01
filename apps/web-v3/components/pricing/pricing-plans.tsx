@@ -5,26 +5,38 @@ import { cn } from "@/lib/utils";
 
 type PlanCta =
   | { kind: "current"; label: string }
-  | { kind: "link"; label: string; href: string };
+  | { kind: "link"; label: string; href: string }
+  | { kind: "change"; label: string; tier: string };
 
 /**
- * Resolve a tier's CTA given the user's CURRENT plan. Prevents the "re-checkout
- * the plan you already have" bug: the active tier shows a non-clickable "Current
- * plan", and an existing subscriber switching tiers is routed to Billing (the
- * Stripe-managed change flow) rather than a fresh `/checkout` that double-charges.
+ * Resolve a tier's CTA given the user's CURRENT plan.
+ * - Active tier → non-clickable "Current plan" (no re-checkout).
+ * - Existing PAID subscriber switching tiers → an in-app CHANGE action
+ *   (`subscriptions.update`, Stripe-prorated) — NOT a fresh `/checkout` (which
+ *   would create a second subscription + double-charge). Downgrade to Free =
+ *   cancel at period end. This is the fix for the old dead "Manage plan → billing"
+ *   loop that left subscribers unable to up/downgrade.
+ * - New / free user → `/checkout?plan=` (or Start free).
  */
 function planCta(
   tierId: string,
   priceUsd: number | null,
   tierName: string,
-  currentTier?: string
+  currentTier?: string,
+  currentPriceUsd?: number | null
 ): PlanCta {
   if (currentTier && tierId === currentTier) {
     return { kind: "current", label: "Current plan" };
   }
-  // Existing PAID subscriber changing plans → manage via Billing, not a new checkout.
   if (currentTier && currentTier !== "free" && tierId !== currentTier) {
-    return { kind: "link", label: "Manage plan", href: "/settings/billing" };
+    if (!priceUsd) {
+      return { kind: "change", label: "Downgrade to Free", tier: tierId };
+    }
+    const dir =
+      currentPriceUsd != null && priceUsd > currentPriceUsd
+        ? "Upgrade to"
+        : "Switch to";
+    return { kind: "change", label: `${dir} ${tierName}`, tier: tierId };
   }
   if (!priceUsd) {
     return { kind: "link", label: "Start free", href: "/" };
@@ -46,10 +58,18 @@ function planCta(
 export function PricingPlans({
   onCtaClick,
   currentTier,
+  onChangePlan,
 }: {
   onCtaClick?: () => void;
   currentTier?: string;
+  // Existing subscriber switching tiers (proration handled server-side). When
+  // absent (e.g. static/marketing render), a switch CTA falls back to Billing.
+  onChangePlan?: (tier: string, label: string) => void;
 }) {
+  const currentPriceUsd =
+    currentTier == null
+      ? null
+      : (TIERS.find((t) => t.id === currentTier)?.priceUsd ?? null);
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border/50 bg-card/40 p-6">
@@ -138,7 +158,14 @@ export function PricingPlans({
                   tier.id,
                   tier.priceUsd,
                   tier.name,
-                  currentTier
+                  currentTier,
+                  currentPriceUsd
+                );
+                const ctaClass = cn(
+                  "mt-6 inline-flex h-9 items-center justify-center rounded-lg px-4 font-medium text-sm transition-colors",
+                  featured
+                    ? "bg-teal-600 text-white hover:bg-teal-500"
+                    : "border border-border/60 text-foreground hover:bg-muted"
                 );
                 if (cta.kind === "current") {
                   return (
@@ -151,14 +178,29 @@ export function PricingPlans({
                     </span>
                   );
                 }
+                // Existing subscriber switching tiers → in-app change action
+                // (falls back to Billing if no handler was provided).
+                if (cta.kind === "change") {
+                  if (!onChangePlan) {
+                    return (
+                      <Link className={ctaClass} href="/settings/billing">
+                        {cta.label}
+                      </Link>
+                    );
+                  }
+                  return (
+                    <button
+                      className={ctaClass}
+                      onClick={() => onChangePlan(cta.tier, cta.label)}
+                      type="button"
+                    >
+                      {cta.label}
+                    </button>
+                  );
+                }
                 return (
                   <Link
-                    className={cn(
-                      "mt-6 inline-flex h-9 items-center justify-center rounded-lg px-4 font-medium text-sm transition-colors",
-                      featured
-                        ? "bg-teal-600 text-white hover:bg-teal-500"
-                        : "border border-border/60 text-foreground hover:bg-muted"
-                    )}
+                    className={ctaClass}
                     href={cta.href}
                     onClick={onCtaClick}
                   >

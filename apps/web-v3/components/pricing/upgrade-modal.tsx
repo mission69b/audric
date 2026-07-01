@@ -9,7 +9,18 @@ import {
   useMemo,
   useState,
 } from "react";
-import useSWR from "swr";
+import { toast } from "sonner";
+import useSWR, { useSWRConfig } from "swr";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { fetcher } from "@/lib/utils";
 import { PricingView } from "./pricing-view";
 
@@ -47,6 +58,52 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
     fetcher,
     { revalidateOnFocus: false }
   );
+  const { mutate } = useSWRConfig();
+
+  // Existing-subscriber plan change (proration handled server-side). Confirm
+  // first (it's money), then POST the change + refresh the plan + close.
+  const [changing, setChanging] = useState<{
+    tier: string;
+    label: string;
+  } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const changeMessage =
+    changing?.tier === "free"
+      ? "Your current plan stays active until the end of your billing period, then switches to Free — no further charges."
+      : changing?.label.startsWith("Upgrade")
+        ? "You'll be charged the prorated difference now and your new plan takes effect immediately."
+        : "You'll switch now — Stripe applies a prorated credit for the difference toward your next invoice.";
+
+  const confirmChange = async () => {
+    if (!changing) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/billing/subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change", tier: changing.tier }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await mutate("/api/credit/balance");
+        toast.success(
+          changing.tier === "free"
+            ? "Your plan will switch to Free at the end of your billing period."
+            : "Your plan has been updated."
+        );
+        setChanging(null);
+        setOpen(false);
+      } else {
+        toast.error(json.error ?? "Couldn't change your plan.");
+      }
+    } catch {
+      toast.error("Couldn't change your plan.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <UpgradeModalContext.Provider value={value}>
@@ -73,12 +130,37 @@ export function UpgradeModalProvider({ children }: { children: ReactNode }) {
             <div className="px-5 py-12">
               <PricingView
                 currentTier={credit?.tier}
+                onChangePlan={(tier, label) => setChanging({ tier, label })}
                 onCtaClick={() => setOpen(false)}
               />
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
+
+      <AlertDialog
+        onOpenChange={(o) => !o && setChanging(null)}
+        open={changing !== null}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{changing?.label}</AlertDialogTitle>
+            <AlertDialogDescription>{changeMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmChange();
+              }}
+            >
+              {submitting ? "Updating…" : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </UpgradeModalContext.Provider>
   );
 }
