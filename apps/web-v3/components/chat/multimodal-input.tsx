@@ -839,7 +839,7 @@ function PureMultimodalInput({
           value={input}
         />
         <PromptInputFooter className="px-3 pb-3">
-          <PromptInputTools>
+          <PromptInputTools className="flex-wrap gap-y-1">
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
             {confidential ? (
               <ConfidentialModelSelector
@@ -1304,9 +1304,7 @@ function PureMemoryToggle() {
           variant="ghost"
         >
           <BrainIcon className="size-3.5" />
-          <span className="hidden sm:inline">
-            {on ? "Memory on" : "Memory"}
-          </span>
+          <span>{on ? "Memory on" : "Memory"}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>Encrypted memory</TooltipContent>
@@ -1345,9 +1343,7 @@ function PureConfidentialToggle({
           variant="ghost"
         >
           <LockIcon className="size-3.5" />
-          <span className="hidden sm:inline">
-            {on ? "Confidential on" : "Confidential"}
-          </span>
+          <span>{on ? "Confidential on" : "Confidential"}</span>
           {!canUsePremium && (
             <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/70">
               Pro
