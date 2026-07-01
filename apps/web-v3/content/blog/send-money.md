@@ -13,12 +13,12 @@ Audric isn't just an AI — it has a wallet built in. Not a connected third-part
 
 Ask, confirm, done:
 
-*"Send 10 USDC to alice.sui."*
+*"Send 10 USDC to alice@audric."*
 
 - **Free & gasless** — no network fees; the gas is sponsored for you.
 - **Instant** — settles on Sui in seconds.
 - **USDC + USDsui** — send either stablecoin.
-- **Names or addresses** — send to a Sui address or a SuiNS name like `alice.sui`.
+- **Names or addresses** — send to a Sui address or an Audric handle like `alice@audric`.
 - **You decide** — every transfer is tap-to-confirm. Audric never moves money on its own.
 
 You can receive, too — share your address or your @handle and funds land in your Passport.
