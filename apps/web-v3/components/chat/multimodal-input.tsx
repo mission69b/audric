@@ -9,6 +9,7 @@ import {
   EyeIcon,
   LockIcon,
   MonitorIcon,
+  ShieldCheckIcon,
   SparklesIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -207,15 +208,12 @@ function PureMultimodalInput({
   useEffect(() => {
     setConfidential(window.localStorage.getItem("audric-confidential") === "1");
   }, []);
-  const toggleConfidential = useCallback(() => {
-    setConfidential((prev) => {
-      const next = !prev;
-      window.localStorage.setItem("audric-confidential", next ? "1" : "0");
-      // Let the header shield (+ any other listener) reflect the mode change
-      // — localStorage writes don't fire `storage` on the same tab.
-      window.dispatchEvent(new Event("audric-confidential-change"));
-      return next;
-    });
+  // Explicit setter (the mode tabs pick Private/Confidential directly). Persists
+  // + fires the event the header shield / greeting listen for.
+  const setConfidentialMode = useCallback((next: boolean) => {
+    setConfidential(next);
+    window.localStorage.setItem("audric-confidential", next ? "1" : "0");
+    window.dispatchEvent(new Event("audric-confidential-change"));
   }, []);
   // Which confidential (phala/*) model runs when Confidential is on — persisted
   // + sent as the model id by the transport (default: the fast gpt-oss-120b).
@@ -842,13 +840,14 @@ function PureMultimodalInput({
           {/* Left: modes (Perplexity-style). Right: model + submit. */}
           <PromptInputTools className="min-w-0 flex-wrap gap-y-1">
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-            <MemoryToggle />
-            <ConfidentialToggle
+            <ModeTabs
               canUsePremium={canUsePremium}
-              on={confidential}
-              onToggle={toggleConfidential}
+              confidential={confidential}
+              onSelect={setConfidentialMode}
             />
-            <ComputerPlaceholder />
+            {/* Memory last — its "on" label changes width, so isolate it from
+                the tabs to avoid shoving them. */}
+            <MemoryToggle />
           </PromptInputTools>
 
           <div className="flex shrink-0 items-center gap-1">
@@ -1320,76 +1319,81 @@ function PureMemoryToggle() {
 
 const MemoryToggle = memo(PureMemoryToggle);
 
-// Confidential mode toggle (SPEC_CONFIDENTIAL_UI §6) — the composer's mode
-// switch. ON routes the turn through a GPU-TEE (phala/*) as a pure in-TEE
-// completion, auto-anchored on Sui with a verifiable receipt. The composer
-// "lights up" (emerald lock glow) via the parent. State is lifted to the
-// composer; this is the tap target.
-function PureConfidentialToggle({
-  on,
-  onToggle,
+// Composer mode tabs — a segmented control of mutually-exclusive modes:
+// Private (default · ZDR) · Confidential (GPU-TEE, auto-anchored on Sui) ·
+// Computer (roadmap, disabled). Desktop shows labels; mobile shows icons only.
+// Confidential is Pro-gated at send-time. The composer "lights up" (emerald glow)
+// + the header shield / greeting react to the Confidential selection via parent.
+function PureModeTabs({
+  confidential,
+  onSelect,
   canUsePremium,
 }: {
-  on: boolean;
-  onToggle: () => void;
+  confidential: boolean;
+  onSelect: (next: boolean) => void;
   canUsePremium: boolean;
 }) {
+  const seg =
+    "flex h-6 items-center gap-1.5 rounded-md px-2 text-[12px] transition-colors";
+  const active = "bg-foreground/10 text-foreground";
+  const idle = "text-muted-foreground/50 hover:text-foreground";
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          className={cn(
-            "h-7 gap-1.5 rounded-lg px-2 text-[12px] transition-colors",
-            on
-              ? "bg-foreground/10 text-foreground ring-1 ring-border ring-inset"
-              : "text-muted-foreground/40 hover:text-foreground"
-          )}
-          onClick={onToggle}
-          type="button"
-          variant="ghost"
-        >
-          <LockIcon className="size-3.5" />
-          <span>{on ? "Confidential on" : "Confidential"}</span>
-          {!canUsePremium && (
-            <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/70">
-              Pro
+    <div className="flex items-center gap-0.5 rounded-lg bg-foreground/[0.04] p-0.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className={cn(seg, confidential ? idle : active)}
+            onClick={() => onSelect(false)}
+            type="button"
+          >
+            <ShieldCheckIcon className="size-3.5" />
+            <span className="hidden sm:inline">Private</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Private · ZDR</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className={cn(seg, confidential ? active : idle)}
+            onClick={() => onSelect(true)}
+            type="button"
+          >
+            <LockIcon className="size-3.5" />
+            <span className="hidden sm:inline">Confidential</span>
+            {!canUsePremium && (
+              <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/70">
+                Pro
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>GPU-TEE · verifiable</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            aria-disabled="true"
+            className={cn(seg, "cursor-default text-muted-foreground/40")}
+            onClick={(e) => e.preventDefault()}
+            type="button"
+          >
+            <MonitorIcon className="size-3.5" />
+            <span className="hidden sm:inline">Computer</span>
+            <span className="hidden rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/60 sm:inline">
+              Soon
             </span>
-          )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>GPU-TEE · verifiable</TooltipContent>
-    </Tooltip>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Agentic money-native workflows</TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
 
-const ConfidentialToggle = memo(PureConfidentialToggle);
-
-// Audric Computer — placeholder (not built yet). A Perplexity-style "Computer"
-// pill that primes users + signals the roadmap. aria-disabled (not `disabled`)
-// so the tooltip still opens; desktop-only to keep the mobile footer uncluttered.
-function PureComputerPlaceholder() {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          aria-disabled="true"
-          className="hidden h-7 cursor-default items-center gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground/40 sm:inline-flex"
-          onClick={(e) => e.preventDefault()}
-          type="button"
-        >
-          <MonitorIcon className="size-3.5" />
-          Computer
-          <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/60">
-            Soon
-          </span>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>Agentic money-native workflows</TooltipContent>
-    </Tooltip>
-  );
-}
-
-const ComputerPlaceholder = memo(PureComputerPlaceholder);
+const ModeTabs = memo(PureModeTabs);
 
 type ConfidentialModelOption = {
   id: string;
