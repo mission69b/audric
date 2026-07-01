@@ -3,9 +3,9 @@
 import {
   CreditCardIcon,
   GiftIcon,
+  LineChartIcon,
   PanelLeftIcon,
   PenSquareIcon,
-  SparklesIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -136,12 +136,12 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
                     className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                     onClick={() => {
                       setOpenMobile(false);
-                      router.push("/skills");
+                      router.push("/markets");
                     }}
-                    tooltip="Skills"
+                    tooltip="Live market data"
                   >
-                    <SparklesIcon className="size-4" />
-                    <span className="font-medium">Skills</span>
+                    <LineChartIcon className="size-4" />
+                    <span className="font-medium">Markets</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 {!user && (

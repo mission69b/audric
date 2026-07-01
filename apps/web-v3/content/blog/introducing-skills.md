@@ -30,7 +30,7 @@ Audric now has **Skills** — live data tools it reaches for automatically, righ
 
 Skills **auto-route** — you never pick one. Ask naturally — *"top trending tokens on Sui," "research NVDA," "is the market fearful or greedy?"* — and Audric chooses the right Skill for you.
 
-They're **free for everyone**. Browse the full set on the [Skills](/skills) page and tap any example to drop it into the composer.
+They're **free for everyone**. See them at work on the [Markets](/markets) page — live data, one tap from a question.
 
 This is just the start. More Skills are on the way.
 

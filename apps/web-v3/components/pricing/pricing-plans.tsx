@@ -89,9 +89,9 @@ export function PricingPlans({
         </ul>
         <Link
           className="mt-4 inline-block text-foreground text-sm underline underline-offset-4 transition-colors hover:text-muted-foreground"
-          href="/skills"
+          href="/markets"
         >
-          Browse all Skills →
+          See live market data →
         </Link>
       </div>
 
