@@ -14,9 +14,12 @@
  *
  * Pricing reuses the in-app rule: charged = Gateway base × margin (the per-model
  * undercut-Venice rule, SPEC_AUDRIC_API). Open models carry a fatter margin
- * (Venice marks them up ~40%); frontier is thin/near-floor. Unlike the consumer
- * app, the API does NOT comp Kimi — the free tier is a consumer acquisition
- * lever, not an API feature; every API model is metered.
+ * (~40%); frontier is thin/near-floor; **confidential (`phala/*`) carries a 2.0×
+ * provable-privacy premium** — verified TEE + Sui anchor + a sovereign, durable
+ * receipt you own + can verify yourself (SPEC_CONFIDENTIAL_UI §6a; the on-chain
+ * cost is a rounding error, so this is a willingness-to-pay decision). Unlike the
+ * consumer app, the API does NOT comp Kimi — the free tier is a consumer
+ * acquisition lever, not an API feature; every API model is metered.
  */
 
 export type ApiModelTier = "open" | "frontier";
@@ -25,8 +28,8 @@ export type ApiModelTier = "open" | "frontier";
 // - "private"      → ZDR via the Vercel Gateway (provider contractually can't
 //                    store/train; the v1 baseline).
 // - "confidential" → GPU-TEE via Phala-direct (`phala/*`), hardware-isolated +
-//                    `x-receipt-id` attestation receipt (v1.5; consumed, not
-//                    yet self-verifiable — the verifier is v3).
+//                    a signed `x-receipt-id` receipt, Sui-anchored + self-
+//                    verifiable via `t2 verify` / `verifyReceipt` (v3.0 shipped).
 export type ApiModelPrivacy = "private" | "confidential";
 
 export type ApiModel = {
@@ -128,7 +131,7 @@ export const apiModels: ApiModel[] = [
     name: "GLM 5.2 (Confidential)",
     tier: "open",
     privacy: "confidential",
-    margin: 1.4,
+    margin: 2.0,
   },
   {
     id: "phala/gpt-oss-120b",
@@ -136,7 +139,7 @@ export const apiModels: ApiModel[] = [
     name: "GPT-OSS 120B (Confidential)",
     tier: "open",
     privacy: "confidential",
-    margin: 1.4,
+    margin: 2.0,
   },
   {
     id: "phala/deepseek-v3.2",
@@ -144,7 +147,7 @@ export const apiModels: ApiModel[] = [
     name: "DeepSeek V3.2 (Confidential)",
     tier: "open",
     privacy: "confidential",
-    margin: 1.4,
+    margin: 2.0,
   },
   {
     id: "phala/qwen3.5-27b",
@@ -152,7 +155,7 @@ export const apiModels: ApiModel[] = [
     name: "Qwen3.5 27B (Confidential)",
     tier: "open",
     privacy: "confidential",
-    margin: 1.4,
+    margin: 2.0,
   },
   {
     id: "phala/uncensored-24b",
@@ -160,7 +163,7 @@ export const apiModels: ApiModel[] = [
     name: "Uncensored 24B (Confidential)",
     tier: "open",
     privacy: "confidential",
-    margin: 1.4,
+    margin: 2.0,
   },
 ];
 
