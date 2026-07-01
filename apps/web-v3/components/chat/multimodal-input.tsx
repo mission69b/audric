@@ -915,6 +915,12 @@ function PureMultimodalInput({
           )}
         </PromptInputFooter>
       </PromptInput>
+      {confidential && (
+        <div className="mt-1.5 px-3 text-[10px] text-emerald-600/60 dark:text-emerald-400/60">
+          Sealed in a GPU-TEE — no web search, tools, or image generation this
+          mode. Turn Confidential off for those.
+        </div>
+      )}
     </div>
   );
 }
