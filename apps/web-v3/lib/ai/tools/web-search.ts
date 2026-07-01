@@ -5,15 +5,21 @@ import { env } from "@/lib/env";
 /**
  * web_search — SDK-executed live web search (Audric v3).
  *
- * Two paths, same shape out ({ answer, sources: [{ url, title }] }):
+ * Two paths, same shape out ({ answer, sources, images }):
  *
  *  1. DIRECT Perplexity API (when PERPLEXITY_API_KEY is set) — returns
- *     `search_results` with real page TITLES (+ url, date). The Vercel AI
- *     Gateway's perplexity path does NOT surface titles (sources carry only a
- *     url), so this direct call is the only non-hacky way to show titled rows.
+ *     `search_results` with real page TITLES (+ url, date) and, with
+ *     `return_images`, a handful of RELATED IMAGES from the pages it found.
+ *     The Vercel AI Gateway's perplexity path surfaces neither titles nor
+ *     images, so the direct call is the only non-hacky way to get both.
  *  2. GATEWAY fallback (no key) — Perplexity Sonar via the Gateway: grounded
- *     answer + source URLs only (no titles). Keyless; bills on the Gateway
- *     credential.
+ *     answer + source URLs only (no titles, no images). Keyless; bills on the
+ *     Gateway credential.
+ *
+ * Sources carry `date` and the result carries `images` so the client can
+ * render Perplexity-style source cards + an image strip (search-results.tsx).
+ * Both are presentational pass-throughs — absent/empty degrades to the plain
+ * answer + link chips.
  *
  * Why SDK-executed (not the Gateway's provider search tool): provider-executed
  * tools don't trigger the AI SDK's multi-step continuation — models call, get
@@ -22,8 +28,10 @@ import { env } from "@/lib/env";
  */
 
 const MAX_ANSWER_CHARS = 4000;
+const MAX_IMAGES = 6;
 
-type Source = { url: string; title: string };
+type Source = { url: string; title: string; date?: string };
+type SearchImage = { url: string; origin?: string };
 
 function cap(text: string): string {
   return text.length > MAX_ANSWER_CHARS
@@ -31,10 +39,33 @@ function cap(text: string): string {
     : text;
 }
 
+/** Perplexity `images` entries are either bare URL strings or objects —
+ * normalize defensively (the shape has shifted across API revisions). */
+function normalizeImages(raw: unknown): SearchImage[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const out: SearchImage[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && item.startsWith("http")) {
+      out.push({ url: item });
+    } else if (item && typeof item === "object") {
+      const o = item as { image_url?: string; origin_url?: string };
+      if (typeof o.image_url === "string" && o.image_url.startsWith("http")) {
+        out.push({ url: o.image_url, origin: o.origin_url });
+      }
+    }
+    if (out.length >= MAX_IMAGES) {
+      break;
+    }
+  }
+  return out;
+}
+
 async function searchDirect(
   query: string,
   apiKey: string
-): Promise<{ answer: string; sources: Source[] }> {
+): Promise<{ answer: string; sources: Source[]; images: SearchImage[] }> {
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
     headers: {
@@ -44,6 +75,7 @@ async function searchDirect(
     body: JSON.stringify({
       model: "sonar",
       messages: [{ role: "user", content: query }],
+      return_images: true,
     }),
   });
   if (!res.ok) {
@@ -51,16 +83,20 @@ async function searchDirect(
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
-    search_results?: { url?: string; title?: string }[];
+    search_results?: { url?: string; title?: string; date?: string }[];
     citations?: string[];
+    images?: unknown;
   };
   const text = data.choices?.[0]?.message?.content ?? "";
 
   const fromResults: Source[] = (data.search_results ?? [])
-    .filter((r): r is { url: string; title?: string } => Boolean(r.url))
+    .filter((r): r is { url: string; title?: string; date?: string } =>
+      Boolean(r.url)
+    )
     .map((r) => ({
       url: r.url,
       title: typeof r.title === "string" ? r.title : "",
+      ...(typeof r.date === "string" && r.date ? { date: r.date } : {}),
     }));
   // Fallback to bare citation URLs if the API omitted search_results.
   const sources =
@@ -68,12 +104,12 @@ async function searchDirect(
       ? fromResults
       : (data.citations ?? []).map((url) => ({ url, title: "" }));
 
-  return { answer: cap(text), sources };
+  return { answer: cap(text), sources, images: normalizeImages(data.images) };
 }
 
 async function searchGateway(
   query: string
-): Promise<{ answer: string; sources: Source[] }> {
+): Promise<{ answer: string; sources: Source[]; images: SearchImage[] }> {
   const { text, sources } = await generateText({
     model: gateway.languageModel("perplexity/sonar"),
     prompt: query,
@@ -88,7 +124,7 @@ async function searchGateway(
         ]
       : []
   );
-  return { answer: cap(text), sources: urls };
+  return { answer: cap(text), sources: urls, images: [] };
 }
 
 export const webSearch = tool({

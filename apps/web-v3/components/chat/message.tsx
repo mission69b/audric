@@ -33,6 +33,7 @@ import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
+import { SearchResults } from "./search-results";
 import { SendTransferTool } from "./send-transfer-tool";
 
 /** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
@@ -171,6 +172,20 @@ const PurePreviewMessage = ({
       pushNarration(part.text ?? "");
     }
   });
+  // Perplexity-style visual layer — aggregate every completed search's sources
+  // + related images for the card grid / image strip rendered above the answer
+  // (search-results.tsx). The CoT timeline above stays the process view.
+  const searchSources = allParts.flatMap((p) =>
+    p.type === "tool-web_search" && p.state === "output-available"
+      ? (p.output?.sources ?? [])
+      : []
+  );
+  const searchImages = allParts.flatMap((p) =>
+    p.type === "tool-web_search" && p.state === "output-available"
+      ? (p.output?.images ?? [])
+      : []
+  );
+
   // Terminal marker once the turn has finished its work. If an image tool
   // errored, mark the turn FAILED (not a misleading "Done" ✓ next to a failed
   // generation). Only when there was visible work and we're not still streaming.
@@ -619,6 +634,9 @@ const PurePreviewMessage = ({
               : undefined
           }
         />
+      )}
+      {isAssistant && (searchSources.length > 0 || searchImages.length > 0) && (
+        <SearchResults images={searchImages} sources={searchSources} />
       )}
       {isEmptyAssistant ? (
         <MessageContent className="text-[13px] leading-[1.65]">
