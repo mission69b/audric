@@ -54,7 +54,7 @@ export const starterChips: StarterChip[] = [
       "I need you to research a topic for me. Use web search to find current, reliable information. Summarize the key findings clearly, cite your sources, and flag any conflicting information or areas where more research might be needed.",
   },
   {
-    label: "Create a video prompt",
+    label: "Create a video",
     starterPrompt:
       "Help me make a video. Suggest one vivid, cinematic scene idea (visuals only — no on-screen text or logos), then generate a short clip of it.",
   },
