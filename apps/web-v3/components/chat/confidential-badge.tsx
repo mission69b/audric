@@ -59,7 +59,9 @@ function CheckRow({ check }: { check: VerifyCheck }) {
             </span>
           )}
         </div>
-        <div className="text-[11px] text-muted-foreground/70">{detail}</div>
+        <div className="break-all text-[11px] text-muted-foreground/70">
+          {detail}
+        </div>
       </div>
     </div>
   );
@@ -189,7 +191,7 @@ export function ConfidentialBadge({ message }: { message: ChatMessage }) {
               <div className="mb-1 font-medium text-[11px]">
                 Verify it yourself (fully trustless):
               </div>
-              <code className="block select-all rounded bg-background px-2 py-1 text-[11px]">
+              <code className="block select-all break-all rounded bg-background px-2 py-1 text-[11px]">
                 t2 verify {receiptId}
               </code>
               <div className="mt-1 text-[10px] text-muted-foreground/60">

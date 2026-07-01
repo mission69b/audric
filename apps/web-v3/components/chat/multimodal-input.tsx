@@ -51,10 +51,12 @@ import {
   AUTO_MODEL_ID,
   type ChatModel,
   chatModels,
-  type ModelPricing,
   type ModelPrivacyTier,
 } from "@/lib/ai/models";
-import { composerPlaceholders } from "@/lib/constants";
+import {
+  composerPlaceholders,
+  confidentialPlaceholders,
+} from "@/lib/constants";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -220,6 +222,9 @@ function PureMultimodalInput({
     setConfidential((prev) => {
       const next = !prev;
       window.localStorage.setItem("audric-confidential", next ? "1" : "0");
+      // Let the header shield (+ any other listener) reflect the mode change
+      // — localStorage writes don't fire `storage` on the same tab.
+      window.dispatchEvent(new Event("audric-confidential-change"));
       return next;
     });
   }, []);
@@ -328,10 +333,7 @@ function PureMultimodalInput({
     if (editingMessage) {
       return;
     }
-    const id = setInterval(
-      () => setPlaceholderIndex((i) => (i + 1) % composerPlaceholders.length),
-      3500
-    );
+    const id = setInterval(() => setPlaceholderIndex((i) => i + 1), 3500);
     return () => clearInterval(id);
   }, [editingMessage]);
   const [slashOpen, setSlashOpen] = useState(false);
@@ -860,7 +862,15 @@ function PureMultimodalInput({
           placeholder={
             editingMessage
               ? "Edit your message..."
-              : composerPlaceholders[placeholderIndex]
+              : (confidential
+                  ? confidentialPlaceholders
+                  : composerPlaceholders)[
+                  placeholderIndex %
+                    (confidential
+                      ? confidentialPlaceholders
+                      : composerPlaceholders
+                    ).length
+                ]
           }
           ref={textareaRef}
           value={input}
@@ -915,12 +925,6 @@ function PureMultimodalInput({
           )}
         </PromptInputFooter>
       </PromptInput>
-      {confidential && (
-        <div className="mt-1.5 px-3 text-[10px] text-emerald-600/60 dark:text-emerald-400/60">
-          Sealed in a GPU-TEE — no web search, tools, or image generation this
-          mode. Turn Confidential off for those.
-        </div>
-      )}
     </div>
   );
 }
@@ -1028,7 +1032,6 @@ function PureModelSelectorCompact({
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );
 
-  const pricing: Record<string, ModelPricing> | undefined = modelsData?.pricing;
   const capabilities:
     | Record<string, { tools: boolean; vision: boolean; reasoning: boolean }>
     | undefined = modelsData?.capabilities;
@@ -1232,38 +1235,21 @@ function PureModelSelectorCompact({
                             Default
                           </span>
                         )}
-                        {(() => {
-                          const p = pricing?.[model.id];
-                          if (model.free) {
-                            return (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-[10px] text-emerald-500 tabular-nums">
-                                    Free
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Free — included at no credit cost.
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          }
-                          if (!p) {
-                            return null;
-                          }
-                          return (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-[10px] tabular-nums">
-                                  ${p.inputPer1M.toFixed(2)}/1M
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {`Input $${p.inputPer1M.toFixed(2)} · Output $${p.outputPer1M.toFixed(2)} per 1M tokens`}
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        })()}
+                        {/* Only mark FREE models — paid per-1M pricing removed
+                            from the switcher (it squeezed the model name);
+                            pricing lives on /pricing + the billing page. */}
+                        {model.free && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-[10px] text-emerald-500 tabular-nums">
+                                Free
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Free — included at no credit cost.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         {model.privacy && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -1356,7 +1342,9 @@ function PureMemoryToggle() {
           variant="ghost"
         >
           <BrainIcon className="size-3.5" />
-          {on ? "Memory on" : "Memory"}
+          <span className="hidden sm:inline">
+            {on ? "Memory on" : "Memory"}
+          </span>
         </Button>
       </TooltipTrigger>
       <TooltipContent className="max-w-[220px]">
@@ -1399,7 +1387,9 @@ function PureConfidentialToggle({
           variant="ghost"
         >
           <LockIcon className="size-3.5" />
-          {on ? "Confidential on" : "Confidential"}
+          <span className="hidden sm:inline">
+            {on ? "Confidential on" : "Confidential"}
+          </span>
           {!canUsePremium && (
             <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/70">
               Pro
@@ -1421,6 +1411,7 @@ const ConfidentialToggle = memo(PureConfidentialToggle);
 type ConfidentialModelOption = {
   id: string;
   name: string;
+  provider?: string;
   reasoning?: boolean;
 };
 
@@ -1477,12 +1468,18 @@ function PureConfidentialModelSelector({
               }}
               value={m.id}
             >
-              <span className="flex items-center gap-1.5">
-                <LockIcon className="size-3 text-emerald-500" />
-                {m.name.replace(" (Confidential)", "")}
+              <span className="flex min-w-0 items-center gap-1.5">
+                {m.provider ? (
+                  <ModelSelectorLogo provider={m.provider} />
+                ) : (
+                  <LockIcon className="size-3 text-emerald-500" />
+                )}
+                <span className="truncate">
+                  {m.name.replace(" (Confidential)", "")}
+                </span>
               </span>
               {m.reasoning && (
-                <span className="text-[9px] text-muted-foreground/60">
+                <span className="shrink-0 text-[9px] text-muted-foreground/60">
                   reasoning
                 </span>
               )}

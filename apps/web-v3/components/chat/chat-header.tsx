@@ -1,7 +1,7 @@
 "use client";
 
-import { PanelLeftIcon, ShieldCheckIcon } from "lucide-react";
-import { memo, useState } from "react";
+import { LockIcon, PanelLeftIcon, ShieldCheckIcon } from "lucide-react";
+import { memo, useEffect, useState } from "react";
 import useSWR from "swr";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
@@ -62,23 +62,48 @@ function PrivacyBadge() {
   // Controlled so it's tap-openable on touch (Radix tooltips are hover/focus-only
   // and never open on mobile tap) while keeping desktop hover via onOpenChange.
   const [open, setOpen] = useState(false);
+  // Reflect the composer's Confidential toggle (localStorage + a custom event the
+  // toggle dispatches — same-tab localStorage writes don't fire `storage`).
+  const [confidential, setConfidential] = useState(false);
+  useEffect(() => {
+    const read = () =>
+      setConfidential(
+        window.localStorage.getItem("audric-confidential") === "1"
+      );
+    read();
+    window.addEventListener("audric-confidential-change", read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener("audric-confidential-change", read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip onOpenChange={setOpen} open={open}>
         <TooltipTrigger asChild>
           <button
             aria-label="Privacy details"
-            className="flex items-center gap-1.5 rounded-full border border-border/40 px-2.5 py-1 text-[12px] text-muted-foreground"
+            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] text-muted-foreground ${
+              confidential ? "border-emerald-500/40" : "border-border/40"
+            }`}
             onClick={() => setOpen((v) => !v)}
             type="button"
           >
-            <ShieldCheckIcon className="size-3.5 text-emerald-500" />
-            <span className="hidden sm:inline">Private</span>
+            {confidential ? (
+              <LockIcon className="size-3.5 text-emerald-500" />
+            ) : (
+              <ShieldCheckIcon className="size-3.5 text-emerald-500" />
+            )}
+            <span className="hidden sm:inline">
+              {confidential ? "Confidential" : "Private"}
+            </span>
           </button>
         </TooltipTrigger>
         <TooltipContent className="max-w-60 text-center" side="bottom">
-          Private by default — zero data retention. Your chats are never used to
-          train models; memory is encrypted and opt-in.
+          {confidential
+            ? "Confidential mode — this turn runs in a GPU-TEE (hardware enclave); the response is anchored on Sui and you can verify it yourself. No web or tools this mode."
+            : "Private by default — zero data retention. Your chats are never used to train models; memory is encrypted and opt-in."}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -51,15 +51,26 @@ export const composerPlaceholders: string[] = [
   "Analyze documents and PDFs",
   "Generate or animate videos",
   "Edit or upscale your images",
-  "What are the trending AI crypto projects?",
+  "Draft an email or a document",
+  "Explain a complex topic simply",
+  "Summarize a long article or paper",
   "Make a video of a calm ocean wave at sunset",
-  "Research NVDA — fundamentals, ratings and recent news",
-  "New tokens on Solana",
-  "Top crypto gainers this week",
-  "Show me ETH's price over the last 30 days",
-  "What's the crypto Fear & Greed index right now?",
+  "Research a company — fundamentals, news, ratings",
   "Send USDC to a friend — free and instant",
   "What's in my Passport wallet?",
+];
+
+/** Placeholders shown when Confidential mode is on — a pure in-TEE completion
+ * (no web/tools/images), so themed for private document + drafting work. */
+export const confidentialPlaceholders: string[] = [
+  "Ask me anything — sealed in a GPU-TEE",
+  "Review this term sheet",
+  "Analyze this PDF privately",
+  "Summarize this contract",
+  "Draft a reply to this email",
+  "Explain this legal clause in plain English",
+  "Redline this agreement",
+  "Talk through something sensitive, privately",
 ];
 
 /** Concrete example prompts for the static login/preview pane. */
