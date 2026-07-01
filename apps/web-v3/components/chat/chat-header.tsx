@@ -83,7 +83,11 @@ function CreditsMenu() {
   }
   const tier = data.tier ?? "free";
   const isFree = tier === "free";
-  const balance = data.balanceUsd ?? 0;
+  // Floor to 2dp (never round up — matches the sidebar/billing display + the
+  // financial-amounts rule; toFixed alone would show $20.64 vs $20.63).
+  const balanceLabel = (Math.floor((data.balanceUsd ?? 0) * 100) / 100).toFixed(
+    2
+  );
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -93,9 +97,7 @@ function CreditsMenu() {
           type="button"
         >
           <CoinsIcon className="size-3.5" />
-          <span className="hidden tabular-nums sm:inline">
-            ${balance.toFixed(2)}
-          </span>
+          <span className="hidden tabular-nums sm:inline">${balanceLabel}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -109,9 +111,7 @@ function CreditsMenu() {
         </div>
         <div className="mt-1.5 flex items-center justify-between text-[13px]">
           <span className="text-muted-foreground">Available credit</span>
-          <span className="font-medium tabular-nums">
-            ${balance.toFixed(2)}
-          </span>
+          <span className="font-medium tabular-nums">${balanceLabel}</span>
         </div>
         <div className="mt-3 rounded-xl border border-border/50 bg-muted/30 p-2.5">
           <p className="text-[12px] text-muted-foreground">
