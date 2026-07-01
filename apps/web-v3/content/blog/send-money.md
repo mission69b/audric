@@ -27,10 +27,10 @@ You can receive, too — share your address or your @handle and funds land in yo
 
 ## Your keys, your money
 
-The wallet is **non-custodial** — built from your Google sign-in via zkLogin, so only you can authorize a transfer. We can't move, freeze, or take your funds. It's the same principle as the rest of Audric: what you own can't be silently changed or taken away.
+The wallet is built from your Google sign-in, and only you can authorize a transfer. We can't move, freeze, or take your funds. It's the same principle as the rest of Audric: what you own can't be silently changed or taken away.
 
 ![What the wallet does.](/blog/blog-wallet-grid.png)
 
 ## Private by default
 
-No KYC, no bank, no one in the middle — just you, your money, and an AI that can move it when you say so.
+No ID checks, no bank, no one in the middle — just you, your money, and an AI that can move it when you say so.

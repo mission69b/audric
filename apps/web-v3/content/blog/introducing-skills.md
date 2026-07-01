@@ -14,11 +14,11 @@ Audric now has **Skills** — live data tools it reaches for automatically, righ
 **Crypto**
 
 - **Crypto Market** — live price, market cap, rank, 24h/7d change, volume, and all-time high for any coin.
-- **Crypto History** — daily price history (OHLCV) over any window: the trend, highs/lows, and % change.
-- **Crypto Screener** — top gainers and losers, new listings, what's trending, or the top coins in a sector (AI, DePIN, RWA, gaming…).
+- **Crypto History** — daily price history over any window: the trend, highs and lows, and % change.
+- **Crypto Screener** — top gainers and losers, new listings, what's trending, or the top coins in a sector (AI, gaming, and more).
 - **Market Pulse** — the whole market at a glance: total market cap, 24h volume, BTC/ETH dominance, and the Fear & Greed index.
 - **On-chain Trending** — what's moving on a specific chain (Sui, Solana, Base, Ethereum, BSC and more): trending, top-by-volume, or newly launched.
-- **Token Research** — deep-dive any token by name, symbol, or contract address: price, liquidity, 24h volume, the DEX it trades on, and the latest news.
+- **Token Research** — deep-dive any token by name, symbol, or contract address: price, liquidity, 24h volume, where it trades, and the latest news.
 
 **Stocks**
 
