@@ -36,6 +36,7 @@ export async function GET() {
         name: m.name,
         tier: m.tier,
         privacy: m.privacy,
+        reasoning: m.reasoning ?? false,
         context_window: base.contextWindow ?? null,
         pricing: {
           // USD per 1M tokens, CHARGED (what debits credit) — what you see = what you pay.

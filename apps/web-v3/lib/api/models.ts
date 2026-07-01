@@ -46,6 +46,11 @@ export type ApiModel = {
    *  (differs from our alias `id` and from the Gateway's slug for the same
    *  model). Used for the Phala request + the live-pricing lookup. */
   upstream?: string;
+  /** True for reasoning models (glm-5.2, kimi) — they generate a hidden
+   *  reasoning trace before answering, so they're deeper but noticeably slower
+   *  (higher latency + more tokens). Surfaced in `/v1/models` + `t2 models` so
+   *  callers pick the speed/depth tradeoff consciously. We never cap tokens. */
+  reasoning?: boolean;
 };
 
 export const apiModels: ApiModel[] = [
@@ -56,6 +61,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "private",
     margin: 1.4,
+    reasoning: true,
   },
   {
     id: "deepseek/deepseek-v3.2",
@@ -70,6 +76,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "private",
     margin: 1.4,
+    reasoning: true,
   },
   {
     id: "alibaba/qwen3-max",
@@ -135,6 +142,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "confidential",
     margin: 2.0,
+    reasoning: true,
   },
   {
     id: "phala/kimi-k2.6",
@@ -143,6 +151,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "confidential",
     margin: 2.0,
+    reasoning: true,
   },
   {
     id: "phala/deepseek-v4-flash",
