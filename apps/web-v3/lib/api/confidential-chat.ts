@@ -11,7 +11,11 @@ import { anchorAndStore } from "@/lib/api/anchor";
 import { apiMarginFor } from "@/lib/api/models";
 import { getInferenceModel, getPhalaPricing } from "@/lib/api/providers";
 import { debitMicrosForUsage } from "@/lib/credit/meter";
-import { recordCredit, saveMessages } from "@/lib/db/queries";
+import {
+  recordCredit,
+  saveMessages,
+  updateChatTitleById,
+} from "@/lib/db/queries";
 import { isCreditConfigured } from "@/lib/stripe";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
@@ -39,6 +43,9 @@ export function confidentialChatResponse(opts: {
   userId?: string;
   modelMessages: ModelMessage[];
   requestedModelId: string;
+  // Set for a NEW chat — resolve it + stamp the sidebar title (the agentic path
+  // does this; the confidential branch must too, or chats stay "New chat").
+  titlePromise?: Promise<string> | null;
 }): Response {
   const modelId = opts.requestedModelId.startsWith("phala/")
     ? opts.requestedModelId
@@ -88,6 +95,17 @@ export function confidentialChatResponse(opts: {
           data: { receiptId: rid, modelId },
         });
         after(() => anchorAndStore(rid));
+      }
+      // New chat → resolve + stream the generated title so the sidebar updates
+      // live (mirrors the agentic path; else confidential chats stay "New chat").
+      if (opts.titlePromise) {
+        try {
+          const title = await opts.titlePromise;
+          writer.write({ type: "data-chat-title", data: title });
+          await updateChatTitleById({ chatId: opts.chatId, title });
+        } catch {
+          // non-fatal — the chat just keeps its placeholder title
+        }
       }
     },
     generateId: generateUUID,

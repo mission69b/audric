@@ -661,6 +661,7 @@ export async function POST(request: Request) {
         userId: session?.user?.id,
         modelMessages,
         requestedModelId: selectedChatModel,
+        titlePromise,
       });
     }
 
