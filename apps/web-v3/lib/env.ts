@@ -89,6 +89,13 @@ const serverSchema = z.object({
   // back to the keyless CoinGecko / GeckoTerminal path (no boot failure). The same
   // key later powers the t2000 agent gateway (dual-use). Server-only.
   CMC_API_KEY: optionalString,
+  // Ambient search images (Brave Image Search) — OPTIONAL: web_search fetches a
+  // handful of related images (safesearch strict) in parallel with the Sonar
+  // call for the answer's image strip. Our Perplexity tier doesn't return
+  // `return_images`, so Brave is the image source; DIRECT key by design (never
+  // via the t2000 gateway — that rail is x402-metered for agents). Unset → no
+  // image strip (no boot failure). Server-only.
+  BRAVE_API_KEY: optionalString,
   // Image super-resolution (fal.ai) — OPTIONAL: enables the `upscale_image` tool
   // (fal `clarity-upscaler`, image→image — not on the Vercel Gateway's text→image
   // surface). Unset → the tool returns a graceful "not configured" notice (no

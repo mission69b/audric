@@ -8,18 +8,19 @@ import { env } from "@/lib/env";
  * Two paths, same shape out ({ answer, sources, images }):
  *
  *  1. DIRECT Perplexity API (when PERPLEXITY_API_KEY is set) — returns
- *     `search_results` with real page TITLES (+ url, date) and, with
- *     `return_images`, a handful of RELATED IMAGES from the pages it found.
- *     The Vercel AI Gateway's perplexity path surfaces neither titles nor
- *     images, so the direct call is the only non-hacky way to get both.
+ *     `search_results` with real page TITLES (+ url, date). The Vercel AI
+ *     Gateway's perplexity path does NOT surface titles (sources carry only a
+ *     url), so this direct call is the only non-hacky way to show titled rows.
  *  2. GATEWAY fallback (no key) — Perplexity Sonar via the Gateway: grounded
- *     answer + source URLs only (no titles, no images). Keyless; bills on the
- *     Gateway credential.
+ *     answer + source URLs only (no titles). Keyless; bills on the Gateway
+ *     credential.
  *
- * Sources carry `date` and the result carries `images` so the client can
- * render Perplexity-style source cards + an image strip (search-results.tsx).
- * Both are presentational pass-throughs — absent/empty degrades to the plain
- * answer + link chips.
+ * Ambient related images come from BRAVE image search (safesearch strict),
+ * fetched in PARALLEL with the Sonar call when BRAVE_API_KEY is set — our
+ * Perplexity tier doesn't return `return_images`. Direct key by design (never
+ * via the t2000 gateway — that rail is x402-metered for agents). Sources carry
+ * `date` and the result carries `images` for the Perplexity-style source cards
+ * + image strip (search-results.tsx); both degrade to nothing when absent.
  *
  * Why SDK-executed (not the Gateway's provider search tool): provider-executed
  * tools don't trigger the AI SDK's multi-step continuation — models call, get
@@ -39,33 +40,37 @@ function cap(text: string): string {
     : text;
 }
 
-/** Perplexity `images` entries are either bare URL strings or objects —
- * normalize defensively (the shape has shifted across API revisions). */
-function normalizeImages(raw: unknown): SearchImage[] {
-  if (!Array.isArray(raw)) {
+/** Brave image search (safesearch strict) — the ambient image strip. Never
+ * throws: any failure (unset key / rate limit / outage) returns []. Thumbnails
+ * are Brave-CDN URLs (hotlink-safe); origin links to the source page. */
+async function braveImages(query: string): Promise<SearchImage[]> {
+  const key = env.BRAVE_API_KEY;
+  if (!key) {
     return [];
   }
-  const out: SearchImage[] = [];
-  for (const item of raw) {
-    if (typeof item === "string" && item.startsWith("http")) {
-      out.push({ url: item });
-    } else if (item && typeof item === "object") {
-      const o = item as { image_url?: string; origin_url?: string };
-      if (typeof o.image_url === "string" && o.image_url.startsWith("http")) {
-        out.push({ url: o.image_url, origin: o.origin_url });
-      }
+  try {
+    const res = await fetch(
+      `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(query)}&count=${MAX_IMAGES}&safesearch=strict`,
+      { headers: { "X-Subscription-Token": key, Accept: "application/json" } }
+    );
+    if (!res.ok) {
+      return [];
     }
-    if (out.length >= MAX_IMAGES) {
-      break;
-    }
+    const data = (await res.json()) as {
+      results?: { url?: string; thumbnail?: { src?: string } }[];
+    };
+    return (data.results ?? []).flatMap((r) =>
+      r.thumbnail?.src ? [{ url: r.thumbnail.src, origin: r.url }] : []
+    );
+  } catch {
+    return [];
   }
-  return out;
 }
 
 async function searchDirect(
   query: string,
   apiKey: string
-): Promise<{ answer: string; sources: Source[]; images: SearchImage[] }> {
+): Promise<{ answer: string; sources: Source[] }> {
   const res = await fetch("https://api.perplexity.ai/chat/completions", {
     method: "POST",
     headers: {
@@ -75,7 +80,6 @@ async function searchDirect(
     body: JSON.stringify({
       model: "sonar",
       messages: [{ role: "user", content: query }],
-      return_images: true,
     }),
   });
   if (!res.ok) {
@@ -85,7 +89,6 @@ async function searchDirect(
     choices?: { message?: { content?: string } }[];
     search_results?: { url?: string; title?: string; date?: string }[];
     citations?: string[];
-    images?: unknown;
   };
   const text = data.choices?.[0]?.message?.content ?? "";
 
@@ -104,12 +107,12 @@ async function searchDirect(
       ? fromResults
       : (data.citations ?? []).map((url) => ({ url, title: "" }));
 
-  return { answer: cap(text), sources, images: normalizeImages(data.images) };
+  return { answer: cap(text), sources };
 }
 
 async function searchGateway(
   query: string
-): Promise<{ answer: string; sources: Source[]; images: SearchImage[] }> {
+): Promise<{ answer: string; sources: Source[] }> {
   const { text, sources } = await generateText({
     model: gateway.languageModel("perplexity/sonar"),
     prompt: query,
@@ -124,7 +127,7 @@ async function searchGateway(
         ]
       : []
   );
-  return { answer: cap(text), sources: urls, images: [] };
+  return { answer: cap(text), sources: urls };
 }
 
 export const webSearch = tool({
@@ -142,14 +145,22 @@ export const webSearch = tool({
   }),
   execute: async ({ query }) => {
     const apiKey = env.PERPLEXITY_API_KEY;
-    if (apiKey) {
-      try {
-        return await searchDirect(query, apiKey);
-      } catch {
-        // Direct call failed (rate limit / outage) → degrade to the Gateway.
+    // Answer (Sonar) + ambient images (Brave) run in parallel — images never
+    // block or fail the search (braveImages returns [] on any failure).
+    const [result, images] = await Promise.all([
+      (async () => {
+        if (apiKey) {
+          try {
+            return await searchDirect(query, apiKey);
+          } catch {
+            // Direct call failed (rate limit / outage) → degrade to the Gateway.
+            return await searchGateway(query);
+          }
+        }
         return await searchGateway(query);
-      }
-    }
-    return await searchGateway(query);
+      })(),
+      braveImages(query),
+    ]);
+    return { ...result, images };
   },
 });

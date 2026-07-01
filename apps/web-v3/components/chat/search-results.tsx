@@ -162,6 +162,7 @@ function PureSearchResults({
 
   const visible = expanded ? deduped : deduped.slice(0, VISIBLE_CARDS);
   const hidden = deduped.length - VISIBLE_CARDS;
+  const expandable = hidden > 0;
 
   return (
     <div className="flex flex-col gap-2">
@@ -179,14 +180,18 @@ function PureSearchResults({
           ))}
         </div>
       )}
-      {!expanded && hidden > 0 && (
+      {expandable && (
         <button
           className="flex w-fit items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-          onClick={() => setExpanded(true)}
+          onClick={() => setExpanded((v) => !v)}
           type="button"
         >
-          <ChevronDownIcon className="size-3" />
-          {hidden} more source{hidden === 1 ? "" : "s"}
+          <ChevronDownIcon
+            className={`size-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+          {expanded
+            ? "Show fewer sources"
+            : `${hidden} more source${hidden === 1 ? "" : "s"}`}
         </button>
       )}
     </div>
