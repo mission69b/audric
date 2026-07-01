@@ -8,6 +8,7 @@ import {
   BrainIcon,
   EyeIcon,
   LockIcon,
+  MonitorIcon,
   SparklesIcon,
   WrenchIcon,
   XIcon,
@@ -900,6 +901,7 @@ function PureMultimodalInput({
               on={confidential}
               onToggle={toggleConfidential}
             />
+            <ComputerPlaceholder />
           </PromptInputTools>
 
           {status === "submitted" ? (
@@ -1407,6 +1409,36 @@ function PureConfidentialToggle({
 }
 
 const ConfidentialToggle = memo(PureConfidentialToggle);
+
+// Audric Computer — placeholder (not built yet). A Perplexity-style "Computer"
+// pill that primes users + signals the roadmap. aria-disabled (not `disabled`)
+// so the tooltip still opens; desktop-only to keep the mobile footer uncluttered.
+function PureComputerPlaceholder() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-disabled="true"
+          className="hidden h-7 cursor-default items-center gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground/40 sm:inline-flex"
+          onClick={(e) => e.preventDefault()}
+          type="button"
+        >
+          <MonitorIcon className="size-3.5" />
+          Computer
+          <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/60">
+            Soon
+          </span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[240px]">
+        Audric Computer — agentic multi-step workflows (research, docs,
+        spreadsheets, trips) that run for you. Coming soon.
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+const ComputerPlaceholder = memo(PureComputerPlaceholder);
 
 type ConfidentialModelOption = {
   id: string;
