@@ -33,8 +33,18 @@ import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
+import { type CryptoMarketOutput, PriceCard } from "./price-card";
+import { PriceChart, type PriceHistoryOutput } from "./price-chart";
 import { SearchResults } from "./search-results";
 import { SendTransferTool } from "./send-transfer-tool";
+import { StockCard, type StockOutput } from "./stock-card";
+
+/** Slim pulse placeholder while a finance skill is fetching. */
+function FinanceCardLoading() {
+  return (
+    <div className="h-24 w-full max-w-xl animate-pulse rounded-2xl border border-border/40 bg-muted/30" />
+  );
+}
 
 /** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
 function ImageLimitCard({ message }: { message: string }) {
@@ -226,6 +236,39 @@ const PurePreviewMessage = ({
 
     if (type === "tool-balance_check") {
       return <BalanceTool key={part.toolCallId} part={part} />;
+    }
+
+    // Finance cards — structured skill output → scannable visual anchor
+    // (the model still narrates the numbers in its text below the card).
+    if (type === "tool-crypto_market") {
+      if (part.state !== "output-available") {
+        return <FinanceCardLoading key={part.toolCallId} />;
+      }
+      return (
+        <PriceCard
+          key={part.toolCallId}
+          output={part.output as CryptoMarketOutput}
+        />
+      );
+    }
+    if (type === "tool-crypto_history") {
+      if (part.state !== "output-available") {
+        return <FinanceCardLoading key={part.toolCallId} />;
+      }
+      return (
+        <PriceChart
+          key={part.toolCallId}
+          output={part.output as PriceHistoryOutput}
+        />
+      );
+    }
+    if (type === "tool-stock_analysis") {
+      if (part.state !== "output-available") {
+        return <FinanceCardLoading key={part.toolCallId} />;
+      }
+      return (
+        <StockCard key={part.toolCallId} output={part.output as StockOutput} />
+      );
     }
 
     if (type === "text") {

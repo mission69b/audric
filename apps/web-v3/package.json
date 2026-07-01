@@ -99,6 +99,7 @@
     "react": "19.0.1",
     "react-data-grid": "7.0.0-beta.47",
     "react-dom": "19.0.1",
+    "recharts": "^3.9.1",
     "redis": "^5.0.0",
     "resend": "^6.14.0",
     "resumable-stream": "^2.2.10",

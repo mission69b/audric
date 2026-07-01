@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { balanceCheck } from "./ai/tools/balance-check";
 import type { createDocument } from "./ai/tools/create-document";
+import type { cryptoHistory } from "./ai/tools/crypto-history";
+import type { cryptoMarket } from "./ai/tools/crypto-market";
 import type { editImage } from "./ai/tools/edit-image";
 import type { generateImage } from "./ai/tools/generate-image";
 import type { generateVideo } from "./ai/tools/generate-video";
@@ -11,6 +13,7 @@ import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
 import type { saveMemory } from "./ai/tools/save-memory";
 import type { sendTransfer } from "./ai/tools/send-transfer";
+import type { stockAnalysis } from "./ai/tools/stock-analysis";
 import type { transactionHistory } from "./ai/tools/transaction-history";
 import type { updateDocument } from "./ai/tools/update-document";
 import type { upscaleImage } from "./ai/tools/upscale-image";
@@ -58,6 +61,9 @@ type editImageTool = InferUITool<ReturnType<typeof editImage>>;
 type upscaleImageTool = InferUITool<ReturnType<typeof upscaleImage>>;
 type generateVideoTool = InferUITool<ReturnType<typeof generateVideo>>;
 type perpMarketTool = InferUITool<typeof perpMarket>;
+type cryptoMarketTool = InferUITool<typeof cryptoMarket>;
+type cryptoHistoryTool = InferUITool<typeof cryptoHistory>;
+type stockAnalysisTool = InferUITool<typeof stockAnalysis>;
 
 export type ChatTools = {
   createDocument: createDocumentTool;
@@ -67,6 +73,9 @@ export type ChatTools = {
   upscale_image: upscaleImageTool;
   generate_video: generateVideoTool;
   perp_market: perpMarketTool;
+  crypto_market: cryptoMarketTool;
+  crypto_history: cryptoHistoryTool;
+  stock_analysis: stockAnalysisTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
   balance_check: balanceCheckTool;
