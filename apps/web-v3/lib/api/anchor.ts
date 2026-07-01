@@ -40,8 +40,18 @@ const ANCHOR_TTL_SECONDS = 60 * 60 * 24 * 365; // 1y — anchored once, kept for
  * runs post-response without adding latency.
  */
 export async function anchorAndPin(receiptId: string): Promise<void> {
+  // ANCHOR FIRST. The anchor is the fast (~2s), critical, TRUSTLESS commitment
+  // that `t2 verify` checks + the permanent on-chain proof. Pinning is a slow
+  // (~20s, multi-tx: register → write-to-nodes → certify), best-effort durability
+  // step. Running the pin first starved the anchor inside `after()` (the pin ate
+  // the window before the anchor ran). Anchor-first guarantees it always lands.
   try {
-    // Fetch the signed receipt once (while fresh) → pin to Walrus for durability.
+    await anchorReceipt(receiptId);
+  } catch (e) {
+    console.error("[anchorAndPin] anchor step failed", receiptId, e);
+  }
+  try {
+    // Fetch the signed receipt (still fresh) → pin to Walrus for durability.
     if (env.PHALA_API_KEY) {
       const res = await fetch(
         `${ACI_BASE}/v1/aci/receipts/${encodeURIComponent(receiptId)}`,
@@ -53,11 +63,6 @@ export async function anchorAndPin(receiptId: string): Promise<void> {
     }
   } catch (e) {
     console.error("[anchorAndPin] pin step failed", receiptId, e);
-  }
-  try {
-    await anchorReceipt(receiptId);
-  } catch (e) {
-    console.error("[anchorAndPin] anchor step failed", receiptId, e);
   }
 }
 
