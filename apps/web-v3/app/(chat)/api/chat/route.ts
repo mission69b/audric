@@ -650,6 +650,12 @@ export async function POST(request: Request) {
     // enclave). Anchored on Sui + a durable verifiable receipt. Bypasses the
     // agentic pipeline below entirely.
     if (confidential) {
+      // Confidential is the paid tier — gate server-side (the client shows the
+      // upgrade overlay at send; this is belt-and-suspenders). Entitlement =
+      // credit OR plan (same basis as `canUsePremium`).
+      if (creditConfigured && !canUsePremium) {
+        return new ChatbotError("bad_request:credit").toResponse();
+      }
       return confidentialChatResponse({
         chatId: id,
         userId: session?.user?.id,

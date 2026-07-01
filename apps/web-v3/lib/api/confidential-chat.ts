@@ -8,8 +8,11 @@ import {
 } from "ai";
 import { after } from "next/server";
 import { anchorAndStore } from "@/lib/api/anchor";
-import { getInferenceModel } from "@/lib/api/providers";
-import { saveMessages } from "@/lib/db/queries";
+import { apiMarginFor } from "@/lib/api/models";
+import { getInferenceModel, getPhalaPricing } from "@/lib/api/providers";
+import { debitMicrosForUsage } from "@/lib/credit/meter";
+import { recordCredit, saveMessages } from "@/lib/db/queries";
+import { isCreditConfigured } from "@/lib/stripe";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 
@@ -59,11 +62,15 @@ export function confidentialChatResponse(opts: {
               return { createdAt: turnStartedAt, modelId, confidential: true };
             }
             if (part.type === "finish") {
+              const u = part.totalUsage;
               return {
                 createdAt: turnStartedAt,
                 modelId,
                 confidential: true,
                 receiptId,
+                inputTokens: u?.inputTokens,
+                outputTokens: u?.outputTokens,
+                totalTokens: u?.totalTokens,
               };
             }
             return;
@@ -99,6 +106,37 @@ export function confidentialChatResponse(opts: {
           chatId: opts.chatId,
         })),
       });
+      // Meter at the CONFIDENTIAL tier — Phala per-token pricing × the 2.0×
+      // confidential margin. ref = message id → idempotent. Inert when the
+      // credit rail isn't configured.
+      if (!isCreditConfigured()) {
+        return;
+      }
+      const pricing = (await getPhalaPricing())[modelId];
+      const margin = apiMarginFor(modelId);
+      for (const m of messages) {
+        if (m.role !== "assistant") {
+          continue;
+        }
+        const meta = m.metadata;
+        if (!meta?.totalTokens) {
+          continue;
+        }
+        const debit = debitMicrosForUsage(
+          { inputTokens: meta.inputTokens, outputTokens: meta.outputTokens },
+          pricing,
+          margin
+        );
+        if (debit > 0) {
+          await recordCredit({
+            userId: opts.userId,
+            amountMicros: -debit,
+            type: "debit",
+            description: `${modelId} · confidential · ${meta.inputTokens ?? 0}+${meta.outputTokens ?? 0} tok`,
+            ref: m.id,
+          });
+        }
+      }
     },
   });
 

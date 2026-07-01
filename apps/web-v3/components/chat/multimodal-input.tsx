@@ -325,6 +325,12 @@ function PureMultimodalInput({
   const [slashIndex, setSlashIndex] = useState(0);
 
   const submitForm = useCallback(() => {
+    // Confidential is the paid tier — gate at send (tease → intent → upsell):
+    // the toggle + glow already sold it; upsell now at the moment of intent.
+    if (confidential && !canUsePremium) {
+      openUpgrade();
+      return;
+    }
     window.history.pushState(
       {},
       "",
@@ -379,6 +385,9 @@ function PureMultimodalInput({
     anonTurns,
     setAnonTurns,
     promptSignIn,
+    confidential,
+    canUsePremium,
+    openUpgrade,
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
@@ -856,6 +865,7 @@ function PureMultimodalInput({
             />
             <MemoryToggle />
             <ConfidentialToggle
+              canUsePremium={canUsePremium}
               on={confidential}
               onToggle={toggleConfidential}
             />
@@ -1341,9 +1351,11 @@ const MemoryToggle = memo(PureMemoryToggle);
 function PureConfidentialToggle({
   on,
   onToggle,
+  canUsePremium,
 }: {
   on: boolean;
   onToggle: () => void;
+  canUsePremium: boolean;
 }) {
   return (
     <Tooltip>
@@ -1361,6 +1373,11 @@ function PureConfidentialToggle({
         >
           <LockIcon className="size-3.5" />
           {on ? "Confidential on" : "Confidential"}
+          {!canUsePremium && (
+            <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/70">
+              Pro
+            </span>
+          )}
         </Button>
       </TooltipTrigger>
       <TooltipContent className="max-w-[240px]">
