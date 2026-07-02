@@ -32,7 +32,7 @@ export const imageSearch = tool({
     if (!isBraveConfigured()) {
       return {
         error:
-          "Image search isn't configured right now. I can describe it, search the web for it, or generate an image instead.",
+          "Image search is unavailable right now. Tell the user you couldn't fetch real images. Do NOT generate an image as a substitute unless the user explicitly asks for a generated one.",
       };
     }
     const images = await braveImageSearch(query, RESULT_COUNT);
@@ -40,7 +40,7 @@ export const imageSearch = tool({
       return {
         query,
         images: [],
-        note: "No image results found — try rephrasing the subject.",
+        note: "No image results found. Say so briefly — do NOT auto-generate an image as a substitute; offer to generate one only as an explicit option.",
       };
     }
     return { query, images };
