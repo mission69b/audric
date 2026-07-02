@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
+import { CopyButton } from "@/components/copy-button";
 import { categoryLabel } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
 
@@ -40,6 +41,12 @@ type Profile = {
     refunds?: number;
     deliveredRate?: number | null;
     lastSaleAt: string | null;
+    recent?: {
+      at: string;
+      buyer: string;
+      amountUsd: number;
+      delivered: boolean;
+    }[];
   };
   createdAt?: string;
   updatedAt?: string;
@@ -113,9 +120,14 @@ function CommandBlock({
   lines: [string, string?][];
   note?: string;
 }) {
+  // Copy target = the commands only (no $ prompts / # comments).
+  const copyText = lines.map(([cmd]) => cmd).join("\n");
   return (
     <div>
-      <div className="font-medium text-foreground text-sm">{title}</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-medium text-foreground text-sm">{title}</div>
+        <CopyButton text={copyText} />
+      </div>
       <div className="mt-2 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs leading-relaxed">
         {lines.map(([cmd, comment]) => (
           <div key={cmd}>
@@ -130,6 +142,54 @@ function CommandBlock({
       {note && <p className="mt-2 text-muted-foreground/60 text-xs">{note}</p>}
     </div>
   );
+}
+
+/** Static compact buy-flow rail — the 5-step timeline in one quiet line. */
+function BuyFlowRail() {
+  const steps = ["PICK", "PAY", "DELIVER", "SETTLE", "RECEIPT"];
+  return (
+    <div className="mt-5 flex items-center gap-2 overflow-x-auto">
+      {steps.map((s, i) => (
+        <div className="flex shrink-0 items-center gap-2" key={s}>
+          {i > 0 && <span className="h-px w-4 bg-border/70" />}
+          <span className="font-mono text-[10px] text-muted-foreground/60 tracking-wider">
+            {s}
+          </span>
+        </div>
+      ))}
+      <span className="ms-2 shrink-0 text-[10px] text-muted-foreground/50">
+        escrowed · auto-refund on failure · receipt on Sui
+      </span>
+    </div>
+  );
+}
+
+/** The OKX-pattern "paste this into your agent" prompt (§II.13.A). */
+function buildAgentPrompt(p: {
+  name: string;
+  numericId?: number;
+  address: string;
+  priceUsdc?: string;
+  description?: string;
+}): string {
+  const id = p.numericId == null ? "" : ` (#${p.numericId})`;
+  const price = p.priceUsdc
+    ? `$${p.priceUsdc} USDC per call — x402, pay-on-delivery (failed delivery auto-refunds)`
+    : "declared on the x402 endpoint";
+  return [
+    "I'd like to use this agent from the t2000 agent store (agents.t2000.ai):",
+    "",
+    `Agent: ${p.name}${id}`,
+    `Address: ${p.address}`,
+    `Price: ${price}`,
+    ...(p.description ? [`Service: ${p.description}`] : []),
+    "",
+    "To pay and get the result:",
+    `- With the t2000 CLI (npm i -g @t2000/cli): run \`t2 agent pay ${p.address}\` — add --data '{...}' to pass input.`,
+    `- Or pay the x402 endpoint directly: https://x402.t2000.ai/commerce/pay/${p.address}`,
+    "",
+    "Please make the call and show me the result.",
+  ].join("\n");
 }
 
 export default async function AgentProfilePage({
@@ -191,7 +251,7 @@ export default async function AgentProfilePage({
       </div>
 
       {profile.description && (
-        <p className="mt-3 max-w-2xl text-muted-foreground">
+        <p className="mt-3 max-w-2xl whitespace-pre-line text-muted-foreground">
           {profile.description}
         </p>
       )}
@@ -311,7 +371,9 @@ export default async function AgentProfilePage({
             </div>
           )}
 
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <BuyFlowRail />
+
+          <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <CommandBlock
               lines={[
                 ["npm i -g @t2000/cli", "once"],
@@ -326,12 +388,83 @@ export default async function AgentProfilePage({
               title="Buy it — x402 (agents)"
             />
           </div>
+
+          {/* Prompt-first onboarding — paste the whole ask into YOUR agent. */}
+          <div className="mt-5 rounded-xl bg-background/60 p-4">
+            <div className="font-medium text-foreground text-sm">
+              Or use it from your agent
+            </div>
+            <p className="mt-1 text-muted-foreground/70 text-xs">
+              Copy a ready-made prompt (service, address, price, pay
+              instructions) and paste it into Claude Code, Cursor, or any agent
+              with the t2000 CLI or skills installed.
+            </p>
+            <div className="mt-3">
+              <CopyButton
+                full
+                label="Copy the prompt for your agent"
+                text={buildAgentPrompt({
+                  name: profile.name,
+                  numericId,
+                  address: profile.address,
+                  priceUsdc: profile.priceUsdc,
+                  description: profile.description,
+                })}
+              />
+            </div>
+          </div>
+
           <p className="mt-4 text-muted-foreground/60 text-xs">
             Pay on delivery — a failed delivery refunds you automatically.
             {rep &&
-              " Every number above derives from on-chain settlement receipts, not self-reports."}
+              " Every number above derives from on-chain settlement receipts, not self-reports."}{" "}
+            Reviews can only be left by verified buyers — none yet.
           </p>
         </div>
+      )}
+
+      {/* Recent activity — the last paid attempts, straight from the ledger. */}
+      {rep?.recent && rep.recent.length > 0 && (
+        <section className="mt-8">
+          <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+            Recent activity
+          </h2>
+          <div className="mt-3 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
+            {rep.recent.map((r) => (
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                key={`${r.at}-${r.buyer}`}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={
+                      r.delivered ? "text-emerald-500" : "text-destructive"
+                    }
+                  >
+                    {r.delivered ? "✓" : "↩"}
+                  </span>
+                  <span className="truncate text-muted-foreground">
+                    {r.delivered ? "Delivered to" : "Auto-refunded"}{" "}
+                    <span className="font-mono text-foreground text-xs">
+                      {r.buyer}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-4">
+                  <span className="font-medium text-foreground">
+                    ${r.amountUsd.toFixed(2)}
+                  </span>
+                  <span className="text-muted-foreground/60 text-xs">
+                    {formatDate(r.at)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-muted-foreground/60 text-xs">
+            From the on-chain settlement ledger.
+          </p>
+        </section>
       )}
 
       {/* Service wiring — the machine-readable endpoints. */}

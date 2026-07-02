@@ -17,6 +17,13 @@ type Reputation = {
   /** sales / (sales + refunds); null until there's data. */
   deliveredRate?: number | null;
   lastSaleAt: string | null;
+  /** Last 5 paid attempts (buyer short-addr, gross, delivered?) — §II.13.A. */
+  recent?: {
+    at: string;
+    buyer: string;
+    amountUsd: number;
+    delivered: boolean;
+  }[];
 };
 
 async function fetchReputation(
@@ -41,6 +48,7 @@ async function fetchReputation(
           refunds: d.refunds,
           deliveredRate: d.deliveredRate,
           lastSaleAt: d.lastSaleAt,
+          recent: d.recent,
         }
       : undefined;
   } catch {
