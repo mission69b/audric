@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
@@ -54,6 +55,27 @@ export function ChatShell() {
     null
   );
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+
+  // Composer prefill via ?q= (agents.t2000.ai "Use in Audric" deep links,
+  // SPEC_AGENT_COMMERCE §II.12.C). Prefill ONLY — never auto-send; the user
+  // reviews and hits send themselves. Consumed once, then stripped from the
+  // URL so a refresh doesn't re-fill.
+  const searchParams = useSearchParams();
+  const prefillConsumed = useRef(false);
+  useEffect(() => {
+    if (prefillConsumed.current) {
+      return;
+    }
+    const q = searchParams.get("q")?.trim();
+    if (!q || messages.length > 0) {
+      return;
+    }
+    prefillConsumed.current = true;
+    setInput(q.slice(0, 2000));
+    const url = new URL(window.location.href);
+    url.searchParams.delete("q");
+    window.history.replaceState(null, "", url.toString());
+  }, [searchParams, messages.length, setInput]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
   const { setArtifact } = useArtifact();
 

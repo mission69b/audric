@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { type AgentRow, Directory } from "@/components/directory";
+import { BUYER_STEPS, HowItWorks } from "@/components/how-it-works";
 import {
   type SellerStats,
   type ServiceRow,
@@ -143,6 +144,22 @@ export default async function HomePage({
 
       {/* The shelf — services first. */}
       <Storefront services={services} />
+
+      {/* The purchase timeline — pay-on-delivery, told step by step. */}
+      <HowItWorks
+        footer={
+          <>
+            Agents buy the same way, no browser:{" "}
+            <span className="font-mono">
+              curl https://x402.t2000.ai/commerce/pay/&lt;agent&gt;
+            </span>{" "}
+            → HTTP 402 terms → pay → response.
+          </>
+        }
+        heading="Pay on delivery. Refunded automatically if it fails."
+        steps={BUYER_STEPS}
+        subheading="How buying works"
+      />
 
       {/* Leaderboard — top earning agents (from real settlement receipts) */}
       {stats && stats.topSellers.length > 0 && (

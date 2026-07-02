@@ -36,6 +36,9 @@ type Profile = {
     sales: number;
     volumeUsd: number;
     buyers: number;
+    repeatBuyers?: number;
+    refunds?: number;
+    deliveredRate?: number | null;
     lastSaleAt: string | null;
   };
   createdAt?: string;
@@ -231,7 +234,7 @@ export default async function AgentProfilePage({
           </div>
         )}
 
-      {/* The offer — price + receipt-backed proof, then how to buy. */}
+      {/* The offer — price + the receipt-backed trust card, then how to buy. */}
       {sells && (
         <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -251,10 +254,7 @@ export default async function AgentProfilePage({
               {rep ? (
                 <div className="mt-1 text-muted-foreground/70 text-xs">
                   <span className="text-emerald-500">✓</span> Verified on the
-                  rail — {rep.sales} sale{rep.sales === 1 ? "" : "s"} · $
-                  {rep.volumeUsd.toFixed(4)} settled · {rep.buyers} buyer
-                  {rep.buyers === 1 ? "" : "s"} · last{" "}
-                  {formatDate(rep.lastSaleAt)}
+                  rail
                 </div>
               ) : (
                 <div className="mt-1 text-muted-foreground/50 text-xs">
@@ -263,6 +263,53 @@ export default async function AgentProfilePage({
               )}
             </div>
           </div>
+
+          {/* Trust card — every number derives from settlement receipts. */}
+          {rep && (
+            <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/50 bg-border/50 sm:grid-cols-4">
+              <div className="bg-card/60 p-3">
+                <div className="text-muted-foreground/60 text-xs">
+                  Delivered
+                </div>
+                <div className="mt-0.5 font-medium text-foreground">
+                  {typeof rep.deliveredRate === "number"
+                    ? `${Math.round(rep.deliveredRate * 100)}%`
+                    : "100%"}
+                  <span className="ml-1 text-muted-foreground/50 text-xs">
+                    of {rep.sales + (rep.refunds ?? 0)} paid
+                  </span>
+                </div>
+              </div>
+              <div className="bg-card/60 p-3">
+                <div className="text-muted-foreground/60 text-xs">Sales</div>
+                <div className="mt-0.5 font-medium text-foreground">
+                  {rep.sales}
+                  <span className="ml-1 text-muted-foreground/50 text-xs">
+                    ${rep.volumeUsd.toFixed(2)} settled
+                  </span>
+                </div>
+              </div>
+              <div className="bg-card/60 p-3">
+                <div className="text-muted-foreground/60 text-xs">Buyers</div>
+                <div className="mt-0.5 font-medium text-foreground">
+                  {rep.buyers}
+                  {(rep.repeatBuyers ?? 0) > 0 && (
+                    <span className="ml-1 text-muted-foreground/50 text-xs">
+                      {rep.repeatBuyers} repeat
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="bg-card/60 p-3">
+                <div className="text-muted-foreground/60 text-xs">
+                  Last sale
+                </div>
+                <div className="mt-0.5 font-medium text-foreground">
+                  {formatDate(rep.lastSaleAt)}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <CommandBlock
@@ -279,12 +326,11 @@ export default async function AgentProfilePage({
               title="Buy it — x402 (agents)"
             />
           </div>
-          {rep && (
-            <p className="mt-4 text-muted-foreground/60 text-xs">
-              Sold counts come from on-chain settlement receipts — not
-              self-reported.
-            </p>
-          )}
+          <p className="mt-4 text-muted-foreground/60 text-xs">
+            Pay on delivery — a failed delivery refunds you automatically.
+            {rep &&
+              " Every number above derives from on-chain settlement receipts, not self-reports."}
+          </p>
         </div>
       )}
 

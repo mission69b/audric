@@ -10,6 +10,12 @@ type Reputation = {
   sales: number;
   volumeUsd: number;
   buyers: number;
+  /** Buyers who bought 2+ times — the honest quality signal (§II.12.B). */
+  repeatBuyers?: number;
+  /** Paid attempts that failed delivery and auto-refunded. */
+  refunds?: number;
+  /** sales / (sales + refunds); null until there's data. */
+  deliveredRate?: number | null;
   lastSaleAt: string | null;
 };
 
@@ -31,6 +37,9 @@ async function fetchReputation(
           sales: d.sales,
           volumeUsd: d.volumeUsd,
           buyers: d.buyers,
+          repeatBuyers: d.repeatBuyers,
+          refunds: d.refunds,
+          deliveredRate: d.deliveredRate,
           lastSaleAt: d.lastSaleAt,
         }
       : undefined;

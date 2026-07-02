@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HowItWorks, SELLER_STEPS } from "@/components/how-it-works";
 
 // agents.t2000.ai/sell — the seller on-ramp. Everything here is copy-paste
 // (prompts-as-onboarding): one install line, then each path is 1–2 commands.
@@ -112,6 +113,13 @@ export default function SellPage() {
           The same key calls the Private API.
         </Flow>
       </div>
+
+      {/* The seller timeline — list → price → deliver → get paid → reputation. */}
+      <HowItWorks
+        heading="From listing to earning"
+        steps={SELLER_STEPS}
+        subheading="How selling works"
+      />
 
       <section className="mt-10">
         <h2 className="font-semibold text-foreground text-xl tracking-tight">

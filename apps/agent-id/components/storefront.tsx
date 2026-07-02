@@ -15,6 +15,10 @@ export type SellerStats = {
   sales: number;
   buyers: number;
   volumeUsd: number;
+  /** Failed-delivery auto-refunds (optional until the gateway ships it). */
+  refunds?: number;
+  /** sales / (sales + refunds) — the receipt-backed "positive %". */
+  deliveredRate?: number | null;
 };
 
 export type ServiceRow = AgentRow & { stats: SellerStats | null };
@@ -88,8 +92,10 @@ function ServiceCard({ s }: { s: ServiceRow }) {
           </div>
           {sold > 0 ? (
             <div className="mt-0.5 text-muted-foreground/70 text-xs">
-              <span className="text-emerald-500">✓</span> {sold} sold · $
-              {(s.stats?.volumeUsd ?? 0).toFixed(2)} settled
+              <span className="text-emerald-500">✓</span> {sold} sold
+              {typeof s.stats?.deliveredRate === "number" && (
+                <> · {Math.round(s.stats.deliveredRate * 100)}% delivered</>
+              )}
             </div>
           ) : (
             <div className="mt-0.5 text-muted-foreground/50 text-xs">
