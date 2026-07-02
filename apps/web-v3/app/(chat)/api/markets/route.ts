@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import {
   cmcGlobal,
   cmcOhlcv,
@@ -18,6 +19,12 @@ const CHART_DAYS = 30;
 const MOVERS_LIMIT = 5;
 
 export async function GET() {
+  // Force runtime execution: under Cache Components a GET handler with no
+  // dynamic APIs gets PRERENDERED AT BUILD — the CI build has no CMC_API_KEY,
+  // so the baked snapshot was a permanent `configured: false`. connection()
+  // opts the route into request-time rendering (freshness comes from the
+  // Cache-Control header below, not from prerendering).
+  await connection();
   if (!isCmcConfigured()) {
     return Response.json(
       { configured: false },
