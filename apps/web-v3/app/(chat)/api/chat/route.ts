@@ -448,7 +448,7 @@ export async function POST(request: Request) {
     // Grok pick. Both verified to emit the send call. Sends are rare + high-stakes,
     // so reliability outweighs the routing default. (Off-Auto manual picks stand.)
     if (routeDecision && paymentIntent) {
-      const sonnet = "anthropic/claude-sonnet-4.6";
+      const sonnet = "anthropic/claude-sonnet-5";
       chatModel =
         canUsePremium && chatModels.some((m) => m.id === sonnet)
           ? sonnet

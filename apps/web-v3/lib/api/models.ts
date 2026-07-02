@@ -94,15 +94,15 @@ export const apiModels: ApiModel[] = [
   },
   // ── Tier B — Frontier/closed (one-key completeness; thin near-floor margin) ─
   {
-    id: "anthropic/claude-sonnet-4.6",
-    name: "Claude Sonnet 4.6",
+    id: "anthropic/claude-sonnet-5",
+    name: "Claude Sonnet 5",
     tier: "frontier",
     privacy: "private",
     margin: 1.15,
   },
   {
-    id: "anthropic/claude-opus-4.8",
-    name: "Claude Opus 4.8",
+    id: "anthropic/claude-fable-5",
+    name: "Claude Fable 5",
     tier: "frontier",
     privacy: "private",
     margin: 1.15,

@@ -87,12 +87,6 @@ export function PricingPlans({
             </li>
           ))}
         </ul>
-        <Link
-          className="mt-4 inline-block text-foreground text-sm underline underline-offset-4 transition-colors hover:text-muted-foreground"
-          href="/markets"
-        >
-          See live market data →
-        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">

@@ -98,8 +98,8 @@ export const chatModels: ChatModel[] = [
     bestFor: "Fast & capable",
   },
   {
-    id: "anthropic/claude-sonnet-4.6",
-    name: "Claude Sonnet 4.6",
+    id: "anthropic/claude-sonnet-5",
+    name: "Claude Sonnet 5",
     provider: "anthropic",
     description: "Balanced Claude — fast, strong writing & tools",
     gatewayOrder: ["anthropic", "bedrock"],
@@ -110,8 +110,8 @@ export const chatModels: ChatModel[] = [
     bestFor: "Balanced & fast",
   },
   {
-    id: "anthropic/claude-opus-4.8",
-    name: "Claude Opus 4.8",
+    id: "anthropic/claude-fable-5",
+    name: "Claude Fable 5",
     provider: "anthropic",
     description: "Frontier model — top-tier coding & writing",
     // Cross-provider fallback (gateway `order`): if Anthropic errors/rate-limits,

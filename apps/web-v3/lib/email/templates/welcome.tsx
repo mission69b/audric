@@ -14,8 +14,8 @@ import { colors as c, EmailLayout } from "../components/layout";
  * emails.html L2 design: greeting → privacy framing → "everything you have today"
  * checklist → CTA → quiet Pro/Max upsell. */
 const FEATURES: [string, string][] = [
-  ["Unlimited core chat", "open, uncensored models that won't refuse you"],
-  ["Web search + image generation", "built into every chat"],
+  ["Free daily chat", "open, uncensored models that won't refuse you"],
+  ["Web search, images + video", "built into every chat"],
   ["A non-custodial wallet", "send USDC anywhere, instant and gasless"],
   [
     "Private memory & chats",
@@ -49,8 +49,8 @@ export function WelcomeEmail({ name }: { name?: string }) {
           }}
         >
           Audric is privacy-first, uncensored AI with a wallet built in. Your
-          chats are never training data, there's no KYC, and your keys are
-          always yours.
+          chats are never training data, there are no ID checks, and your keys
+          are always yours.
         </Text>
         <Text
           style={{
@@ -122,7 +122,8 @@ export function WelcomeEmail({ name }: { name?: string }) {
         >
           Ready for more? <strong style={{ color: c.mut }}>Pro $18/mo</strong> ·{" "}
           <strong style={{ color: c.mut }}>Max $100/mo</strong> unlock every
-          premium + frontier model and a monthly credit that never expires.
+          frontier model, Confidential mode (runs in a secure enclave — provably
+          private), and a monthly credit that rolls over.
         </Text>
       </Section>
 
