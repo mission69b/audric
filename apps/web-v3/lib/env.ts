@@ -154,6 +154,7 @@ const runtimeEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   CMC_API_KEY: process.env.CMC_API_KEY,
+  BRAVE_API_KEY: process.env.BRAVE_API_KEY,
   FAL_API_KEY: process.env.FAL_API_KEY,
   PHALA_API_KEY: process.env.PHALA_API_KEY,
   CONFIDENTIAL_ATTESTATION_ENFORCE:
