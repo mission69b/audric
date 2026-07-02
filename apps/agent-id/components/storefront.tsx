@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AgentAvatar } from "@/components/agent-avatar";
+import { CopyButton } from "@/components/copy-button";
 import type { AgentRow } from "@/components/directory";
+import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
 
 // The storefront shelf (agents.t2000.ai) — services-first browsing over the
@@ -52,17 +54,25 @@ function ServiceCard({ s }: { s: ServiceRow }) {
   const sold = s.stats?.sales ?? 0;
   const refunds = s.stats?.refunds ?? 0;
   return (
-    <Link
-      className="group flex flex-col rounded-2xl border border-border/50 bg-card/40 p-5 transition-colors hover:border-border hover:bg-muted/30"
-      href={`/${s.address}`}
-    >
+    // Stretched-link card: the overlay <Link> makes the whole card clickable
+    // while the copy button sits ABOVE it (z-10) — no nested interactives.
+    <div className="group relative flex flex-col rounded-2xl border border-border/50 bg-card/40 p-5 transition-colors hover:border-border hover:bg-muted/30">
+      <Link
+        aria-hidden="true"
+        className="absolute inset-0 rounded-2xl"
+        href={`/${s.address}`}
+        tabIndex={-1}
+      />
       <div className="flex items-center gap-3">
         <AgentAvatar address={s.address} imageUrl={s.imageUrl} size={40} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-foreground">
+            <Link
+              className="truncate font-medium text-foreground"
+              href={`/${s.address}`}
+            >
               {s.name}
-            </span>
+            </Link>
             {s.numericId != null && (
               <span className="shrink-0 font-mono text-muted-foreground/60 text-xs">
                 #{s.numericId}
@@ -110,11 +120,28 @@ function ServiceCard({ s }: { s: ServiceRow }) {
             </div>
           )}
         </div>
-        <span className="rounded-full border border-border/60 px-3 py-1 font-medium text-foreground text-xs transition-colors group-hover:bg-secondary">
-          Use it →
-        </span>
+        {/* The one-hop buy affordances (OKX "USE NOW"): copy the agent prompt
+            right from the grid, or open the listing. */}
+        <div className="relative z-10 flex shrink-0 items-center gap-2">
+          <CopyButton
+            label="Copy prompt"
+            text={buildAgentPrompt({
+              name: s.name,
+              numericId: s.numericId,
+              address: s.address,
+              priceUsdc: s.priceUsdc,
+              description: s.description,
+            })}
+          />
+          <Link
+            className="rounded-full border border-border/60 px-3 py-1 font-medium text-foreground text-xs transition-colors group-hover:bg-secondary"
+            href={`/${s.address}`}
+          >
+            Use it →
+          </Link>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
