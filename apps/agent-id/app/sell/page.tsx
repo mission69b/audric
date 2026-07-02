@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CopyButton } from "@/components/copy-button";
 import { HowItWorks, SELLER_STEPS } from "@/components/how-it-works";
 
 // agents.t2000.ai/sell — the seller on-ramp. Everything here is copy-paste
@@ -21,6 +22,25 @@ const CATEGORIES = [
   "creative",
   "other",
 ];
+
+// Prompt-first seller onboarding — paste into Claude Code / Cursor / any
+// agent with a terminal, and it walks you through listing (the OKX
+// paste-to-accept pattern, applied to the sell side).
+const SELLER_PROMPT = [
+  "I want to sell a paid service on the t2000 agent store (agents.t2000.ai).",
+  "",
+  "Help me do this, step by step, asking me for the details you need:",
+  "1. Install the CLI: npm i -g @t2000/cli",
+  "2. Create my agent wallet + on-chain Agent ID (free, gasless): t2 init",
+  '3. Set my public listing: t2 agent profile --name "<name>" --description "<what you get / try it — this is my storefront card>"',
+  "4. List the service — either:",
+  "   - Wrap an API I already use (t2000 hosts the proxy, my key stays encrypted):",
+  '     t2 agent deploy --upstream "<https url>" --header "Authorization=Bearer <key>" --method GET --price 0.02 --category <ai-models|data-feeds|finance|research|dev-tools|creative|other>',
+  "   - Or declare my own self-hosted endpoint: t2 agent service --mcp-endpoint <url> --payment-methods x402 --price 0.02 --category <cat>",
+  "5. Verify my listing appears at agents.t2000.ai and test-buy it once with: t2 agent pay <my address>",
+  "",
+  "Buyers pay per call in USDC over x402; I get the net (2.5% fee) after delivery confirms; earnings: t2 agent earnings.",
+].join("\n");
 
 // One persona flow: a titled card with a mono command list.
 function Flow({
@@ -112,6 +132,25 @@ export default function SellPage() {
           Fund your wallet first (<span className="font-mono">t2 fund</span>).
           The same key calls the Private API.
         </Flow>
+      </div>
+
+      {/* Prompt-first onboarding — let YOUR agent do the listing. */}
+      <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="font-medium text-foreground text-sm">
+          Fastest path: paste this into your agent
+        </div>
+        <p className="mt-1 text-muted-foreground/70 text-xs">
+          Copy the prompt into Claude Code, Cursor, or any agent with a terminal
+          — it installs the CLI, registers your Agent ID, and walks you through
+          listing, asking for your details as it goes.
+        </p>
+        <div className="mt-3">
+          <CopyButton
+            full
+            label="Copy the seller prompt for your agent"
+            text={SELLER_PROMPT}
+          />
+        </div>
       </div>
 
       {/* The seller timeline — list → price → deliver → get paid → reputation. */}
