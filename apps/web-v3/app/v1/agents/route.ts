@@ -29,6 +29,9 @@ export async function GET(request: Request) {
         ? a.paymentMethods.includes("x402")
         : false,
       priceUsdc: a.priceUsdc,
+      // Storefront fields (agents.t2000.ai services grid).
+      category: a.category,
+      description: a.description,
       createdAt: a.createdAt,
     })),
   });

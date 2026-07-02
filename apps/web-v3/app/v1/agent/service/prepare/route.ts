@@ -1,12 +1,12 @@
-import { getAgentProfile } from "@audric/accounts";
+import { AGENT_CATEGORIES, getAgentProfile } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { buildUpdateTx } from "@t2000/id";
 import { isSponsorConfigured, prepareSponsoredTx } from "@/lib/agent/sponsored";
 import { openAiError } from "@/lib/api/keys";
 import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
-// POST /v1/agent/service/prepare { address, mcpEndpoint?, paymentMethods? }
-//   → { nonce, txBytes }
+// POST /v1/agent/service/prepare { address, mcpEndpoint?, paymentMethods?,
+//   priceUsdc?, category? } → { nonce, txBytes }
 // Agent Commerce C.0 — declare this agent's paid service: an MCP endpoint +
 // the payment methods it accepts (e.g. ["x402"]). On-chain `update` is
 // full-replace, so we MERGE with the agent's current record (preserve the
@@ -64,9 +64,11 @@ export async function POST(request: Request) {
   let endpointProvided = false;
   let methodsProvided = false;
   let priceProvided = false;
+  let categoryProvided = false;
   let mcpEndpoint: string | null = null;
   let paymentMethods: string[] = [];
   let priceUsdc: string | null = null;
+  let category: string | null = null;
   try {
     const body = await request.json();
     address = normalizeSuiAddress(String(body?.address ?? "").trim());
@@ -101,6 +103,19 @@ export async function POST(request: Request) {
       }
       priceUsdc = String(body.priceUsdc).trim();
     }
+    if (body?.category !== undefined && body?.category !== null) {
+      categoryProvided = true;
+      const c = String(body.category).trim().toLowerCase();
+      if (!(AGENT_CATEGORIES as readonly string[]).includes(c)) {
+        return openAiError(
+          400,
+          `category must be one of: ${AGENT_CATEGORIES.join(", ")}.`,
+          "invalid_request_error",
+          "invalid_category"
+        );
+      }
+      category = c;
+    }
   } catch {
     return openAiError(
       400,
@@ -118,10 +133,12 @@ export async function POST(request: Request) {
       "invalid_address"
     );
   }
-  if (!(endpointProvided || methodsProvided || priceProvided)) {
+  if (
+    !(endpointProvided || methodsProvided || priceProvided || categoryProvided)
+  ) {
     return openAiError(
       400,
-      "Provide at least one of mcpEndpoint, paymentMethods, or priceUsdc.",
+      "Provide at least one of mcpEndpoint, paymentMethods, priceUsdc, or category.",
       "invalid_request_error",
       "bad_request"
     );
@@ -157,9 +174,10 @@ export async function POST(request: Request) {
     kind: "service",
     mcpEndpoint: finalEndpoint,
     paymentMethods: finalMethods,
-    // Off-chain commerce price: write-through only when provided (preserve
-    // otherwise). null in meta = "no change".
+    // Off-chain fields: write-through only when provided (preserve otherwise).
+    // null in meta = "no change".
     priceUsdc: priceProvided ? priceUsdc : null,
+    category: categoryProvided ? category : null,
   });
   if (res.ok) {
     return Response.json({ nonce: res.nonce, txBytes: res.txBytes });

@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { type AgentRow, Directory } from "@/components/directory";
+import {
+  type SellerStats,
+  type ServiceRow,
+  Storefront,
+} from "@/components/storefront";
 import { shortAddress } from "@/lib/format";
 
-// agents.t2000.ai — the public Agent ID directory (the Sui-native "8004scan").
-// Reads the public /v1/agents (api.t2000.ai) + global commerce stats (gateway)
-// server-side; no auth, no DB.
+// agents.t2000.ai — the agent storefront + public Agent ID directory (the
+// Sui-native "8004scan", skinned as a store). Reads the public /v1/agents
+// (api.t2000.ai) + commerce stats (gateway) server-side; no auth, no DB.
+// Services lead (things you can buy); the full registry list sits below.
 const API_BASE = "https://api.t2000.ai/v1";
 const GATEWAY_BASE = "https://mpp.t2000.ai";
 const PAGE = 100;
@@ -20,6 +26,8 @@ type CommerceStats = {
     buyers: number;
     volumeUsd: number;
   }[];
+  /** Per-seller rollup keyed by address — joins sold counts onto the grid. */
+  sellerStats?: Record<string, SellerStats>;
 };
 
 async function fetchStats(): Promise<CommerceStats | null> {
@@ -43,33 +51,6 @@ function Stat({ value, label }: { value: string; label: string }) {
         {value}
       </div>
       <div className="text-muted-foreground/70 text-xs">{label}</div>
-    </div>
-  );
-}
-
-// One persona flow (Sell / Buy): a titled card with a mono command list.
-function Flow({
-  title,
-  steps,
-  children,
-}: {
-  title: string;
-  steps: [string, string][];
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
-      <div className="font-medium text-foreground text-sm">{title}</div>
-      <div className="mt-3 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs leading-relaxed">
-        {steps.map(([cmd, note]) => (
-          <div key={cmd}>
-            <span className="text-muted-foreground/50">› </span>
-            <span className="text-foreground">{cmd}</span>{" "}
-            <span className="text-muted-foreground/50"># {note}</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 text-muted-foreground/60 text-xs">{children}</p>
     </div>
   );
 }
@@ -104,18 +85,24 @@ export default async function HomePage({
   }
   const stats = await fetchStats();
 
+  // The shelf: agents with something to sell (an endpoint + a price), joined
+  // with their receipt-backed sales stats.
+  const services: ServiceRow[] = agents
+    .filter((a) => a.service && a.priceUsdc)
+    .map((a) => ({ ...a, stats: stats?.sellerStats?.[a.address] ?? null }));
+
   return (
     <>
       <div className="font-mono text-muted-foreground text-sm tracking-wide">
         agents.t2000.ai
       </div>
       <h1 className="mt-3 font-semibold text-3xl text-foreground tracking-tight">
-        Agent Directory
+        Hire an agent
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        Autonomous agents with an on-chain identity on the t2000 Agent ID
-        registry (Sui mainnet) — discover them, see what they offer, and pay
-        them in USDC.
+        Autonomous agents with on-chain identity, selling real services. Pay per
+        call in USDC over x402 — every sale settles on Sui, every sold count is
+        a receipt, not a claim.
       </p>
 
       {/* Headline stats */}
@@ -133,55 +120,15 @@ export default async function HomePage({
         )}
       </div>
 
-      {/* Get started — three tight flows: LIST (free identity) · SELL (priced
-          service → earn) · BUY (credit → pay agents + Private API). Install once. */}
-      <div className="mt-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="font-medium text-foreground text-sm">Get started</div>
-          <div className="font-mono text-muted-foreground/70 text-xs">
-            <span className="text-muted-foreground/50">$ </span>npm i -g @t2000/cli
-          </div>
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <Flow
-            steps={[
-              ["t2 init", "wallet + Agent ID"],
-              ['t2 agent profile --name "Aria"', "your public face"],
-            ]}
-            title="List — free identity"
-          >
-            You're in the directory — gasless, no funding needed.
-          </Flow>
-
-          <Flow
-            steps={[
-              [
-                "t2 agent deploy --upstream <url> --price 0.02",
-                "wrap any API → payable",
-              ],
-            ]}
-            title="Sell — earn"
-          >
-            Self-host instead? <span className="font-mono">t2 agent service</span>.
-            See sales with <span className="font-mono">t2 agent earnings</span>.
-          </Flow>
-
-          <Flow
-            steps={[
-              ["t2 agent onboard --fund 5", "USDC → credit + API key"],
-              ["t2 agent pay <agent>", "pay over x402"],
-            ]}
-            title="Buy — pay & infer"
-          >
-            Fund your wallet first (<span className="font-mono">t2 fund</span>).
-            The same key calls the Private API.
-          </Flow>
-        </div>
-      </div>
-
       <div className="mt-3 flex flex-wrap gap-4 text-sm">
-        <a
+        <Link
           className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
+          href="/sell"
+        >
+          List your agent →
+        </Link>
+        <a
+          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
           href="https://platform.t2000.ai"
         >
           Manage your agents →
@@ -192,20 +139,10 @@ export default async function HomePage({
         >
           What is Agent ID? →
         </a>
-        <a
-          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
-          href="https://developers.t2000.ai/agent-commerce"
-        >
-          How selling works →
-        </a>
       </div>
 
-      <Directory
-        agents={agents}
-        offset={offset}
-        pageSize={PAGE}
-        total={total}
-      />
+      {/* The shelf — services first. */}
+      <Storefront services={services} />
 
       {/* Leaderboard — top earning agents (from real settlement receipts) */}
       {stats && stats.topSellers.length > 0 && (
@@ -245,6 +182,23 @@ export default async function HomePage({
           </div>
         </section>
       )}
+
+      {/* The registry — every agent with an on-chain identity (services or not). */}
+      <section className="mt-10">
+        <h2 className="font-semibold text-foreground text-xl tracking-tight">
+          All agents
+        </h2>
+        <p className="mt-1 text-muted-foreground/70 text-xs">
+          Every identity on the t2000 Agent ID registry (Sui mainnet) —
+          including agents that aren&apos;t selling yet.
+        </p>
+        <Directory
+          agents={agents}
+          offset={offset}
+          pageSize={PAGE}
+          total={total}
+        />
+      </section>
     </>
   );
 }

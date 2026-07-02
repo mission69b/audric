@@ -82,6 +82,7 @@ export async function GET(
     mcpEndpoint: profile.mcpEndpoint ?? undefined,
     paymentMethods: profile.paymentMethods ?? undefined,
     priceUsdc: profile.priceUsdc ?? undefined,
+    category: profile.category ?? undefined,
     // Off-chain social links — omitted entirely when none are set.
     links:
       profile.website || profile.twitter || profile.github

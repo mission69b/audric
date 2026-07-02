@@ -44,6 +44,9 @@ export async function upsertAgentProfile(opts: {
    *  has no authority over it — always preserve-on-undefined (never cleared by a
    *  reconcile), set only when the service write-through provides it. */
   priceUsdc?: string | null;
+  /** Off-chain storefront category (curated enum). Same off-chain rules as
+   *  priceUsdc — preserve-on-undefined, cron never clears it. */
+  category?: string | null;
   /** The register tx digest (CREATED TX). Only the register write-through has
    *  it — always preserve-on-undefined (the cron + third-party path never
    *  carry it, so they must not clobber a captured digest). */
@@ -80,6 +83,7 @@ export async function upsertAgentProfile(opts: {
       mcpEndpoint: opts.mcpEndpoint ?? null,
       paymentMethods: opts.paymentMethods ?? null,
       priceUsdc: opts.priceUsdc ?? null,
+      category: opts.category ?? null,
       registerDigest: opts.registerDigest ?? null,
       updatedAt,
     })
@@ -93,8 +97,9 @@ export async function upsertAgentProfile(opts: {
         metadataUri: pick(opts.metadataUri),
         mcpEndpoint: pick(opts.mcpEndpoint),
         paymentMethods: pick(opts.paymentMethods),
-        // Off-chain: always preserve-on-undefined (cron never clears it).
+        // Off-chain: always preserve-on-undefined (cron never clears them).
         priceUsdc: opts.priceUsdc ?? undefined,
+        category: opts.category ?? undefined,
         // CREATED TX never changes; preserve unless this writer supplies it.
         registerDigest: opts.registerDigest ?? undefined,
         updatedAt,
@@ -114,6 +119,8 @@ export async function setAgentProfileFields(
     // Off-chain commerce price — owner-editable from the console alongside the
     // display fields (the on-chain endpoint stays agent-keypair-only).
     priceUsdc?: string | null;
+    // Off-chain storefront category (curated enum; caller validates).
+    category?: string | null;
     // Off-chain social links (full https URLs).
     website?: string | null;
     twitter?: string | null;
@@ -132,6 +139,7 @@ export async function setAgentProfileFields(
       imageUrl: fields.imageUrl ?? null,
       description: fields.description ?? null,
       priceUsdc: fields.priceUsdc ?? null,
+      category: fields.category ?? null,
       website: fields.website ?? null,
       twitter: fields.twitter ?? null,
       github: fields.github ?? null,
@@ -144,6 +152,7 @@ export async function setAgentProfileFields(
         imageUrl: fields.imageUrl,
         description: fields.description,
         priceUsdc: fields.priceUsdc,
+        category: fields.category,
         website: fields.website,
         twitter: fields.twitter,
         github: fields.github,
@@ -155,13 +164,15 @@ export async function setAgentProfileFields(
 /** Write the service fields right after an on-chain `update` (instant, no cron
  *  lag). `mcpEndpoint` + `paymentMethods` are the new on-chain truth → written
  *  EXACTLY (null/[] clears them — fixes "can't clear an endpoint"). `priceUsdc`
- *  is off-chain → written only when provided (undefined = preserve). */
+ *  + `category` are off-chain → written only when provided (undefined =
+ *  preserve). */
 export async function setAgentServiceFields(
   address: string,
   fields: {
     mcpEndpoint?: string | null;
     paymentMethods?: string[] | null;
     priceUsdc?: string;
+    category?: string;
   }
 ): Promise<void> {
   const now = new Date();
@@ -173,6 +184,7 @@ export async function setAgentServiceFields(
       mcpEndpoint: fields.mcpEndpoint ?? null,
       paymentMethods: fields.paymentMethods ?? null,
       priceUsdc: fields.priceUsdc ?? null,
+      category: fields.category ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -183,6 +195,7 @@ export async function setAgentServiceFields(
         paymentMethods: fields.paymentMethods ?? null,
         // Off-chain — preserve unless explicitly provided.
         ...(fields.priceUsdc !== undefined ? { priceUsdc: fields.priceUsdc } : {}),
+        ...(fields.category !== undefined ? { category: fields.category } : {}),
         updatedAt: now,
       },
     });

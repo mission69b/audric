@@ -16,6 +16,8 @@ export type AgentRow = {
   service: string | null;
   x402: boolean;
   priceUsdc: string | null;
+  category: string | null;
+  description: string | null;
   createdAt: string;
 };
 

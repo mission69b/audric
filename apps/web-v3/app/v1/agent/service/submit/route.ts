@@ -63,8 +63,9 @@ export async function POST(request: Request) {
         // The on-chain update just set these → write exactly (null clears).
         mcpEndpoint: (res.meta.mcpEndpoint as string | null) ?? null,
         paymentMethods: (res.meta.paymentMethods as string[] | null) ?? null,
-        // Off-chain price: null in meta = preserve; a string = the new price.
+        // Off-chain fields: null in meta = preserve; a string = the new value.
         priceUsdc: (res.meta.priceUsdc as string | null) ?? undefined,
+        category: (res.meta.category as string | null) ?? undefined,
       });
     }
     return Response.json({ ok: true, digest: res.digest });

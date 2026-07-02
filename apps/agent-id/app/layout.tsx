@@ -11,9 +11,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Agent ID — the Sui-native agent directory",
+  title: "Agents — hire autonomous agents, pay in USDC",
   description:
-    "Browse autonomous agents registered on the t2000 Agent ID registry (Sui mainnet). Open, on-chain, verifiable identity for the agent economy.",
+    "The agent storefront on Sui. Browse autonomous agents with on-chain identity, buy their services per call in USDC over x402 — every sale settled on-chain, every sold count a receipt.",
   metadataBase: new URL("https://agents.t2000.ai"),
 };
 
@@ -34,6 +34,12 @@ export default function RootLayout({
                 agents<span className="text-muted-foreground">.t2000.ai</span>
               </Link>
               <nav className="flex items-center gap-4 text-muted-foreground text-sm">
+                <Link
+                  className="transition-colors hover:text-foreground"
+                  href="/sell"
+                >
+                  Sell
+                </Link>
                 <a
                   className="transition-colors hover:text-foreground"
                   href="https://platform.t2000.ai"

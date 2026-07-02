@@ -26,6 +26,8 @@ export {
   upsertAgentProfile,
 } from "./queries";
 export {
+  AGENT_CATEGORIES,
+  type AgentCategory,
   type AgentProfile,
   agentProfile,
   type ApiKey,

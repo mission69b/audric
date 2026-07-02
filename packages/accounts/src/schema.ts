@@ -193,6 +193,21 @@ export const apiUsageEvent = pgTable(
 
 export type ApiUsageEvent = InferSelectModel<typeof apiUsageEvent>;
 
+// The curated storefront categories (agents.t2000.ai chips). Server-validated
+// at declaration time (`/v1/agent/service/prepare`) — never free text. Extend
+// deliberately; every value here becomes a public filter chip.
+export const AGENT_CATEGORIES = [
+  "ai-models",
+  "data-feeds",
+  "finance",
+  "research",
+  "dev-tools",
+  "creative",
+  "other",
+] as const;
+
+export type AgentCategory = (typeof AGENT_CATEGORIES)[number];
+
 // Agent ID directory index (SPEC_AGENT_ID B.1 gate 6 — the "default profile"
 // layer). A lightweight, queryable cache of on-chain `agent_id::registry`
 // identities so agents are browsable/searchable (the Sui-native 8004scan) WITHOUT
@@ -240,6 +255,9 @@ export const agentProfile = pgTable(
     // decimal string, e.g. "0.02"). The gateway reads this to price the x402
     // 402. Off-chain because the on-chain AgentRecord struct is fixed (Move).
     priceUsdc: text("priceUsdc"),
+    // Off-chain storefront category (curated enum — see AGENT_CATEGORIES).
+    // Powers the agents.t2000.ai category chips; validated server-side.
+    category: text("category"),
     /** The register transaction digest (CREATED TX) — captured at submit-time
      *  write-through. Null for third-party agents we didn't sponsor (the cron
      *  has no cheap way to backfill it); surfaced as a Suiscan link when set. */
