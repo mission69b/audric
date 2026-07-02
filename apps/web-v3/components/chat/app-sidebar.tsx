@@ -3,7 +3,6 @@
 import {
   CreditCardIcon,
   GiftIcon,
-  LineChartIcon,
   PanelLeftIcon,
   PenSquareIcon,
   TrashIcon,
@@ -131,19 +130,8 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
                     <span className="font-medium">New chat</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    onClick={() => {
-                      setOpenMobile(false);
-                      router.push("/markets");
-                    }}
-                    tooltip="Live market data"
-                  >
-                    <LineChartIcon className="size-4" />
-                    <span className="font-medium">Markets</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {/* Markets nav entry removed until there's demand — the /markets
+                    page stays live (pricing + blog deep-links still point at it). */}
                 {!user && (
                   <SidebarMenuItem>
                     <SidebarMenuButton
