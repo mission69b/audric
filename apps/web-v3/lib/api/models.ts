@@ -98,14 +98,14 @@ export const apiModels: ApiModel[] = [
     name: "Claude Sonnet 5",
     tier: "frontier",
     privacy: "private",
-    margin: 1.15,
+    margin: 1.3,
   },
   {
     id: "anthropic/claude-fable-5",
     name: "Claude Fable 5",
     tier: "frontier",
     privacy: "private",
-    margin: 1.15,
+    margin: 1.3,
   },
   {
     id: "openai/gpt-5.5",

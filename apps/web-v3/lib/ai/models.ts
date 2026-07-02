@@ -106,7 +106,7 @@ export const chatModels: ChatModel[] = [
     privacy: "private",
     tier: "smart",
     vision: true,
-    margin: 1.15,
+    margin: 1.3,
     bestFor: "Balanced & fast",
   },
   {
@@ -121,7 +121,7 @@ export const chatModels: ChatModel[] = [
     tier: "smart",
     frontier: true,
     vision: true,
-    margin: 1.15,
+    margin: 1.3,
     bestFor: "Code & writing",
   },
   {
