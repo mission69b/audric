@@ -53,28 +53,25 @@
   --ring: oklch(0.5 0 0);
 }
 
-/* House dark theme — seamless near-black, mirrors design-tokens/tokens.css
-   (--bg #08090a / --bg-elevated #0f1113 / hairline white borders). Kept in
-   sync with verify + the rest of the t2000 family. */
 .dark {
-  --background: #08090a;
-  --foreground: #ededed;
-  --card: #0f1113;
-  --card-foreground: #ededed;
-  --popover: #0f1113;
-  --popover-foreground: #ededed;
-  --primary: #ededed;
-  --primary-foreground: #08090a;
-  --secondary: #16181b;
-  --secondary-foreground: #a1a1a1;
-  --muted: #0f1113;
-  --muted-foreground: #8f8f8f;
-  --accent: #16181b;
-  --accent-foreground: #ededed;
+  --background: oklch(0.195 0 0);
+  --foreground: oklch(0.94 0 0);
+  --card: oklch(0.225 0 0);
+  --card-foreground: oklch(0.94 0 0);
+  --popover: oklch(0.225 0 0);
+  --popover-foreground: oklch(0.94 0 0);
+  --primary: oklch(0.94 0 0);
+  --primary-foreground: oklch(0.195 0 0);
+  --secondary: oklch(0.26 0 0);
+  --secondary-foreground: oklch(0.75 0 0);
+  --muted: oklch(0.165 0 0);
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.26 0 0);
+  --accent-foreground: oklch(0.94 0 0);
   --destructive: oklch(0.7 0.15 25);
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: rgba(255, 255, 255, 0.24);
+  --border: oklch(0.27 0 0);
+  --input: oklch(0.27 0 0);
+  --ring: oklch(0.45 0 0);
 }
 
 @layer base {
