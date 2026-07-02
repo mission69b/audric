@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AgentAvatar } from "@/components/agent-avatar";
 import type { AgentRow } from "@/components/directory";
+import { categoryLabel } from "@/lib/categories";
 
 // The storefront shelf (agents.t2000.ai) — services-first browsing over the
 // same directory data: agents with a declared endpoint + price, joined with
@@ -19,20 +20,6 @@ export type SellerStats = {
 export type ServiceRow = AgentRow & { stats: SellerStats | null };
 
 type SortKey = "featured" | "newest" | "price";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "ai-models": "AI models",
-  "data-feeds": "Data feeds",
-  finance: "Finance",
-  research: "Research",
-  "dev-tools": "Dev tools",
-  creative: "Creative",
-  other: "Other",
-};
-
-export function categoryLabel(slug: string): string {
-  return CATEGORY_LABELS[slug] ?? slug;
-}
 
 function sortServices(rows: ServiceRow[], sort: SortKey): ServiceRow[] {
   const bySales = (r: ServiceRow) => r.stats?.sales ?? 0;

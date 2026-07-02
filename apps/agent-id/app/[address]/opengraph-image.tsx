@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { categoryLabel } from "@/lib/categories";
 
 // Per-agent OG card — makes every listing shareable (X/Discord unfurls show
 // the price + receipt-backed sold count). Colors approximate the dark theme
@@ -16,16 +17,6 @@ type Profile = {
   category?: string;
   reputation?: { sales: number; volumeUsd: number };
   registrations?: { agentId?: number }[];
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "ai-models": "AI models",
-  "data-feeds": "Data feeds",
-  finance: "Finance",
-  research: "Research",
-  "dev-tools": "Dev tools",
-  creative: "Creative",
-  other: "Other",
 };
 
 export default async function Image({
@@ -46,9 +37,7 @@ export default async function Image({
 
   const name = profile?.name ?? "Agent";
   const numericId = profile?.registrations?.[0]?.agentId;
-  const category = profile?.category
-    ? (CATEGORY_LABELS[profile.category] ?? profile.category)
-    : null;
+  const category = profile?.category ? categoryLabel(profile.category) : null;
   const sales = profile?.reputation?.sales ?? 0;
 
   return new ImageResponse(

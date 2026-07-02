@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
-import { categoryLabel } from "@/components/storefront";
+import { categoryLabel } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
 
 // Public agent listing (agents.t2000.ai/<address>). Service-first when the
