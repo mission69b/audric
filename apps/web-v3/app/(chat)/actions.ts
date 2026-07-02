@@ -48,14 +48,16 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
     return;
   }
 
+  // Stale UI (message/chat deleted in another tab, account switched) → no-op,
+  // same rationale as the no-session guard: a throw here is a 500 on POST /.
   const [message] = await getMessageById({ id });
   if (!message) {
-    throw new Error("Message not found");
+    return;
   }
 
   const chat = await getChatById({ id: message.chatId });
   if (!chat || chat.userId !== session.user.id) {
-    throw new Error("Unauthorized");
+    return;
   }
 
   await deleteMessagesByChatIdAfterTimestamp({
@@ -78,9 +80,11 @@ export async function updateChatVisibility({
     return;
   }
 
+  // Not-yet-persisted chat (share toggled before the first message lands),
+  // deleted-in-another-tab, or foreign chat → no-op instead of a 500 on POST /.
   const chat = await getChatById({ id: chatId });
   if (!chat || chat.userId !== session.user.id) {
-    throw new Error("Unauthorized");
+    return;
   }
 
   await updateChatVisibilityById({ chatId, visibility });

@@ -1,13 +1,17 @@
 import { gateway, generateImage, generateText } from "ai";
 import {
+  type AspectRatio,
   DEFAULT_IMAGE_MODEL,
+  getImageModel,
   IMAGE_FALLBACK_MODEL,
 } from "@/lib/ai/image-models";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 
-// Most Gateway image models (gpt-image-2, recraft, …) take `size`, NOT
-// `aspectRatio` (which they warn-and-ignore → square output). Map the requested
-// ratio to a widely-supported pixel size so portrait/landscape actually apply.
+// Gateway image models split on which dimension param they accept (registry
+// `dimensionParam`): `size` models (gpt-image-2, recraft, …) warn-and-ignore
+// `aspectRatio` → square output, while `aspectRatio` models (imagen-4, bfl)
+// warn on `size` — imagen-4 DROPPED it entirely, so the default model returned
+// square for every non-square request. Pass each model its native param.
 const RATIO_TO_SIZE: Record<string, `${number}x${number}`> = {
   "1:1": "1024x1024",
   "16:9": "1536x1024",
@@ -15,6 +19,20 @@ const RATIO_TO_SIZE: Record<string, `${number}x${number}`> = {
   "4:3": "1536x1024",
   "3:4": "1024x1536",
 };
+
+function dimensionArgs(
+  modelId: string,
+  ratio: string | undefined
+): { size?: `${number}x${number}`; aspectRatio?: AspectRatio } {
+  if (!ratio) {
+    return {};
+  }
+  if (getImageModel(modelId)?.dimensionParam === "aspectRatio") {
+    return { aspectRatio: ratio as AspectRatio };
+  }
+  const size = RATIO_TO_SIZE[ratio];
+  return size ? { size } : {};
+}
 
 // IMAGE-TO-IMAGE edit model — Gemini 2.5 Flash Image ("Nano Banana") edits the
 // EXISTING image (preserves the subject) instead of regenerating from text. It
@@ -92,7 +110,6 @@ export const imageDocumentHandler = createDocumentHandler<"image">({
     if (!session?.user) {
       throw new Error(AUTH_REQUIRED_MESSAGE);
     }
-    const size = aspectRatio ? RATIO_TO_SIZE[aspectRatio] : undefined;
     const primary = imageModel ?? DEFAULT_IMAGE_MODEL;
     // Try the chosen model, then a different-provider fallback — so a single
     // model/provider outage doesn't break all image generation. Log the real
@@ -107,7 +124,8 @@ export const imageDocumentHandler = createDocumentHandler<"image">({
         const { image } = await generateImage({
           model: gateway.imageModel(model),
           prompt: title,
-          ...(size ? { size } : {}),
+          // Per-candidate: primary and fallback can take different params.
+          ...dimensionArgs(model, aspectRatio),
         });
         dataStream.write({
           type: "data-imageDelta",
