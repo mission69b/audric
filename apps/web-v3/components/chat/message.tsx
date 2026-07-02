@@ -29,6 +29,7 @@ function modelDisplayName(id: string): string {
 
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { useArtifact } from "@/hooks/use-artifact";
+import { ImageSearchResults } from "./image-search-results";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
 import { MessageActions } from "./message-actions";
@@ -236,6 +237,30 @@ const PurePreviewMessage = ({
 
     if (type === "tool-balance_check") {
       return <BalanceTool key={part.toolCallId} part={part} />;
+    }
+
+    if (type === "tool-image_search") {
+      if (part.state !== "output-available") {
+        return (
+          <div
+            className="grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3"
+            key={part.toolCallId}
+          >
+            {[0, 1, 2].map((i) => (
+              <div
+                className="h-32 animate-pulse rounded-xl bg-muted/30"
+                key={i}
+              />
+            ))}
+          </div>
+        );
+      }
+      const out = part.output as
+        | { images?: { url: string; origin?: string; title?: string }[] }
+        | undefined;
+      return (
+        <ImageSearchResults images={out?.images ?? []} key={part.toolCallId} />
+      );
     }
 
     // Finance cards — structured skill output → scannable visual anchor

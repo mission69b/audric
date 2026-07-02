@@ -44,6 +44,7 @@ import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
 import { generateVideo } from "@/lib/ai/tools/generate-video";
+import { imageSearch } from "@/lib/ai/tools/image-search";
 import { onchainTrending, tokenResearch } from "@/lib/ai/tools/onchain";
 import { perpMarket } from "@/lib/ai/tools/perp-market";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -99,6 +100,7 @@ export const maxDuration = 300;
 
 type ActiveTool =
   | "web_search"
+  | "image_search"
   | "web_scrape"
   | "crypto_market"
   | "crypto_history"
@@ -698,6 +700,9 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
+                  // image_search: explicit "show me X" visual intent (Brave,
+                  // safesearch strict). Free; graceful notice when key unset.
+                  "image_search",
                   // web_scrape: read a specific URL → clean markdown (the
                   // complement to search). Free (Jina Reader), keyless.
                   "web_scrape",
@@ -749,6 +754,7 @@ export async function POST(request: Request) {
               : isExplicitArtifact
                 ? [
                     "web_search",
+                    "image_search",
                     "web_scrape",
                     "crypto_market",
                     "crypto_history",
@@ -763,6 +769,7 @@ export async function POST(request: Request) {
                   ]
                 : [
                     "web_search",
+                    "image_search",
                     "web_scrape",
                     "crypto_market",
                     "crypto_history",
@@ -862,6 +869,10 @@ export async function POST(request: Request) {
             // parallelSearch) were both verified to NOT synthesize on our
             // open-model roster (S.478 A/B). Available to everyone (incl. anon).
             web_search: webSearch,
+            // image_search — explicit visual intent ("show me X"): Brave image
+            // vertical, safesearch strict, rendered as a grid. Free, available
+            // to everyone; graceful notice when BRAVE_API_KEY is unset.
+            image_search: imageSearch,
             // web_scrape — read a specific URL → clean markdown (Jina Reader);
             // free, keyless, available to everyone. Complement to web_search.
             web_scrape: webScrape,

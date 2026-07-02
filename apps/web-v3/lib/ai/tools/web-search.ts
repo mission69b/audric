@@ -1,5 +1,6 @@
 import { gateway, generateText, tool } from "ai";
 import { z } from "zod";
+import { braveImageSearch } from "@/lib/ai/brave";
 import { env } from "@/lib/env";
 
 /**
@@ -40,31 +41,11 @@ function cap(text: string): string {
     : text;
 }
 
-/** Brave image search (safesearch strict) — the ambient image strip. Never
- * throws: any failure (unset key / rate limit / outage) returns []. Thumbnails
- * are Brave-CDN URLs (hotlink-safe); origin links to the source page. */
+/** Ambient image strip — shared Brave helper (lib/ai/brave.ts), capped small.
+ * Never throws; [] on any failure. */
 async function braveImages(query: string): Promise<SearchImage[]> {
-  const key = env.BRAVE_API_KEY;
-  if (!key) {
-    return [];
-  }
-  try {
-    const res = await fetch(
-      `https://api.search.brave.com/res/v1/images/search?q=${encodeURIComponent(query)}&count=${MAX_IMAGES}&safesearch=strict`,
-      { headers: { "X-Subscription-Token": key, Accept: "application/json" } }
-    );
-    if (!res.ok) {
-      return [];
-    }
-    const data = (await res.json()) as {
-      results?: { url?: string; thumbnail?: { src?: string } }[];
-    };
-    return (data.results ?? []).flatMap((r) =>
-      r.thumbnail?.src ? [{ url: r.thumbnail.src, origin: r.url }] : []
-    );
-  } catch {
-    return [];
-  }
+  const results = await braveImageSearch(query, MAX_IMAGES);
+  return results.map((r) => ({ url: r.url, origin: r.origin }));
 }
 
 async function searchDirect(

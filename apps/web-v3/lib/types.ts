@@ -8,6 +8,7 @@ import type { cryptoMarket } from "./ai/tools/crypto-market";
 import type { editImage } from "./ai/tools/edit-image";
 import type { generateImage } from "./ai/tools/generate-image";
 import type { generateVideo } from "./ai/tools/generate-video";
+import type { imageSearch } from "./ai/tools/image-search";
 import type { perpMarket } from "./ai/tools/perp-market";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
@@ -49,6 +50,7 @@ type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
 type webSearchTool = InferUITool<typeof webSearch>;
+type imageSearchTool = InferUITool<typeof imageSearch>;
 type balanceCheckTool = InferUITool<ReturnType<typeof balanceCheck>>;
 type transactionHistoryTool = InferUITool<
   ReturnType<typeof transactionHistory>
@@ -78,6 +80,7 @@ export type ChatTools = {
   stock_analysis: stockAnalysisTool;
   requestSuggestions: requestSuggestionsTool;
   web_search: webSearchTool;
+  image_search: imageSearchTool;
   balance_check: balanceCheckTool;
   transaction_history: transactionHistoryTool;
   resolve_suins: resolveSuinsTool;
