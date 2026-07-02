@@ -38,7 +38,7 @@ Your chats live in your private history. Your memory, if you turn it on, lives e
 
 ## Every model — and the right one, automatically
 
-Audric isn't one model behind a brand. Open and uncensored models — Kimi, DeepSeek, Grok, GPT-OSS — sit next to the frontier, like Claude Fable 5 and GPT-5.5. Switch between any of them mid-conversation. The open ones won't refuse you.
+Audric isn't one model behind a brand. Open and uncensored models — Kimi, DeepSeek, Grok, GPT-OSS — sit next to the frontier, like Claude Opus 4.8 and GPT-5.5. Switch between any of them mid-conversation. The open ones won't refuse you.
 
 Or leave it on **Auto**. It reads each request and picks the model and the effort to match — a quick reply on a fast model, deep thinking on a frontier one. Every model shows a privacy badge and its real cost, so you always know what you're using.
 

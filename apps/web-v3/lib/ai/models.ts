@@ -110,8 +110,12 @@ export const chatModels: ChatModel[] = [
     bestFor: "Balanced & fast",
   },
   {
-    id: "anthropic/claude-fable-5",
-    name: "Claude Fable 5",
+    // Fable 5 was trialed here (2026-07-02) and REMOVED same-day: the gateway
+    // marks it ZDR-INELIGIBLE ("this model retains data"), so it can't honor
+    // the Private tier's zero-data-retention promise — every request failed
+    // fail-closed. Revisit if/when the gateway lists it as ZDR-eligible.
+    id: "anthropic/claude-opus-4.8",
+    name: "Claude Opus 4.8",
     provider: "anthropic",
     description: "Frontier model — top-tier coding & writing",
     // Cross-provider fallback (gateway `order`): if Anthropic errors/rate-limits,

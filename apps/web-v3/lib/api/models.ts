@@ -101,8 +101,10 @@ export const apiModels: ApiModel[] = [
     margin: 1.3,
   },
   {
-    id: "anthropic/claude-fable-5",
-    name: "Claude Fable 5",
+    // Fable 5 removed 2026-07-02: gateway-flagged ZDR-INELIGIBLE (retains
+    // data) — can't carry the `private` promise. Revisit when eligible.
+    id: "anthropic/claude-opus-4.8",
+    name: "Claude Opus 4.8",
     tier: "frontier",
     privacy: "private",
     margin: 1.3,
