@@ -46,6 +46,7 @@ type Profile = {
       buyer: string;
       amountUsd: number;
       delivered: boolean;
+      tx?: string;
     }[];
   };
   createdAt?: string;
@@ -186,7 +187,8 @@ function buildAgentPrompt(p: {
     "",
     "To pay and get the result:",
     `- With the t2000 CLI (npm i -g @t2000/cli): run \`t2 agent pay ${p.address}\` — add --data '{...}' to pass input.`,
-    `- Or pay the x402 endpoint directly: https://x402.t2000.ai/commerce/pay/${p.address}`,
+    `- Or pay the x402 endpoint directly (Sui x402 scheme): https://x402.t2000.ai/commerce/pay/${p.address}`,
+    "- The wallet needs USDC on Sui — if it's empty, run `t2 fund` and tell me the deposit address so I can top it up first.",
     "",
     "Please make the call and show me the result.",
   ].join("\n");
@@ -216,8 +218,13 @@ export default async function AgentProfilePage({
 
   const numericId = profile.registrations?.[0]?.agentId;
   const hasX402 = profile.paymentMethods?.includes("x402") ?? false;
-  const sells = Boolean(profile.mcpEndpoint || profile.priceUsdc);
+  // A purchasable service needs a DELIVERY endpoint. Price-without-endpoint is
+  // the rail's payment-only mode (money forwards, no service response) — never
+  // dress that as "pay on delivery".
+  const sells = Boolean(profile.mcpEndpoint);
+  const priceOnly = Boolean(!profile.mcpEndpoint && profile.priceUsdc);
   const rep = profile.reputation;
+  const buyUrl = `${RAIL_BASE}/commerce/pay/${profile.address}`;
 
   return (
     <>
@@ -311,12 +318,19 @@ export default async function AgentProfilePage({
                   Price on request (no declared price)
                 </div>
               )}
-              {rep ? (
+              {rep && rep.sales > 0 && (
                 <div className="mt-1 text-muted-foreground/70 text-xs">
                   <span className="text-emerald-500">✓</span> Verified on the
                   rail
                 </div>
-              ) : (
+              )}
+              {rep && rep.sales === 0 && (
+                <div className="mt-1 text-muted-foreground/70 text-xs">
+                  <span className="text-destructive">⚠</span> No successful
+                  deliveries yet
+                </div>
+              )}
+              {!rep && (
                 <div className="mt-1 text-muted-foreground/50 text-xs">
                   New listing — no settled sales yet.
                 </div>
@@ -383,8 +397,8 @@ export default async function AgentProfilePage({
               title="Buy it — CLI"
             />
             <CommandBlock
-              lines={[[`curl ${RAIL_BASE}/commerce/pay/${profile.address}`]]}
-              note="Returns HTTP 402 + payment requirements — any x402 client can pay and get the response in one round-trip."
+              lines={[[`curl ${buyUrl}`]]}
+              note="Returns HTTP 402 + payment requirements. Any client that speaks the Sui x402 scheme (the t2000 CLI and SDK do) pays and gets the response in one round-trip."
               title="Buy it — x402 (agents)"
             />
           </div>
@@ -430,54 +444,94 @@ export default async function AgentProfilePage({
             Recent activity
           </h2>
           <div className="mt-3 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
-            {rep.recent.map((r) => (
-              <div
-                className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-                key={`${r.at}-${r.buyer}`}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={
-                      r.delivered ? "text-emerald-500" : "text-destructive"
-                    }
-                  >
-                    {r.delivered ? "✓" : "↩"}
-                  </span>
-                  <span className="truncate text-muted-foreground">
-                    {r.delivered ? "Delivered to" : "Auto-refunded"}{" "}
-                    <span className="font-mono text-foreground text-xs">
-                      {r.buyer}
+            {rep.recent.map((r) => {
+              const row = (
+                <>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className={
+                        r.delivered ? "text-emerald-500" : "text-destructive"
+                      }
+                    >
+                      {r.delivered ? "✓" : "↩"}
                     </span>
-                  </span>
+                    <span className="truncate text-muted-foreground">
+                      {r.delivered ? "Delivered to" : "Auto-refunded"}{" "}
+                      <span className="font-mono text-foreground text-xs">
+                        {r.buyer}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-4">
+                    <span className="font-medium text-foreground">
+                      ${r.amountUsd.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground/60 text-xs">
+                      {formatDate(r.at)}
+                    </span>
+                    {r.tx && (
+                      <span className="text-muted-foreground/60 text-xs underline decoration-border underline-offset-4">
+                        tx ↗
+                      </span>
+                    )}
+                  </div>
+                </>
+              );
+              return r.tx ? (
+                <a
+                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-muted/30"
+                  href={`${SUISCAN}/tx/${r.tx}`}
+                  key={`${r.at}-${r.buyer}`}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {row}
+                </a>
+              ) : (
+                <div
+                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                  key={`${r.at}-${r.buyer}`}
+                >
+                  {row}
                 </div>
-                <div className="flex shrink-0 items-center gap-4">
-                  <span className="font-medium text-foreground">
-                    ${r.amountUsd.toFixed(2)}
-                  </span>
-                  <span className="text-muted-foreground/60 text-xs">
-                    {formatDate(r.at)}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <p className="mt-2 text-muted-foreground/60 text-xs">
-            From the on-chain settlement ledger.
+            From the on-chain settlement ledger — every row links to its Sui
+            transaction.
           </p>
         </section>
+      )}
+
+      {/* Price-only agents: honest framing — a payment target, not a service. */}
+      {priceOnly && (
+        <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div className="font-medium text-foreground text-sm">
+            Not selling a deliverable service
+          </div>
+          <p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">
+            This agent has declared a price (${profile.priceUsdc}) but no
+            delivery endpoint. Paying it transfers USDC to the agent (minus the
+            2.5% fee) with an on-chain receipt — you will NOT receive a service
+            response. Sellers: add an endpoint with{" "}
+            <span className="font-mono text-xs">t2 agent deploy</span> or{" "}
+            <span className="font-mono text-xs">
+              t2 agent service --mcp-endpoint
+            </span>
+            .
+          </p>
+        </div>
       )}
 
       {/* Service wiring — the machine-readable endpoints. */}
       {sells && (
         <Section title="Service">
-          {profile.mcpEndpoint && (
+          {/* The deploy path sets mcpEndpoint = the buy URL; skip the dupe row. */}
+          {profile.mcpEndpoint && profile.mcpEndpoint !== buyUrl && (
             <Field label="Endpoint" mono value={profile.mcpEndpoint} />
           )}
-          <Field
-            label="x402 buy URL"
-            mono
-            value={`${RAIL_BASE}/commerce/pay/${profile.address}`}
-          />
+          <Field label="x402 buy URL" mono value={buyUrl} />
           {profile.paymentMethods && profile.paymentMethods.length > 0 && (
             <Field
               label="Payment methods"

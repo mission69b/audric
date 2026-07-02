@@ -17,12 +17,14 @@ type Reputation = {
   /** sales / (sales + refunds); null until there's data. */
   deliveredRate?: number | null;
   lastSaleAt: string | null;
-  /** Last 5 paid attempts (buyer short-addr, gross, delivered?) — §II.13.A. */
+  /** Last 5 paid attempts (buyer short-addr, gross, delivered?) — §II.13.A.
+   *  `tx` = the collect digest (public Sui tx, the clickable receipt). */
   recent?: {
     at: string;
     buyer: string;
     amountUsd: number;
     delivered: boolean;
+    tx?: string;
   }[];
 };
 
@@ -37,9 +39,11 @@ async function fetchReputation(
       return;
     }
     const d = (await res.json()) as Reputation & { seller?: string };
-    // Only surface reputation once there's at least one real sale. Strip the
-    // gateway's internal `seller` echo — it's redundant in the public profile.
-    return d.sales > 0
+    // Surface reputation once there's at least one PAID ATTEMPT — including
+    // refund-only sellers (hiding failed deliveries would launder a bad
+    // delivered rate into a clean "New listing"). Strip the gateway's internal
+    // `seller` echo — it's redundant in the public profile.
+    return d.sales > 0 || (d.refunds ?? 0) > 0
       ? {
           sales: d.sales,
           volumeUsd: d.volumeUsd,

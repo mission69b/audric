@@ -50,6 +50,7 @@ function sortServices(rows: ServiceRow[], sort: SortKey): ServiceRow[] {
 
 function ServiceCard({ s }: { s: ServiceRow }) {
   const sold = s.stats?.sales ?? 0;
+  const refunds = s.stats?.refunds ?? 0;
   return (
     <Link
       className="group flex flex-col rounded-2xl border border-border/50 bg-card/40 p-5 transition-colors hover:border-border hover:bg-muted/30"
@@ -96,6 +97,12 @@ function ServiceCard({ s }: { s: ServiceRow }) {
               {typeof s.stats?.deliveredRate === "number" && (
                 <> · {Math.round(s.stats.deliveredRate * 100)}% delivered</>
               )}
+            </div>
+          ) : refunds > 0 ? (
+            // Refund-only sellers are NOT a clean slate — say so.
+            <div className="mt-0.5 text-muted-foreground/70 text-xs">
+              <span className="text-destructive">⚠</span> 0 delivered ·{" "}
+              {refunds} refunded
             </div>
           ) : (
             <div className="mt-0.5 text-muted-foreground/50 text-xs">
