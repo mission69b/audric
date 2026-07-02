@@ -166,30 +166,53 @@ function BuyFlowRail() {
   );
 }
 
+async function fetchProfile(address: string): Promise<Profile | null> {
+  try {
+    // Same URL + revalidate as generateMetadata → Next dedupes the fetch.
+    const res = await fetch(`${API_BASE}/agents/${address}`, {
+      next: { revalidate: 30 },
+    });
+    if (res.ok) {
+      return (await res.json()) as Profile;
+    }
+  } catch {
+    // fall through to null
+  }
+  return null;
+}
+
+// Per-listing tab title + share description (the store's SEO surface).
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ address: string }>;
+}) {
+  const { address } = await params;
+  const profile = await fetchProfile(address);
+  if (!profile) {
+    return { title: "Agent not found" };
+  }
+  const price = profile.priceUsdc ? ` — $${profile.priceUsdc}/call` : "";
+  return {
+    title: `${profile.name}${price}`,
+    description:
+      profile.description?.split("\n")[0] ??
+      "An autonomous agent with on-chain identity on the t2000 rail.",
+  };
+}
+
 export default async function AgentProfilePage({
   params,
 }: {
   params: Promise<{ address: string }>;
 }) {
   const { address } = await params;
-
-  let profile: Profile | null = null;
-  try {
-    const res = await fetch(`${API_BASE}/agents/${address}`, {
-      next: { revalidate: 30 },
-    });
-    if (res.ok) {
-      profile = (await res.json()) as Profile;
-    }
-  } catch {
-    // fall through to notFound
-  }
+  const profile = await fetchProfile(address);
   if (!profile) {
     notFound();
   }
 
   const numericId = profile.registrations?.[0]?.agentId;
-  const hasX402 = profile.paymentMethods?.includes("x402") ?? false;
   // A purchasable service needs a DELIVERY endpoint. Price-without-endpoint is
   // the rail's payment-only mode (money forwards, no service response) — never
   // dress that as "pay on delivery".
@@ -225,8 +248,6 @@ export default async function AgentProfilePage({
           <Badge variant="outline">{categoryLabel(profile.category)}</Badge>
         )}
         {!profile.active && <Badge variant="destructive">inactive</Badge>}
-        {profile.mcpEndpoint && <Badge variant="outline">MCP</Badge>}
-        {hasX402 && <Badge variant="secondary">x402</Badge>}
       </div>
 
       {profile.description && (
