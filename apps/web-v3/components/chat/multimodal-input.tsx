@@ -6,12 +6,11 @@ import equal from "fast-deep-equal";
 import {
   ArrowUpIcon,
   BrainIcon,
-  EyeIcon,
+  CheckIcon,
   LockIcon,
   MonitorIcon,
   ShieldCheckIcon,
   SparklesIcon,
-  WrenchIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -41,6 +40,11 @@ import {
 import { useSignInNudge } from "@/components/auth/sign-in-nudge";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import {
   Tooltip,
   TooltipContent,
@@ -953,10 +957,39 @@ const AttachmentsButton = memo(PureAttachmentsButton);
 
 // Honest privacy labels (SPEC_AUDRIC_V3 §5c). At launch every model rides the
 // Vercel AI Gateway → `anon`. NEVER relabel a gateway model `private` (the
+// Human names for provider slugs — group headings + the "Powered by" line in
+// the model hover panel (v0-style).
+const PROVIDER_NAMES: Record<string, string> = {
+  alibaba: "Alibaba",
+  anthropic: "Anthropic",
+  "arcee-ai": "Arcee AI",
+  bytedance: "ByteDance",
+  cohere: "Cohere",
+  deepseek: "DeepSeek",
+  google: "Google",
+  inception: "Inception",
+  kwaipilot: "Kwaipilot",
+  meituan: "Meituan",
+  meta: "Meta",
+  minimax: "MiniMax",
+  mistral: "Mistral",
+  moonshotai: "Moonshot",
+  morph: "Morph",
+  nvidia: "Nvidia",
+  openai: "OpenAI",
+  perplexity: "Perplexity",
+  "prime-intellect": "Prime Intellect",
+  qwen: "Qwen",
+  xiaomi: "Xiaomi",
+  xai: "xAI",
+  zai: "Zai",
+  phala: "Phala",
+};
+
 // no-overclaim rule). Venice's styling (teal/purple/blue pills + hover tip) is
 // matched; its "Kimi = Private" labeling is deliberately NOT copied.
 const PRIVACY_BADGE: Record<
-  ModelPrivacyTier,
+  ModelPrivacyTier | "confidential",
   { label: string; className: string; tip: string }
 > = {
   anon: {
@@ -974,7 +1007,110 @@ const PRIVACY_BADGE: Record<
     className: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
     tip: "Self-hosted · private",
   },
+  confidential: {
+    label: "Confidential",
+    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    tip: "GPU-TEE · verifiable",
+  },
 };
+
+// v0-style hover detail panel — rows stay clean (icon · name · check); all the
+// detail (description, "Powered by", pricing, capabilities, privacy) lives
+// here, shown on hover beside the list. Touch devices never hover → the list
+// simply stays compact (v0 mobile behavior).
+function ModelHoverPanel({
+  children,
+  name,
+  description,
+  provider,
+  free,
+  locked,
+  isAuthed,
+  pricing,
+  cap,
+  privacy,
+}: {
+  children: React.ReactNode;
+  name: string;
+  description?: string;
+  provider?: string;
+  free?: boolean;
+  locked?: boolean;
+  isAuthed?: boolean;
+  pricing?: { inputPer1M?: number; outputPer1M?: number };
+  cap?: { tools?: boolean; vision?: boolean; reasoning?: boolean };
+  privacy?: ModelPrivacyTier | "confidential";
+}) {
+  const price = (n?: number) =>
+    typeof n === "number" && Number.isFinite(n) ? `$${n.toFixed(2)}` : null;
+  const input = price(pricing?.inputPer1M);
+  const output = price(pricing?.outputPer1M);
+  const capList = [
+    cap?.tools && "Tools",
+    cap?.vision && "Vision",
+    cap?.reasoning && "Reasoning",
+  ].filter(Boolean) as string[];
+
+  return (
+    <HoverCard closeDelay={0} openDelay={150}>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent
+        align="start"
+        className="w-64 rounded-xl border-border/60 bg-card/95 p-3 shadow-[var(--shadow-float)] backdrop-blur-xl"
+        side="right"
+        sideOffset={10}
+      >
+        <p className="font-medium text-[13px] text-foreground leading-snug">
+          {description ?? name}
+        </p>
+        {provider && (
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <ModelSelectorLogo provider={provider} />
+            Powered by {PROVIDER_NAMES[provider] ?? provider}
+          </div>
+        )}
+        {(input || output || free) && (
+          <div className="mt-2.5 space-y-0.5 border-border/40 border-t pt-2.5 text-[11px] text-muted-foreground tabular-nums">
+            {free ? (
+              <div className="text-emerald-600 dark:text-emerald-400">
+                Free — no credit cost
+              </div>
+            ) : (
+              <>
+                {input && <div>{input}/1M input tokens</div>}
+                {output && <div>{output}/1M output tokens</div>}
+              </>
+            )}
+          </div>
+        )}
+        {(capList.length > 0 || privacy) && (
+          <div className="mt-2.5 flex items-center gap-2 border-border/40 border-t pt-2.5">
+            {capList.length > 0 && (
+              <span className="text-[10.5px] text-muted-foreground">
+                {capList.join(" · ")}
+              </span>
+            )}
+            {privacy && (
+              <span
+                className={cn(
+                  "ml-auto rounded px-1 py-0.5 font-medium text-[9px] uppercase tracking-wide",
+                  PRIVACY_BADGE[privacy].className
+                )}
+              >
+                {PRIVACY_BADGE[privacy].label}
+              </span>
+            )}
+          </div>
+        )}
+        {locked && (
+          <p className="mt-2.5 border-border/40 border-t pt-2.5 text-[10.5px] text-muted-foreground">
+            {isAuthed ? "Upgrade to unlock" : "Sign up to unlock"}
+          </p>
+        )}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 function PureModelSelectorCompact({
   selectedModelId,
@@ -1000,6 +1136,9 @@ function PureModelSelectorCompact({
   const capabilities:
     | Record<string, { tools: boolean; vision: boolean; reasoning: boolean }>
     | undefined = modelsData?.capabilities;
+  const pricing:
+    | Record<string, { inputPer1M?: number; outputPer1M?: number }>
+    | undefined = modelsData?.pricing;
   const dynamicModels: ChatModel[] | undefined = modelsData?.models;
   // "Auto" leads the curated lineup — the intelligent default.
   const curatedList = [AUTO_MODEL, ...chatModels];
@@ -1067,37 +1206,12 @@ function PureModelSelectorCompact({
               return a.localeCompare(b);
             });
 
-            const providerNames: Record<string, string> = {
-              alibaba: "Alibaba",
-              anthropic: "Anthropic",
-              "arcee-ai": "Arcee AI",
-              bytedance: "ByteDance",
-              cohere: "Cohere",
-              deepseek: "DeepSeek",
-              google: "Google",
-              inception: "Inception",
-              kwaipilot: "Kwaipilot",
-              meituan: "Meituan",
-              meta: "Meta",
-              minimax: "MiniMax",
-              mistral: "Mistral",
-              moonshotai: "Moonshot",
-              morph: "Morph",
-              nvidia: "Nvidia",
-              openai: "OpenAI",
-              perplexity: "Perplexity",
-              "prime-intellect": "Prime Intellect",
-              xiaomi: "Xiaomi",
-              xai: "xAI",
-              zai: "Zai",
-            };
-
             return sortedKeys.map((key) => (
               <ModelSelectorGroup
                 heading={
                   key === "_available"
                     ? "Available"
-                    : (providerNames[key] ?? key)
+                    : (PROVIDER_NAMES[key] ?? key)
                 }
                 key={key}
               >
@@ -1111,155 +1225,83 @@ function PureModelSelectorCompact({
                     !canUsePremium &&
                     model.free !== true &&
                     model.id !== AUTO_MODEL_ID;
+                  const isSelected = model.id === selectedModel.id;
+                  // v0-style: clean row (icon · name · check/lock); every
+                  // detail lives in the hover panel beside the list.
                   return (
-                    <ModelSelectorItem
-                      className={cn(
-                        "flex w-full",
-                        model.id === selectedModel.id &&
-                          "border-b border-dashed border-foreground/50",
-                        !curated && "opacity-40 cursor-default",
-                        locked && "opacity-60"
-                      )}
+                    <ModelHoverPanel
+                      cap={capabilities?.[model.id]}
+                      description={
+                        model.id === AUTO_MODEL_ID
+                          ? "Picks the best model for each message"
+                          : model.bestFor
+                      }
+                      free={model.free}
+                      isAuthed={isAuthed}
                       key={model.id}
-                      onSelect={() => {
-                        if (!curated) {
-                          return;
-                        }
-                        if (locked) {
-                          setOpen(false);
-                          openUpgrade();
-                          return;
-                        }
-                        onModelChange?.(model.id);
-                        setCookie("chat-model", model.id);
-                        setOpen(false);
-                        setTimeout(() => {
-                          document
-                            .querySelector<HTMLTextAreaElement>(
-                              "[data-testid='multimodal-input']"
-                            )
-                            ?.focus();
-                        }, 50);
-                      }}
-                      value={model.id}
+                      locked={locked}
+                      name={model.name}
+                      pricing={
+                        model.id === AUTO_MODEL_ID
+                          ? undefined
+                          : pricing?.[model.id]
+                      }
+                      privacy={model.privacy}
+                      provider={
+                        model.id === AUTO_MODEL_ID ? undefined : logoProvider
+                      }
                     >
-                      {model.id === AUTO_MODEL_ID ? (
-                        <SparklesIcon className="size-4" />
-                      ) : (
-                        <ModelSelectorLogo provider={logoProvider} />
-                      )}
-                      <div className="flex min-w-0 flex-col">
-                        <ModelSelectorName>{model.name}</ModelSelectorName>
-                        {model.bestFor && (
-                          <span className="truncate text-[10px] text-muted-foreground/50">
-                            {model.bestFor}
-                          </span>
+                      <ModelSelectorItem
+                        className={cn(
+                          "flex w-full items-center gap-2 py-2",
+                          !curated && "cursor-default opacity-40",
+                          locked && "opacity-60"
                         )}
-                      </div>
-                      <div className="ml-auto flex items-center gap-2 text-foreground/70">
-                        {(() => {
-                          const cap = capabilities?.[model.id];
-                          if (!cap) {
-                            return null;
+                        onSelect={() => {
+                          if (!curated) {
+                            return;
                           }
-                          return (
-                            <span className="flex items-center gap-1 text-muted-foreground/45">
-                              {cap.tools && (
-                                <WrenchIcon
-                                  aria-label="Tool use"
-                                  className="size-3"
-                                />
-                              )}
-                              {cap.vision && (
-                                <EyeIcon
-                                  aria-label="Vision"
-                                  className="size-3"
-                                />
-                              )}
-                              {cap.reasoning && (
-                                <BrainIcon
-                                  aria-label="Reasoning"
-                                  className="size-3"
-                                />
-                              )}
-                            </span>
-                          );
-                        })()}
-                        {locked && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <LockIcon className="size-3.5 text-muted-foreground/70" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {isAuthed
-                                ? "Upgrade to unlock"
-                                : "Sign up to unlock"}
-                            </TooltipContent>
-                          </Tooltip>
+                          if (locked) {
+                            setOpen(false);
+                            openUpgrade();
+                            return;
+                          }
+                          onModelChange?.(model.id);
+                          setCookie("chat-model", model.id);
+                          setOpen(false);
+                          setTimeout(() => {
+                            document
+                              .querySelector<HTMLTextAreaElement>(
+                                "[data-testid='multimodal-input']"
+                              )
+                              ?.focus();
+                          }, 50);
+                        }}
+                        value={model.id}
+                      >
+                        {model.id === AUTO_MODEL_ID ? (
+                          <SparklesIcon className="size-4" />
+                        ) : (
+                          <ModelSelectorLogo provider={logoProvider} />
                         )}
-                        {model.id === AUTO_MODEL_ID && (
-                          <span className="rounded bg-foreground/10 px-1 py-0.5 font-medium text-[9px] text-foreground/70 uppercase tracking-wide">
-                            Default
-                          </span>
-                        )}
-                        {/* Only mark FREE models — paid per-1M pricing removed
-                            from the switcher (it squeezed the model name);
-                            pricing lives on /pricing + the billing page. */}
-                        {model.free && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-[10px] text-emerald-500 tabular-nums">
-                                Free
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>No credit cost</TooltipContent>
-                          </Tooltip>
-                        )}
-                        {model.privacy && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span
-                                className={cn(
-                                  "rounded px-1 py-0.5 font-medium text-[9px] uppercase tracking-wide",
-                                  PRIVACY_BADGE[model.privacy].className
-                                )}
-                              >
-                                {PRIVACY_BADGE[model.privacy].label}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[220px]">
-                              {PRIVACY_BADGE[model.privacy].tip}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {!curated && (
-                          <LockIcon className="size-3 text-muted-foreground/50" />
-                        )}
-                      </div>
-                    </ModelSelectorItem>
+                        <ModelSelectorName>{model.name}</ModelSelectorName>
+                        <span className="ml-auto flex items-center">
+                          {isSelected ? (
+                            <CheckIcon className="size-4 text-foreground" />
+                          ) : (
+                            (locked || !curated) && (
+                              <LockIcon className="size-3.5 text-muted-foreground/50" />
+                            )
+                          )}
+                        </span>
+                      </ModelSelectorItem>
+                    </ModelHoverPanel>
                   );
                 })}
               </ModelSelectorGroup>
             ));
           })()}
         </ModelSelectorList>
-        <div className="border-border/40 border-t px-3 py-2">
-          <div className="flex items-center gap-1 text-[10px]">
-            <span className="text-muted-foreground/40">Anon</span>
-            <span className="text-muted-foreground/30">→</span>
-            <span className="rounded bg-teal-500/10 px-1 py-0.5 font-medium text-teal-600 dark:text-teal-400">
-              Private · ZDR
-            </span>
-            <span className="text-muted-foreground/30">→</span>
-            <span className="rounded bg-emerald-500/10 px-1 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">
-              Confidential · TEE
-            </span>
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground/50">
-            Every chat is zero-retention. Confidential mode runs in a GPU-TEE —
-            provably private + verifiable on-chain.
-          </p>
-        </div>
       </ModelSelectorContent>
     </ModelSelector>
   );
@@ -1399,6 +1441,8 @@ type ConfidentialModelOption = {
   provider?: string;
   reasoning?: boolean;
   bestFor?: string;
+  inputPer1M?: number;
+  outputPer1M?: number;
 };
 
 // Model picker shown IN PLACE of the normal selector when Confidential is on —
@@ -1443,41 +1487,36 @@ function PureConfidentialModelSelector({
       <ModelSelectorContent>
         <ModelSelectorList>
           {models.map((m) => (
-            <ModelSelectorItem
-              className={cn(
-                "flex w-full items-center gap-2",
-                m.id === selectedId &&
-                  "border-foreground/50 border-b border-dashed"
-              )}
+            <ModelHoverPanel
+              cap={m.reasoning ? { reasoning: true } : undefined}
+              description={m.bestFor}
               key={m.id}
-              onSelect={() => {
-                onSelect(m.id);
-                setOpen(false);
-              }}
-              value={m.id}
+              name={m.name.replace(" (Confidential)", "")}
+              pricing={{ inputPer1M: m.inputPer1M, outputPer1M: m.outputPer1M }}
+              privacy="confidential"
+              provider={m.provider}
             >
-              {m.provider ? (
-                <ModelSelectorLogo provider={m.provider} />
-              ) : (
-                <LockIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
-              )}
-              <div className="flex min-w-0 flex-col">
+              <ModelSelectorItem
+                className="flex w-full items-center gap-2 py-2"
+                onSelect={() => {
+                  onSelect(m.id);
+                  setOpen(false);
+                }}
+                value={m.id}
+              >
+                {m.provider ? (
+                  <ModelSelectorLogo provider={m.provider} />
+                ) : (
+                  <LockIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
+                )}
                 <ModelSelectorName>
                   {m.name.replace(" (Confidential)", "")}
                 </ModelSelectorName>
-                {m.bestFor && (
-                  <span className="truncate text-[10px] text-muted-foreground/50">
-                    {m.bestFor}
-                  </span>
+                {m.id === selectedId && (
+                  <CheckIcon className="ml-auto size-4 text-foreground" />
                 )}
-              </div>
-              {m.reasoning && (
-                <BrainIcon
-                  aria-label="Reasoning"
-                  className="ml-auto size-3 shrink-0 text-muted-foreground/45"
-                />
-              )}
-            </ModelSelectorItem>
+              </ModelSelectorItem>
+            </ModelHoverPanel>
           ))}
         </ModelSelectorList>
       </ModelSelectorContent>
