@@ -46,7 +46,10 @@ export const ModelSelectorContent = ({
       "w-[320px] p-0 rounded-xl border border-border/60 bg-card/95 backdrop-blur-xl shadow-[var(--shadow-float)]",
       className
     )}
-    side="top"
+    // Dropdown-first (v0-style): opens BELOW on the empty state (composer
+    // mid-screen); Radix collision handling auto-flips it above once the
+    // composer sits at the page bottom during a chat.
+    side="bottom"
     sideOffset={8}
     {...props}
   >
@@ -88,7 +91,9 @@ export type ModelSelectorItemProps = ComponentProps<typeof CommandItem>;
 export const ModelSelectorItem = ({ className, ...props }: ModelSelectorItemProps) => (
   <CommandItem
     className={cn(
-      "w-full cursor-pointer rounded-lg text-[13px] hover:bg-accent data-selected:bg-accent",
+      // foreground-alpha hover (not bg-accent): the house dark theme's accent
+      // (#16181b) is near-invisible on the card surface — alpha reads on any theme.
+      "w-full cursor-pointer rounded-lg text-[13px] transition-colors hover:bg-foreground/[0.07] data-[selected=true]:bg-foreground/[0.07]",
       className
     )}
     {...props}

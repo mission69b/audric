@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import {
   getAllGatewayModels,
   getCapabilities,
@@ -40,6 +41,11 @@ async function confidentialCatalog() {
 }
 
 export async function GET() {
+  // Force runtime execution — same Cache Components gotcha as /api/markets: a
+  // GET with no dynamic APIs gets PRERENDERED AT BUILD, where env (PHALA_API_KEY
+  // etc.) is absent → the baked snapshot had no confidential pricing. Freshness
+  // comes from the Cache-Control header, not prerendering.
+  await connection();
   // Short browser TTL + long shared TTL with background revalidation: the model
   // catalog changes rarely, but a long browser max-age makes additive response
   // changes (e.g. a new pricing field) invisible to already-cached clients for

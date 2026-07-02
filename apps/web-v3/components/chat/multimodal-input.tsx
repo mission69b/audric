@@ -840,9 +840,21 @@ function PureMultimodalInput({
           value={input}
         />
         <PromptInputFooter className="px-3 pb-3">
-          {/* Left: modes (Perplexity-style). Right: model + submit. */}
+          {/* Left (v0-style): attach · model · modes · memory. Right: submit. */}
           <PromptInputTools className="min-w-0 flex-wrap gap-y-1">
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+            {confidential ? (
+              <ConfidentialModelSelector
+                onSelect={pickConfidentialModel}
+                selectedId={confidentialModelId}
+              />
+            ) : (
+              <ModelSelectorCompact
+                canUsePremium={canUsePremium}
+                onModelChange={onModelChange}
+                selectedModelId={selectedModelId}
+              />
+            )}
             <ModeTabs
               canUsePremium={canUsePremium}
               confidential={confidential}
@@ -858,18 +870,6 @@ function PureMultimodalInput({
               messages={messages as ChatMessage[]}
               selectedModelId={selectedModelId}
             />
-            {confidential ? (
-              <ConfidentialModelSelector
-                onSelect={pickConfidentialModel}
-                selectedId={confidentialModelId}
-              />
-            ) : (
-              <ModelSelectorCompact
-                canUsePremium={canUsePremium}
-                onModelChange={onModelChange}
-                selectedModelId={selectedModelId}
-              />
-            )}
             {status === "submitted" ? (
               <StopButton setMessages={setMessages} stop={stop} />
             ) : (
