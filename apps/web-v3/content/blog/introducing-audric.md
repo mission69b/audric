@@ -14,7 +14,7 @@ Audric is different. A private, multi-model AI with a wallet built in. Sign in w
 ## Three things, one place
 
 - **A private assistant.** Every model, and your conversations are never used to train them.
-- **A real agent.** It searches the web, runs cited research, generates images, and pays for live data on your behalf.
+- **A real agent.** It searches the web, runs cited research, generates images and video, and pulls live market data.
 - **A wallet.** Yours, created from your Google sign-in. Nothing to set up.
 
 What ties them together is ownership. None of it has to pass through us to be useful.
@@ -53,10 +53,6 @@ Audric is an agent, not just a chatbot.
 - **Images** — generated right in the conversation.
 
 ![Audric running several live web searches with clickable sources, then a cited synthesis.](/blog/research.mp4)
-
-**Recipes** let the agent pay for live data, not just search for it — curated, pay-per-run flows over markets, tickers, and company deep-dives. Confirm the price once. The agent then pays each source per call, in USDC, straight from your wallet, and grounds the answer in what actually came back.
-
-![Running a Recipe — confirm the price, then it pays per call and returns a synthesized brief.](/blog/recipe.mp4)
 
 ## Your wallet, your money
 
