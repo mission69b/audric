@@ -96,7 +96,7 @@ function TaskCard({ t, stats }: { t: TaskDisplay; stats: TaskStats | null }) {
         </div>
       )}
 
-      <ol className="mt-4 list-decimal space-y-1.5 pl-4 text-muted-foreground text-xs leading-relaxed marker:text-muted-foreground/50">
+      <ol className="mt-4 list-decimal space-y-1.5 pl-4 text-muted-foreground text-xs leading-relaxed [overflow-wrap:anywhere] marker:text-muted-foreground/50">
         {t.steps.map((step) => (
           <li key={step}>{step}</li>
         ))}

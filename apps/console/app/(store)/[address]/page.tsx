@@ -4,7 +4,7 @@ import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
 import { BuyFlowRail } from "@/components/buy-flow-rail";
 import { CopyButton } from "@/components/copy-button";
-import { OwnerManageBar } from "@/components/owner-manage-bar";
+import { OwnerManagePanel } from "@/components/owner-manage-panel";
 import { TryItButton } from "@/components/try-it-button";
 import { UseInAudric } from "@/components/use-in-audric";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
@@ -234,7 +234,23 @@ export default async function AgentProfilePage({
         {!profile.active && <Badge variant="destructive">inactive</Badge>}
       </div>
 
-      <OwnerManageBar agentAddress={profile.address} owner={profile.owner} />
+      <OwnerManagePanel
+        profile={{
+          address: profile.address,
+          numericId: numericId ?? null,
+          name: profile.name,
+          imageUrl: profile.image ?? null,
+          description: profile.description ?? null,
+          priceUsdc: profile.priceUsdc ?? null,
+          category: profile.category ?? null,
+          website: profile.links?.website ?? null,
+          twitter: profile.links?.twitter ?? null,
+          github: profile.links?.github ?? null,
+          mcpEndpoint: profile.mcpEndpoint ?? null,
+          active: profile.active,
+          owner: profile.owner ?? null,
+        }}
+      />
 
       {profile.description && (
         <p className="mt-3 max-w-2xl whitespace-pre-line text-muted-foreground">
