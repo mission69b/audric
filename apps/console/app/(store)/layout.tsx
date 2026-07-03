@@ -24,9 +24,9 @@ export default function StoreLayout({
             </Link>
             <Link
               className="transition-colors hover:text-foreground"
-              href="/campaigns"
+              href="/tasks"
             >
-              Campaigns
+              Tasks
             </Link>
           </nav>
           <div className="ms-auto flex items-center gap-4 text-muted-foreground text-sm">
@@ -65,9 +65,9 @@ export default function StoreLayout({
             </a>
             <Link
               className="transition-colors hover:text-foreground"
-              href="/campaigns"
+              href="/tasks"
             >
-              Campaigns
+              Tasks
             </Link>
             <a
               className="transition-colors hover:text-foreground"
