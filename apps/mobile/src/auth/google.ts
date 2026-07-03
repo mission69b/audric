@@ -6,7 +6,7 @@ import {
   googleClientId,
   serverRedirectUri,
 } from "./config";
-import { createPkcePair } from "./pkce";
+import { createPkcePair, createState } from "./pkce";
 
 // Lets the auth session complete if the app was backgrounded during the
 // browser handoff. Safe to call at module load.
@@ -34,6 +34,7 @@ const buildQuery = (params: Record<string, string>): string =>
  */
 export async function authorizeWithGoogle(): Promise<AuthCode> {
   const { verifier, challenge } = await createPkcePair();
+  const state = createState();
 
   const authUrl = `${GOOGLE_AUTH_ENDPOINT}?${buildQuery({
     client_id: googleClientId(),
@@ -42,6 +43,7 @@ export async function authorizeWithGoogle(): Promise<AuthCode> {
     scope: "openid email",
     code_challenge: challenge,
     code_challenge_method: "S256",
+    state,
     prompt: "select_account",
   })}`;
 
@@ -54,6 +56,12 @@ export async function authorizeWithGoogle(): Promise<AuthCode> {
   const err = queryParams?.error;
   if (typeof err === "string") {
     throw new Error(`Google returned error: ${err}`);
+  }
+  // CSRF: the redirect must echo our exact `state`. Reject a missing or forged
+  // one BEFORE the code is trusted. The bridge is responsible for forwarding
+  // `state` back verbatim alongside `code`.
+  if (queryParams?.state !== state) {
+    throw new Error("OAuth state mismatch");
   }
   const code = queryParams?.code;
   if (typeof code !== "string" || code.length === 0) {

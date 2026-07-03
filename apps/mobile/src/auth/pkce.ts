@@ -23,3 +23,13 @@ export async function createPkcePair(): Promise<PkcePair> {
   );
   return { verifier, challenge: toBase64Url(digestB64) };
 }
+
+/**
+ * Opaque random `state` (hex of 16 bytes) for the OAuth CSRF guard. Sent on the
+ * auth request and required to come back byte-identical in the redirect — a
+ * forged/replayed callback with a wrong or missing `state` is rejected before
+ * the code is ever used.
+ */
+export function createState(): string {
+  return bytesToHex(Crypto.getRandomBytes(16));
+}
