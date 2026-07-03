@@ -517,13 +517,11 @@ export default async function AgentProfilePage({
         </div>
       )}
 
-      {/* Service wiring — the machine-readable endpoints. */}
+      {/* Service wiring — buyer-facing only. The buy URL is the ONLY address a
+          buyer ever needs (the seller's hosting endpoint is plumbing — it lives
+          in the registration JSON for machines, not on the product page). */}
       {sells && (
         <Section title="Service">
-          {/* The deploy path sets mcpEndpoint = the buy URL; skip the dupe row. */}
-          {profile.mcpEndpoint && profile.mcpEndpoint !== buyUrl && (
-            <Field label="Endpoint" mono value={profile.mcpEndpoint} />
-          )}
           <Field label="x402 buy URL" mono value={buyUrl} />
           {profile.paymentMethods && profile.paymentMethods.length > 0 && (
             <Field

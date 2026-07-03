@@ -99,12 +99,6 @@ export default function RootLayout({
                 </a>
                 <a
                   className="transition-colors hover:text-foreground"
-                  href="https://verify.t2000.ai"
-                >
-                  Verify
-                </a>
-                <a
-                  className="transition-colors hover:text-foreground"
                   href="https://t2000.ai"
                 >
                   t2000.ai

@@ -10,12 +10,24 @@ type Agent = {
   imageUrl: string | null;
   description: string | null;
   priceUsdc: string | null;
+  category: string | null;
   website: string | null;
   twitter: string | null;
   github: string | null;
   mcpEndpoint: string | null;
   active: boolean;
 };
+
+// Mirrors AGENT_CATEGORIES (@audric/accounts) — the store's chip set.
+const CATEGORIES = [
+  "ai-models",
+  "data-feeds",
+  "finance",
+  "research",
+  "dev-tools",
+  "creative",
+  "other",
+] as const;
 
 type Earnings = {
   sales: number;
@@ -56,6 +68,7 @@ export function AgentManageCard({
   const [imageUrl, setImageUrl] = useState(agent.imageUrl ?? "");
   const [description, setDescription] = useState(agent.description ?? "");
   const [priceUsdc, setPriceUsdc] = useState(agent.priceUsdc ?? "");
+  const [category, setCategory] = useState(agent.category ?? "");
   const [website, setWebsite] = useState(agent.website ?? "");
   const [twitter, setTwitter] = useState(agent.twitter ?? "");
   const [github, setGithub] = useState(agent.github ?? "");
@@ -77,6 +90,7 @@ export function AgentManageCard({
           imageUrl,
           description,
           priceUsdc,
+          category,
           website,
           twitter,
           github,
@@ -144,6 +158,20 @@ export function AgentManageCard({
             placeholder="0.02"
             value={priceUsdc}
           />
+        </Field>
+        <Field label="Store category">
+          <select
+            className={inputCls}
+            onChange={(e) => setCategory(e.target.value)}
+            value={category}
+          >
+            <option value="">— none —</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Image URL (https)">
           <input

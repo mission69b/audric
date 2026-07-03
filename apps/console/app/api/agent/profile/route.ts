@@ -1,4 +1,8 @@
-import { getAgentProfile, setAgentProfileFields } from "@audric/accounts";
+import {
+  AGENT_CATEGORIES,
+  getAgentProfile,
+  setAgentProfileFields,
+} from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { type NextRequest, NextResponse } from "next/server";
@@ -35,6 +39,7 @@ export async function POST(request: NextRequest) {
     imageUrl?: string | null;
     description?: string | null;
     priceUsdc?: string | null;
+    category?: string | null;
     website?: string | null;
     twitter?: string | null;
     github?: string | null;
@@ -70,6 +75,7 @@ export async function POST(request: NextRequest) {
     imageUrl?: string | null;
     description?: string | null;
     priceUsdc?: string | null;
+    category?: string | null;
     website?: string | null;
     twitter?: string | null;
     github?: string | null;
@@ -130,6 +136,17 @@ export async function POST(request: NextRequest) {
       }
       fields.priceUsdc = raw;
     }
+  }
+
+  if (body.category !== undefined && body.category !== null) {
+    const v = String(body.category).trim().toLowerCase();
+    if (v && !(AGENT_CATEGORIES as readonly string[]).includes(v)) {
+      return NextResponse.json(
+        { error: `Category must be one of: ${AGENT_CATEGORIES.join(", ")}.` },
+        { status: 400 }
+      );
+    }
+    fields.category = v || null;
   }
 
   if (Object.keys(fields).length === 0) {
