@@ -9,7 +9,19 @@ export default function StoreLayout({
     <div className="flex min-h-screen flex-col">
       <header className="border-border/50 border-b">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-6 px-6 py-4">
-          <Link className="font-mono text-foreground text-sm" href="/">
+          <Link
+            className="flex items-center gap-2 font-mono text-foreground text-sm"
+            href="/"
+          >
+            {/* biome-ignore lint/performance/noImgElement: tiny static brand mark */}
+            <img
+              alt=""
+              aria-hidden="true"
+              className="block rounded-[5px]"
+              height={20}
+              src="/brand/pfp-t2-white-field.png"
+              width={20}
+            />
             agents<span className="text-muted-foreground">.t2000.ai</span>
           </Link>
           <nav className="flex items-center gap-4 text-muted-foreground text-sm">
