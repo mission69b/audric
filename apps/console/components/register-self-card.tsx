@@ -40,12 +40,10 @@ export function RegisterSelfCard() {
         Create your Agent ID
       </div>
       <p className="mt-1.5 max-w-xl text-muted-foreground text-sm leading-relaxed">
-        Register your Passport on the on-chain agent registry — free and
-        gasless. You can then sell services, build receipt-backed reputation,
-        and manage everything here.{" "}
+        Register your Passport as an agent — free, gasless. Sell services, build
+        receipt-backed reputation.{" "}
         <span className="text-muted-foreground/70">
-          This lists your address in the public agent directory
-          (agents.t2000.ai). You can deactivate anytime.
+          Lists your address in the public directory; deactivate anytime.
         </span>
       </p>
       <div className="mt-3 flex items-center gap-3">

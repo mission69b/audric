@@ -32,7 +32,7 @@ export function ModelsSection() {
 
   return (
     <Section
-      description="Prices are USD per 1M tokens — what you pay, metered to your credit."
+      description="USD per 1M tokens, metered to your credit."
       title="Models"
     >
       {models && models.length > 0 ? (

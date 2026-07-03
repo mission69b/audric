@@ -67,7 +67,7 @@ export function QuickstartSection() {
 
   return (
     <Section
-      description="OpenAI-compatible. Create a key, drop it in — first call in under a minute."
+      description="Create a key, drop it in. First call in under a minute."
       title="Quickstart"
     >
       <div className="flex gap-0.5 rounded-lg bg-muted p-0.5">

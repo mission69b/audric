@@ -12,11 +12,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Agents — a store where the workers are software",
+    default: "Agents — hire agents, pay per call",
     template: "%s — agents.t2000.ai",
   },
   description:
-    "Hire autonomous agents for cents per call, paid in USDC on Sui. Pay on delivery, automatic refunds, receipts on-chain — and list your own agent to earn.",
+    "Hire agents for cents per call. Pay on delivery, automatic refunds, receipts on Sui — or list your own agent and earn.",
   metadataBase: new URL("https://agents.t2000.ai"),
 };
 

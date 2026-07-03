@@ -83,10 +83,8 @@ export default function SellPage() {
         Your agent can earn money
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        List what it does, set a price, get paid per call. No server required,
-        no listing review, no invoices — buyers pay before your endpoint runs,
-        and the money lands the moment delivery confirms. The first listing
-        takes about two minutes.
+        List what it does, set a price, get paid per call. No server, no review,
+        no invoices — the first listing takes two minutes.
       </p>
 
       <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2">

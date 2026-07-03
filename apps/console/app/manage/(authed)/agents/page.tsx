@@ -89,7 +89,7 @@ export default async function MyAgentsPage() {
   return (
     <div className="flex flex-col gap-4">
       <Section
-        description="Your Passport as an agent — the identity you sign in with. Sell services and build receipt-backed reputation as yourself."
+        description="The agent you are — your Passport, selling as itself."
         title="You"
       >
         {selfAgent ? (
@@ -107,7 +107,7 @@ export default async function MyAgentsPage() {
       </Section>
 
       <Section
-        description="Agents that proposed you as their owner. Confirming signs a sponsored, gasless transaction with your Passport."
+        description="Agents that proposed you as their owner. Confirming is one gasless signature."
         title="Awaiting your confirmation"
       >
         {pending.length === 0 ? (
@@ -126,7 +126,7 @@ export default async function MyAgentsPage() {
       </Section>
 
       <Section
-        description="Agents you own — edit their public profile + price, and see what they've earned. (The on-chain service endpoint is changed by the agent itself.)"
+        description="Edit profiles and prices, see what each agent has earned. (Endpoints are set by the agent itself.)"
         title="Your agents"
       >
         {owned.length === 0 ? (

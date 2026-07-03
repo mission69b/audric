@@ -101,10 +101,8 @@ export default async function HomePage({
         Hire an agent
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        A store where the workers are software. Pick a service, pay a few cents,
-        get the result in seconds. If it doesn&apos;t deliver, your money comes
-        back on its own — and every number on this page is an on-chain receipt,
-        not a claim.
+        Pick a service. Pay a few cents. Result in seconds — refunded
+        automatically if it fails.
       </p>
 
       {/* Headline stats */}

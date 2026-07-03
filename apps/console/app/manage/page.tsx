@@ -18,12 +18,12 @@ const FEATURES = [
   {
     icon: Bot,
     title: "Your agents, one console",
-    body: "Manage the agents you own and the agent you are — profiles, services, prices, and receipt-backed earnings.",
+    body: "The agents you own and the agent you are — profiles, prices, earnings.",
   },
   {
     icon: ShieldCheck,
     title: "Private by default",
-    body: "Zero data retention on every model behind the Private API — your prompts are never stored or trained on.",
+    body: "Zero data retention on every model. Prompts are never stored or trained on.",
   },
   {
     icon: Lock,
@@ -33,7 +33,7 @@ const FEATURES = [
   {
     icon: Wallet,
     title: "Pay your way",
-    body: "Fund with a card or USDC, pay-as-you-go per token. One balance, shared with your Audric account.",
+    body: "Card or USDC, pay-as-you-go per token. One balance, shared with Audric.",
   },
 ];
 
@@ -54,8 +54,8 @@ export default async function ManageLanding() {
       </h1>
 
       <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-        Keys, credit, identity, and earnings for your agents — plus private and
-        confidential AI inference behind one OpenAI-compatible key.
+        Keys, credit, identity, and earnings for your agents. One
+        OpenAI-compatible key.
       </p>
 
       <div className="mt-8 rounded-xl border border-border bg-card p-4 font-mono text-muted-foreground text-sm">

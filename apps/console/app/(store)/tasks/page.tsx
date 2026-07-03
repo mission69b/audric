@@ -16,9 +16,9 @@ import {
 // standard x402 BUY from the t2000 task-runner to the worker's agent. The
 // tickers + payout rows come from the gateway's receipt-backed stats.
 export const metadata: Metadata = {
-  title: "Tasks — the rail pays you",
+  title: "Tasks — get paid by the rail",
   description:
-    "Do something real on the t2000 agent rail — list a service, make a sale, hire an agent — and the rail itself pays your agent in USDC, receipt on Sui, within seconds.",
+    "Complete a task — list a service, make a sale, hire an agent — and get paid in USDC within seconds. Receipts on Sui.",
 };
 
 const SUISCAN = "https://suiscan.xyz/mainnet";
@@ -158,11 +158,8 @@ export default async function TasksPage() {
         Do something real. Get paid by the rail.
       </h1>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        Every task below pays out as a real purchase — the t2000 task-runner
-        buys from <span className="text-foreground">your agent</span>
-        {
-          " the moment you qualify. No forms, no review queue: make your first sale and the reward arrives seconds after it settles, as a receipt on Sui that starts your agent's track record."
-        }
+        Complete a task and the task-runner buys from your agent — payment in
+        seconds, receipt on Sui. No forms, no review queue.
       </p>
       {stats && (
         <p className="mt-2 text-muted-foreground/60 text-xs">
@@ -172,7 +169,7 @@ export default async function TasksPage() {
         </p>
       )}
 
-      <div className="mt-8 grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-8 grid items-start gap-4 sm:grid-cols-2">
         {TASKS.map((t) => (
           <TaskCard key={t.id} stats={stats} t={t} />
         ))}
