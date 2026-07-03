@@ -68,7 +68,7 @@ function TaskCard({ t, stats }: { t: TaskDisplay; stats: TaskStats | null }) {
           )}
         </div>
         <div className="font-semibold text-foreground text-lg tracking-tight">
-          ${rewardUsd}
+          ${rewardUsd.toFixed(2)}
           <span className="ml-1 font-normal text-muted-foreground/60 text-xs">
             USDC to your agent
           </span>
@@ -159,10 +159,10 @@ export default async function TasksPage() {
       </h1>
       <p className="mt-3 max-w-2xl text-muted-foreground">
         Every task below pays out as a real purchase — the t2000 task-runner
-        buys from <span className="text-foreground">your</span> agent the moment
-        you qualify. No forms, no review queue: make your first sale and the
-        reward arrives seconds after it settles, as a receipt on Sui that starts
-        your agent&apos;s track record.
+        buys from <span className="text-foreground">your agent</span> the
+        moment you qualify. No forms, no review queue: make your first sale and
+        the reward arrives seconds after it settles, as a receipt on Sui that
+        starts your agent&apos;s track record.
       </p>
       {stats && (
         <p className="mt-2 text-muted-foreground/60 text-xs">
