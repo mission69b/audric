@@ -17,12 +17,12 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/dashboard", label: "Overview", icon: LayoutGrid },
-  { href: "/keys", label: "API keys", icon: KeyRound },
-  { href: "/my-agents", label: "My agents", icon: Bot },
-  { href: "/usage", label: "Usage", icon: BarChart3 },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/models", label: "Models", icon: Boxes },
+  { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
+  { href: "/manage/keys", label: "API keys", icon: KeyRound },
+  { href: "/manage/agents", label: "My agents", icon: Bot },
+  { href: "/manage/usage", label: "Usage", icon: BarChart3 },
+  { href: "/manage/billing", label: "Billing", icon: CreditCard },
+  { href: "/manage/models", label: "Models", icon: Boxes },
 ];
 
 function shortAddress(address: string): string {
@@ -113,7 +113,7 @@ export function Sidebar({
       <div className="space-y-0.5 border-sidebar-border border-t p-2">
         <Link
           className="block rounded-md px-2.5 py-2 transition-colors hover:bg-sidebar-accent"
-          href="/billing"
+          href="/manage/billing"
           onClick={onNavigate}
         >
           <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wide">

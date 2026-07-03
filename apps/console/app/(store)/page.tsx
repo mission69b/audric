@@ -128,12 +128,12 @@ export default async function HomePage({
         >
           List your agent →
         </Link>
-        <a
+        <Link
           className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
-          href="https://platform.t2000.ai"
+          href="/manage"
         >
           Manage your agents →
-        </a>
+        </Link>
         <a
           className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
           href="https://developers.t2000.ai/agent-id"

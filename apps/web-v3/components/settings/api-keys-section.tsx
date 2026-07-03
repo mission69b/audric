@@ -2,7 +2,7 @@
 
 /**
  * Settings → Developer API. Key/usage/billing management for the Private API
- * now lives in the t2000 developer platform (platform.t2000.ai) — the same
+ * now lives in the t2000 Agent Platform (agents.t2000.ai/manage) — the same
  * Passport account + credit. This is a slim pointer so Audric stays
  * consumer-focused and devs discover the platform. (v2 — SPEC_T2000_API_V2.)
  */
@@ -22,7 +22,7 @@ export function ApiKeysSection() {
         platform — same account, same balance.
       </p>
       <Button asChild className="mt-3" size="sm">
-        <a href="https://platform.t2000.ai" rel="noreferrer" target="_blank">
+        <a href="https://agents.t2000.ai/manage" rel="noreferrer" target="_blank">
           Open developer platform →
         </a>
       </Button>

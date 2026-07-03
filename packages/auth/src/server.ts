@@ -4,7 +4,7 @@ import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 
 /**
  * Shared server auth (zkLogin Passport) — the substrate consumed by both
- * audric/web-v3 (audric.ai) and apps/console (platform.t2000.ai). One source
+ * audric/web-v3 (audric.ai) and apps/console (agents.t2000.ai). One source
  * → both surfaces derive the SAME Passport address from the SAME Google client
  * + Enoki salt holder; each app mints its own domain-scoped session cookie.
  * (SPEC_T2000_API_V2 §2 / M1.)

@@ -15,7 +15,7 @@ function shortAddress(address: string): string {
 export default async function OverviewPage() {
   const session = await getCurrentUser();
   if (!session) {
-    redirect("/");
+    redirect("/manage");
   }
   const [balanceMicros, user] = await Promise.all([
     getCreditBalanceMicros(session.user.id),
@@ -34,7 +34,7 @@ export default async function OverviewPage() {
           </div>
           <Link
             className="mt-2 inline-block text-muted-foreground text-xs underline transition-colors hover:text-foreground"
-            href="/billing"
+            href="/manage/billing"
           >
             Add credit
           </Link>

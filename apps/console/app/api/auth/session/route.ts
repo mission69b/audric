@@ -16,7 +16,7 @@ const MAX_SESSION_MS = 7 * 24 * 60 * 60 * 1000;
  * POST { jwt, expiresAt } — the one-time Google-JWT verification + app-session
  * mint for the t2000 console. Verifies the id_token, derives the Sui address
  * (Enoki), ensures the shared user row exists, mints our HS256 session token,
- * and sets it as an httpOnly cookie scoped to platform.t2000.ai.
+ * and sets it as an httpOnly cookie scoped to agents.t2000.ai.
  *
  * The derived address is the SAME Passport identity as audric.ai (same Google
  * client + Enoki salt holder) → one account, one credit, two surfaces. The

@@ -11,7 +11,7 @@ export default async function AppLayout({
 }) {
   const session = await getCurrentUser();
   if (!session) {
-    redirect("/");
+    redirect("/manage");
   }
 
   const [balanceMicros, user] = await Promise.all([

@@ -72,7 +72,7 @@ export async function authenticateApiKey(
         ok: false,
         response: openAiError(
           402,
-          "Insufficient credit. Add credit or a plan at platform.t2000.ai to continue.",
+          "Insufficient credit. Add credit or a plan at agents.t2000.ai/manage to continue.",
           "insufficient_quota",
           "insufficient_credit"
         ),

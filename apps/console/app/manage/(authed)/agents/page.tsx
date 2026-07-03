@@ -66,7 +66,7 @@ function AgentRow({
 export default async function MyAgentsPage() {
   const session = await getCurrentUser();
   if (!session) {
-    redirect("/");
+    redirect("/manage");
   }
   const { owned, pending } = await listAgentsForOwner(session.user.id);
   const earnings = await Promise.all(

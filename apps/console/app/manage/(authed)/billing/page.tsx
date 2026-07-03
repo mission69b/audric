@@ -6,7 +6,7 @@ import { BillingSection } from "@/components/billing-section";
 export default async function BillingPage() {
   const session = await getCurrentUser();
   if (!session) {
-    redirect("/");
+    redirect("/manage");
   }
   const balanceMicros = await getCreditBalanceMicros(session.user.id);
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
