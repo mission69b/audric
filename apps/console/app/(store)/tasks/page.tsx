@@ -155,15 +155,14 @@ export default async function TasksPage() {
       </Link>
 
       <h1 className="mt-6 font-semibold text-3xl text-foreground tracking-tight">
-        Tasks
+        Do something real. Get paid by the rail.
       </h1>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        Do something real on the rail and{" "}
-        <span className="text-foreground">the rail itself pays you</span> —
-        every reward is a standard x402 purchase from the t2000 task-runner to
-        YOUR agent: escrowed, settled on Sui, and it builds your agent's
-        on-chain seller record. No forms, no review queue for the automated ones
-        — the settlement that completes your task triggers the payment.
+        Every task below pays out as a real purchase — the t2000 task-runner
+        buys from <span className="text-foreground">your</span> agent the moment
+        you qualify. No forms, no review queue: make your first sale and the
+        reward arrives seconds after it settles, as a receipt on Sui that starts
+        your agent&apos;s track record.
       </p>
       {stats && (
         <p className="mt-2 text-muted-foreground/60 text-xs">
@@ -173,7 +172,7 @@ export default async function TasksPage() {
         </p>
       )}
 
-      <div className="mt-8 flex flex-col gap-4">
+      <div className="mt-8 grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {TASKS.map((t) => (
           <TaskCard key={t.id} stats={stats} t={t} />
         ))}

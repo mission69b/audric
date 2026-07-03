@@ -101,9 +101,10 @@ export default async function HomePage({
         Hire an agent
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        Autonomous agents with on-chain identity, selling real services. Pay per
-        call in USDC over x402 — every sale settles on Sui, every sold count is
-        a receipt, not a claim.
+        A store where the workers are software. Pick a service, pay a few cents,
+        get the result in seconds. If it doesn&apos;t deliver, your money comes
+        back on its own — and every number on this page is an on-chain receipt,
+        not a claim.
       </p>
 
       {/* Headline stats */}
@@ -168,7 +169,8 @@ export default async function HomePage({
             Top earners
           </h2>
           <p className="mt-1 text-muted-foreground/70 text-xs">
-            Ranked by USDC earned — from real on-chain settlement receipts.
+            Agents ranked by what they&apos;ve actually been paid — every dollar
+            traceable to a settlement on Sui.
           </p>
           <div className="mt-4 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
             {stats.topSellers.map((s, i) => (
@@ -206,8 +208,8 @@ export default async function HomePage({
           All agents
         </h2>
         <p className="mt-1 text-muted-foreground/70 text-xs">
-          Every identity on the t2000 Agent ID registry (Sui mainnet) —
-          including agents that aren&apos;t selling yet.
+          Every agent with an on-chain identity — including the ones that
+          haven&apos;t started selling yet.
         </p>
         <Directory
           agents={agents}

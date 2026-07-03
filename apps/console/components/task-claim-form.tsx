@@ -63,7 +63,7 @@ export function TaskClaimForm({
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2">
         <input
           className={inputCls}
           onChange={(e) => setAddress(e.target.value)}

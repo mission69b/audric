@@ -156,7 +156,7 @@ export const BUYER_STEPS: Step[] = [
     label: "PICK",
     actor: "YOU",
     title: "Pick a service",
-    body: "Browse the shelf, or resolve any agent by address. Every listing is an on-chain identity with a declared price.",
+    body: "Browse the shelf. Every listing is a real agent with an on-chain identity and one declared price — what you see is what it costs.",
     facts: [
       ["catalog", "services"],
       ["identity", "on-chain"],
@@ -165,8 +165,8 @@ export const BUYER_STEPS: Step[] = [
   {
     label: "PAY",
     actor: "YOU",
-    title: "Pay in USDC — into escrow, not to the seller",
-    body: "One x402 call, gasless, no account needed. Funds are held by the gateway treasury while delivery runs.",
+    title: "Pay — into escrow, not to the seller",
+    body: "One call, no account, no gas. Your money waits in escrow while the work happens. The seller hasn't touched it yet.",
     facts: [
       ["token", "USDC"],
       ["gas", "sponsored"],
@@ -176,8 +176,8 @@ export const BUYER_STEPS: Step[] = [
   {
     label: "DELIVER",
     actor: "GATEWAY",
-    title: "The service runs",
-    body: "The gateway calls the seller's endpoint and relays the response back to you in the same round trip.",
+    title: "The work happens",
+    body: "The gateway calls the seller and brings the answer back to you — one round trip, fifteen seconds, or it counts as failed.",
     facts: [
       ["timeout", "15s"],
       ["relay", "one round trip"],
@@ -186,8 +186,8 @@ export const BUYER_STEPS: Step[] = [
   {
     label: "SETTLE",
     actor: "GATEWAY",
-    title: "Settle — or automatic refund",
-    body: "Delivery succeeds → the seller is paid the net. It fails → the full amount comes back to you automatically. No claims process.",
+    title: "Settle — or your money comes back",
+    body: "Delivered → the seller gets paid. Failed → every cent returns to you, automatically. There is no claims process, because there are no claims.",
     facts: [
       ["fee", "2.5%"],
       ["refund", "automatic"],
@@ -197,7 +197,7 @@ export const BUYER_STEPS: Step[] = [
     label: "RECEIPT",
     actor: "SUI",
     title: "The sale becomes a receipt",
-    body: "Every settlement writes a receipt on the ledger. Sold counts and reputation accrue from receipts — not reviews.",
+    body: "Every settlement is written to Sui. Reputation here is counted, not reviewed — nobody can fake a track record.",
     facts: [
       ["ledger", "on-chain"],
       ["reputation", "receipt-backed"],
@@ -210,8 +210,8 @@ export const SELLER_STEPS: Step[] = [
   {
     label: "LIST",
     actor: "YOU",
-    title: "Get an identity",
-    body: "t2 init registers your agent on-chain — gasless, no funding needed. Your name and description are the storefront card.",
+    title: "Give your agent a name",
+    body: "One command registers your agent on-chain. Free, no gas, no forms, no listing review. Your name and description are the storefront card.",
     facts: [
       ["cost", "free"],
       ["identity", "on-chain"],
@@ -220,8 +220,8 @@ export const SELLER_STEPS: Step[] = [
   {
     label: "PRICE",
     actor: "YOU",
-    title: "Declare or deploy",
-    body: "Self-host an endpoint and declare it, or wrap any API with t2 agent deploy — t2000 hosts the proxy, your key stays encrypted.",
+    title: "Point at what it does, set a price",
+    body: "Declare your own endpoint, or wrap an API you already use — t2000 hosts the proxy and your key stays encrypted. Priced per call, in cents.",
     facts: [
       ["price", "per call"],
       ["server", "optional"],
@@ -230,8 +230,8 @@ export const SELLER_STEPS: Step[] = [
   {
     label: "DELIVER",
     actor: "GATEWAY",
-    title: "Buyers pay, the gateway delivers",
-    body: "A buyer's payment is escrowed, your endpoint is called, and the response is relayed — one round trip.",
+    title: "Buyers pay first",
+    body: "The buyer's money is already in escrow when your endpoint is called. Do the work, return the response — one round trip.",
     facts: [
       ["escrow", "treasury"],
       ["timeout", "15s"],
@@ -240,8 +240,8 @@ export const SELLER_STEPS: Step[] = [
   {
     label: "GET PAID",
     actor: "GATEWAY",
-    title: "The net lands in your wallet",
-    body: "On successful delivery the price minus the 2.5% fee forwards to you, gasless. Failures refund the buyer — you're never chasing disputes.",
+    title: "The money is yours, instantly",
+    body: "Delivery confirms and the net lands in your wallet, gasless. Failures refund the buyer on their own — you will never chase a dispute.",
     facts: [
       ["fee", "2.5%"],
       ["payout", "instant"],
@@ -250,8 +250,8 @@ export const SELLER_STEPS: Step[] = [
   {
     label: "REPUTATION",
     actor: "SUI",
-    title: "Receipts build your reputation",
-    body: "Every sale is an on-chain settlement receipt. Sold counts, volume, and delivered rate are yours — verifiable, not farmable.",
+    title: "Your track record builds itself",
+    body: "Every delivered sale is a receipt on Sui. Sold counts, volume, delivered rate — earned, verifiable, and impossible to buy.",
     facts: [
       ["proof", "receipts"],
       ["view", "t2 agent earnings"],

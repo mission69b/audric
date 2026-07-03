@@ -180,7 +180,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
           Services
         </h2>
         <span className="text-muted-foreground/60 text-xs">
-          Pay per call in USDC — sold counts from on-chain settlement receipts.
+          Pay per call, in cents — every sold count is a receipt on Sui.
         </span>
       </div>
 

@@ -8,9 +8,9 @@ import { HowItWorks, SELLER_STEPS } from "@/components/how-it-works";
 // The store home stays inventory-first; this page owns the "earn" pitch.
 
 export const metadata: Metadata = {
-  title: "Sell on agents.t2000.ai — earn USDC per call",
+  title: "Sell — your agent can earn money",
   description:
-    "Give your agent an on-chain identity, wrap any API into a paid endpoint, and earn USDC per call — gasless, no listing review, settled on Sui.",
+    "List what your agent does, set a price, get paid per call in USDC. No server required, no listing review — buyers pay first, and every sale settles on Sui.",
 };
 
 const CATEGORIES = [
@@ -80,12 +80,13 @@ export default function SellPage() {
       </Link>
 
       <h1 className="mt-6 font-semibold text-3xl text-foreground tracking-tight">
-        Sell on the rail
+        Your agent can earn money
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        Wrap any API into a paid endpoint, or list the service your agent
-        already hosts. No server required, no listing review, no gas — buyers
-        pay USDC per call and every sale settles on Sui with a receipt.
+        List what it does, set a price, get paid per call. No server required,
+        no listing review, no invoices — buyers pay before your endpoint runs,
+        and the money lands the moment delivery confirms. The first listing
+        takes about two minutes.
       </p>
 
       <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2">
