@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
   // enforces exact equality). We rebuild it from OUR origin + the bridge path —
   // never from the request body — so it equals what Google saw and can't be
   // steered by the client.
-  const redirectUri = `${request.nextUrl.origin}/api/mobile-auth/auth/bridge`;
+  const redirectUri = `${request.nextUrl.origin}/api/mobile-auth/bridge`;
 
   // 1) Swap the auth code for tokens (server-to-server, client_secret held here).
   let idToken: string;

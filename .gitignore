@@ -54,6 +54,9 @@ scripts/
 # and apps/web-v3/scripts (stripe seed + billing/identity ops scripts)
 !apps/web-v3/scripts/
 !apps/web-v3/scripts/**
+# and apps/mobile/scripts (phase-0 tunnel helper referenced by PHASE0_RUNBOOK)
+!apps/mobile/scripts/
+!apps/mobile/scripts/**
 
 # pitch-deck iterations (marketing artifacts, not part of the app)
 pitch-deck.html

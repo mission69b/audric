@@ -20,7 +20,7 @@ already holds the canonical Google + Enoki config); the old standalone
 On the **Web** OAuth client (the one whose id is in `.env.local` /
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`), add to **Authorized redirect URIs**:
 
-- `http://localhost:3002/api/mobile-auth/auth/bridge`  ← native app gate (simulator / emulator)
+- `http://localhost:3002/api/mobile-auth/bridge`  ← native app gate (simulator / emulator)
 
 For a physical device or any Android hardware you'll also add the tunnel URL's
 bridge path (see §3c). Google permits `http://localhost` redirect URIs for Web
@@ -35,7 +35,7 @@ pnpm --filter web-v3 dev        # http://localhost:3002
 ```
 
 web-v3 serves the two native-auth routes on demand:
-`GET /api/mobile-auth/auth/bridge` and `POST /api/mobile-auth/exchange`.
+`GET /api/mobile-auth/bridge` and `POST /api/mobile-auth/exchange`.
 `GOOGLE_CLIENT_SECRET` must be set in web-v3's `.env.local` (unset → the exchange
 returns 503). Leave dev running.
 
@@ -61,7 +61,7 @@ npx expo run:ios       # or: npx expo run:android   (a dev build; Expo Go won't
 
 `.env.local` points the app at `http://localhost:3002/api/mobile-auth`. Tap
 **Continue with Google** → the system browser opens Google → Google redirects to
-`/api/mobile-auth/auth/bridge` → web-v3 302s back to `audric://callback` → the
+`/api/mobile-auth/bridge` → web-v3 302s back to `audric://callback` → the
 app POSTs `code` + PKCE verifier to `/api/mobile-auth/exchange` → the screen
 shows the derived address and `✓ aud matches`.
 
@@ -82,7 +82,7 @@ Networking, per target:
   ```
   `set-tunnel.sh` (local, gitignored) rewrites `EXPO_PUBLIC_EXCHANGE_BASE_URL` to
   `https://XXXX.trycloudflare.com/api/mobile-auth` and prints the exact bridge URI
-  to register. Add `https://XXXX.trycloudflare.com/api/mobile-auth/auth/bridge`
+  to register. Add `https://XXXX.trycloudflare.com/api/mobile-auth/bridge`
   to the Google Web client redirect URIs, then rebuild so Expo re-inlines the env
   (`EXPO_PUBLIC_*` is baked into the bundle at build time).
 
@@ -101,7 +101,7 @@ Networking, per target:
 
 ## Files
 
-- `apps/web-v3/app/api/mobile-auth/auth/bridge/route.ts` — 302s the Google
+- `apps/web-v3/app/api/mobile-auth/bridge/route.ts` — 302s the Google
   `code`+`state` on to the fixed `audric://callback`.
 - `apps/web-v3/app/api/mobile-auth/exchange/route.ts` — `POST {code, codeVerifier}`
   → swap code→id_token at Google (uses `GOOGLE_CLIENT_SECRET`) → verify `aud` +

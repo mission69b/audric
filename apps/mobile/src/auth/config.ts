@@ -52,7 +52,7 @@ const exchangeBase = (): string =>
  * 302s the code on to APP_RETURN_URI (the custom scheme) so the system browser
  * hands control back to the app.
  */
-export const serverRedirectUri = (): string => `${exchangeBase()}/auth/bridge`;
+export const serverRedirectUri = (): string => `${exchangeBase()}/bridge`;
 
 /** JSON endpoint the app POSTs { code, codeVerifier, redirectUri } to. */
 export const exchangeUrl = (): string => `${exchangeBase()}/exchange`;
