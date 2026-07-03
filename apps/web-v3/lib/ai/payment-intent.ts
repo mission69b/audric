@@ -41,22 +41,25 @@ export function hasPaymentIntent(opts: {
 //
 // The store-buy tool has a different shape from send_transfer: under
 // need-first routing the model OFFERS a listed service in text ("live report,
-// $0.05 — want it?") and the user's agreement turn is often a bare "yes" with
-// no payment verb. Gating on user phrasing alone would strip the tool exactly
-// when it's needed. So the gate opens on EITHER:
-//   (a) explicit buy/use-a-service phrasing (incl. all payment verbs), OR
-//   (b) a short affirmative reply RIGHT AFTER the assistant named a listed
-//       service with a price (the offer→agree handshake, checked structurally
-//       against the live catalog — not trusted from the prompt).
-// Misfire cost is bounded by construction: the tool can only pay allowlisted
+// $0.05 — want it?") and the user's agreement turn can be phrased ANY way
+// ("yes" / "do the paid one" / "the radar option"). The founder's first live
+// smoke proved that parsing the USER's wording for agreement is fragile by
+// construction ("Do the paid Funding Radar" failed an affirmative regex and
+// the tool call errored). So the gate keys on STRUCTURE, not user phrasing:
+//   (a) OFFER-PENDING — the assistant's previous message named a listed
+//       catalog service AND a $ price (checked against the live server-fetched
+//       catalog, never trusted from the prompt) → the tool rides the user's
+//       reply turn no matter how it's worded; the model decides from context
+//       (a "no thanks" just isn't called on).
+//   (b) explicit buy/use-a-service phrasing (incl. all payment verbs) with no
+//       prior offer.
+// Misfire cost is bounded by construction: agent_pay can only pay allowlisted
 // rail sellers (URL built client-side), ≤ $5, behind a tap-to-confirm card,
-// pay-on-delivery with auto-refund. The send_transfer gate is UNTOUCHED.
+// pay-on-delivery with auto-refund. The send_transfer gate (S.490) is a
+// DIFFERENT risk class (arbitrary recipients) and stays strict — UNTOUCHED.
 
 const SERVICE_VERBS =
   /\b(buy|purchase|hire|order|use|call|run|get|try)\b[\s\S]{0,60}\b(agent|service|report|store|listing)\b/i;
-
-const SHORT_AFFIRMATIVE =
-  /^\s*(y(es|ep|eah|up)?|sure|ok(ay)?|go ahead|do it|buy( it)?|get it|please( do)?|sounds good|why not|let'?s (do|try|go)( it| that)?|i want it|want it)[.!\s]*$/i;
 
 export function hasAgentPayIntent(opts: {
   /** The recent user text (typically the last 1–2 user turns). */
@@ -74,18 +77,17 @@ export function hasAgentPayIntent(opts: {
   if (PAYMENT_VERBS.test(opts.text) || SERVICE_VERBS.test(opts.text)) {
     return true;
   }
-  // The offer→agree handshake: a terse agreement only counts when the
-  // assistant's preceding message actually named a listed service AND a price.
+  // Offer-pending: the assistant just made a priced offer for a real listed
+  // service — keep the tool available for the user's reply, whatever its
+  // wording. Structural (catalog + price), not phrasing-based.
   if (
     opts.lastAssistantText &&
     opts.catalogNames &&
-    opts.catalogNames.length > 0 &&
-    opts.text.trim().length <= 40 &&
-    SHORT_AFFIRMATIVE.test(opts.text)
+    opts.catalogNames.length > 0
   ) {
-    const assistant = opts.lastAssistantText;
+    const assistant = opts.lastAssistantText.toLowerCase();
     const namedService = opts.catalogNames.some((n) =>
-      assistant.toLowerCase().includes(n.toLowerCase())
+      assistant.includes(n.toLowerCase())
     );
     return namedService && /\$\s?\d/.test(assistant);
   }
