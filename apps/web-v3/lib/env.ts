@@ -37,6 +37,12 @@ const serverSchema = z.object({
    * Google-JWT verification (kills the hourly-logout). Reuses the template's
    * existing Auth.js secret — no new var. */
   AUTH_SECRET: requiredString,
+  // Native (mobile) Google sign-in — OPTIONAL: the client_secret for the SAME
+  // Web OAuth client as NEXT_PUBLIC_GOOGLE_CLIENT_ID. Only the mobile auth-code
+  // exchange route (/api/mobile-auth/exchange) needs it; the web app gets its
+  // id_token in-browser and never swaps a code, so unset → mobile login 503s
+  // with no impact on web boot. Server-only. NEVER expose to the client.
+  GOOGLE_CLIENT_SECRET: optionalString,
   // Private Memory (MemWal) — OPTIONAL: memory is opt-in/off-by-default, so a
   // missing value just disables the feature (no boot failure). Set all three
   // to enable. The delegate private key + account live server-side only.
@@ -138,6 +144,7 @@ const clientSchema = z.object({
 const runtimeEnv = {
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   AUTH_SECRET: process.env.AUTH_SECRET,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   MEMWAL_PRIVATE_KEY: process.env.MEMWAL_PRIVATE_KEY,
   MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
