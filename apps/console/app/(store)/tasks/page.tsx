@@ -3,13 +3,12 @@ import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { TaskClaimForm } from "@/components/task-claim-form";
 import {
-  CAMPAIGN_MENTION,
   fetchTaskStats,
   intentUrl,
-  MANUAL_TASKS,
   TASKS,
   type TaskDisplay,
   type TaskStats,
+  xPostText,
 } from "@/lib/tasks";
 
 // Tasks (§II.16 v2) — rail-native bounties: a completed task is paid as a
@@ -27,7 +26,7 @@ function short(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-function mechanicBadge(mechanic: TaskDisplay["mechanic"] | "manual") {
+function mechanicBadge(mechanic: TaskDisplay["mechanic"]) {
   const map = {
     auto: [
       "auto — pays on settlement",
@@ -37,7 +36,10 @@ function mechanicBadge(mechanic: TaskDisplay["mechanic"] | "manual") {
       "claim with your tx",
       "border-sky-500/30 bg-sky-500/10 text-sky-500",
     ],
-    manual: ["manual review", "border-border/60 text-muted-foreground"],
+    "x-proof": [
+      "claim with your X post",
+      "border-violet-500/30 bg-violet-500/10 text-violet-500",
+    ],
   } as const;
   const [label, cls] = map[mechanic];
   return (
@@ -104,9 +106,33 @@ function TaskCard({ t, stats }: { t: TaskDisplay; stats: TaskStats | null }) {
 
       <p className="mt-3 text-muted-foreground/70 text-xs">{t.payNote}</p>
 
-      {/* Claim (buy-manifest / buy-sui) or retry (auto tasks whose reward
-          buy failed, e.g. the worker's endpoint was down). */}
-      <TaskClaimForm needsDigest={t.mechanic === "claim"} task={t.id} />
+      {t.xPost && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <a
+            className="rounded-full bg-primary px-4 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90"
+            href={intentUrl(t)}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Post on X → {t.xPost.hashtag}
+          </a>
+          <CopyButton label="Copy the post template" text={xPostText(t)} />
+        </div>
+      )}
+
+      {/* Claim (buy-manifest / buy-sui: tx digest · verify-confidential: X
+          post URL) or retry (auto tasks whose reward buy failed, e.g. the
+          worker's endpoint was down). */}
+      <TaskClaimForm
+        proof={
+          t.mechanic === "claim"
+            ? "digest"
+            : t.mechanic === "x-proof"
+              ? "post"
+              : "none"
+        }
+        task={t.id}
+      />
 
       {s && s.payouts.length > 0 && (
         <div className="mt-4 border-border/40 border-t pt-3">
@@ -172,58 +198,6 @@ export default async function TasksPage() {
       <div className="mt-8 grid items-start gap-4 sm:grid-cols-2">
         {TASKS.map((t) => (
           <TaskCard key={t.id} stats={stats} t={t} />
-        ))}
-      </div>
-
-      {/* Manual (X-proof) tasks — human-reviewed weekly, deliberately. */}
-      <h2 className="mt-10 font-medium text-foreground text-lg">
-        Manual tasks (X proof, reviewed weekly)
-      </h2>
-      <div className="mt-4 flex flex-col gap-4">
-        {MANUAL_TASKS.map((t) => (
-          <div
-            className="rounded-2xl border border-border/50 bg-card/40 p-5"
-            id={t.id}
-            key={t.id}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <h3 className="font-medium text-foreground">{t.title}</h3>
-                {mechanicBadge("manual")}
-              </div>
-              <div className="font-semibold text-foreground text-lg tracking-tight">
-                ${t.rewardUsd}
-                <span className="ml-1 font-normal text-muted-foreground/60 text-xs">
-                  USDC / accepted
-                </span>
-              </div>
-            </div>
-            <p className="mt-1.5 max-w-2xl text-muted-foreground text-sm">
-              {t.tagline}
-            </p>
-            <ol className="mt-4 list-decimal space-y-1.5 pl-4 text-muted-foreground text-xs leading-relaxed marker:text-muted-foreground/50">
-              {t.steps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-            <p className="mt-2 text-muted-foreground/60 text-xs">{t.proof}</p>
-            <div className="mt-4 flex flex-wrap items-center gap-3 border-border/40 border-t pt-4">
-              <a
-                className="rounded-full bg-primary px-4 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90"
-                href={intentUrl(t)}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Post your proof on X → {t.hashtag}
-              </a>
-              <CopyButton
-                label="Copy the post template"
-                text={t.postTemplate
-                  .replaceAll("{mention}", CAMPAIGN_MENTION)
-                  .replaceAll("{hashtag}", t.hashtag)}
-              />
-            </div>
-          </div>
         ))}
       </div>
 

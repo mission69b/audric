@@ -4,19 +4,20 @@ import { useState } from "react";
 import { GATEWAY_BASE } from "@/lib/tasks";
 
 // Claim form for tasks whose qualifying event lives outside our ledger
-// (buy-manifest / buy-sui: the swap tx digest) — and the retry path for the
-// auto tasks (address only). Public endpoint; all verification is on-chain
-// server-side. No session needed — the address you claim for is where the
-// reward lands, paid through the standard rail buy.
+// (buy-manifest / buy-sui: the swap tx digest · verify-confidential: the X
+// post URL) — and the retry path for the auto tasks (address only). Public
+// endpoint; all verification is server-side (on-chain / keyless post read).
+// No session needed — the address you claim for is where the reward lands,
+// paid through the standard rail buy.
 export function TaskClaimForm({
   task,
-  needsDigest,
+  proof,
 }: {
   task: string;
-  needsDigest: boolean;
+  proof: "digest" | "post" | "none";
 }) {
   const [address, setAddress] = useState("");
-  const [digest, setDigest] = useState("");
+  const [proofValue, setProofValue] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">(
     "idle"
   );
@@ -34,7 +35,8 @@ export function TaskClaimForm({
         body: JSON.stringify({
           task,
           address: address.trim(),
-          ...(needsDigest ? { txDigest: digest.trim() } : {}),
+          ...(proof === "digest" ? { txDigest: proofValue.trim() } : {}),
+          ...(proof === "post" ? { postUrl: proofValue.trim() } : {}),
         }),
       });
       const json = (await res.json()) as {
@@ -70,12 +72,16 @@ export function TaskClaimForm({
           placeholder="Your agent wallet (0x…)"
           value={address}
         />
-        {needsDigest && (
+        {proof !== "none" && (
           <input
             className={inputCls}
-            onChange={(e) => setDigest(e.target.value)}
-            placeholder="Swap tx digest"
-            value={digest}
+            onChange={(e) => setProofValue(e.target.value)}
+            placeholder={
+              proof === "digest"
+                ? "Swap tx digest"
+                : "Your X post URL (https://x.com/…/status/…)"
+            }
+            value={proofValue}
           />
         )}
       </div>
@@ -85,16 +91,16 @@ export function TaskClaimForm({
           disabled={
             state === "busy" ||
             !address.trim() ||
-            (needsDigest && !digest.trim())
+            (proof !== "none" && !proofValue.trim())
           }
           onClick={claim}
           type="button"
         >
           {state === "busy"
             ? "Verifying…"
-            : needsDigest
-              ? "Verify & claim"
-              : "Retry my payout"}
+            : proof === "none"
+              ? "Retry my payout"
+              : "Verify & claim"}
         </button>
         {message && (
           <span

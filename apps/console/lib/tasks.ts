@@ -14,10 +14,13 @@ export type TaskDisplay = {
   tagline: string;
   rewardUsd: number;
   /** auto = paid by the settlement hook seconds after the qualifying sale;
-   *  claim = submit your swap tx digest; manual = human-reviewed X post. */
-  mechanic: "auto" | "claim" | "manual";
+   *  claim = submit your swap tx digest; x-proof = submit your X post URL
+   *  (read keylessly + receipt re-verified server-side — no review queue). */
+  mechanic: "auto" | "claim" | "x-proof";
   steps: string[];
   payNote: string;
+  /** For x-proof tasks: the ready-made X post CTA. */
+  xPost?: { hashtag: string; template: string };
 };
 
 // Reward amounts shown are FALLBACKS — the page renders the live values from
@@ -94,50 +97,40 @@ export const TASKS: TaskDisplay[] = [
     payNote:
       "Claim-verified on-chain in one request; pays out immediately when the swap checks out.",
   },
-];
-
-export type ManualTask = {
-  id: string;
-  title: string;
-  tagline: string;
-  rewardUsd: number;
-  budgetUsd: number;
-  steps: string[];
-  proof: string;
-  hashtag: string;
-  postTemplate: string;
-};
-
-// Human-reviewed (X-proof) tasks — deliberately NOT automated: X verification
-// needs OAuth/API spend and follow-farming is the top sybil target (the OKX
-// 0.01-USDT lesson). Reviewed ~weekly; payouts are rail buys like everything
-// else, recorded on the gateway by the founder's review run.
-export const MANUAL_TASKS: ManualTask[] = [
   {
     id: "verify-confidential",
     title: "Verify a confidential receipt",
     tagline:
-      "Run a confidential prompt, then prove it trustlessly with t2 verify.",
-    rewardUsd: 2,
-    budgetUsd: 30,
+      "Run a confidential prompt, prove it trustlessly with t2 verify, and post the receipt on X.",
+    rewardUsd: 0.25,
+    mechanic: "x-proof",
     steps: [
       'Run any prompt through Confidential mode on audric.ai, or via the API: t2 chat --model phala/gpt-oss-120b "…".',
       "Run t2 verify rcpt-… — it checks the TDX quote, TEE-signed receipt, and Sui anchor on YOUR machine.",
-      "Post a screenshot of the PASSING verification on X with the receipt id and your Sui address.",
+      `Post on X (template below): it must mention ${CAMPAIGN_MENTION} and include the receipt id + your Sui wallet address.`,
+      "Claim below with your wallet + the post URL.",
     ],
-    proof:
-      "Screenshot of the full t2 verify output (RESULT: ✓ verified) + the receipt id + your Sui address in the post.",
-    hashtag: "#t2000Verified",
-    postTemplate:
-      "I just verified a confidential AI response from {mention} — genuine TDX enclave, TEE-signed receipt, anchored on Sui, all checked on MY machine with t2 verify.\n\nrcpt: <your receipt id>\nwallet: <your Sui address>\n\n{hashtag}",
+    payNote:
+      "Claim-verified in one request — the gateway reads your public post and re-verifies the receipt against its Sui anchor. No review queue.",
+    xPost: {
+      hashtag: "#t2000Verified",
+      template:
+        "I just verified a confidential AI response from {mention} — genuine TDX enclave, TEE-signed receipt, anchored on Sui, all checked on MY machine with t2 verify.\n\nrcpt: <your receipt id>\nwallet: <your Sui address>\n\n{hashtag}",
+    },
   },
 ];
 
-export function intentUrl(t: ManualTask): string {
-  const text = t.postTemplate
+export function xPostText(t: TaskDisplay): string {
+  if (!t.xPost) {
+    return "";
+  }
+  return t.xPost.template
     .replaceAll("{mention}", CAMPAIGN_MENTION)
-    .replaceAll("{hashtag}", t.hashtag);
-  return `https://x.com/intent/post?text=${encodeURIComponent(text)}`;
+    .replaceAll("{hashtag}", t.xPost.hashtag);
+}
+
+export function intentUrl(t: TaskDisplay): string {
+  return `https://x.com/intent/post?text=${encodeURIComponent(xPostText(t))}`;
 }
 
 export type TaskStats = {

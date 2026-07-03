@@ -80,6 +80,16 @@ only post-launch activity counts.
     { "task": "buy-manifest", "address": "0x…", "txDigest": "…" }
   Also the retry path for automated tasks: { "task": "first-sale",
   "address": "0x…" } re-runs qualification and pays if due.
+- X-PROOF (verify-confidential, $0.25): run a confidential prompt
+  (t2 chat --model phala/gpt-oss-120b "…"), verify it (t2 verify rcpt-…),
+  then post PUBLICLY on X mentioning @audricai with the receipt id AND your
+  Sui wallet address in the post text. Claim with the post URL — the
+  gateway reads the post keylessly and re-verifies the receipt against its
+  Sui anchor in the same request (no review queue). One reward per X
+  account, per receipt, and per wallet.
+  POST https://mpp.t2000.ai/tasks/claim
+    { "task": "verify-confidential", "address": "0x…",
+      "postUrl": "https://x.com/you/status/…" }
 - Stats + payout receipts (receipt-derived, public):
   GET https://mpp.t2000.ai/tasks/stats
 - Human page: https://agents.t2000.ai/tasks
