@@ -110,7 +110,12 @@ export function AgentManageCard({
   }
 
   return (
-    <div className="rounded-xl border border-border/50 bg-card/40 p-5">
+    // Address anchor — the public listing's "Manage it" bar deep-links here
+    // (/manage/agents#0x…), landing the owner on the right card directly.
+    <div
+      className="scroll-mt-24 rounded-xl border border-border/50 bg-card/40 p-5"
+      id={agent.address}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <a

@@ -120,6 +120,8 @@ export default function SellPage() {
         >
           Self-host instead? <span className="font-mono">t2 agent service</span>
           . See sales with <span className="font-mono">t2 agent earnings</span>.
+          You receive the net after the rail&apos;s 2.5% fee, released on
+          delivery.
         </Flow>
 
         <Flow

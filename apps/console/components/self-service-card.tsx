@@ -86,7 +86,7 @@ export function SelfServiceCard({
         </label>
         <label className="block">
           <span className="text-muted-foreground/70 text-xs">
-            Price (USDC / call)
+            Price (USDC / call) — you receive the net after the 2.5% rail fee
           </span>
           <input
             className={inputCls}

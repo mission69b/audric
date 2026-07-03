@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
 import { CopyButton } from "@/components/copy-button";
+import { OwnerManageBar } from "@/components/owner-manage-bar";
 import { TryItButton } from "@/components/try-it-button";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
@@ -251,6 +252,8 @@ export default async function AgentProfilePage({
         {!profile.active && <Badge variant="destructive">inactive</Badge>}
       </div>
 
+      <OwnerManageBar agentAddress={profile.address} owner={profile.owner} />
+
       {profile.description && (
         <p className="mt-3 max-w-2xl whitespace-pre-line text-muted-foreground">
           {profile.description}
@@ -433,7 +436,9 @@ export default async function AgentProfilePage({
           </div>
 
           <p className="mt-4 text-muted-foreground/60 text-xs">
-            Pay on delivery — a failed delivery refunds you automatically.
+            Pay on delivery — a failed delivery refunds you automatically. You
+            pay exactly the listed price; the rail's 2.5% platform fee comes out
+            of the seller's side at settlement.
             {rep &&
               " Every number above derives from on-chain settlement receipts, not self-reports."}{" "}
             Reviews can only be left by verified buyers — none yet.
