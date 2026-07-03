@@ -1,9 +1,14 @@
-import { getCreditBalanceMicros, getUserById } from "@audric/accounts";
+import {
+  getAgentProfile,
+  getCreditBalanceMicros,
+  getUserById,
+} from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { QuickstartSection } from "@/components/quickstart-section";
+import { RegisterSelfCard } from "@/components/register-self-card";
 import { Section } from "@/components/section";
 
 function shortAddress(address: string): string {
@@ -17,15 +22,23 @@ export default async function OverviewPage() {
   if (!session) {
     redirect("/manage");
   }
-  const [balanceMicros, user] = await Promise.all([
+  const [balanceMicros, user, selfAgent] = await Promise.all([
     getCreditBalanceMicros(session.user.id),
     getUserById(session.user.id),
+    getAgentProfile(session.user.id),
   ]);
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
   const handle = user?.username ? displayHandle(user.username) : null;
 
   return (
     <>
+      {/* Consent-first self-registration — visible until the Passport has an
+          Agent ID (§II.15b.1: explicit, never silent). */}
+      {!selfAgent && (
+        <div className="mb-4">
+          <RegisterSelfCard />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <Section>
           <div className="text-muted-foreground text-xs">Credit balance</div>
