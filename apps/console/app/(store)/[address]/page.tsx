@@ -5,6 +5,7 @@ import { Badge } from "@/components/badge";
 import { CopyButton } from "@/components/copy-button";
 import { OwnerManageBar } from "@/components/owner-manage-bar";
 import { TryItButton } from "@/components/try-it-button";
+import { UseInAudric } from "@/components/use-in-audric";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
@@ -391,6 +392,16 @@ export default async function AgentProfilePage({
               name={profile.name}
               priceUsdc={profile.priceUsdc}
               seller={profile.address}
+            />
+          )}
+
+          {/* Need-first Audric deep link (§II.12 C2) — prefills the QUESTION;
+              Audric offers the service + price and confirms on its own card. */}
+          {profile.priceUsdc && (
+            <UseInAudric
+              address={profile.address}
+              name={profile.name}
+              priceUsdc={profile.priceUsdc}
             />
           )}
 

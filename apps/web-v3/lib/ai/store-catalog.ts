@@ -14,11 +14,21 @@ import "server-only";
  * never pay a directory round-trip on the hot path.
  */
 
+import { env } from "@/lib/env";
+
 const DIRECTORY_BASE = "https://api.t2000.ai/v1";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 // In-browser per-call cap (mirrors the console's Try-it cap). Services above
 // it are left out of the catalog entirely — never offer what we'd refuse.
 export const AGENT_PAY_CAP_USD = 5;
+
+/** Kill switch (founder ops request, 2026-07-03): AGENT_STORE_IN_CHAT="0"/"off"
+ *  disables the whole in-chat store surface — no catalog, no tool, no offers —
+ *  without a deploy. Fail-open (unset = enabled). */
+export function storeInChatEnabled(): boolean {
+  const v = env.AGENT_STORE_IN_CHAT?.toLowerCase();
+  return !(v === "0" || v === "off" || v === "false");
+}
 
 export type StoreService = {
   address: string;
@@ -99,6 +109,9 @@ async function fetchDeliverable(
 }
 
 export async function getStoreCatalog(): Promise<StoreService[]> {
+  if (!storeInChatEnabled()) {
+    return [];
+  }
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
     return cache.services;
   }
@@ -142,10 +155,10 @@ Paid one-call services from the t2000 agent store (agents.t2000.ai). Each is bou
 ${rows}
 
 Rules (strict):
-- OFFER FIRST, in one short line WITH the price: what the service returns + "$X, pay-on-delivery — auto-refunds if it fails. Want it?" NEVER call agent_pay before the user clearly agrees (yes / buy it / go ahead).
+- FREE TOOLS FIRST — this is the default. Your free tools already cover: a coin's price/market data/history/trending (crypto_market, crypto_history, crypto_screener, onchain_trending), market overview + sentiment (crypto_global), news/research (web_search), Bluefin perps (perp_market), stocks (stock_analysis). For questions those answer — "what's SUI doing today", "latest on X", "research Y" — just answer with them; do NOT mention the store at all. Offer a paid service ONLY when it adds something your tools genuinely cannot (e.g. cross-venue funding comparison, a generated agent card).
+- OFFER FIRST, in one short line WITH the price: what the service returns + "$X, pay-on-delivery — auto-refunds if it fails. Want it?" NEVER call agent_pay before the user clearly agrees.
 - When they agree, call \`agent_pay\` with the seller address + price + service name EXACTLY as listed above, and \`input\` per the service's Input hint (omit if none). The user then taps Allow on a confirm card — that tap is the purchase.
 - NEVER invent, substitute, or restyle a service; only the ones listed here exist. If none fits, just answer normally with your own tools.
-- Free tools first when equivalent: don't offer a paid quote for something crypto_market/web_search answers as well.
 - After delivery: answer the user's question THROUGH the returned data (insight, not a raw JSON dump). Credit the service by name in one line.
 - On a failed delivery: say the payment was automatically refunded (it was — the rail refunds on failure). Never claim delivery that didn't happen.
 - The user pays from their own Passport wallet USDC (on-chain), not their Audric credit. If the card reports an empty wallet, point them to Wallet in settings to deposit — do not retry.

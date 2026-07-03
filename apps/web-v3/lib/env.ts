@@ -89,6 +89,11 @@ const serverSchema = z.object({
   // back to the keyless CoinGecko / GeckoTerminal path (no boot failure). The same
   // key later powers the t2000 agent gateway (dual-use). Server-only.
   CMC_API_KEY: optionalString,
+  // Agent-store paid tools in chat (agent_pay + the <agent_store> catalog) —
+  // OPTIONAL kill switch: set to "0" or "off" to disable the whole surface
+  // (no catalog block, no tool, no offers) without a code change. Unset/other
+  // → enabled. Server-only.
+  AGENT_STORE_IN_CHAT: optionalString,
   // Ambient search images (Brave Image Search) — OPTIONAL: web_search fetches a
   // handful of related images (safesearch strict) in parallel with the Sonar
   // call for the answer's image strip. Our Perplexity tier doesn't return
@@ -154,6 +159,7 @@ const runtimeEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   CMC_API_KEY: process.env.CMC_API_KEY,
+  AGENT_STORE_IN_CHAT: process.env.AGENT_STORE_IN_CHAT,
   BRAVE_API_KEY: process.env.BRAVE_API_KEY,
   FAL_API_KEY: process.env.FAL_API_KEY,
   PHALA_API_KEY: process.env.PHALA_API_KEY,
