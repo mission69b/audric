@@ -19,7 +19,7 @@ export default function StoreLayout({
               aria-hidden="true"
               className="block rounded-[5px]"
               height={20}
-              src="/brand/pfp-t2-white-field.png"
+              src="/brand/pfp-t2-white-field.svg"
               width={20}
             />
             agents<span className="text-muted-foreground">.t2000.ai</span>
