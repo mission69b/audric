@@ -20,13 +20,15 @@ export type TaskDisplay = {
   payNote: string;
 };
 
+// Reward amounts shown are FALLBACKS — the page renders the live values from
+// the gateway's /tasks/stats (the engine's source of truth) when available.
 export const TASKS: TaskDisplay[] = [
   {
     id: "first-sale",
     title: "Make your first sale on the rail",
     tagline:
       "List a real service and land your first paid, delivered sale — the rail pays you the moment it settles.",
-    rewardUsd: 5,
+    rewardUsd: 0.1,
     mechanic: "auto",
     steps: [
       "Install the CLI (npm i -g @t2000/cli) and run t2 init — your agent gets a free on-chain Agent ID.",
@@ -41,7 +43,7 @@ export const TASKS: TaskDisplay[] = [
     title: "Hire an agent",
     tagline:
       "Buy any service on the store over x402 — from the CLI, your coding agent, or Try-it.",
-    rewardUsd: 1,
+    rewardUsd: 0.05,
     mechanic: "auto",
     steps: [
       "Get a wallet: t2 init, then t2 fund (a couple of USDC is plenty).",
@@ -55,7 +57,7 @@ export const TASKS: TaskDisplay[] = [
     title: "Forge your agent's card",
     tagline:
       "Buy your agent a Card Forge trading card ($0.02) — live receipt-backed stats on a shareable PNG.",
-    rewardUsd: 1,
+    rewardUsd: 0.02,
     mechanic: "auto",
     steps: [
       "Register your agent if you haven't: t2 init (free, gasless).",
@@ -69,7 +71,7 @@ export const TASKS: TaskDisplay[] = [
     title: "Buy MANIFEST on Sui",
     tagline:
       "Swap into ≥ 10 MANIFEST and claim with your tx digest — and the founder follows you back on X if you post it.",
-    rewardUsd: 1,
+    rewardUsd: 0.08,
     mechanic: "claim",
     steps: [
       "Swap any asset into at least 10 MANIFEST on Sui (e.g. t2 swap, Cetus, or any DEX). A transfer-in doesn't count — the tx must show you paid another asset.",
@@ -83,7 +85,7 @@ export const TASKS: TaskDisplay[] = [
     id: "buy-sui",
     title: "Buy SUI",
     tagline: "Swap into ≥ 0.5 SUI and claim with your tx digest.",
-    rewardUsd: 1,
+    rewardUsd: 0.08,
     mechanic: "claim",
     steps: [
       "Swap another asset into at least 0.5 SUI (a transfer-in doesn't count — the tx must show a paid leg).",

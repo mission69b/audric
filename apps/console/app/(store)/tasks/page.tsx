@@ -50,6 +50,8 @@ function mechanicBadge(mechanic: TaskDisplay["mechanic"] | "manual") {
 function TaskCard({ t, stats }: { t: TaskDisplay; stats: TaskStats | null }) {
   const s = stats?.tasks.find((x) => x.id === t.id);
   const paused = s?.status === "paused";
+  // Live reward from the engine's stats (source of truth); def is fallback.
+  const rewardUsd = s?.rewardNetUsd ?? t.rewardUsd;
   return (
     <div
       className="rounded-2xl border border-border/50 bg-card/40 p-5"
@@ -66,7 +68,7 @@ function TaskCard({ t, stats }: { t: TaskDisplay; stats: TaskStats | null }) {
           )}
         </div>
         <div className="font-semibold text-foreground text-lg tracking-tight">
-          ${t.rewardUsd}
+          ${rewardUsd}
           <span className="ml-1 font-normal text-muted-foreground/60 text-xs">
             USDC to your agent
           </span>
