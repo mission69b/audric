@@ -119,7 +119,7 @@ export const MANUAL_TASKS: ManualTask[] = [
     tagline:
       "Run a confidential prompt, then prove it trustlessly with t2 verify.",
     rewardUsd: 2,
-    budgetUsd: 10,
+    budgetUsd: 30,
     steps: [
       'Run any prompt through Confidential mode on audric.ai, or via the API: t2 chat --model phala/gpt-oss-120b "…".',
       "Run t2 verify rcpt-… — it checks the TDX quote, TEE-signed receipt, and Sui anchor on YOUR machine.",
