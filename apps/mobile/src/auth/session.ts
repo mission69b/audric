@@ -41,3 +41,22 @@ export async function loadSession(): Promise<StoredSession | null> {
 export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(KEY);
 }
+
+// --- Biometric app-lock preference ------------------------------------------
+// A tiny on/off flag ("require Face ID to open the app"), kept next to the
+// session in the Keychain. Separate from the session record so toggling the lock
+// never rewrites the derived identity. Not device-only here: a user re-signing in
+// on a new device re-derives the session anyway, and the pref self-heals.
+const LOCK_KEY = "audric.lock.v1";
+
+export async function loadLockPref(): Promise<boolean> {
+  return (await SecureStore.getItemAsync(LOCK_KEY)) === "1";
+}
+
+export async function saveLockPref(on: boolean): Promise<void> {
+  if (on) {
+    await SecureStore.setItemAsync(LOCK_KEY, "1");
+  } else {
+    await SecureStore.deleteItemAsync(LOCK_KEY);
+  }
+}

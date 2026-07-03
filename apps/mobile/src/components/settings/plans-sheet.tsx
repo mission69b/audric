@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { COMING_SOON, EVERY_PLAN, TIERS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
+import { openAudricWeb } from "@/lib/audric-web";
 import { BottomSheet } from "@/components/ui/sheet";
 import { Check, X } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
@@ -80,7 +81,10 @@ export function PlansSheet() {
                 </View>
               ))}
             </View>
-            <View
+            {/* Current plan is a static badge; upgrading is a fiat/Stripe action,
+                so the CTA hands off to audric.ai (see lib/audric-web). */}
+            <Pressable
+              onPress={t.current ? undefined : () => openAudricWeb()}
               style={[
                 styles.cta,
                 t.current
@@ -98,9 +102,14 @@ export function PlansSheet() {
               >
                 {t.cta}
               </Text>
-            </View>
+            </Pressable>
           </View>
         ))}
+
+        <Text style={[styles.manageNote, { color: colors.mutedFg }]}>
+          Plans are billed &amp; managed on audric.ai. Crypto top-up (USDC/USDsui)
+          stays in-app.
+        </Text>
 
         {/* Coming soon */}
         <View style={[styles.coming, { borderColor: colors.border }]}>
@@ -173,6 +182,13 @@ const styles = StyleSheet.create({
   tierFeats: { gap: 8, marginBottom: 14 },
   cta: { borderRadius: 11, paddingVertical: 11, alignItems: "center" },
   ctaText: { fontFamily: fonts.semibold, fontSize: 13 },
+  manageNote: {
+    fontFamily: fonts.regular,
+    fontSize: 11,
+    lineHeight: 16.5,
+    textAlign: "center",
+    marginHorizontal: 8,
+  },
 
   coming: {
     borderWidth: StyleSheet.hairlineWidth,

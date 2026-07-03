@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   COMING_SOON,
@@ -9,6 +10,9 @@ import {
   WALLET_ADDRESS,
 } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
+import { authenticate, useBiometricCapability } from "@/auth/biometrics";
+import { useAuth } from "@/auth/useAuth";
+import { openAudricWeb } from "@/lib/audric-web";
 import {
   Check,
   ChevronDown,
@@ -16,6 +20,9 @@ import {
   ChevronRight,
   Copy,
   CreditCard,
+  ExternalLink,
+  Fingerprint,
+  ScanFace,
   ShieldCheck,
   TextAlignStart,
   TriangleAlert,
@@ -91,6 +98,7 @@ function SectionLabel({ children, tight }: { children: string; tight?: boolean }
 
 function SettingsHome() {
   const { colors } = useTheme();
+  const { signOut } = useAuth();
   const {
     openHandle,
     memoryOn,
@@ -179,6 +187,9 @@ function SettingsHome() {
           </Pressable>
         </View>
       </View>
+
+      {/* SECURITY (mobile-only: biometric app-lock — hidden if the device can't) */}
+      <SecuritySection />
 
       {/* GENERAL */}
       <View>
@@ -285,10 +296,63 @@ function SettingsHome() {
         </Pressable>
       </View>
 
-      <View style={[styles.signOut, { borderColor: colors.border }]}>
+      <Pressable
+        onPress={signOut}
+        style={[styles.signOut, { borderColor: colors.border }]}
+      >
         <Text style={styles.signOutText}>Sign out</Text>
-      </View>
+      </Pressable>
     </>
+  );
+}
+
+// Biometric app-lock toggle (mobile-native; no web-v3 equivalent). Renders nothing
+// until the device is known to support biometrics AND has one enrolled — otherwise
+// there's nothing to gate the app behind. A live biometric check confirms BOTH
+// directions: you can't arm a lock you can't pass, and can't disarm without passing.
+function SecuritySection() {
+  const { colors } = useTheme();
+  const cap = useBiometricCapability();
+  const { lockEnabled, setLockEnabled } = useAuth();
+  const [busy, setBusy] = useState(false);
+
+  if (!cap?.available) return null;
+
+  const onToggle = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const next = !lockEnabled;
+      const ok = await authenticate(
+        next ? `Turn on ${cap.label} lock` : `Turn off ${cap.label} lock`
+      );
+      if (ok) await setLockEnabled(next);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const Icon = cap.faceId ? ScanFace : Fingerprint;
+
+  return (
+    <View>
+      <SectionLabel>SECURITY</SectionLabel>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.memRow, styles.rowLast]}>
+          <Icon size={18} color={colors.mutedFg} strokeWidth={1.7} style={styles.memIcon} />
+          <View style={styles.memMid}>
+            <Text style={[styles.rowTitle, { color: colors.fg }]}>
+              Unlock with {cap.label}
+            </Text>
+            <Text style={[styles.rowDesc, { color: colors.mutedFg }]}>
+              Require {cap.label} to open Audric. Your session stays hidden behind
+              the lock until you unlock — on this device only.
+            </Text>
+          </View>
+          <Toggle on={lockEnabled} onPress={onToggle} />
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -297,8 +361,6 @@ function Billing() {
   const {
     billAsset,
     setBillAsset,
-    autoRecharge,
-    toggleAutoRecharge,
     termsInfoOpen,
     toggleTermsInfo,
     openPlans,
@@ -316,13 +378,6 @@ function Billing() {
         <Text style={[styles.tinyNote, { color: colors.mutedFg }]}>
           Spent on premium models. The free model (Kimi) is always included.
         </Text>
-        <View style={styles.topupRow}>
-          {TOPUPS.map((a) => (
-            <View key={a} style={[styles.topupBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-              <Text style={[styles.topupText, { color: colors.fg }]}>+${a}</Text>
-            </View>
-          ))}
-        </View>
         <Text style={[styles.legalNote, { color: colors.mutedFg }]}>
           By topping up you agree credit is{" "}
           <Text style={{ color: colors.secondaryFg }}>non-refundable</Text>,{" "}
@@ -344,6 +399,24 @@ function Billing() {
           </Text>
         ) : null}
       </View>
+
+      {/* Manage plan & payment on the web. Fiat card + Stripe subscription are
+          "digital goods" (IAP) to Apple/Google, so management hands off to
+          audric.ai — the same platform-of-purchase model Claude/ChatGPT use.
+          Crypto stablecoin top-up (below) stays native. See lib/audric-web. */}
+      <Pressable
+        onPress={() => openAudricWeb()}
+        style={[styles.planCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      >
+        <ExternalLink size={18} color={colors.mutedFg} strokeWidth={1.7} />
+        <View style={styles.rowFlex}>
+          <Text style={[styles.rowTitle, { color: colors.fg }]}>Manage plan &amp; payment</Text>
+          <Text style={[styles.rowDesc, { color: colors.mutedFg }]}>
+            Cards, subscription &amp; billing history on audric.ai
+          </Text>
+        </View>
+        <ChevronRight size={17} color={colors.mutedFg} strokeWidth={2} />
+      </Pressable>
 
       {/* Pay with stablecoin */}
       <View>
@@ -385,32 +458,6 @@ function Billing() {
               </View>
             ))}
           </View>
-        </View>
-      </View>
-
-      {/* Auto-recharge */}
-      <View>
-        <SectionLabel>AUTO-RECHARGE</SectionLabel>
-        <View style={[styles.padCard, styles.autoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.rowFlex, styles.rowDesc, { color: colors.mutedFg }]}>
-            Top up once to save a card, then enable auto-recharge.
-          </Text>
-          <Toggle on={autoRecharge} onPress={toggleAutoRecharge} />
-        </View>
-      </View>
-
-      {/* Payment methods */}
-      <View>
-        <SectionLabel>PAYMENT METHODS</SectionLabel>
-        <View style={[styles.padCard, styles.gapCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.addCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-            <CreditCard size={15} color={colors.fg} strokeWidth={1.9} />
-            <Text style={[styles.addCardText, { color: colors.fg }]}>Add card</Text>
-          </View>
-          <Text style={[styles.rowDesc, { color: colors.mutedFg }]}>
-            No cards saved yet. Add one, or top up — a card you use to top up is
-            saved automatically.
-          </Text>
         </View>
       </View>
 
@@ -536,6 +583,7 @@ const styles = StyleSheet.create({
   },
   memIcon: { marginTop: 1 },
   memMid: { flex: 1, minWidth: 0 },
+  rowLast: { borderBottomWidth: 0 },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -615,7 +663,6 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     alignItems: "center",
   },
-  topupText: { fontFamily: fonts.semibold, fontSize: 13 },
   topupTextSm: { fontFamily: fonts.semibold, fontSize: 12.5 },
   legalNote: { fontFamily: fonts.regular, fontSize: 10.5, lineHeight: 16.3, marginTop: 11, marginHorizontal: 2 },
   readTerms: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 5, paddingHorizontal: 2 },
@@ -645,20 +692,6 @@ const styles = StyleSheet.create({
   assetTabs: { flexDirection: "row", borderRadius: 10, padding: 3 },
   assetTab: { flex: 1, borderRadius: 8, paddingVertical: 8, alignItems: "center" },
   assetTabText: { fontFamily: fonts.semibold, fontSize: 12 },
-
-  autoCard: { flexDirection: "row", alignItems: "center", gap: 12 },
-
-  addCard: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 11,
-    paddingVertical: 9,
-    paddingHorizontal: 13,
-  },
-  addCardText: { fontFamily: fonts.semibold, fontSize: 12.5 },
 
   planName: { fontFamily: fonts.semibold, fontSize: 14 },
   planBlurb: { marginTop: 3, marginBottom: 12 },

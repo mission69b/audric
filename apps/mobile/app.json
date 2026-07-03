@@ -45,6 +45,12 @@
           "faceIDPermission": "Allow Audric to use Face ID to unlock your wallet."
         }
       ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Audric to use Face ID to unlock the app."
+        }
+      ],
       "expo-font",
       "expo-image",
       "expo-status-bar",

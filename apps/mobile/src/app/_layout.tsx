@@ -14,13 +14,14 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/auth/useAuth";
+import { LockScreen } from "@/components/auth/lock-screen";
 import { ThemeProvider, useTheme } from "@/theme/theme";
 
 // Expo Router SDK 57 auth pattern: a single Stack whose groups are gated by
 // <Stack.Protected guard>. When `session` flips, the router auto-redirects to
 // the first accessible screen — signed-in → (app), signed-out → gate.
 function RootNavigator() {
-  const { session, status } = useAuth();
+  const { session, status, locked } = useAuth();
   const { colors } = useTheme();
 
   // Hold on the loading state until the persisted session resolves, so the gate
@@ -30,19 +31,24 @@ function RootNavigator() {
   const signedIn = !!session;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.bg },
-      }}
-    >
-      <Stack.Protected guard={signedIn}>
-        <Stack.Screen name="(app)" />
-      </Stack.Protected>
-      <Stack.Protected guard={!signedIn}>
-        <Stack.Screen name="gate" />
-      </Stack.Protected>
-    </Stack>
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        <Stack.Protected guard={signedIn}>
+          <Stack.Screen name="(app)" />
+        </Stack.Protected>
+        <Stack.Protected guard={!signedIn}>
+          <Stack.Screen name="gate" />
+        </Stack.Protected>
+      </Stack>
+      {/* Biometric app-lock: an opaque overlay over a live session, so app
+          content never shows until the OS unlock passes. */}
+      {signedIn && locked ? <LockScreen /> : null}
+    </>
   );
 }
 

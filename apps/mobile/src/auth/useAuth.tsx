@@ -5,14 +5,19 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { generateAPIUrl } from "@/lib/api-url";
+import { authenticate } from "./biometrics";
 import { type DerivedIdentity, exchangeForAddress } from "./exchange";
 import { AuthCancelled, authorizeWithGoogle } from "./google";
 import {
   clearSession,
+  loadLockPref,
   loadSession,
+  saveLockPref,
   saveSession,
   type StoredSession,
 } from "./session";
@@ -33,6 +38,14 @@ type AuthState = {
    * address-parity is still pending funkii's keys. No-op in production builds.
    */
   devBypass: () => Promise<void>;
+  /** Biometric app-lock is turned on for this install. */
+  lockEnabled: boolean;
+  /** The app is currently locked (session exists but is hidden behind biometrics). */
+  locked: boolean;
+  /** Turn the lock on/off — the caller confirms with a biometric prompt first. */
+  setLockEnabled: (on: boolean) => Promise<void>;
+  /** Prompt biometrics to reveal the app; returns whether it succeeded. */
+  unlock: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -48,13 +61,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<StoredSession | null>(null);
   const [lastDerived, setLastDerived] = useState<DerivedIdentity | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lockEnabled, setLockEnabledState] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    loadSession().then((s) => {
+    (async () => {
+      const [s, pref] = await Promise.all([loadSession(), loadLockPref()]);
       setSession(s);
+      setLockEnabledState(pref);
+      // If the lock is on and a session exists, start locked — the app must not
+      // flash its content before the first biometric unlock.
+      setLocked(Boolean(s && pref));
       setStatus(s ? "signed-in" : "signed-out");
-    });
+    })();
   }, []);
+
+  // Re-lock when the app returns to the foreground (app switcher, notification,
+  // etc.) so a walk-away can't leave the session exposed. Only arms while the lock
+  // is on and a session exists.
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      const prev = appStateRef.current;
+      appStateRef.current = next;
+      if (
+        next === "active" &&
+        /inactive|background/.test(prev) &&
+        lockEnabled &&
+        session
+      ) {
+        setLocked(true);
+      }
+    });
+    return () => sub.remove();
+  }, [lockEnabled, session]);
 
   const signIn = useCallback(async () => {
     setError(null);
@@ -87,7 +127,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setLastDerived(null);
     setError(null);
+    setLocked(false); // no session → nothing to lock (the pref persists for next sign-in)
     setStatus("signed-out");
+  }, []);
+
+  const setLockEnabled = useCallback(async (on: boolean) => {
+    await saveLockPref(on);
+    setLockEnabledState(on);
+    if (!on) setLocked(false);
+  }, []);
+
+  const unlock = useCallback(async () => {
+    const ok = await authenticate("Unlock Audric");
+    if (ok) setLocked(false);
+    return ok;
   }, []);
 
   const devBypass = useCallback(async () => {
@@ -138,8 +191,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.address, session?.email]);
 
   const value = useMemo(
-    () => ({ status, session, lastDerived, error, signIn, signOut, devBypass }),
-    [status, session, lastDerived, error, signIn, signOut, devBypass]
+    () => ({
+      status,
+      session,
+      lastDerived,
+      error,
+      signIn,
+      signOut,
+      devBypass,
+      lockEnabled,
+      locked,
+      setLockEnabled,
+      unlock,
+    }),
+    [
+      status,
+      session,
+      lastDerived,
+      error,
+      signIn,
+      signOut,
+      devBypass,
+      lockEnabled,
+      locked,
+      setLockEnabled,
+      unlock,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
