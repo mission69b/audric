@@ -15,6 +15,12 @@ export type MessageMetadata = {
   /** Artifact card labels (demo). */
   artTitle?: string;
   artKind?: string;
+  /** Turn start (epoch ms), stamped by the server on the `start` stream part —
+   * drives the Chain-of-Thought elapsed timer ("Thought for Xs"). Same role as
+   * web-v3's `metadata.createdAt`. Absent on history-reloaded messages. */
+  createdAt?: number;
+  /** Model id that produced the turn (server-stamped). */
+  modelId?: string;
 };
 
 export type ChatMessage = UIMessage<MessageMetadata>;

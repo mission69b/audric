@@ -6,6 +6,8 @@ import { Pressable } from "react-native";
 import { FOLLOWUPS, WORK_STEPS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import { type ChatMessage, messageText } from "@/lib/types";
+import { CotTimeline } from "./cot-timeline";
+import { Markdown } from "./markdown";
 import {
   AudricMark,
   Check,
@@ -43,10 +45,13 @@ export function Conversation() {
         ) : (
           <AssistantTurn
             key={m.id}
+            m={m}
+            // The final assistant turn is the live one while the request is in
+            // flight — drives the Chain-of-Thought auto-open + elapsed timer.
+            streaming={i === lastIdx && busy}
             // Follow-ups (which re-enter `send`) only show on the final answer once
             // the turn is fully done — not while it is still streaming/awaiting.
-            isLast={i === lastIdx && !thinking && !busy}
-            m={m}
+            showFollowups={i === lastIdx && !thinking && !busy}
           />
         )
       )}
@@ -90,11 +95,23 @@ function UserBubble({ text }: { text: string }) {
   );
 }
 
-function AssistantTurn({ m, isLast }: { m: ChatMessage; isLast: boolean }) {
-  const { colors } = useTheme();
-  // Demo turns carry their render kind on metadata; text streams from parts.
+function AssistantTurn({
+  m,
+  streaming,
+  showFollowups,
+}: {
+  m: ChatMessage;
+  streaming: boolean;
+  showFollowups: boolean;
+}) {
+  // Demo turns carry their render kind on metadata (the mock WorklogCard etc.);
+  // real turns render from `parts` exactly like web-v3 — a Chain-of-Thought
+  // timeline (reasoning + web_search) above the markdown answer.
   const demo = m.metadata?.demo;
-  const text = messageText(m);
+  const answer = messageText(m);
+  const hasWork = m.parts.some(
+    (p) => p.type === "reasoning" || (p.type as string) === "tool-web_search"
+  );
   return (
     <View style={styles.assistantRow}>
       <Avatar />
@@ -107,16 +124,22 @@ function AssistantTurn({ m, isLast }: { m: ChatMessage; isLast: boolean }) {
           <ArtifactCard title={m.metadata?.artTitle} kind={m.metadata?.artKind} />
         ) : null}
 
-        {text ? (
-          <Text style={[styles.assistantText, { color: colors.fg }]}>{text}</Text>
+        {!demo && hasWork ? (
+          <CotTimeline
+            parts={m.parts}
+            streaming={streaming}
+            createdAt={m.metadata?.createdAt}
+          />
         ) : null}
 
+        {answer ? <Markdown text={answer} /> : null}
+
         <View style={styles.assistantActions}>
-          <CopyButton size={27} text={text} />
+          <CopyButton size={27} text={answer} />
           <VoteButtons />
         </View>
 
-        {isLast ? <Followups /> : null}
+        {showFollowups ? <Followups /> : null}
       </View>
     </View>
   );

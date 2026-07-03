@@ -161,6 +161,23 @@ export async function POST(req: Request) {
     // Give the assistant message a real uuid id (the shape `Message_v2.id` needs, and
     // the same id the client adopts) so the reply persists + dedupes cleanly.
     generateMessageId: () => globalThis.crypto.randomUUID(),
+    // Parity with web-v3's chat route (`toUIMessageStream({ sendReasoning, sendSources,
+    // messageMetadata })`). Without these the interleaved-thinking models (Kimi K2.5,
+    // the free default) and the `web_search` tool would still run, but their `reasoning`
+    // + `source-*` parts would be stripped at the wire and never reach the device — so
+    // the Chain-of-Thought "Thinking…" / "Searching…" timeline would have nothing to
+    // render. Sources are also surfaced from the tool output; enabling them here keeps
+    // the wire identical to web-v3.
+    sendReasoning: true,
+    sendSources: true,
+    // Stamp the turn's start time + model on the message metadata (web-v3 does the same
+    // on the `start` part) so the client can drive the CoT elapsed timer ("Thought for
+    // Xs") and show which model answered. `Date.now()` is the turn boundary, matching
+    // web-v3's `createdAt`.
+    messageMetadata: ({ part }) =>
+      part.type === "start"
+        ? { createdAt: Date.now(), modelId: selectedChatModel }
+        : undefined,
     // Persist the assistant reply once the turn completes. Best-effort, same as the
     // user-turn save above — a DB failure here has already been streamed to the user.
     onFinish: async ({ responseMessage }) => {
