@@ -96,6 +96,10 @@ const SERVER_UPLOAD_LIMIT = 4 * 1024 * 1024;
 // (Claude-style) instead of flooding the composer. Smaller pastes stay inline.
 const PASTE_TO_FILE_CHARS = 2000;
 
+function isImageAttachment(a: Attachment): boolean {
+  return a.contentType?.startsWith("image/") ?? false;
+}
+
 function PureMultimodalInput({
   chatId,
   input,
@@ -186,7 +190,7 @@ function PureMultimodalInput({
   // composer treats Auto as image-capable. PDFs work on every model (extracted
   // to text), so they're never blocked here.
   const isAuto = selectedModelId === AUTO_MODEL_ID;
-  const canAttachImages = modelHasVision || isAuto;
+  const canAttachImagesForModel = modelHasVision || isAuto;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const hasAutoFocused = useRef(false);
@@ -212,12 +216,29 @@ function PureMultimodalInput({
     setConfidential(window.localStorage.getItem("audric-confidential") === "1");
   }, []);
   // Explicit setter (the mode tabs pick Private/Confidential directly). Persists
-  // + fires the event the header shield / greeting listen for.
-  const setConfidentialMode = useCallback((next: boolean) => {
-    setConfidential(next);
-    window.localStorage.setItem("audric-confidential", next ? "1" : "0");
-    window.dispatchEvent(new Event("audric-confidential-change"));
-  }, []);
+  // + fires the event the header shield / greeting listen for. Turning it ON
+  // drops any staged image attachments — confidential (phala/*) models are
+  // text-only, and a base64-inlined photo blows Phala's request-body cap (413
+  // mid-stream → dead "Load failed"; 2026-07-03 customer bug).
+  const setConfidentialMode = useCallback(
+    (next: boolean) => {
+      setConfidential(next);
+      window.localStorage.setItem("audric-confidential", next ? "1" : "0");
+      window.dispatchEvent(new Event("audric-confidential-change"));
+      if (next && attachments.some(isImageAttachment)) {
+        setAttachments((curr) => curr.filter((a) => !isImageAttachment(a)));
+        toast.error(
+          "Removed the attached image — Confidential mode is text-only. (PDFs work.)"
+        );
+      }
+    },
+    [attachments, setAttachments]
+  );
+  // Images need a vision model AND normal (non-confidential) mode.
+  const canAttachImages = canAttachImagesForModel && !confidential;
+  const imageBlockReason = confidential
+    ? "Confidential mode is text-only — turn it off to attach images. (PDFs work.)"
+    : "This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)";
   // Which confidential (phala/*) model runs when Confidential is on — persisted
   // + sent as the model id by the transport (default: the fast gpt-oss-120b).
   const [confidentialModelId, setConfidentialModelId] =
@@ -335,6 +356,16 @@ function PureMultimodalInput({
     // the toggle + glow already sold it; upsell now at the moment of intent.
     if (confidential && !canUsePremium) {
       openUpgrade();
+      return;
+    }
+    // Belt-and-braces: never send an image into the confidential path (the
+    // attach/paste/toggle gates should make this unreachable) — the phala/*
+    // models are text-only and the base64 payload 413s at Phala's ingress.
+    if (confidential && attachments.some(isImageAttachment)) {
+      setAttachments((curr) => curr.filter((a) => !isImageAttachment(a)));
+      toast.error(
+        "Removed the attached image — Confidential mode is text-only. Turn Confidential off to send images."
+      );
       return;
     }
     window.history.pushState(
@@ -465,9 +496,7 @@ function PureMultimodalInput({
         (file) => !(file.type.startsWith("image/") && !canAttachImages)
       );
       if (files.length < picked.length) {
-        toast.error(
-          "This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)"
-        );
+        toast.error(imageBlockReason);
       }
       if (files.length === 0) {
         return;
@@ -492,7 +521,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile, canAttachImages]
+    [setAttachments, uploadFile, canAttachImages, imageBlockReason]
   );
 
   const handleFileChange = useCallback(
@@ -581,12 +610,10 @@ function PureMultimodalInput({
 
       event.preventDefault();
 
-      // The model can't see images → don't silently attach one it'll ignore.
-      // (Auto routes images to a vision model, so it's allowed.)
+      // The model can't see images (or Confidential is on) → don't silently
+      // attach one it'll ignore. (Auto routes images to a vision model.)
       if (!canAttachImages) {
-        toast.error(
-          "This model can't see images. Switch to a vision model or Auto to attach one."
-        );
+        toast.error(imageBlockReason);
         return;
       }
 
@@ -616,7 +643,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile, canAttachImages]
+    [setAttachments, uploadFile, canAttachImages, imageBlockReason]
   );
 
   useEffect(() => {
@@ -667,7 +694,11 @@ function PureMultimodalInput({
       )}
 
       <input
-        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+        accept={
+          canAttachImages
+            ? "image/jpeg,image/png,image/webp,image/gif,application/pdf"
+            : "application/pdf"
+        }
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}

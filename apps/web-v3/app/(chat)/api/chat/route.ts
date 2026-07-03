@@ -658,10 +658,46 @@ export async function POST(request: Request) {
       if (creditConfigured && !canUsePremium) {
         return new ChatbotError("bad_request:credit").toResponse();
       }
+      // The confidential (phala/*) models are text-only, and Phala's ingress
+      // caps the request body — a base64-inlined photo 413s MID-STREAM, which
+      // the client can only see as a dead "Load failed" (2026-07-03 customer
+      // bug). Fail fast with a typed error when THIS turn attaches an image
+      // (the composer blocks it too; this covers stale clients + the raw API).
+      const sendsImage = message?.parts?.some(
+        (p) =>
+          p.type === "file" &&
+          (p as { mediaType?: string }).mediaType?.startsWith("image/")
+      );
+      if (sendsImage) {
+        return new ChatbotError("bad_request:confidential").toResponse();
+      }
+      // Images attached EARLIER (normal-mode turns of the same chat) can't be
+      // removed by the user — replace them with a text note instead of blocking,
+      // so mixed-mode chats keep working and the model never hallucinates a
+      // photo it can't see.
+      const confidentialMessages = modelMessages.map((m) => {
+        if (!Array.isArray(m.content)) {
+          return m;
+        }
+        const content = m.content.map((part) =>
+          part.type === "image" || part.type === "file"
+            ? {
+                type: "text" as const,
+                text: "[An image or file was shared earlier in this chat — attachments aren't visible in Confidential mode.]",
+              }
+            : part
+        );
+        return { ...m, content } as typeof m;
+      });
+      // Belt-and-braces payload cap under Phala's ingress buffer limit — many
+      // extracted PDFs / pasted-text blocks in one chat can still stack past it.
+      if (JSON.stringify(confidentialMessages).length > 750_000) {
+        return new ChatbotError("bad_request:confidential_size").toResponse();
+      }
       return confidentialChatResponse({
         chatId: id,
         userId: session?.user?.id,
-        modelMessages,
+        modelMessages: confidentialMessages,
         requestedModelId: selectedChatModel,
         titlePromise,
       });
