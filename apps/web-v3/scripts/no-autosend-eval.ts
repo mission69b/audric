@@ -135,10 +135,36 @@ const PAY_CASES: PayCase[] = [
     catalogNames: [],
     expect: false,
   },
+  // Send intents must NOT open agent_pay (S.611: a hostile listing named like
+  // a payment instruction must never compete with send_transfer).
+  {
+    label: "explicit send stays send-only",
+    text: "send 5 USDC to alice.sui",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "bare pay-a-person stays send-only",
+    text: "pay john@audric 1 usdc",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "transfer stays send-only",
+    text: "transfer 10 USDsui to bob.sui",
+    catalogNames: CATALOG,
+    expect: false,
+  },
   // --- MUST gate OPEN ---
   {
     label: "explicit buy-a-report phrasing",
     text: "buy the funding radar report",
+    catalogNames: CATALOG,
+    expect: true,
+  },
+  {
+    label: "pay-the-agent phrasing (service noun present)",
+    text: "pay the Funding Radar agent for a report",
     catalogNames: CATALOG,
     expect: true,
   },

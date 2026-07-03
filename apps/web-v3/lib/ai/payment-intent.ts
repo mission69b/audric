@@ -51,15 +51,18 @@ export function hasPaymentIntent(opts: {
 //       catalog, never trusted from the prompt) → the tool rides the user's
 //       reply turn no matter how it's worded; the model decides from context
 //       (a "no thanks" just isn't called on).
-//   (b) explicit buy/use-a-service phrasing (incl. all payment verbs) with no
-//       prior offer.
-// Misfire cost is bounded by construction: agent_pay can only pay allowlisted
-// rail sellers (URL built client-side), ≤ $5, behind a tap-to-confirm card,
+//   (b) explicit buy/use-a-SERVICE phrasing with no prior offer.
+// DELIBERATELY NOT: bare payment verbs ("send/transfer/pay X to alice") —
+// those are SENDS and open send_transfer only (S.611 injection review: a
+// hostile listing named like a payment instruction must never let agent_pay
+// compete with a send; the intents are separated at the toolset level).
+// Misfire cost is bounded by construction: agent_pay can only pay ALLOWLISTED
+// sellers (checked again signer-side), ≤ $5, behind a tap-to-confirm card,
 // pay-on-delivery with auto-refund. The send_transfer gate (S.490) is a
 // DIFFERENT risk class (arbitrary recipients) and stays strict — UNTOUCHED.
 
 const SERVICE_VERBS =
-  /\b(buy|purchase|hire|order|use|call|run|get|try)\b[\s\S]{0,60}\b(agent|service|report|store|listing)\b/i;
+  /\b(buy|purchase|hire|order|use|call|run|get|try|pay)\b[\s\S]{0,60}\b(agent|service|report|store|listing)\b/i;
 
 export function hasAgentPayIntent(opts: {
   /** The recent user text (typically the last 1–2 user turns). */
@@ -74,7 +77,7 @@ export function hasAgentPayIntent(opts: {
   if (opts.isContinuation) {
     return true;
   }
-  if (PAYMENT_VERBS.test(opts.text) || SERVICE_VERBS.test(opts.text)) {
+  if (SERVICE_VERBS.test(opts.text)) {
     return true;
   }
   // Offer-pending: the assistant just made a priced offer for a real listed

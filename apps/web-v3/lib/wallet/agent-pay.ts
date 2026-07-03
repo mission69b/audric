@@ -21,6 +21,7 @@
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { payWithMpp } from "@t2000/sdk/browser";
+import { isAllowlistedSeller } from "@/lib/agent-store-allowlist";
 import { env } from "@/lib/env";
 import { isSessionExpired, loadSession, toZkLoginSigner } from "@/lib/zklogin";
 
@@ -70,6 +71,15 @@ export async function agentPay(opts: {
   }
   if (!isValidSuiAddress(seller)) {
     throw new Error("Invalid seller address.");
+  }
+  // SIGNER-SIDE curation check (S.611): even if a poisoned document / web page
+  // tricks the model into calling agent_pay with a foreign address, the
+  // executor refuses anything outside the vetted seller set. Same constant the
+  // catalog is built from — injection upstream cannot widen it.
+  if (!isAllowlistedSeller(seller)) {
+    throw new Error(
+      "This seller isn't in Audric's vetted store set — not paying. Browse agents.t2000.ai to buy from unvetted listings directly."
+    );
   }
   if (
     !Number.isFinite(opts.priceUsdc) ||
