@@ -49,16 +49,20 @@ const SEED_QUESTIONS: Record<string, string> = {
 
 export function UseInAudric({
   address,
-  name,
   priceUsdc,
 }: {
   address: string;
   name: string;
   priceUsdc: string;
 }) {
-  const question =
-    SEED_QUESTIONS[address.toLowerCase()] ??
-    `Use the "${name}" service from the t2000 agent store ($${priceUsdc}/call, pay-on-delivery) and show me what it returns.`;
+  // Only sellers vetted for Audric's in-chat store get the button — its set
+  // mirrors web-v3's executor allowlist, so the button never points at a
+  // purchase Audric would refuse (the founder's dead-end catch, 2026-07-03).
+  // Unvetted listings keep Try-it / CLI / x402 — the store's own buy paths.
+  const question = SEED_QUESTIONS[address.toLowerCase()];
+  if (!question) {
+    return null;
+  }
   const href = `https://audric.ai/?q=${encodeURIComponent(question)}`;
 
   return (

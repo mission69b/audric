@@ -389,14 +389,15 @@ export async function POST(request: Request) {
       isContinuation: isToolApprovalFlow,
     });
 
-    // Agent-store buys (§II.12 C2, need-first): the catalog block lets the
-    // model OFFER a listed paid service in text on any turn; the agent_pay
-    // tool itself rides only (a) explicit buy/use phrasing or (b) the user's
-    // agreement right after an offer that named a listed service + price.
-    // Real accounts only (guests can't sign a wallet buy — don't advertise
-    // what they can't purchase), and skipped on confidential turns (that
-    // branch returns before tools; don't pay the fetch).
-    const storeCatalog = dbUser && !confidential ? await getStoreCatalog() : [];
+    // Agent-store buys (§II.12 C2) — PULL-ONLY (founder decision, 2026-07-03).
+    // The store surface (catalog block + agent_pay tool) enters a turn ONLY
+    // when the user invokes it: explicit use/buy-a-service phrasing (what the
+    // "Use in Audric" button prefills), the reply to a pending priced offer,
+    // or a mid-purchase continuation. Normal chat NEVER sees the store — no
+    // ambient offers, no prompt cost, no tool that could fire for the wrong
+    // reason. Free tools are the product; the store is there when asked.
+    // Real accounts only (guests can't sign a wallet buy), and skipped on
+    // confidential turns (that branch returns before tools).
     const lastAssistantText = (
       msgs: Array<{ role?: string; parts?: TextPart[] }> | undefined
     ): string => {
@@ -407,16 +408,30 @@ export async function POST(request: Request) {
       }
       return "";
     };
+    const priorAssistantText = lastAssistantText(
+      messagesFromDb as unknown as Array<{
+        role?: string;
+        parts?: TextPart[];
+      }>
+    );
+    // Cheap textual pre-check before paying the catalog fetch: service-shaped
+    // ask, a possible pending offer ($ in the previous assistant message), or
+    // a continuation. The catalog is in-process cached (5 min) so the fetch
+    // this gates is only the cold-start cost.
+    const mightInvokeStore =
+      Boolean(dbUser) &&
+      !confidential &&
+      (hasAgentPayIntent({
+        text: routeText,
+        isContinuation: isToolApprovalFlow,
+      }) ||
+        /\$\s?\d/.test(priorAssistantText));
+    const storeCatalog = mightInvokeStore ? await getStoreCatalog() : [];
     const agentPayIntent =
       storeCatalog.length > 0 &&
       hasAgentPayIntent({
         text: routeText,
-        lastAssistantText: lastAssistantText(
-          messagesFromDb as unknown as Array<{
-            role?: string;
-            parts?: TextPart[];
-          }>
-        ),
+        lastAssistantText: priorAssistantText,
         catalogNames: storeCatalog.map((s) => s.name),
         isContinuation: isToolApprovalFlow,
       });
@@ -874,7 +889,11 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
             artifactsActive,
             researchActive,
-            storeCatalogBlock: storeCatalogPromptBlock(storeCatalog),
+            // PULL-ONLY: the store block rides only store-invoked turns —
+            // same gate as the tool, so prompt and toolset always agree.
+            storeCatalogBlock: agentPayIntent
+              ? storeCatalogPromptBlock(storeCatalog)
+              : undefined,
           }),
           messages: modelMessages,
           // Step budget: research turns get a high budget for several visible
