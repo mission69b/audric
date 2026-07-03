@@ -108,6 +108,33 @@ export async function checkAgentIpRateLimit(
   }
 }
 
+// Per-IP cap for the native Google sign-in exchange
+// (POST /api/mobile-auth/exchange). Every accepted request fans out to Google's
+// token endpoint, so an unthrottled route lets an attacker burn server
+// concurrency + outbound quota. Sign-in is low-volume per user, so a tight
+// per-IP/min cap is safe. Fails OPEN (Redis down / no IP → never block a legit
+// sign-in, so local dev without REDIS_URL is unaffected).
+const MOBILE_AUTH_IP_RPM = 20;
+
+export async function checkMobileAuthIpRateLimit(
+  ip: string | undefined
+): Promise<boolean> {
+  if (!ip) {
+    return true;
+  }
+  const redis = getRedisClient();
+  if (!redis?.isReady) {
+    return true;
+  }
+  try {
+    const key = `mobile-auth-ip-rpm:${ip}`;
+    const [count] = await redis.multi().incr(key).expire(key, 60, "NX").exec();
+    return !(typeof count === "number" && count > MOBILE_AUTH_IP_RPM);
+  } catch {
+    return true;
+  }
+}
+
 /** Best-effort client IP from the standard proxy headers (Vercel sets both). */
 export function clientIp(request: Request): string | undefined {
   const fwd = request.headers.get("x-forwarded-for");

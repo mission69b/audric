@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { deriveAddress, verifyGoogleJwt } from "@/lib/audric-auth";
 import { upsertUser } from "@/lib/db/queries";
 import { env } from "@/lib/env";
+import { checkMobileAuthIpRateLimit, clientIp } from "@/lib/ratelimit";
 
 // Native (mobile) Google sign-in — the secret-holding half of the flow.
 //
@@ -24,9 +25,50 @@ import { env } from "@/lib/env";
 
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const MAX_BODY_BYTES = 4096;
+// Cap the outbound wait so a hung/slow Google response can't pin server
+// concurrency indefinitely (a stalled connection would otherwise hold the route
+// open until the platform's own, much longer, timeout).
+const GOOGLE_TIMEOUT_MS = 10_000;
 
 const fail = (status: number, error: string) =>
   NextResponse.json({ error }, { status });
+
+// Read the request body as text while bounding total BYTES. Streams the body and
+// aborts the moment the running byte count exceeds `max`, so a chunked / unknown
+// -length body can't force us to buffer arbitrary data before the check — and it
+// counts real bytes, not UTF-16 code units. Returns null when over the cap.
+async function readCappedText(
+  request: NextRequest,
+  max: number
+): Promise<string | null> {
+  const body = request.body;
+  if (!body) {
+    return "";
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  let result = await reader.read();
+  while (!result.done) {
+    const value = result.value;
+    if (value) {
+      total += value.byteLength;
+      if (total > max) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    result = await reader.read();
+  }
+  const buf = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buf.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(buf);
+}
 
 export async function POST(request: NextRequest) {
   const secret = env.GOOGLE_CLIENT_SECRET;
@@ -35,19 +77,29 @@ export async function POST(request: NextRequest) {
     return fail(503, "Mobile sign-in is not configured");
   }
 
-  // Size cap — the body is two short strings; anything large is abuse.
+  // Per-IP throttle BEFORE any work: each accepted request fans out to Google's
+  // token endpoint, so an unthrottled route lets an attacker burn concurrency +
+  // outbound quota. Fails OPEN when Redis is unconfigured (local dev).
+  if (!(await checkMobileAuthIpRateLimit(clientIp(request)))) {
+    return fail(429, "Too many requests");
+  }
+
+  // Size cap — the body is two short strings; anything large is abuse. Reject on
+  // the declared length first (cheap), then read with a BYTE-bounded stream so a
+  // chunked / spoofed-length body still can't over-buffer.
   const declared = Number(request.headers.get("content-length") ?? "0");
   if (declared > MAX_BODY_BYTES) {
+    return fail(413, "Payload too large");
+  }
+
+  const raw = await readCappedText(request, MAX_BODY_BYTES);
+  if (raw === null) {
     return fail(413, "Payload too large");
   }
 
   let code: unknown;
   let codeVerifier: unknown;
   try {
-    const raw = await request.text();
-    if (raw.length > MAX_BODY_BYTES) {
-      return fail(413, "Payload too large");
-    }
     const body = JSON.parse(raw);
     code = body.code;
     codeVerifier = body.codeVerifier;
@@ -83,6 +135,7 @@ export async function POST(request: NextRequest) {
         client_secret: secret,
         redirect_uri: redirectUri,
       }),
+      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
     const data = (await res.json().catch(() => ({}))) as {
       id_token?: string;
