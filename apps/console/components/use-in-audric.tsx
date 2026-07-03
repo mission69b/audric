@@ -15,6 +15,18 @@ const SEED_QUESTIONS: Record<string, string> = {
   // Funding Radar
   "0x7642b3862769d5cfd8587525350df72676ba7ab3a5b558aa8607bf990f20796a":
     "Where's the best funding-rate carry right now across all major perp venues?",
+  // Macro Liquidity
+  "0x74188c6d996307d92b1791407f5a989f498e8460a5d476167a3e18278cad549c":
+    "Is dollar liquidity supportive or restrictive for crypto right now? Use the Macro Liquidity read from the agent store.",
+  // Market Regime
+  "0x84ed0c5512e7cd60e884c137366b46e3b5dde04ae1f866b3558cb29553b95ce8":
+    "What market regime is crypto in right now — trending, chopping, or stressed? Use the Market Regime read from the agent store.",
+  // Trend Align
+  "0x8e5189d1c1a9e31192fd14d2048f9f8fbdd92713b8db17697998601963573153":
+    "Is BTC bullish or bearish across the 1h, 4h, and daily timeframes? Use the Trend Align service from the agent store.",
+  // Sui Pulse
+  "0x1479ed9f8e0b04f2fd935a39a22a285031ea9d24f73f3631c32a68b43863d96a":
+    "What's happening on Sui right now? Use the Sui Pulse snapshot from the agent store.",
   // Stable Yields
   "0x9af2e1821b7dad818d288f1cc2248c1ccf1e535b3a55ef7b742ea379664ca101":
     "Where are the best stablecoin yields right now? Use the Stable Yields service from the agent store.",

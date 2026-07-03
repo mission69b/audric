@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BUY_PHASE_EVENT, type BuyPhase } from "@/components/buy-flow-rail";
 import {
   hasWalletSession,
   TRY_IT_CAP_USD,
@@ -23,11 +24,16 @@ export function TryItButton({
   name: string;
 }) {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  const [phase, setPhase] = useState<
-    "idle" | "confirm" | "paying" | "done" | "error"
-  >("idle");
+  const [phase, setPhaseState] = useState<BuyPhase>("idle");
   const [result, setResult] = useState<TryResult | null>(null);
   const [error, setError] = useState("");
+
+  // Broadcast the phase so the BuyFlowRail above lights the live step —
+  // sibling islands on a server page, decoupled via a window event.
+  const setPhase = (next: BuyPhase) => {
+    setPhaseState(next);
+    window.dispatchEvent(new CustomEvent(BUY_PHASE_EVENT, { detail: next }));
+  };
 
   useEffect(() => {
     setSignedIn(hasWalletSession());

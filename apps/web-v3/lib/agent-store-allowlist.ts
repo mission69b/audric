@@ -17,11 +17,20 @@
  * still lists the whole directory — browsing with full context is fine; the
  * agent ACTING on the user's behalf gets vetted services only.
  *
- * All 7 are t2000-operated seeds (S.601/S.605; keys at ~/.t2000/seed-*.key).
+ * All 11 are t2000-operated seeds (S.601/S.605 + Shelf v2 S.611; keys at
+ * ~/.t2000/seed-*.key).
  */
 export const AUDRIC_STORE_SELLERS: readonly string[] = [
   // Funding Radar — cross-venue perp funding ranking
   "0x7642b3862769d5cfd8587525350df72676ba7ab3a5b558aa8607bf990f20796a",
+  // Macro Liquidity — FRED net-liquidity read (Shelf v2)
+  "0x74188c6d996307d92b1791407f5a989f498e8460a5d476167a3e18278cad549c",
+  // Market Regime — trend/chop/stress classification (Shelf v2)
+  "0x84ed0c5512e7cd60e884c137366b46e3b5dde04ae1f866b3558cb29553b95ce8",
+  // Trend Align — multi-timeframe trend alignment (Shelf v2)
+  "0x8e5189d1c1a9e31192fd14d2048f9f8fbdd92713b8db17697998601963573153",
+  // Sui Pulse — Sui ecosystem snapshot (Shelf v2)
+  "0x1479ed9f8e0b04f2fd935a39a22a285031ea9d24f73f3631c32a68b43863d96a",
   // Stable Yields — stablecoin yield report
   "0x9af2e1821b7dad818d288f1cc2248c1ccf1e535b3a55ef7b742ea379664ca101",
   // Card Forge — shareable agent card PNG

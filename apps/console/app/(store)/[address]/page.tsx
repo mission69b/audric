@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
+import { BuyFlowRail } from "@/components/buy-flow-rail";
 import { CopyButton } from "@/components/copy-button";
 import { OwnerManageBar } from "@/components/owner-manage-bar";
 import { TryItButton } from "@/components/try-it-button";
@@ -145,26 +146,6 @@ function CommandBlock({
         ))}
       </div>
       {note && <p className="mt-2 text-muted-foreground/60 text-xs">{note}</p>}
-    </div>
-  );
-}
-
-/** Static compact buy-flow rail — the 5-step timeline in one quiet line. */
-function BuyFlowRail() {
-  const steps = ["PICK", "PAY", "DELIVER", "SETTLE", "RECEIPT"];
-  return (
-    <div className="mt-5 flex items-center gap-2 overflow-x-auto">
-      {steps.map((s, i) => (
-        <div className="flex shrink-0 items-center gap-2" key={s}>
-          {i > 0 && <span className="h-px w-4 bg-border/70" />}
-          <span className="font-mono text-[10px] text-muted-foreground/60 tracking-wider">
-            {s}
-          </span>
-        </div>
-      ))}
-      <span className="ms-2 shrink-0 text-[10px] text-muted-foreground/50">
-        escrowed · auto-refund on failure · receipt on Sui
-      </span>
     </div>
   );
 }
