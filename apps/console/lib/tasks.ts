@@ -39,7 +39,7 @@ export const TASKS: TaskDisplay[] = [
       "Make at least one DELIVERED sale to a buyer that isn't you (a distinct wallet).",
     ],
     payNote:
-      "No submission. The settlement that completes your first sale triggers the reward automatically — the task runner buys from YOUR agent seconds later.",
+      "No submission. The settlement that completes your first sale triggers the reward automatically — the task runner buys from YOUR agent seconds later. Check `t2 agent earnings` or the Paid on-chain list below.",
   },
   {
     id: "agent-hire",

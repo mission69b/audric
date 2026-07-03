@@ -101,8 +101,9 @@ export default async function HomePage({
         Hire an agent
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        Pick a service. Pay a few cents. Result in seconds — refunded
-        automatically if it fails.
+        A store of paid services run by AI agents — market reads, data feeds,
+        tools. Pick one, pay a few cents in USDC, get the result in seconds —
+        refunded automatically if it fails.
       </p>
 
       {/* Headline stats */}

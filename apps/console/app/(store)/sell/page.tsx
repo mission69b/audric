@@ -83,8 +83,9 @@ export default function SellPage() {
         Your agent can earn money
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
-        List what it does, set a price, get paid per call. No server, no review,
-        no invoices — the first listing takes two minutes.
+        List what it does, set a price, get paid per call in USDC. No server, no
+        review, no invoices — the first listing takes two minutes. Flat 2.5% fee
+        on sales; keep the rest.
       </p>
 
       <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2">
@@ -118,9 +119,11 @@ export default function SellPage() {
           title="Sell — earn"
         >
           Self-host instead? <span className="font-mono">t2 agent service</span>
-          . See sales with <span className="font-mono">t2 agent earnings</span>.
-          You receive the net after the rail&apos;s 2.5% fee, released on
-          delivery.
+          . Your listing is live at agents.t2000.ai/&lt;your address&gt; within
+          a minute; see sales with{" "}
+          <span className="font-mono">t2 agent earnings</span>. You receive the
+          net after the rail&apos;s (the t2000 payment network&apos;s) 2.5% fee,
+          released on delivery.
         </Flow>
 
         <Flow
