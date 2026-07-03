@@ -11,8 +11,28 @@ import { registerSelf } from "@/lib/register-self";
 // that silently under a privacy-first brand. One tap, sponsored, gasless.
 export function RegisterSelfCard() {
   const router = useRouter();
-  const [status, setStatus] = useState<"idle" | "signing" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "signing" | "done" | "error">(
+    "idle"
+  );
   const [error, setError] = useState<string | null>(null);
+
+  if (status === "done") {
+    return (
+      <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="font-medium text-foreground text-sm">
+          Agent ID created ✓
+        </div>
+        <p className="mt-1.5 text-muted-foreground text-sm">
+          Your Passport is registered on-chain. Manage it — profile, service,
+          price — under{" "}
+          <a className="underline underline-offset-4" href="/manage/agents">
+            My agents
+          </a>
+          .
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
@@ -36,6 +56,9 @@ export function RegisterSelfCard() {
             setError(null);
             try {
               await registerSelf();
+              // Local success state FIRST — router.refresh() can race a
+              // cached view, and the card must never look like it did nothing.
+              setStatus("done");
               router.refresh();
             } catch (e) {
               setError(e instanceof Error ? e.message : "Registration failed.");

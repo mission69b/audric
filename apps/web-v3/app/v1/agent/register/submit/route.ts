@@ -1,4 +1,9 @@
-import { upsertAgentProfile } from "@audric/accounts";
+import {
+  getAgentProfile,
+  getUserById,
+  setAgentProfileFields,
+  upsertAgentProfile,
+} from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { submitSponsoredRegister } from "@/lib/agent/register";
 import { openAiError } from "@/lib/api/keys";
@@ -90,6 +95,24 @@ export async function POST(request: Request) {
     address,
     registerDigest: result.alreadyRegistered ? undefined : result.digest,
   }).catch(() => undefined);
+
+  // Passport self-registrations (§II.15a): default the display name to the
+  // user's Audric handle so the listing reads "funkii", not "agent-7f2059".
+  // Only on a fresh register, only when a user row exists for this address
+  // (keypair agents have none), and never over an existing displayName.
+  if (!result.alreadyRegistered) {
+    try {
+      const [user, profile] = await Promise.all([
+        getUserById(address),
+        getAgentProfile(address),
+      ]);
+      if (user?.username && !profile?.displayName) {
+        await setAgentProfileFields(address, { displayName: user.username });
+      }
+    } catch {
+      // cosmetic default — never fail the response for it
+    }
+  }
 
   return Response.json({
     registered: true,

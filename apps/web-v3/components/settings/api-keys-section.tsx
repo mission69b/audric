@@ -22,7 +22,11 @@ export function ApiKeysSection() {
         platform — same account, same balance.
       </p>
       <Button asChild className="mt-3" size="sm">
-        <a href="https://agents.t2000.ai/manage" rel="noreferrer" target="_blank">
+        <a
+          href="https://agents.t2000.ai/manage"
+          rel="noreferrer"
+          target="_blank"
+        >
           Open developer platform →
         </a>
       </Button>
