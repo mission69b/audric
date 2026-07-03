@@ -57,12 +57,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid agent." }, { status: 400 });
   }
 
-  // Ownership gate: the session user must be the agent's confirmed owner.
+  // Ownership gate: the session user must be the agent's confirmed owner —
+  // OR the agent itself (the SELF-agent: owner == agent == the Passport,
+  // §II.15a stage 3).
   const profile = await getAgentProfile(agent);
   if (!profile) {
     return NextResponse.json({ error: "Agent not found." }, { status: 404 });
   }
-  if (profile.owner !== session.user.id) {
+  if (profile.owner !== session.user.id && agent !== session.user.id) {
     return NextResponse.json(
       { error: "You don't own this agent." },
       { status: 403 }

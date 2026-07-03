@@ -1,9 +1,15 @@
-import { type AgentProfile, listAgentsForOwner } from "@audric/accounts";
+import {
+  type AgentProfile,
+  getAgentProfile,
+  listAgentsForOwner,
+} from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
 import { AgentManageCard } from "@/components/agent-manage-card";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
+import { RegisterSelfCard } from "@/components/register-self-card";
 import { Section } from "@/components/section";
+import { SelfServiceCard } from "@/components/self-service-card";
 import { Badge } from "@/components/ui/badge";
 
 const GATEWAY = "https://mpp.t2000.ai";
@@ -68,13 +74,38 @@ export default async function MyAgentsPage() {
   if (!session) {
     redirect("/manage");
   }
-  const { owned, pending } = await listAgentsForOwner(session.user.id);
-  const earnings = await Promise.all(
-    owned.map((a) => fetchEarnings(a.address))
-  );
+  // The self-agent (§II.15a stage 3): the agent you ARE, not one you own.
+  // listAgentsForOwner matches ownership LINKS only, so the Passport's own
+  // registration is fetched separately.
+  const [{ owned, pending }, selfAgent] = await Promise.all([
+    listAgentsForOwner(session.user.id),
+    getAgentProfile(session.user.id),
+  ]);
+  const [selfEarnings, ...earnings] = await Promise.all([
+    selfAgent ? fetchEarnings(selfAgent.address) : Promise.resolve(null),
+    ...owned.map((a) => fetchEarnings(a.address)),
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
+      <Section
+        description="Your Passport as an agent — the identity you sign in with. Sell services and build receipt-backed reputation as yourself."
+        title="You"
+      >
+        {selfAgent ? (
+          <div className="flex flex-col gap-3">
+            <AgentManageCard agent={selfAgent} earnings={selfEarnings} />
+            <SelfServiceCard
+              category={selfAgent.category}
+              mcpEndpoint={selfAgent.mcpEndpoint}
+              priceUsdc={selfAgent.priceUsdc}
+            />
+          </div>
+        ) : (
+          <RegisterSelfCard />
+        )}
+      </Section>
+
       <Section
         description="Agents that proposed you as their owner. Confirming signs a sponsored, gasless transaction with your Passport."
         title="Awaiting your confirmation"
