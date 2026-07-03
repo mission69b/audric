@@ -5,9 +5,15 @@
  * turn, and IS exposed on a real payment turn. Tests the pure gate helper
  * (`hasPaymentIntent`) the route uses to build the active tool set.
  *
+ * Also locks the agent_pay gate (SPEC_AGENT_COMMERCE §II.12 C2): the store-buy
+ * tool is exposed only on explicit buy/use phrasing OR the offer→agree
+ * handshake (short affirmative right after the assistant named a listed
+ * service + price) — never on plain chat, and never on a bare "yes" with no
+ * prior offer.
+ *
  * Run: pnpm --filter @audric/web-v3 eval:no-autosend
  */
-import { hasPaymentIntent } from "../lib/ai/payment-intent";
+import { hasAgentPayIntent, hasPaymentIntent } from "../lib/ai/payment-intent";
 
 type Case = {
   label: string;
@@ -74,8 +80,105 @@ const CASES: Case[] = [
   },
 ];
 
+// ── agent_pay gate cases (§II.12 C2) ────────────────────────────────────────
+const OFFER =
+  "Funding Radar can give you a live funding-rate carry report — $0.05, pay-on-delivery, auto-refunds if it fails. Want it?";
+const CATALOG = ["Funding Radar", "Card Forge", "Stable Yields", "Coin Quotes"];
+
+type PayCase = {
+  label: string;
+  text: string;
+  lastAssistantText?: string;
+  catalogNames?: string[];
+  isContinuation?: boolean;
+  expect: boolean; // expected: is agent_pay exposed?
+};
+
+const PAY_CASES: PayCase[] = [
+  // --- MUST gate CLOSED ---
+  {
+    label: "plain chat (no store shape)",
+    text: "what's the meaning of life?",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "image gen turn",
+    text: "generate 5 more images like this style",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "crypto price lookup (free tool covers it)",
+    text: "what's the price of SUI right now?",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "bare yes with NO prior offer",
+    text: "yes",
+    lastAssistantText: "The weather in Sydney is sunny today.",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "bare yes, offer text without a price",
+    text: "yes",
+    lastAssistantText: "Funding Radar could help with that question.",
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "long reply that starts with yes (not a terse agree)",
+    text: "yes but first tell me more about how funding rates work",
+    lastAssistantText: OFFER,
+    catalogNames: CATALOG,
+    expect: false,
+  },
+  {
+    label: "affirmative but empty catalog (nothing to buy)",
+    text: "yes",
+    lastAssistantText: OFFER,
+    catalogNames: [],
+    expect: false,
+  },
+  // --- MUST gate OPEN ---
+  {
+    label: "explicit buy-a-report phrasing",
+    text: "buy the funding radar report",
+    catalogNames: CATALOG,
+    expect: true,
+  },
+  {
+    label: "use-the-agent phrasing",
+    text: "use the Card Forge agent to make my card",
+    catalogNames: CATALOG,
+    expect: true,
+  },
+  {
+    label: "offer→agree handshake (bare yes after a priced offer)",
+    text: "yes",
+    lastAssistantText: OFFER,
+    catalogNames: CATALOG,
+    expect: true,
+  },
+  {
+    label: "offer→agree handshake (go ahead)",
+    text: "go ahead",
+    lastAssistantText: OFFER,
+    catalogNames: CATALOG,
+    expect: true,
+  },
+  {
+    label: "mid-flow confirm continuation",
+    text: "(continuation)",
+    isContinuation: true,
+    expect: true,
+  },
+];
+
 let passed = 0;
-console.log(`no-autosend eval — ${CASES.length} cases\n`);
+console.log(`no-autosend eval — ${CASES.length} send cases\n`);
 for (const c of CASES) {
   const got = hasPaymentIntent({
     text: c.text,
@@ -90,9 +193,32 @@ for (const c of CASES) {
     `${ok ? "✅" : "❌"} exposed=${got} expect=${c.expect}  ${c.label}`
   );
 }
-console.log(`\n${passed}/${CASES.length} passed`);
-if (passed !== CASES.length) {
-  console.log("FAIL ❌ — send-safety invariant broken");
+
+let payPassed = 0;
+console.log(`\nagent_pay gate — ${PAY_CASES.length} cases\n`);
+for (const c of PAY_CASES) {
+  const got = hasAgentPayIntent({
+    text: c.text,
+    lastAssistantText: c.lastAssistantText,
+    catalogNames: c.catalogNames,
+    isContinuation: c.isContinuation,
+  });
+  const ok = got === c.expect;
+  if (ok) {
+    payPassed++;
+  }
+  console.log(
+    `${ok ? "✅" : "❌"} exposed=${got} expect=${c.expect}  ${c.label}`
+  );
+}
+
+console.log(
+  `\n${passed}/${CASES.length} send + ${payPassed}/${PAY_CASES.length} agent_pay passed`
+);
+if (passed !== CASES.length || payPassed !== PAY_CASES.length) {
+  console.log("FAIL ❌ — money-tool gating invariant broken");
   process.exit(1);
 }
-console.log("PASS ✅ (send_transfer never exposed without payment intent)");
+console.log(
+  "PASS ✅ (send_transfer + agent_pay never exposed without user intent)"
+);

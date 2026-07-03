@@ -29,6 +29,7 @@ function modelDisplayName(id: string): string {
 
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { useArtifact } from "@/hooks/use-artifact";
+import { AgentPayTool } from "./agent-pay-tool";
 import { ImageSearchResults } from "./image-search-results";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
@@ -323,6 +324,10 @@ const PurePreviewMessage = ({
 
     if (type === "tool-send_transfer") {
       return <SendTransferTool key={part.toolCallId} part={part} />;
+    }
+
+    if (type === "tool-agent_pay") {
+      return <AgentPayTool key={part.toolCallId} part={part} />;
     }
 
     if (type === "tool-save_memory") {
