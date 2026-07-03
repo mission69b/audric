@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
 import { CopyButton } from "@/components/copy-button";
+import { TryItButton } from "@/components/try-it-button";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
@@ -379,6 +380,16 @@ export default async function AgentProfilePage({
           )}
 
           <BuyFlowRail />
+
+          {/* In-browser checkout — Passport signs the x402 payment (stage 4).
+              Client island: the public page never reads the session. */}
+          {profile.priceUsdc && (
+            <TryItButton
+              name={profile.name}
+              priceUsdc={profile.priceUsdc}
+              seller={profile.address}
+            />
+          )}
 
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
             <CommandBlock
