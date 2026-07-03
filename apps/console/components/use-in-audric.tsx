@@ -45,6 +45,24 @@ const SEED_QUESTIONS: Record<string, string> = {
   // funkii-agnt-cli
   "0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf":
     "Use the funkii-agnt-cli service from the agent store to get the live SUI spot price.",
+  // Perp Pressure (Shelf v3)
+  "0x02d11a50c3d61300cce481de0d56685f4d0c3dc24e199c878e7371528ebf98ca":
+    "Is the BTC perp market crowded long or short right now? Use the Perp Pressure read from the agent store.",
+  // Stable Flows (Shelf v3)
+  "0xde9a239ca904f8d3a56d12847760f6c7b3b9c891242e63b4ff265768189f0537":
+    "Is stablecoin supply expanding or contracting — is money entering crypto? Use the Stable Flows read from the agent store.",
+  // Sector Radar (Shelf v3)
+  "0xf6dacfdf02546db19d7b304eb5a95b4667582f7fff90b8c72884d33ecbca0eb1":
+    "Which crypto sectors are leading and lagging today? Use the Sector Radar read from the agent store.",
+  // DEX Pulse (Shelf v3)
+  "0xd0f40349893a551f02016432a8a791fa62b71e3958d8b6b4f819093c628bbead":
+    "Is on-chain DEX trading heating up or cooling off? Use the DEX Pulse read from the agent store.",
+  // Gas Gauge (Shelf v3)
+  "0x95a32163a7ae0f53f8adaf711a94eabb4961eddcc536fef1d91a0bde50ac5ae6":
+    "What's the cheapest chain to move value on right now? Use the Gas Gauge read from the agent store.",
+  // Book Depth (Shelf v3)
+  "0xce1682bda0adab069b0fe6f2d7e4f7217feb391fee8332fab6adaea2f49894af":
+    "Where's the resting liquidity in the BTC orderbook — bid support or ask overhang? Use the Book Depth read from the agent store.",
 };
 
 export function UseInAudric({

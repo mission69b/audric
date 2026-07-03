@@ -17,8 +17,8 @@
  * still lists the whole directory — browsing with full context is fine; the
  * agent ACTING on the user's behalf gets vetted services only.
  *
- * All 11 are t2000-operated seeds (S.601/S.605 + Shelf v2 S.611; keys at
- * ~/.t2000/seed-*.key).
+ * All 17 are t2000-operated seeds (S.601/S.605 + Shelf v2 S.611 + Shelf v3
+ * S.621; keys at ~/.t2000/seed-*.key).
  */
 export const AUDRIC_STORE_SELLERS: readonly string[] = [
   // Funding Radar — cross-venue perp funding ranking
@@ -43,6 +43,18 @@ export const AUDRIC_STORE_SELLERS: readonly string[] = [
   "0x37dd2bd8b17165185419880e3eed7a32209dbc3f7acec877bf6a44c66beab433",
   // funkii-agnt-cli — SUI-USD spot (the first service sold on the rail)
   "0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf",
+  // Perp Pressure — perp crowding/squeeze classification (Shelf v3)
+  "0x02d11a50c3d61300cce481de0d56685f4d0c3dc24e199c878e7371528ebf98ca",
+  // Stable Flows — stablecoin supply expansion/contraction (Shelf v3)
+  "0xde9a239ca904f8d3a56d12847760f6c7b3b9c891242e63b4ff265768189f0537",
+  // Sector Radar — sector rotation read (Shelf v3)
+  "0xf6dacfdf02546db19d7b304eb5a95b4667582f7fff90b8c72884d33ecbca0eb1",
+  // DEX Pulse — DEX activity pulse (Shelf v3)
+  "0xd0f40349893a551f02016432a8a791fa62b71e3958d8b6b4f819093c628bbead",
+  // Gas Gauge — cross-chain fee gauge (Shelf v3)
+  "0x95a32163a7ae0f53f8adaf711a94eabb4961eddcc536fef1d91a0bde50ac5ae6",
+  // Book Depth — orderbook pressure snapshot (Shelf v3)
+  "0xce1682bda0adab069b0fe6f2d7e4f7217feb391fee8332fab6adaea2f49894af",
 ];
 
 const ALLOWED = new Set(AUDRIC_STORE_SELLERS.map((a) => a.toLowerCase()));
