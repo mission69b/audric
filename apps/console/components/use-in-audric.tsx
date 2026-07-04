@@ -66,6 +66,96 @@ const SEED_QUESTIONS: Record<string, string> = {
   // Market Mood (Shelf v3, CMC)
   "0x020e1c31e11417b2c26dc61c9bb0094b83250924256f1da3a349c1f42d340713":
     "Is the crypto crowd fearful or greedy right now? Use the Market Mood read from the agent store.",
+  // Top Movers (Shelf v4)
+  "0x6328a44e353baba891c25e3c08985331340a785082e1a8cebb537968c456f21b":
+    "What actually moved today \u2014 and was it real volume? Use the Top Movers read from the agent store.",
+  // New Listings Radar (Shelf v4)
+  "0x6f07d7f0c195e95d95ba387142d23c02be914051bc2fa3d93f94a1da30621311":
+    "What just listed \u2014 and what's showing early traction? Use the New Listings Radar read from the agent store.",
+  // Trending Now (Shelf v4)
+  "0xd52d12295301805d74edf2c2f6771f1d5831902a8e653fddf9299dda56d1d59d":
+    "What is the market looking at right now? Use the Trending Now read from the agent store.",
+  // Token Profile (Shelf v4)
+  "0x39eb2d705ef9e870e03058d47dd5115becc3014ce78415bfe68fc97753d1fca0":
+    "One token, the full identity card. Use the Token Profile read from the agent store.",
+  // Supply Overhang (Shelf v4)
+  "0xa3c7d5df535fe2ab1f4a32e28e28e2afd0f61f953b2f263d4b6d22e7fefa6a1f":
+    "How much of this token is still waiting to hit the market? Use the Supply Overhang read from the agent store.",
+  // Dominance Shifts (Shelf v4)
+  "0xb3d6ba3b270ea5ea65484b97894e858880d13da88a570522f53ccc7c4cb0da5c":
+    "Is money rotating into BTC or out into alts? Use the Dominance Shifts read from the agent store.",
+  // Stable Share (Shelf v4)
+  "0xcb8fab93aa60813c0dd39a9de53e72fd118c298edeb29c8e782af427618649c6":
+    "How much of crypto is sitting in cash? Use the Stable Share read from the agent store.",
+  // Kline Patterns (Shelf v4)
+  "0xf3b61519de862d1806194082d6aa575ac1c6214f5723469629e0ff8df925713a":
+    "What is the chart structure actually saying? Use the Kline Patterns read from the agent store.",
+  // Momentum Screen (Shelf v4)
+  "0xf9c49726213d8763b01a6184d9df4c3069dcc17420eb04de8bb3196ed92b66a7":
+    "Which large caps have real momentum right now? Use the Momentum Screen read from the agent store.",
+  // Drawdown Board (Shelf v4)
+  "0x549e453e78476612600c7de6d8e49a8fdf3b025fbe55dd94a2b81251be24da66":
+    "How far below their highs are the majors trading? Use the Drawdown Board read from the agent store.",
+  // Volume Anomalies (Shelf v4)
+  "0x6251a99c1cfb176f563b3005139fb26b68414210c9cf372124b522730ad11dc0":
+    "Whose volume is way off its baseline today? Use the Volume Anomalies read from the agent store.",
+  // Market Breadth (Shelf v4)
+  "0x99949bb4c37345d5659b6af53b8da9bd11b417623711912844575721721802b0":
+    "Is the move broad or carried by three names? Use the Market Breadth read from the agent store.",
+  // Correlation Matrix (Shelf v4)
+  "0x150349a071e20d683060a8d1a637b1b4a81652f97ab126243bb6669d296b9b50":
+    "Which majors actually move together right now? Use the Correlation Matrix read from the agent store.",
+  // Relative Strength (Shelf v4)
+  "0xa8a1902b0540a2fe124fb3b7140ce732f7a3b576a254d52577e850637b444cff":
+    "Is this token beating BTC \u2014 or just riding it? Use the Relative Strength read from the agent store.",
+  // Perp Scanner (Shelf v4)
+  "0x7bf9ebf8fcc822ce043589897fd823ea799cf13ef48aada2cfe081373e89fac9":
+    "Which perp markets deserve a look right now? Use the Perp Scanner read from the agent store.",
+  // Funding Regime (Shelf v4)
+  "0x302711735ac4b3ffea50082f058553e865fc2022ac32308eaa0f89bfef0e93c5":
+    "Has the funding regime flipped for this perp? Use the Funding Regime read from the agent store.",
+  // Liquidation Pulse (Shelf v4)
+  "0x600a39a03068cc5b55c9b8263586975738ed38df7da4783952674df4d3986b95":
+    "Who just got liquidated \u2014 longs or shorts? Use the Liquidation Pulse read from the agent store.",
+  // OI Divergence (Shelf v4)
+  "0x93d8ebe973790a70175fb7e9ad5d654b861303f0f589da5e29117c9d340b81ce":
+    "Is open interest moving faster than price? Use the OI Divergence read from the agent store.",
+  // Capitulation Scan (Shelf v4)
+  "0x32a241f675adadcc3bb5354716054db82ae9874fad803b35e55dc0155bdb719f":
+    "Which perps are getting washed out right now? Use the Capitulation Scan read from the agent store.",
+  // Basis Monitor (Shelf v4)
+  "0x2f49ba439b197abfc50097503b7f1184a82e25cdf0ec82f4ebab8590167f95eb":
+    "What is perp basis saying about leverage appetite? Use the Basis Monitor read from the agent store.",
+  // Positioning Extremes (Shelf v4)
+  "0xcf1caf022854aaead591ca44c624f8f5154a9afcea39fc22c793e251e3574103":
+    "Where is the crowd most one-sided? Use the Positioning Extremes read from the agent store.",
+  // Squeeze Watch (Shelf v4)
+  "0x5fe42df3814ee2fb570fb470dfd74577d959771d33c94184983395224a618b44":
+    "Which shorts are paying to press a rising market? Use the Squeeze Watch read from the agent store.",
+  // Daily Brief (Shelf v4)
+  "0x561945df8d1cc598631a0aaba9ca9ff4e48be1de294e7de31c72cf3fe4d39a6f":
+    "The whole market backdrop in one call. Use the Daily Brief read from the agent store.",
+  // Macro Overview (Shelf v4)
+  "0xd45067da5ff3f793acc6a3ea3d283fca7555e35e5eb6cdf73ce48c51cda7d38d":
+    "Is the macro backdrop with you or against you? Use the Macro Overview read from the agent store.",
+  // Portfolio Read (Shelf v4)
+  "0xcceeb4f7bce0b0180e617b6b537183d84248b51c9bebd1ed83be423c0296153e":
+    "What is my portfolio actually exposed to? Use the Portfolio Read read from the agent store.",
+  // Post Pulse (Shelf v4)
+  "0x9a1375976193b442853969038f4ef2c8a579ec9fb9cd37cafb7e795f7d35254b":
+    "How is this X post actually performing? Use the Post Pulse read from the agent store.",
+  // Listing Copywriter (Shelf v4)
+  "0x86a0c73439e02b56fcf6be107a307e43a3563be659ef35b16cc0eb4455f75417":
+    "Turn what your agent does into copy that sells it. Use the Listing Copywriter read from the agent store.",
+  // Thread Writer (Shelf v4)
+  "0x933925baf752bda3b1729a1a8bfa14f03195d65e3a1c58bdd9eb88a6e655bb06":
+    "Turn any report into a post-ready X thread. Use the Thread Writer read from the agent store.",
+  // Wallet Health (Shelf v4)
+  "0x214abeb9aaec6a72a20bf19d74ab477a1049b4ee8af1aaee1b65017c7e2cdcfa":
+    "A quick structural read on any Sui wallet. Use the Wallet Health read from the agent store.",
+  // Sui Epoch Report (Shelf v4)
+  "0x09a143fddde2bc44457513917e1311ce3d4f350e9a4731242609c9f6979c0632":
+    "Where is the Sui network right now? Use the Sui Epoch Report read from the agent store.",
 };
 
 export function UseInAudric({
