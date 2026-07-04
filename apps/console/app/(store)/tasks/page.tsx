@@ -5,6 +5,7 @@ import { TaskClaimForm } from "@/components/task-claim-form";
 import {
   fetchTaskStats,
   intentUrl,
+  TASK_GROUPS,
   TASKS,
   type TaskDisplay,
   type TaskStats,
@@ -195,11 +196,25 @@ export default async function TasksPage() {
         </p>
       )}
 
-      <div className="mt-8 grid items-start gap-4 sm:grid-cols-2">
-        {TASKS.map((t) => (
-          <TaskCard key={t.id} stats={stats} t={t} />
-        ))}
-      </div>
+      {TASK_GROUPS.map((g) => {
+        const groupTasks = TASKS.filter((t) => t.group === g.id);
+        if (groupTasks.length === 0) {
+          return null;
+        }
+        return (
+          <section key={g.id}>
+            <h2 className="mt-10 font-medium text-foreground text-lg">
+              {g.title}
+            </h2>
+            <p className="mt-1 text-muted-foreground/70 text-sm">{g.blurb}</p>
+            <div className="mt-4 flex flex-col gap-4">
+              {groupTasks.map((t) => (
+                <TaskCard key={t.id} stats={stats} t={t} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5 text-muted-foreground/70 text-xs leading-relaxed">
         <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
