@@ -55,6 +55,8 @@ export const AUDRIC_STORE_SELLERS: readonly string[] = [
   "0x95a32163a7ae0f53f8adaf711a94eabb4961eddcc536fef1d91a0bde50ac5ae6",
   // Book Depth — orderbook pressure snapshot (Shelf v3)
   "0xce1682bda0adab069b0fe6f2d7e4f7217feb391fee8332fab6adaea2f49894af",
+  // Market Mood — CMC fear/greed sentiment read (Shelf v3, S.623)
+  "0x020e1c31e11417b2c26dc61c9bb0094b83250924256f1da3a349c1f42d340713",
 ];
 
 const ALLOWED = new Set(AUDRIC_STORE_SELLERS.map((a) => a.toLowerCase()));

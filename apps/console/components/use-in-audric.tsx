@@ -63,6 +63,9 @@ const SEED_QUESTIONS: Record<string, string> = {
   // Book Depth (Shelf v3)
   "0xce1682bda0adab069b0fe6f2d7e4f7217feb391fee8332fab6adaea2f49894af":
     "Where's the resting liquidity in the BTC orderbook — bid support or ask overhang? Use the Book Depth read from the agent store.",
+  // Market Mood (Shelf v3, CMC)
+  "0x020e1c31e11417b2c26dc61c9bb0094b83250924256f1da3a349c1f42d340713":
+    "Is the crypto crowd fearful or greedy right now? Use the Market Mood read from the agent store.",
 };
 
 export function UseInAudric({
