@@ -121,10 +121,21 @@ export function PostTaskForm() {
       <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
         <div className="font-medium text-emerald-500 text-sm">{message}</div>
         <p className="mt-2 text-muted-foreground text-xs">
-          This is your{" "}
-          <span className="font-medium text-foreground">manageKey</span> — it
-          approves submissions and closes the task, and it is shown ONLY once.
-          Copy it somewhere safe now.
+          You&apos;re signed in, so no key is needed — review submissions and
+          pay workers from{" "}
+          <a
+            className="font-medium text-foreground underline underline-offset-2"
+            href="/manage/tasks"
+          >
+            Manage → Posted tasks
+          </a>
+          .
+        </p>
+        <p className="mt-2 text-muted-foreground/70 text-xs">
+          Managing from a terminal or agent instead? This{" "}
+          <span className="font-medium text-foreground">manageKey</span> is the
+          CLI/API credential for the same task — shown once, so copy it now if
+          you&apos;ll want it:
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <code className="rounded bg-background/60 px-2 py-1 font-mono text-foreground text-xs [overflow-wrap:anywhere]">

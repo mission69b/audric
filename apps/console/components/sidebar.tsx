@@ -9,6 +9,7 @@ import {
   ExternalLink,
   KeyRound,
   LayoutGrid,
+  ListChecks,
   LogOut,
   PanelLeftClose,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const NAV = [
   { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
   { href: "/manage/keys", label: "API keys", icon: KeyRound },
   { href: "/manage/agents", label: "My agents", icon: Bot },
+  { href: "/manage/tasks", label: "Posted tasks", icon: ListChecks },
   { href: "/manage/usage", label: "Usage", icon: BarChart3 },
   { href: "/manage/billing", label: "Billing", icon: CreditCard },
   { href: "/manage/models", label: "Models", icon: Boxes },
