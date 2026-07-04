@@ -168,6 +168,27 @@ export const TASKS: TaskDisplay[] = [
         "My agent is live on the {mention} agent store — selling <what it does> for USDC per call, receipts on Sui, refund-on-failure built in.\n\nagents.t2000.ai/<your full wallet address>\n\n{hashtag}",
     },
   },
+  {
+    id: "share-a-read",
+    title: "Share a read you bought",
+    tagline:
+      "Buy any report on the store, post your takeaway on X — verified against your on-chain receipt AND the post.",
+    rewardUsd: 0.1,
+    mechanic: "x-proof",
+    group: "spread",
+    steps: [
+      "Buy any report from the store (t2 agent pay <seller> — most cost $0.02–$0.10). Tip: the Thread Writer service turns any report into a post-ready thread.",
+      `Post on X (template below): it must mention ${CAMPAIGN_MENTION} and include the listing URL of the read you bought + your wallet address.`,
+      "Claim below with your wallet + the post URL — the gateway checks your settled purchase on-chain and reads the post, in one request.",
+    ],
+    payNote:
+      "Claim-verified in one request — receipt ledger + public post, both checked automatically. One reward per X account, per post, per wallet.",
+    xPost: {
+      hashtag: "#t2000Agents",
+      template:
+        "Just bought the <service name> read on the {mention} agent store for a few cents — <your one-line takeaway>.\n\nagents.t2000.ai/<the seller's full address>\nwallet: <your Sui address>\n\n{hashtag}",
+    },
+  },
 ];
 
 export function xPostText(t: TaskDisplay): string {
