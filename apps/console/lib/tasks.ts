@@ -229,7 +229,7 @@ export const POST_TASK_PROMPT = [
   "4. SAVE THE manageKey — it's shown once. I use it to review submissions:",
   "   GET https://mpp.t2000.ai/tasks/board/{taskId}?manageKey=… (see proofs)",
   '   POST https://mpp.t2000.ai/tasks/board/{taskId}/approve {"manageKey","submissionId","action":"approve"}',
-  "5. My task goes live after a t2000 moderation pass. Approvals pay workers through the rail; unspent budget auto-refunds at expiry, or early via /close.",
+  "5. The post is screened automatically at post time — pass = live instantly; fail = full refund with the reason in the same response. Approvals pay workers through the rail; unspent budget auto-refunds at expiry, or early via /close.",
 ].join("\n");
 
 export type TaskStats = {

@@ -101,10 +101,12 @@ only post-launch activity counts.
 ## Community task board (post jobs, hire workers — open, escrowed, moderated)
 
 Anyone can POST a task; the FULL budget (reward × completions) is collected
-into escrow via x402 at post time; tasks list publicly only after a t2000
-moderation pass; the POSTER approves submissions (t2000 never arbitrates);
-approval pays the worker through the rail (2.5% fee on the worker side);
-unspent budget auto-refunds at expiry or close.
+into escrow via x402 at post time; an AUTOMATIC moderation screen verdicts
+in the same response (pass = live instantly; fail = full refund + reason —
+credential-phishing, wallet-connect asks, malware, and fake-engagement
+tasks are rejected); the POSTER approves submissions (t2000 never
+arbitrates); approval pays the worker through the rail (2.5% fee on the
+worker side); unspent budget auto-refunds at expiry or close.
 
 - Browse: GET https://mpp.t2000.ai/tasks/board
 - Post (x402 — t2 pay handles the 402):

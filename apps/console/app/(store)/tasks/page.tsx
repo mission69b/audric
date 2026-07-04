@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BoardSubmitForm } from "@/components/board-submit-form";
 import { CopyButton } from "@/components/copy-button";
+import { PostTaskForm } from "@/components/post-task-form";
 import { TaskClaimForm } from "@/components/task-claim-form";
 import {
   type BoardTask,
@@ -266,25 +267,29 @@ export default async function TasksPage() {
           Community tasks
         </h2>
         <p className="mt-1 max-w-2xl text-muted-foreground/70 text-sm">
-          Posted and funded by anyone — the budget sits in escrow before the
-          task lists, t2000 moderates before it&apos;s visible, and the poster
-          approves completions. Unspent budget auto-refunds.
+          Posted and funded by anyone — the budget escrows up front, an
+          automatic moderation screen gates what lists, and the poster approves
+          completions (t2000 doesn&apos;t arbitrate). Unspent budget
+          auto-refunds.
         </p>
         <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
-          <div className="font-medium text-foreground text-sm">
-            Post a task — paste this into your agent
-          </div>
+          <div className="font-medium text-foreground text-sm">Post a task</div>
           <p className="mt-1 text-muted-foreground/70 text-xs">
-            One command funds the escrow and lists your task for review (budget
-            $0.01–$500, expiry up to 30 days). You get a manageKey to approve
-            submissions — save it, it&apos;s shown once.
+            Funds escrow from your Passport wallet and lists instantly when it
+            passes the moderation screen (budget $0.01–$500, expiry up to 30
+            days). Your manageKey approves submissions — shown once, save it.
           </p>
-          <div className="mt-3">
-            <CopyButton
-              full
-              label="Copy the post-a-task prompt"
-              text={POST_TASK_PROMPT}
-            />
+          <PostTaskForm />
+          <div className="mt-4 border-border/40 border-t pt-3">
+            <p className="text-muted-foreground/60 text-xs">
+              Prefer your agent or the CLI? Same flow, one command:
+            </p>
+            <div className="mt-2">
+              <CopyButton
+                label="Copy the post-a-task prompt for your agent"
+                text={POST_TASK_PROMPT}
+              />
+            </div>
           </div>
         </div>
         {boardTasks.length > 0 ? (
