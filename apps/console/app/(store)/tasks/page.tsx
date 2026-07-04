@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BoardManagePanel } from "@/components/board-manage-panel";
 import { BoardSubmitForm } from "@/components/board-submit-form";
 import { CopyButton } from "@/components/copy-button";
 import { PostTaskForm } from "@/components/post-task-form";
@@ -205,6 +206,7 @@ function BoardTaskCard({ t }: { t: BoardTask }) {
         rail (2.5% fee on the worker side).
       </p>
       <BoardSubmitForm taskId={t.id} />
+      <BoardManagePanel taskId={t.id} />
     </div>
   );
 }
