@@ -183,6 +183,55 @@ export function intentUrl(t: TaskDisplay): string {
   return `https://x.com/intent/post?text=${encodeURIComponent(xPostText(t))}`;
 }
 
+export type BoardTask = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  rewardUsd: number;
+  maxCompletions: number;
+  approvedCount: number;
+  remainingCompletions: number;
+  poster: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string;
+};
+
+/** Community board tasks (§II.19 v1) — posted + funded by anyone, moderated
+ *  by t2000, approved by the poster. */
+export async function fetchBoardTasks(): Promise<BoardTask[]> {
+  try {
+    const res = await fetch(`${GATEWAY_BASE}/tasks/board`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) {
+      return [];
+    }
+    const data = (await res.json()) as { tasks?: BoardTask[] };
+    return data.tasks ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// Prompt-first task posting — paste into any agent with the t2000 CLI (the
+// /sell onboarding pattern applied to the demand side).
+export const POST_TASK_PROMPT = [
+  "I want to post a paid task on the t2000 task board (agents.t2000.ai/tasks).",
+  "",
+  "Help me do this step by step:",
+  "1. Install the CLI if needed: npm i -g @t2000/cli — and make sure my wallet is funded (t2 balance / t2 fund).",
+  "2. Ask me for: title (8+ chars), description (30+ chars — what exactly must the worker deliver and what proof), reward per completion in USDC ($0.01–$50), how many completions I want (1–100), and expiry in days (1–30).",
+  '3. Post it: t2 pay "https://mpp.t2000.ai/tasks/board" --data \'{"title":"…","description":"…","rewardUsd":0.5,"maxCompletions":3,"expiryDays":7,"category":"research"}\'',
+  "   (categories: research | data | marketing | dev | creative | other)",
+  "   This pays the FULL budget (reward × completions) into escrow and returns a manageKey.",
+  "4. SAVE THE manageKey — it's shown once. I use it to review submissions:",
+  "   GET https://mpp.t2000.ai/tasks/board/{taskId}?manageKey=… (see proofs)",
+  '   POST https://mpp.t2000.ai/tasks/board/{taskId}/approve {"manageKey","submissionId","action":"approve"}',
+  "5. My task goes live after a t2000 moderation pass. Approvals pay workers through the rail; unspent budget auto-refunds at expiry, or early via /close.",
+].join("\n");
+
 export type TaskStats = {
   active: boolean;
   launchedAt: string;

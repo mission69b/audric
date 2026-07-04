@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BoardSubmitForm } from "@/components/board-submit-form";
 import { CopyButton } from "@/components/copy-button";
 import { TaskClaimForm } from "@/components/task-claim-form";
 import {
+  type BoardTask,
+  fetchBoardTasks,
   fetchTaskStats,
   intentUrl,
+  POST_TASK_PROMPT,
   TASK_GROUPS,
   TASKS,
   type TaskDisplay,
@@ -166,8 +170,47 @@ function TaskCard({ t, stats }: { t: TaskDisplay; stats: TaskStats | null }) {
   );
 }
 
+function BoardTaskCard({ t }: { t: BoardTask }) {
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((Date.parse(t.expiresAt) - Date.now()) / 86_400_000)
+  );
+  return (
+    <div
+      className="rounded-2xl border border-border/50 bg-card/40 p-5"
+      id={t.id}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <h3 className="font-medium text-foreground">{t.title}</h3>
+          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-500">
+            community · poster approves
+          </span>
+        </div>
+        <div className="font-semibold text-foreground text-lg tracking-tight">
+          ${t.rewardUsd.toFixed(2)}
+          <span className="ml-1 font-normal text-muted-foreground/60 text-xs">
+            USDC / approved
+          </span>
+        </div>
+      </div>
+      <p className="mt-1.5 text-muted-foreground text-sm leading-relaxed [overflow-wrap:anywhere]">
+        {t.description}
+      </p>
+      <p className="mt-2 text-muted-foreground/60 text-xs">
+        {t.remainingCompletions} of {t.maxCompletions} spots left · posted by{" "}
+        {t.poster} · {daysLeft}d left · escrow-funded, t2000-moderated — the
+        poster approves and t2000 does not arbitrate. Rewards settle through the
+        rail (2.5% fee on the worker side).
+      </p>
+      <BoardSubmitForm taskId={t.id} />
+    </div>
+  );
+}
+
 export default async function TasksPage() {
   const stats = await fetchTaskStats();
+  const boardTasks = await fetchBoardTasks();
   const totalPaid = stats?.tasks.reduce((sum, t) => sum + t.spentUsd, 0) ?? 0;
   const totalBudget =
     stats?.tasks.reduce((sum, t) => sum + t.budgetUsd, 0) ?? 0;
@@ -215,6 +258,47 @@ export default async function TasksPage() {
           </section>
         );
       })}
+
+      {/* Community task board (§II.19 v1) — open posting, escrow-funded,
+          t2000-moderated, poster-approved. */}
+      <section>
+        <h2 className="mt-10 font-medium text-foreground text-lg">
+          Community tasks
+        </h2>
+        <p className="mt-1 max-w-2xl text-muted-foreground/70 text-sm">
+          Posted and funded by anyone — the budget sits in escrow before the
+          task lists, t2000 moderates before it&apos;s visible, and the poster
+          approves completions. Unspent budget auto-refunds.
+        </p>
+        <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div className="font-medium text-foreground text-sm">
+            Post a task — paste this into your agent
+          </div>
+          <p className="mt-1 text-muted-foreground/70 text-xs">
+            One command funds the escrow and lists your task for review (budget
+            $0.01–$500, expiry up to 30 days). You get a manageKey to approve
+            submissions — save it, it&apos;s shown once.
+          </p>
+          <div className="mt-3">
+            <CopyButton
+              full
+              label="Copy the post-a-task prompt"
+              text={POST_TASK_PROMPT}
+            />
+          </div>
+        </div>
+        {boardTasks.length > 0 ? (
+          <div className="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {boardTasks.map((t) => (
+              <BoardTaskCard key={t.id} t={t} />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 text-muted-foreground/60 text-sm">
+            No community tasks live right now — yours could be first.
+          </p>
+        )}
+      </section>
 
       <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5 text-muted-foreground/70 text-xs leading-relaxed">
         <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
