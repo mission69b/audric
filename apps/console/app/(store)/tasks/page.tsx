@@ -207,7 +207,7 @@ export default async function TasksPage() {
               {g.title}
             </h2>
             <p className="mt-1 text-muted-foreground/70 text-sm">{g.blurb}</p>
-            <div className="mt-4 flex flex-col gap-4">
+            <div className="mt-4 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {groupTasks.map((t) => (
                 <TaskCard key={t.id} stats={stats} t={t} />
               ))}
