@@ -16,6 +16,9 @@ import { env } from "@/lib/env";
 // full escrow; the auto-moderation screen verdicts in the same response.
 // The manageKey is shown ONCE — copy-or-lose, stated loudly.
 const BOARD_URL = "https://mpp.t2000.ai/tasks/board";
+// Right after a spend/refund the fullnode's coin index can briefly reference
+// a just-consumed coin object — retrying picks fresh coins.
+const STALE_COIN_RE = /object .*not found|notexists|deleted/i;
 const CATEGORIES = [
   "research",
   "data",
@@ -109,7 +112,12 @@ export function PostTaskForm() {
       }
     } catch (err) {
       setState("error");
-      setMessage(err instanceof Error ? err.message : "Posting failed.");
+      const raw = err instanceof Error ? err.message : "Posting failed.";
+      setMessage(
+        STALE_COIN_RE.test(raw)
+          ? "Your wallet's coins just changed (a payment or refund is still settling) — wait ~15 seconds and press Post again."
+          : raw
+      );
     }
   }
 
