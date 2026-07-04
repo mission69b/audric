@@ -20,6 +20,8 @@ import {
  * a double-submit or a retry after indexer lag is a no-op (Stripe-webhook
  * model).
  *
+ * [S.627] Deposits land in the CREDITS wallet (`T2000_TREASURY` env — set to
+ * the separated credits address 2026-07-04; default = the legacy treasury).
  * One treasury (`T2000_TREASURY`, default = the gateway treasury) receives all
  * inbound credit funding — USDC, USDsui, and x402 top-ups — per the 2026-06-29
  * wallet-consolidation decision. Rebates + swap-fee wallets stay separate.
