@@ -393,12 +393,19 @@ export default async function AgentProfilePage({
           )}
 
           {/* Need-first Audric deep link (§II.12 C2) — prefills the QUESTION;
-              Audric offers the service + price and confirms on its own card. */}
+              Audric offers the service + price and confirms on its own card.
+              Third parties qualify via the receipt bar (S.624) — the same
+              gate Audric's executor applies, so the button never dead-ends. */}
           {profile.priceUsdc && (
             <UseInAudric
               address={profile.address}
               name={profile.name}
               priceUsdc={profile.priceUsdc}
+              qualified={
+                (rep?.sales ?? 0) >= 3 &&
+                (rep?.buyers ?? 0) >= 2 &&
+                (rep?.deliveredRate ?? 0) >= 0.8
+              }
             />
           )}
 

@@ -14,10 +14,14 @@ import "server-only";
  * never pay a directory round-trip on the hot path.
  */
 
-import { isAllowlistedSeller } from "@/lib/agent-store-allowlist";
+import {
+  isFirstPartySeller,
+  meetsReceiptBar,
+} from "@/lib/agent-store-allowlist";
 import { env } from "@/lib/env";
 
 const DIRECTORY_BASE = "https://api.t2000.ai/v1";
+const COMMERCE_STATS_URL = "https://mpp.t2000.ai/commerce/stats";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 // In-browser per-call cap (mirrors the console's Try-it cap). Services above
 // it are left out of the catalog entirely — never offer what we'd refuse.
@@ -83,16 +87,46 @@ function toBlurb(description: string | null | undefined): string {
   return sanitizeField(blurb, 260);
 }
 
+type SellerStats = Record<
+  string,
+  { sales?: number; buyers?: number; deliveredRate?: number }
+>;
+
+/** Receipt-derived seller stats (the storefront's own rollup) — the
+ *  third-party trust lane's data source. Empty map on failure → third
+ *  parties simply don't qualify this build (fails closed). */
+async function fetchSellerStats(): Promise<SellerStats> {
+  try {
+    const res = await fetch(COMMERCE_STATS_URL, { next: { revalidate: 300 } });
+    if (!res.ok) {
+      return {};
+    }
+    const data = (await res.json()) as { sellerStats?: SellerStats };
+    return data.sellerStats ?? {};
+  } catch {
+    return {};
+  }
+}
+
 async function fetchDeliverable(
-  agent: DirectoryAgent
+  agent: DirectoryAgent,
+  sellerStats: SellerStats
 ): Promise<StoreService | null> {
   if (!(agent.address && agent.name && agent.priceUsdc)) {
     return null;
   }
-  // CURATION GATE (S.611): only vetted sellers enter the prompt. The open
-  // directory is an injection surface — a hostile listing name/description
-  // must never reach the model. Vetting = a reviewed code change.
-  if (!isAllowlistedSeller(agent.address)) {
+  // TRUST GATE (S.611 curated → S.624 receipt-gated): first-party seeds are
+  // ours by construction; third parties qualify through the receipt bar
+  // (delivered sales to distinct buyers — the store's own trust primitive).
+  // Hostile zero-history listings never reach the model.
+  if (
+    !isFirstPartySeller(agent.address) &&
+    !meetsReceiptBar(
+      sellerStats[agent.address.toLowerCase()] ??
+        sellerStats[agent.address] ??
+        {}
+    )
+  ) {
     return null;
   }
   const price = Number.parseFloat(agent.priceUsdc);
@@ -147,7 +181,10 @@ export async function getStoreCatalog(): Promise<StoreService[]> {
     const sellers = (data.agents ?? []).filter(
       (a) => a.active !== false && a.service && a.priceUsdc
     );
-    const resolved = await Promise.all(sellers.map(fetchDeliverable));
+    const sellerStats = await fetchSellerStats();
+    const resolved = await Promise.all(
+      sellers.map((a) => fetchDeliverable(a, sellerStats))
+    );
     const services = resolved.filter((s): s is StoreService => s !== null);
     // A transient directory failure must not blank the catalog mid-session.
     if (services.length > 0 || !cache) {

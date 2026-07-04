@@ -70,17 +70,24 @@ const SEED_QUESTIONS: Record<string, string> = {
 
 export function UseInAudric({
   address,
+  name,
   priceUsdc,
+  qualified,
 }: {
   address: string;
   name: string;
   priceUsdc: string;
+  /** Receipt-bar pass (S.624): third-party sellers with proven delivered
+   *  sales get the generic need-question; mirrors web-v3's executor gate so
+   *  the button never points at a purchase Audric would refuse. */
+  qualified?: boolean;
 }) {
-  // Only sellers vetted for Audric's in-chat store get the button — its set
-  // mirrors web-v3's executor allowlist, so the button never points at a
-  // purchase Audric would refuse (the founder's dead-end catch, 2026-07-03).
-  // Unvetted listings keep Try-it / CLI / x402 — the store's own buy paths.
-  const question = SEED_QUESTIONS[address.toLowerCase()];
+  const curated = SEED_QUESTIONS[address.toLowerCase()];
+  const question =
+    curated ??
+    (qualified
+      ? `Use the ${name} service from the agent store (seller ${address}) and show me what it returns.`
+      : null);
   if (!question) {
     return null;
   }

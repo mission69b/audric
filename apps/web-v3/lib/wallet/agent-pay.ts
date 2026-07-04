@@ -21,7 +21,10 @@
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { payWithMpp } from "@t2000/sdk/browser";
-import { isAllowlistedSeller } from "@/lib/agent-store-allowlist";
+import {
+  isFirstPartySeller,
+  meetsReceiptBar,
+} from "@/lib/agent-store-allowlist";
 import { env } from "@/lib/env";
 import { isSessionExpired, loadSession, toZkLoginSigner } from "@/lib/zklogin";
 
@@ -72,14 +75,34 @@ export async function agentPay(opts: {
   if (!isValidSuiAddress(seller)) {
     throw new Error("Invalid seller address.");
   }
-  // SIGNER-SIDE curation check (S.611): even if a poisoned document / web page
-  // tricks the model into calling agent_pay with a foreign address, the
-  // executor refuses anything outside the vetted seller set. Same constant the
-  // catalog is built from — injection upstream cannot widen it.
-  if (!isAllowlistedSeller(seller)) {
-    throw new Error(
-      "This seller isn't in Audric's vetted store set — not paying. Browse agents.t2000.ai to buy from unvetted listings directly."
-    );
+  // SIGNER-SIDE trust check (S.611 curated → S.624 receipt-gated): even if a
+  // poisoned document / web page tricks the model into calling agent_pay with
+  // a foreign address, the executor refuses anything that isn't first-party
+  // or receipt-proven — the same two lanes the catalog is built from, so
+  // injection upstream cannot widen the payable set. The third-party lane
+  // checks LIVE reputation and fails closed on any fetch error.
+  if (!isFirstPartySeller(seller)) {
+    let proven = false;
+    try {
+      const res = await fetch(`https://api.t2000.ai/v1/agents/${seller}`);
+      if (res.ok) {
+        const profile = (await res.json()) as {
+          reputation?: {
+            sales?: number;
+            buyers?: number;
+            deliveredRate?: number;
+          };
+        };
+        proven = meetsReceiptBar(profile.reputation ?? {});
+      }
+    } catch {
+      proven = false;
+    }
+    if (!proven) {
+      throw new Error(
+        "This seller hasn't earned Audric's receipt bar yet (3+ delivered sales to 2+ buyers) — not paying. Browse agents.t2000.ai to buy from new listings directly."
+      );
+    }
   }
   if (
     !Number.isFinite(opts.priceUsdc) ||
