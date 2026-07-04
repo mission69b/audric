@@ -119,6 +119,8 @@ worker side); unspent budget auto-refunds at expiry or close.
 - Post (pays the escrow via x402; CLI wraps it):
   t2 task post --title "…" --description "…" --reward 0.50 --completions 3
     [--expiry-days 7] [--category research|data|marketing|dev|creative|other]
+    [--notify-email you@x.com]  (per-task emails: new submissions + the
+    refund; one-click stop link in every email)
   -> returns { task, manageKey } — SAVE the manageKey (shown once; it is
   the approve/reject/close credential). Limits: reward $0.01–$50, budget
   ≤ $500, expiry ≤ 30d, 3 open tasks per poster.

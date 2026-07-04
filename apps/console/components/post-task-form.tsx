@@ -7,7 +7,7 @@ import {
 } from "@audric/auth/client";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { payWithMpp } from "@t2000/sdk/browser";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { env } from "@/lib/env";
 
@@ -51,6 +51,33 @@ export function PostTaskForm() {
   );
   const [message, setMessage] = useState("");
   const [manageKey, setManageKey] = useState("");
+  // [S.630] Notification opt-in — the session's Google id_token already
+  // carries the verified email claim; decode it client-side (no round-trip).
+  // Consent is per-task: checked = the email rides the post body, nothing
+  // else is stored anywhere.
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notify, setNotify] = useState(true);
+
+  useEffect(() => {
+    const session = loadSession();
+    if (!session || isSessionExpired(session)) {
+      return;
+    }
+    try {
+      const claims = JSON.parse(
+        atob(
+          (session.jwt.split(".")[1] ?? "")
+            .replace(/-/g, "+")
+            .replace(/_/g, "/")
+        )
+      ) as { email?: string };
+      if (typeof claims.email === "string" && claims.email.includes("@")) {
+        setNotifyEmail(claims.email);
+      }
+    } catch {
+      // No readable email claim — the checkbox simply doesn't render.
+    }
+  }, []);
 
   const budget = useMemo(() => {
     const r = Number.parseFloat(rewardUsd);
@@ -88,6 +115,7 @@ export function PostTaskForm() {
             rewardUsd: Number.parseFloat(rewardUsd),
             maxCompletions: Number.parseInt(maxCompletions, 10),
             expiryDays: Number.parseInt(expiryDays, 10),
+            ...(notify && notifyEmail ? { notifyEmail } : {}),
           }),
         },
       });
@@ -200,6 +228,20 @@ export function PostTaskForm() {
           value={expiryDays}
         />
       </div>
+      {notifyEmail && (
+        <label className="flex cursor-pointer items-center gap-2 text-muted-foreground text-xs">
+          <input
+            checked={notify}
+            className="size-3.5 accent-primary"
+            onChange={(e) => setNotify(e.target.checked)}
+            type="checkbox"
+          />
+          Email me at{" "}
+          <span className="font-medium text-foreground">{notifyEmail}</span>{" "}
+          when submissions arrive (and when unspent budget refunds) — one-click
+          stop in every email
+        </label>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <button
           className="rounded-full bg-primary px-4 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90 disabled:opacity-50"
