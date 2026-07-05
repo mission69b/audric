@@ -14,6 +14,7 @@ import { authenticate } from "./biometrics";
 import { type DerivedIdentity, exchangeForAddress } from "./exchange";
 import { AuthCancelled, authorizeWithGoogle } from "./google";
 import {
+  authHeader,
   clearSession,
   loadLockPref,
   loadSession,
@@ -106,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         address: derived.address,
         email: derived.email,
         savedAt: Date.now(),
+        token: derived.token,
+        expiresAt: derived.expiresAt,
       };
       await saveSession(next);
       setSession(next);
@@ -168,12 +171,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const address = session?.address;
     if (!address) return;
     const email = session?.email ?? null;
+    const token = session?.token ?? null;
     let cancelled = false;
     (async () => {
       try {
         await fetch(generateAPIUrl("/api/user"), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          // Bearer present on a real session → the route derives identity from the
+          // verified token (the body address/email are ignored server-side). Absent
+          // on the dev bypass → the route's dev fallback trusts the body.
+          headers: { "Content-Type": "application/json", ...authHeader(token) },
           body: JSON.stringify({ address, email }),
         });
       } catch (e) {
@@ -188,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.address, session?.email]);
+  }, [session?.address, session?.email, session?.token]);
 
   const value = useMemo(
     () => ({

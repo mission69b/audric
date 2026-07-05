@@ -1,4 +1,4 @@
-import { productionGate } from "@/lib/api-guard";
+import { authenticate } from "@/lib/api-guard";
 import { upsertUser } from "@/lib/db/queries";
 
 // Onboarding route — the native analogue of web-v3 creating the User row on first
@@ -10,20 +10,16 @@ import { upsertUser } from "@/lib/db/queries";
 // Runs SERVER-SIDE (Node) — the only place `POSTGRES_URL` is read; the client never
 // touches the DB directly.
 //
-// ⚠️ DEV TRUST MODEL: this route trusts the { address, email } the client posts —
-// there is NO auth yet (Phase 0). That is acceptable for dev because the address is
-// the __DEV__ stub `0xde…`, not a real wallet. BEFORE this is exposed beyond local
-// dev it MUST derive the identity from the verified `audric_session` cookie instead
-// of the request body, exactly like web-v3 — never trust a client-supplied user id.
+// Identity: when a valid `audric_session` Bearer is present the row is keyed by the
+// VERIFIED address + email (the posted body is ignored — a client can't onboard an
+// identity it hasn't authenticated). The body { address, email } is used only on the
+// dev-fallback path (no token), where the address is the __DEV__ stub `0xde…`.
 
 // A correctly-shaped Sui address: 0x + 64 hex. Matches both a derived address and
 // the dev stub; rejects junk so we never write garbage identity rows.
 const SUI_ADDRESS = /^0x[0-9a-f]{64}$/;
 
 export async function POST(request: Request) {
-  const gated = productionGate();
-  if (gated) return gated;
-
   let body: { address?: string; email?: string | null };
   try {
     body = await request.json();
@@ -31,13 +27,21 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const address = typeof body.address === "string" ? body.address.toLowerCase() : "";
+  const asserted =
+    typeof body.address === "string" ? body.address.toLowerCase() : null;
+  const auth = await authenticate(request, asserted);
+  if (!auth.ok) return auth.response;
+
+  // Verified token → authoritative address + email. Dev fallback → the asserted
+  // address (already lowercased in `auth.userId`) + the body email.
+  const address = auth.userId ?? "";
   if (!SUI_ADDRESS.test(address)) {
     return Response.json({ error: "Invalid address." }, { status: 400 });
   }
 
-  const email =
-    typeof body.email === "string" && body.email.length <= 100
+  const email = auth.viaToken
+    ? auth.email
+    : typeof body.email === "string" && body.email.length <= 100
       ? body.email
       : null;
 

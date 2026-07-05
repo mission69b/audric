@@ -17,6 +17,7 @@ import {
   type ConversationGroup,
   modelId,
 } from "@/app-state/catalog";
+import { authHeader } from "@/auth/session";
 import { useAuth } from "@/auth/useAuth";
 import { generateAPIUrl } from "@/lib/api-url";
 import type { ChatMessage } from "@/lib/types";
@@ -416,6 +417,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     userIdRef.current = session?.address;
   }, [session?.address]);
 
+  // The `audric_session` token that authenticates the data routes, read live at
+  // request time (same ref pattern as the model/userId). Absent on a dev-bypass
+  // session → `authHeader` yields no header → the route's dev fallback applies.
+  const tokenRef = useRef<string | undefined>(session?.token);
+  useEffect(() => {
+    tokenRef.current = session?.token;
+  }, [session?.token]);
+
   // The prototype's in-app "guest" persona (the Skip-for-now path). It is NOT real
   // auth — a session always exists behind the auth gate — but it drives the app's own
   // "Guest — chats aren't saved" promise. Honor that: a guest turn sends NO userId, so
@@ -443,6 +452,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         // context, so they are stripped here. `selectedChatModel` is the canonical
         // web-v3 model id, not the display name.
         prepareSendMessagesRequest: ({ messages: reqMessages, id }) => ({
+          // Bearer authenticates the turn server-side; the route derives the real
+          // identity from the verified token, not the body `userId`. A guest sends
+          // none — matching its no-`userId` body, the turn is unauthenticated (dev
+          // fallback / deferred anon quota) and never persisted.
+          headers: guestRef.current ? {} : authHeader(tokenRef.current),
           body: {
             id,
             // The onboarded identity — the route persists the thread under it (skips
@@ -531,7 +545,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(
         generateAPIUrl(`/api/history?userId=${encodeURIComponent(userId)}`),
-        { headers: { Accept: "application/json" } }
+        { headers: { Accept: "application/json", ...authHeader(tokenRef.current) } }
       );
       const data = (await res.json()) as { chats?: HistoryRow[] };
       if (Array.isArray(data?.chats)) {
@@ -599,7 +613,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           generateAPIUrl(
             `/api/messages?chatId=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId ?? "")}`
           ),
-          { headers: { Accept: "application/json" } }
+          {
+            headers: {
+              Accept: "application/json",
+              ...authHeader(tokenRef.current),
+            },
+          }
         );
         const data = (await res.json()) as { messages?: ChatMessage[] };
         pendingHydration.current = Array.isArray(data?.messages)
@@ -634,7 +653,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           generateAPIUrl(
             `/api/chat?chatId=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId ?? "")}`
           ),
-          { method: "DELETE", headers: { Accept: "application/json" } }
+          {
+            method: "DELETE",
+            headers: {
+              Accept: "application/json",
+              ...authHeader(tokenRef.current),
+            },
+          }
         );
       } catch (e) {
         console.warn(

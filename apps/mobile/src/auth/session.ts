@@ -8,12 +8,29 @@ export type StoredSession = {
   /** epoch ms when this record was written. */
   savedAt: number;
   /**
+   * The `audric_session` token (HS256, minted by the exchange) that
+   * authenticates the data routes. Absent on a __DEV__ bypass session — those
+   * fall back to the dev-guest path server-side, never to a real prod route.
+   */
+  token?: string;
+  /** Epoch ms when `token` expires (server-set 7-day cap). */
+  expiresAt?: number;
+  /**
    * True only for the __DEV__ auth bypass (no real derivation). Lets the UI
    * flag that this address is a placeholder and gates it out of any wallet
    * operation. Never set on a real signed-in session.
    */
   dev?: boolean;
 };
+
+/**
+ * Bearer header for the session token, or an empty object when there is no token
+ * (dev bypass / guest). Spread into a `fetch` `headers` map. Client-safe — carries
+ * only the opaque token, never the secret; the token is verified server-side.
+ */
+export function authHeader(token?: string | null): Record<string, string> {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 /**
  * Persist the derived identity in the Keychain (iOS) / Keystore (Android).

@@ -7,6 +7,10 @@ export type DerivedIdentity = {
   aud: string;
   /** true iff the id_token's aud equals the Web client id (no wallet fork). */
   audMatch: boolean;
+  /** The minted `audric_session` token — authenticates the data routes. */
+  token: string;
+  /** Epoch ms when the session token expires (7-day cap, server-set). */
+  expiresAt: number;
 };
 
 /**
@@ -34,10 +38,14 @@ export async function exchangeForAddress({
     email?: string | null;
     aud?: string;
     audMatch?: boolean;
+    token?: string;
+    expiresAt?: number;
     error?: string;
   };
 
-  if (!res.ok || !data.address) {
+  // A session with no token can't authenticate the data routes, so treat a
+  // missing token as a failed sign-in (the exchange always mints one).
+  if (!res.ok || !data.address || !data.token) {
     throw new Error(data.error ?? `Exchange failed (${res.status})`);
   }
 
@@ -46,5 +54,7 @@ export async function exchangeForAddress({
     email: data.email ?? null,
     aud: data.aud ?? "",
     audMatch: Boolean(data.audMatch),
+    token: data.token,
+    expiresAt: typeof data.expiresAt === "number" ? data.expiresAt : 0,
   };
 }

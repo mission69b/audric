@@ -5,7 +5,7 @@ import {
   type UIMessage,
 } from "ai";
 import { getLanguageModel } from "@/lib/ai/providers";
-import { productionGate } from "@/lib/api-guard";
+import { authenticate } from "@/lib/api-guard";
 import { systemPrompt } from "@/lib/ai/prompts";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import {
@@ -28,12 +28,12 @@ import {
 // Router server adapters — confirm the real request timeout on the deploy target.
 export const maxDuration = 60;
 
-// Coarse abuse guards. BEFORE DEPLOY: this route is currently an UNAUTHENTICATED
-// provider-key proxy — before it is exposed beyond the local dev tunnel it MUST
-// gain, to match web-v3's admission controls: (1) auth (the `audric_session`
-// httpOnly cookie), (2) rate limiting, (3) a guest/free-tier quota, and (4) full
-// Zod validation of the UIMessage shape (roles/parts/attachments). Today only these
-// size caps stand between the key and a runaway/abusive caller.
+// Coarse abuse guards. Auth is now wired (a verified `audric_session` Bearer — see
+// `authenticate`), so the provider key is no longer an open proxy. To reach full
+// parity with web-v3's admission controls this route STILL needs: (1) rate limiting,
+// (2) a guest/free-tier quota, and (3) full Zod validation of the UIMessage shape
+// (roles/parts/attachments). Today auth + these size caps stand between the key and a
+// runaway/abusive caller.
 const MAX_MESSAGES = 100;
 const MAX_REQUEST_CHARS = 100_000;
 
@@ -56,20 +56,6 @@ function deriveTitle(messages: UIMessage[]): string {
 }
 
 export async function POST(req: Request) {
-  // Phase-0 gate: refuse in production until real auth is wired (see api-guard).
-  const gated = productionGate();
-  if (gated) return gated;
-
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    return Response.json(
-      {
-        error:
-          "AI_GATEWAY_API_KEY is not set — add it to apps/mobile/.env.local (server-only, no EXPO_PUBLIC_ prefix) and restart the dev server.",
-      },
-      { status: 500 }
-    );
-  }
-
   let body: {
     id?: string;
     userId?: string;
@@ -80,6 +66,25 @@ export async function POST(req: Request) {
     body = await req.json();
   } catch {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  // Authenticate before doing any work. A valid `audric_session` Bearer yields the
+  // authoritative user id; the body `userId` is only a dev-fallback hint, never
+  // trusted when a token is present. Production: missing/invalid token → 401. Dev:
+  // the client-asserted id (or none = guest) stands in. Replaces `productionGate`.
+  const asserted =
+    typeof body.userId === "string" ? body.userId.toLowerCase() : null;
+  const auth = await authenticate(req, asserted);
+  if (!auth.ok) return auth.response;
+
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    return Response.json(
+      {
+        error:
+          "AI_GATEWAY_API_KEY is not set — add it to apps/mobile/.env.local (server-only, no EXPO_PUBLIC_ prefix) and restart the dev server.",
+      },
+      { status: 500 }
+    );
   }
 
   const { messages, selectedChatModel } = body;
@@ -100,8 +105,10 @@ export async function POST(req: Request) {
   // anonymous mode. Every DB call is best-effort: a failure is logged but NEVER
   // blocks the stream — the model response must not depend on the DB being reachable.
   const chatId = typeof body.id === "string" ? body.id : "";
-  const userId =
-    typeof body.userId === "string" ? body.userId.toLowerCase() : "";
+  // Authoritative identity: the verified token's `sub` when present, else the
+  // dev-fallback asserted id (both already lowercased). Persistence still requires
+  // it to be a well-formed Sui address, so a guest (null) is never persisted.
+  const userId = auth.userId ?? "";
   const canPersist =
     !!process.env.POSTGRES_URL &&
     UUID_RE.test(chatId) &&
@@ -210,18 +217,18 @@ export async function POST(req: Request) {
   });
 }
 
-// Delete a thread from the drawer — `DELETE /api/chat?chatId=&userId=`. The query
-// layer owner-checks (a thread is only removed if it belongs to this user), so a
-// spoofed id can't delete someone else's chat. Same ⚠️ DEV TRUST MODEL as the other
-// routes: identity is client-asserted for now and MUST come from the verified session
-// cookie before exposure. No-ops cleanly when the DB is absent.
+// Delete a thread from the drawer — `DELETE /api/chat?chatId=&userId=`. Identity is
+// the verified `audric_session` (Bearer); the query-layer owner-check then removes
+// the thread only if it belongs to that user, so a spoofed id can't delete someone
+// else's chat. No-ops cleanly when the DB is absent.
 export async function DELETE(request: Request) {
-  const gated = productionGate();
-  if (gated) return gated;
-
   const params = new URL(request.url).searchParams;
+  const asserted = (params.get("userId") ?? "").toLowerCase() || null;
+  const auth = await authenticate(request, asserted);
+  if (!auth.ok) return auth.response;
+
   const chatId = params.get("chatId") ?? "";
-  const userId = (params.get("userId") ?? "").toLowerCase();
+  const userId = auth.userId ?? "";
   if (!UUID_RE.test(chatId) || !SUI_ADDRESS.test(userId)) {
     return Response.json({ ok: false, error: "Bad request." }, { status: 400 });
   }

@@ -1,26 +1,26 @@
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
-import { productionGate } from "@/lib/api-guard";
+import { authenticate } from "@/lib/api-guard";
 
 // Messages route — opening a past thread. Returns one chat's messages in send order,
 // already in the UIMessage shape `useChat` hydrates from (id / role / parts). Native
 // analogue of web-v3's chat-page loader (`getMessagesByChatId` → `convertToUIMessages`).
 //
-// ⚠️ DEV TRUST MODEL (same as the other routes): `userId` comes from the query string,
-// unauthenticated. It IS enforced here as an ownership check — a thread's messages are
-// only returned to its owner — but the identity itself is still client-asserted. Before
-// exposure this MUST come from the verified session cookie, not the URL.
+// Identity is the verified `audric_session` (Bearer); the query-string `userId` is
+// only a dev-fallback hint. It is further enforced as an ownership check below — a
+// thread's messages are only returned to its authenticated owner.
 
 const SUI_ADDRESS = /^0x[0-9a-f]{64}$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request) {
-  const gated = productionGate();
-  if (gated) return gated;
-
   const params = new URL(request.url).searchParams;
+  const asserted = (params.get("userId") ?? "").toLowerCase() || null;
+  const auth = await authenticate(request, asserted);
+  if (!auth.ok) return auth.response;
+
   const chatId = params.get("chatId") ?? "";
-  const userId = (params.get("userId") ?? "").toLowerCase();
+  const userId = auth.userId ?? "";
 
   if (!UUID_RE.test(chatId) || !SUI_ADDRESS.test(userId)) {
     return Response.json({ messages: [] });

@@ -1,23 +1,24 @@
 import { getChatsByUserId } from "@/lib/db/queries";
-import { productionGate } from "@/lib/api-guard";
+import { authenticate } from "@/lib/api-guard";
 
 // History route — the drawer's chat list. Returns this user's threads (id + title +
 // createdAt), newest first; the client groups them by recency. Native analogue of
 // web-v3's `getChatsByUserId`.
 //
-// ⚠️ DEV TRUST MODEL (same as `user+api.ts` / `chat+api.ts`): the `userId` comes from
-// the query string, unauthenticated. Fine for dev (the id is the __DEV__ stub). Before
-// exposure this MUST read the identity from the verified session cookie, not the URL.
+// Identity is the verified `audric_session` (Bearer); the query-string `userId` is
+// only a dev-fallback hint (the __DEV__ stub). A caller only ever sees their OWN
+// threads because the lookup keys on the authenticated id, never the URL.
 
 const SUI_ADDRESS = /^0x[0-9a-f]{64}$/;
 
 export async function GET(request: Request) {
-  const gated = productionGate();
-  if (gated) return gated;
+  const asserted =
+    (new URL(request.url).searchParams.get("userId") ?? "").toLowerCase() ||
+    null;
+  const auth = await authenticate(request, asserted);
+  if (!auth.ok) return auth.response;
 
-  const userId = (
-    new URL(request.url).searchParams.get("userId") ?? ""
-  ).toLowerCase();
+  const userId = auth.userId ?? "";
   if (!SUI_ADDRESS.test(userId)) {
     return Response.json({ chats: [] });
   }

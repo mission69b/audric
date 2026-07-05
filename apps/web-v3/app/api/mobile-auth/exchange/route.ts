@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { deriveAddress, verifyGoogleJwt } from "@/lib/audric-auth";
+import {
+  deriveAddress,
+  mintSessionToken,
+  verifyGoogleJwt,
+} from "@/lib/audric-auth";
 import { upsertUser } from "@/lib/db/queries";
 import { env } from "@/lib/env";
 import { checkMobileAuthIpRateLimit, clientIp } from "@/lib/ratelimit";
@@ -25,6 +29,9 @@ import { checkMobileAuthIpRateLimit, clientIp } from "@/lib/ratelimit";
 
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const MAX_BODY_BYTES = 4096;
+// Session window — the same 7-day cap `/api/auth/session` mints for the web app,
+// so a mobile session is exactly as long-lived (and as short) as a web one.
+const MAX_SESSION_MS = 7 * 24 * 60 * 60 * 1000;
 // Cap the outbound wait so a hung/slow Google response can't pin server
 // concurrency indefinitely (a stalled connection would otherwise hold the route
 // open until the platform's own, much longer, timeout).
@@ -118,8 +125,11 @@ export async function POST(request: NextRequest) {
   // The redirect_uri MUST byte-match the one used in the auth request (Google
   // enforces exact equality). We rebuild it from OUR origin + the bridge path —
   // never from the request body — so it equals what Google saw and can't be
-  // steered by the client.
-  const redirectUri = `${request.nextUrl.origin}/api/mobile-auth/bridge`;
+  // steered by the client. The path is canonical by default; MOBILE_AUTH_BRIDGE_PATH
+  // (server env) can repoint it at an already-registered redirect URI when the
+  // canonical one isn't in the Google Console yet (e.g. local "/auth/bridge").
+  const bridgePath = env.MOBILE_AUTH_BRIDGE_PATH || "/api/mobile-auth/bridge";
+  const redirectUri = `${request.nextUrl.origin}${bridgePath}`;
 
   // 1) Swap the auth code for tokens (server-to-server, client_secret held here).
   let idToken: string;
@@ -170,6 +180,13 @@ export async function POST(request: NextRequest) {
     console.warn("[mobile-auth] user upsert failed (non-fatal):", e);
   }
 
+  // Mint the app session — the SAME stateless HS256 token web-v3 issues from
+  // /api/auth/session (packages/auth `mintSessionToken`), so the mobile backend
+  // verifies it with the shared AUTH_SECRET and derives the SAME identity. The
+  // token, not any client-asserted id, is what authenticates the data routes.
+  const expiresAt = Date.now() + MAX_SESSION_MS;
+  const token = await mintSessionToken({ id: address, email }, expiresAt);
+
   // `aud`/`audMatch` are retained for the client's Phase-0 parity display;
   // audMatch is necessarily true here (verifyGoogleJwt already enforced it).
   return NextResponse.json({
@@ -177,5 +194,7 @@ export async function POST(request: NextRequest) {
     email,
     aud: env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
     audMatch: true,
+    token,
+    expiresAt,
   });
 }
