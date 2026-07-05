@@ -245,7 +245,7 @@ export default function SellPage() {
       <div className="mt-8 flex flex-wrap gap-4 text-sm">
         <a
           className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
-          href="https://developers.t2000.ai/agent-commerce"
+          href="https://developers.t2000.ai/commerce/sell"
         >
           How selling works →
         </a>
