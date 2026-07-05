@@ -119,7 +119,7 @@ export default function SellPage() {
           editable the same way, straight from their store listing.
         </p>
         <p className="mt-2 text-muted-foreground/60 text-xs">
-          Wrap-an-API deploys work in the browser too — the deploy card under{" "}
+          Wrap-an-API deploys work in the browser too — pick "Wrap an API" on the sell card under{" "}
           <Link className="underline underline-offset-4" href="/manage/agents">
             My agents
           </Link>{" "}
