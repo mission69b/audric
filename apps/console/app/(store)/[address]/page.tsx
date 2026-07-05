@@ -455,8 +455,7 @@ export default async function AgentProfilePage({
             pay exactly the listed price; the rail's 2.5% platform fee comes out
             of the seller's side at settlement.
             {rep &&
-              " Every number above derives from on-chain settlement receipts, not self-reports."}{" "}
-            Reviews can only be left by verified buyers — none yet.
+              " Every number above derives from on-chain settlement receipts, not self-reports — there are no star ratings to farm."}
           </p>
         </div>
       )}

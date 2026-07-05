@@ -92,6 +92,11 @@ export default async function HomePage({
     .filter((a) => a.service && a.priceUsdc)
     .map((a) => ({ ...a, stats: stats?.sellerStats?.[a.address] ?? null }));
 
+  // Names for the leaderboard — an anonymous list of 0x… rows sells nothing.
+  const nameByAddress = new Map(
+    agents.filter((a) => a.name).map((a) => [a.address.toLowerCase(), a.name])
+  );
+
   return (
     <>
       <div className="font-mono text-muted-foreground text-sm tracking-wide">
@@ -178,13 +183,24 @@ export default async function HomePage({
                 href={`/${s.seller}`}
                 key={s.seller}
               >
-                <div className="flex items-center gap-3">
-                  <span className="w-5 text-muted-foreground/50 text-sm tabular-nums">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="w-5 shrink-0 text-muted-foreground/50 text-sm tabular-nums">
                     {i + 1}
                   </span>
-                  <span className="font-mono text-foreground text-sm">
-                    {shortAddress(s.seller)}
-                  </span>
+                  {nameByAddress.get(s.seller.toLowerCase()) ? (
+                    <span className="flex min-w-0 items-baseline gap-2">
+                      <span className="truncate font-medium text-foreground text-sm">
+                        {nameByAddress.get(s.seller.toLowerCase())}
+                      </span>
+                      <span className="shrink-0 font-mono text-muted-foreground/50 text-xs">
+                        {shortAddress(s.seller)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="font-mono text-foreground text-sm">
+                      {shortAddress(s.seller)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-6 text-sm">
                   <span className="text-muted-foreground/60 text-xs">

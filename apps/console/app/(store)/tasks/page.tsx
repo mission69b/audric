@@ -328,7 +328,9 @@ export default async function TasksPage() {
           </li>
           <li>
             A task pauses when its budget is spent; budgets are caps, not
-            obligations. Tasks are posted by t2000 only.
+            obligations. Reward tasks are posted by t2000; community tasks are
+            posted by anyone — escrow-funded, auto-moderated, and approved by
+            their poster.
           </li>
         </ul>
       </div>
