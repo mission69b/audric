@@ -1,6 +1,6 @@
 # Audric Mobile — HANDOFF
 
-> **Snapshot date:** 2026-07-05 · **Branch:** `feat/mobile-app` · **Nothing committed yet** (see [Uncommitted work](#uncommitted-work)).
+> **Snapshot date:** 2026-07-05 · **Branch:** `feat/mobile-app` · **All committed + pushed** at `b553f315` (see [Commit state](#8-commit-state)).
 > Read this top-to-bottom before touching anything. It is the single most current picture of the mobile app. Companion docs are indexed at the bottom.
 
 ---
@@ -78,7 +78,8 @@ Sign-in: useAuth ▶ google.ts (authorize) ▶ system browser ▶ Google
    ▶ exchange.ts POST /api/mobile-auth/exchange (web-v3, holds client_secret)
        ▶ swap code→id_token ▶ verify aud ▶ Enoki deriveAddress ▶ mint audric_session
    ▶ StoredSession {address, token} in SecureStore
-Every data-route call carries  Authorization: Bearer <token>  (B1).
+Authenticated data-route calls carry  Authorization: Bearer <token>  (B1);
+   guest + dev-bypass calls send none.
 ```
 
 ---
@@ -125,7 +126,7 @@ Replaced the blunt `productionGate` (which 403'd every route in prod) with real 
 | Caller | Dev | Prod |
 |---|---|---|
 | Valid `Bearer` | token `sub` (authoritative; body id ignored) | token `sub` ✓ |
-| **Invalid** `Bearer` | **401** | **401** |
+| **Invalid** (nonempty) `Bearer` | **401** | **401** |
 | No token, signed-in | client-asserted id (dev bypass) | **401** |
 | Guest (no token, no id) | no-persist path | **401** *(anon quota = out of scope)* |
 
