@@ -87,6 +87,25 @@ export function PostTaskForm() {
       : null;
   }, [rewardUsd, maxCompletions]);
 
+  // Never a silently-disabled button — say exactly what's missing (S.640).
+  const disableReason = useMemo(() => {
+    const t = title.trim().length;
+    const d = description.trim().length;
+    if (t === 0 && d === 0) {
+      return "Fill in the task above to post it.";
+    }
+    if (t < 8) {
+      return `Title needs ${8 - t} more character${8 - t === 1 ? "" : "s"}.`;
+    }
+    if (d < 30) {
+      return `Description needs ${30 - d} more characters — say exactly what the worker must deliver, and what proof.`;
+    }
+    if (budget === null) {
+      return "Enter a valid reward and completions.";
+    }
+    return null;
+  }, [title, description, budget]);
+
   async function post() {
     setState("busy");
     setMessage("");
@@ -245,12 +264,7 @@ export function PostTaskForm() {
       <div className="flex flex-wrap items-center gap-3">
         <button
           className="rounded-full bg-primary px-4 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90 disabled:opacity-50"
-          disabled={
-            state === "busy" ||
-            title.trim().length < 8 ||
-            description.trim().length < 30 ||
-            budget === null
-          }
+          disabled={state === "busy" || disableReason !== null}
           onClick={post}
           type="button"
         >
@@ -259,7 +273,8 @@ export function PostTaskForm() {
             : `Post — fund $${budget?.toFixed(2) ?? "…"} escrow`}
         </button>
         <span className="text-muted-foreground/60 text-xs">
-          Pays from your Passport wallet USDC. Unspent budget auto-refunds.
+          {disableReason ??
+            "Pays from your Passport wallet USDC. Unspent budget auto-refunds."}
         </span>
         {message && state !== "done" && (
           <span className="text-muted-foreground text-xs">{message}</span>
