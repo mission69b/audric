@@ -201,9 +201,9 @@ function BoardTaskCard({ t }: { t: BoardTask }) {
       </p>
       <p className="mt-2 text-muted-foreground/60 text-xs">
         {t.remainingCompletions} of {t.maxCompletions} spots left · posted by{" "}
-        {t.poster} · {daysLeft}d left · escrow-funded, t2000-moderated — the
-        poster approves and t2000 does not arbitrate. Rewards settle through the
-        rail (2.5% fee on the worker side).
+        {t.poster} · {daysLeft}d left · escrow-funded · AI-screened at post —
+        the poster approves and t2000 does not arbitrate. Rewards settle through
+        the rail (2.5% fee on the worker side).
       </p>
       <BoardSubmitForm taskId={t.id} />
       <BoardManagePanel taskId={t.id} />
@@ -269,17 +269,22 @@ export default async function TasksPage() {
           Community tasks
         </h2>
         <p className="mt-1 max-w-2xl text-muted-foreground/70 text-sm">
-          Posted and funded by anyone — the budget escrows up front, an
-          automatic moderation screen gates what lists, and the poster approves
-          completions (t2000 doesn&apos;t arbitrate). Unspent budget
-          auto-refunds.
+          Posted and funded by anyone — the budget escrows up front, and{" "}
+          <span className="text-foreground">
+            every task is AI-screened at post time
+          </span>{" "}
+          (an LLM policy check on t2000&apos;s private inference API): clean
+          tasks list in seconds, scams are rejected with an instant full refund.
+          The poster approves completions (t2000 doesn&apos;t arbitrate);
+          unspent budget auto-refunds.
         </p>
         <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
           <div className="font-medium text-foreground text-sm">Post a task</div>
           <p className="mt-1 text-muted-foreground/70 text-xs">
-            Funds escrow from your Passport wallet and lists instantly when it
-            passes the moderation screen (budget $0.01–$500, expiry up to 30
-            days). Your manageKey approves submissions — shown once, save it.
+            Funds escrow from your Passport wallet, then the AI moderation
+            screen verdicts in seconds — pass and you&apos;re live instantly,
+            fail and the full budget refunds with the reason (budget $0.01–$500,
+            expiry up to 30 days). No human review queue, no waiting.
           </p>
           <PostTaskForm />
           <div className="mt-4 border-border/40 border-t pt-3">
