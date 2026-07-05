@@ -162,10 +162,10 @@ export function WelcomeEmail({ name }: { name?: string }) {
         >
           Reply anytime — I read every email. Or grab 15 minutes:{" "}
           <Link
-            href="https://cal.com/funkii/15min"
+            href="https://audric.ai/call"
             style={{ color: c.sig, textDecoration: "none" }}
           >
-            cal.com/funkii/15min
+            audric.ai/call
           </Link>
         </Text>
       </Section>

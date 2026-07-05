@@ -3,6 +3,22 @@ import type { NextConfig } from "next";
 
 const basePath = process.env.IS_DEMO === "1" ? "/demo" : "";
 
+// Email links must live on the sending domain (deliverability — mismatched
+// URLs trip spam filters), so external destinations get audric.ai aliases.
+const sharedRedirects: {
+  source: string;
+  destination: string;
+  permanent: boolean;
+  basePath: false;
+}[] = [
+  {
+    source: "/call",
+    destination: "https://cal.com/funkii/15min",
+    permanent: false,
+    basePath: false,
+  },
+];
+
 const nextConfig: NextConfig = {
   // Workspace packages consumed as TS source (the shared identity/credit/key
   // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
@@ -23,9 +39,10 @@ const nextConfig: NextConfig = {
             permanent: false,
             basePath: false,
           },
+          ...sharedRedirects,
         ],
       }
-    : {}),
+    : { redirects: async () => sharedRedirects }),
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
