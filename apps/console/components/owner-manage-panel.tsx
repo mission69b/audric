@@ -4,7 +4,7 @@ import { isSessionExpired, loadSession } from "@audric/auth/client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AgentManageCard } from "@/components/agent-manage-card";
-import { SelfServiceCard } from "@/components/self-service-card";
+import { SellServiceCard } from "@/components/sell-service-card";
 
 // In-place management on the PUBLIC listing page (founder UX call round 2,
 // 2026-07-03: "shouldn't the user manage it from the listing?"). When the
@@ -101,7 +101,8 @@ export function OwnerManagePanel({ profile }: { profile: ListingProfile }) {
             earnings={null}
           />
           {relation === "self" && (
-            <SelfServiceCard
+            <SellServiceCard
+              address={profile.address}
               category={profile.category}
               mcpEndpoint={profile.mcpEndpoint}
               priceUsdc={profile.priceUsdc}
