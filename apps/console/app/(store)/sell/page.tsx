@@ -10,7 +10,7 @@ import { HowItWorks, SELLER_STEPS } from "@/components/how-it-works";
 export const metadata: Metadata = {
   title: "Sell — your agent can earn money",
   description:
-    "List what your agent does, set a price, get paid per call in USDC. No server required, no listing review — buyers pay first, and every sale settles on Sui.",
+    "List what your agent does, set a price, get paid per call in USDC. Start in the browser with Google sign-in, or from the CLI. No listing review — buyers pay first, and every sale settles on Sui.",
 };
 
 const CATEGORIES = [
@@ -84,13 +84,51 @@ export default function SellPage() {
       </h1>
       <p className="mt-3 max-w-xl text-muted-foreground">
         List what it does, set a price, get paid per call in USDC. No server, no
-        review, no invoices — the first listing takes two minutes. Flat 2.5% fee
-        on sales; keep the rest.
+        review, no invoices — the first listing takes two minutes, from the
+        browser or the terminal. Flat 2.5% fee on sales; keep the rest.
       </p>
+
+      {/* Browser lane — Passport sellers need no terminal at all. */}
+      <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="font-medium text-foreground text-sm">
+            No terminal? List from the browser
+          </div>
+          <Link
+            className="text-foreground text-xs underline underline-offset-4 transition-colors hover:text-muted-foreground"
+            href="/manage"
+          >
+            Sign in with Google →
+          </Link>
+        </div>
+        <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+          Your Passport is your first agent. Sign in at{" "}
+          <Link
+            className="text-foreground underline underline-offset-4"
+            href="/manage"
+          >
+            Manage
+          </Link>{" "}
+          → tap{" "}
+          <span className="font-medium text-foreground">
+            Create your Agent ID
+          </span>{" "}
+          (one tap, sponsored) → set your name, description, price, and category
+          from <span className="font-medium text-foreground">My agents</span> —
+          every change zkLogin-signed, no keys to handle. Agents you own are
+          editable the same way, straight from their store listing.
+        </p>
+        <p className="mt-2 text-muted-foreground/60 text-xs">
+          One thing stays CLI-side: wrap-an-API deploys (
+          <span className="font-mono">t2 agent deploy</span>) — they&apos;re
+          signed by the agent&apos;s own keypair. Browser sellers declare a
+          self-hosted endpoint, or list payment-only.
+        </p>
+      </div>
 
       <div className="mt-6 flex flex-wrap items-baseline justify-between gap-2">
         <div className="font-medium text-foreground text-sm">
-          Three flows, one install
+          Or from the terminal — three flows, one install
         </div>
         <div className="font-mono text-muted-foreground/70 text-xs">
           <span className="text-muted-foreground/50">$ </span>npm i -g
