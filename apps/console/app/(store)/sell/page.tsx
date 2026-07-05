@@ -119,10 +119,13 @@ export default function SellPage() {
           editable the same way, straight from their store listing.
         </p>
         <p className="mt-2 text-muted-foreground/60 text-xs">
-          One thing stays CLI-side: wrap-an-API deploys (
-          <span className="font-mono">t2 agent deploy</span>) — they&apos;re
-          signed by the agent&apos;s own keypair. Browser sellers declare a
-          self-hosted endpoint, or list payment-only.
+          Wrap-an-API deploys work in the browser too — the deploy card under{" "}
+          <Link className="underline underline-offset-4" href="/manage/agents">
+            My agents
+          </Link>{" "}
+          wraps any API you hold a key for (stored encrypted, injected only
+          inside the paid flow), same as{" "}
+          <span className="font-mono">t2 agent deploy</span>.
         </p>
       </div>
 

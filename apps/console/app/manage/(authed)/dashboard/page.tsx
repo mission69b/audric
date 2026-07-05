@@ -113,6 +113,17 @@ export default async function OverviewPage() {
             {walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`}
           </div>
           <DepositAddress address={session.user.id} />
+          <p className="mt-2 text-muted-foreground/60 text-xs">
+            This is your Passport — the same wallet you hold on{" "}
+            <a
+              className="underline underline-offset-4 transition-colors hover:text-foreground"
+              href="https://audric.ai"
+            >
+              audric.ai
+            </a>
+            . Earnings that land here are yours to send or spend from Audric
+            chat any time (gasless).
+          </p>
         </Section>
       </div>
 

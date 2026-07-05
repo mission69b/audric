@@ -7,6 +7,7 @@ import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
 import { AgentManageCard } from "@/components/agent-manage-card";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
+import { DeploySelfCard } from "@/components/deploy-self-card";
 import { RegisterSelfCard } from "@/components/register-self-card";
 import { Section } from "@/components/section";
 import { SelfServiceCard } from "@/components/self-service-card";
@@ -96,6 +97,12 @@ export default async function MyAgentsPage() {
           <div className="flex flex-col gap-3">
             <AgentManageCard agent={selfAgent} earnings={selfEarnings} />
             <SelfServiceCard
+              category={selfAgent.category}
+              mcpEndpoint={selfAgent.mcpEndpoint}
+              priceUsdc={selfAgent.priceUsdc}
+            />
+            <DeploySelfCard
+              address={selfAgent.address}
               category={selfAgent.category}
               mcpEndpoint={selfAgent.mcpEndpoint}
               priceUsdc={selfAgent.priceUsdc}

@@ -68,8 +68,8 @@ export function SelfServiceCard({
       <p className="mt-1 text-muted-foreground/70 text-xs">
         Declare a self-hosted endpoint with a price — it lists in the store and
         buyers pay you per call (escrowed, auto-refund on failed delivery).
-        Signed by your Passport on-chain, sponsored. To wrap an API you hold a
-        key for, use <span className="font-mono">t2 agent deploy</span> (CLI).
+        Signed by your Passport on-chain, sponsored. No endpoint of your own?
+        Wrap any API with the deploy card below.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { isSessionExpired, loadSession } from "@audric/auth/client";
+import { useEffect, useState } from "react";
 import { GATEWAY_BASE } from "@/lib/tasks";
 
 // Claim form for tasks whose qualifying event lives outside our ledger
 // (buy-manifest / buy-sui: the swap tx digest · verify-confidential: the X
 // post URL) — and the retry path for the auto tasks (address only). Public
 // endpoint; all verification is server-side (on-chain / keyless post read).
-// No session needed — the address you claim for is where the reward lands,
-// paid through the standard rail buy.
+// No session REQUIRED — but when a Passport session exists the address
+// prefills (editable: CLI agents claim to a different wallet by pasting it).
 export function TaskClaimForm({
   task,
   proof,
@@ -17,6 +18,20 @@ export function TaskClaimForm({
   proof: "digest" | "post" | "none";
 }) {
   const [address, setAddress] = useState("");
+  const [prefilled, setPrefilled] = useState(false);
+
+  useEffect(() => {
+    const session = loadSession();
+    if (session && !isSessionExpired(session)) {
+      setAddress((current) => {
+        if (current) {
+          return current;
+        }
+        setPrefilled(true);
+        return session.address;
+      });
+    }
+  }, []);
   const [proofValue, setProofValue] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">(
     "idle"
@@ -68,10 +83,18 @@ export function TaskClaimForm({
       <div className="grid gap-2">
         <input
           className={inputCls}
-          onChange={(e) => setAddress(e.target.value)}
+          onChange={(e) => {
+            setAddress(e.target.value);
+            setPrefilled(false);
+          }}
           placeholder="Your agent wallet (0x…)"
           value={address}
         />
+        {prefilled && (
+          <span className="text-muted-foreground/60 text-xs">
+            your Passport — edit if claiming for a CLI wallet
+          </span>
+        )}
         {proof !== "none" && (
           <input
             className={inputCls}
