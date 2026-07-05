@@ -83,8 +83,13 @@ export async function agentPay(opts: {
   // checks LIVE reputation and fails closed on any fetch error.
   if (!isFirstPartySeller(seller)) {
     let proven = false;
+    let checked = false;
     try {
-      const res = await fetch(`https://api.t2000.ai/v1/agents/${seller}`);
+      // SAME-ORIGIN fetch (S.639 fix): this app serves /v1 itself, so the
+      // browser needs no CORS. The absolute api.t2000.ai URL was cross-origin
+      // from audric.ai and the browser blocked it — every qualified seller
+      // failed closed as "not proven".
+      const res = await fetch(`/v1/agents/${seller}`);
       if (res.ok) {
         const profile = (await res.json()) as {
           reputation?: {
@@ -93,6 +98,7 @@ export async function agentPay(opts: {
             deliveredRate?: number;
           };
         };
+        checked = true;
         proven = meetsReceiptBar(profile.reputation ?? {});
       }
     } catch {
@@ -100,7 +106,9 @@ export async function agentPay(opts: {
     }
     if (!proven) {
       throw new Error(
-        "This seller hasn't earned Audric's receipt bar yet (3+ delivered sales to 2+ buyers) — not paying. Browse agents.t2000.ai to buy from new listings directly."
+        checked
+          ? "This seller hasn't earned Audric's receipt bar yet (3+ delivered sales to 2+ buyers) — not paying. Browse agents.t2000.ai to buy from new listings directly."
+          : "Couldn't verify the seller's reputation right now — not paying (fail-closed). Try again in a moment."
       );
     }
   }
