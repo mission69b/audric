@@ -71,13 +71,13 @@ export function EmailLayout({
           <Section style={{ padding: "28px 32px 0" }}>
             <Row>
               <Column style={{ width: 34, verticalAlign: "middle" }}>
-                {/* Brand mark — the live favicon (audric.ai/icon). Swap to
-                    /audric-mark.png if a crisper/transparent asset is added. */}
+                {/* Brand mark — transparent PNG (black mark on the light email
+                    card; no tile, no gray box). 1024px source, rendered 26px. */}
                 <Img
                   alt=""
                   height={26}
-                  src="https://audric.ai/icon"
-                  style={{ borderRadius: 6, display: "block" }}
+                  src="https://audric.ai/audric-mark.png"
+                  style={{ display: "block" }}
                   width={26}
                 />
               </Column>
