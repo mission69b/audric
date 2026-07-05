@@ -227,30 +227,22 @@ cd apps/web-v3 && pnpm exec biome check --write <files>
 
 ---
 
-## 8. Uncommitted work
+## 8. Commit state
 
-**Nothing is committed.** All of the following sit uncommitted on `feat/mobile-app`:
+**All work is committed + pushed to `origin/feat/mobile-app` (mission69b/audric). Working tree is clean.** Pushed 2026-07-05:
 
-**Modified**
-- `apps/mobile/{.env.example, package.json}` — jose dep + AUTH_SECRET/POSTGRES_URL docs
-- `apps/mobile/src/app-state/store.tsx` — tokenRef + Bearer on transport & fetches
-- `apps/mobile/src/app/api/{chat,history,messages,user}+api.ts` — `authenticate()` replaces `productionGate`
-- `apps/mobile/src/auth/{config,exchange,session,useAuth}.ts(x)` — token capture/store/carry
-- `apps/mobile/src/lib/api-guard.ts` — `authenticate()`
-- `apps/web-v3/app/api/mobile-auth/exchange/route.ts` — mints the session token
-- `apps/web-v3/lib/env.ts` — (earlier) `MOBILE_AUTH_BRIDGE_PATH`
-- `pnpm-lock.yaml` — jose only (+3 lines; no other dep drift)
-- *(local, gitignored, not shown by git)* `apps/mobile/.env.local` + `apps/web-v3/.env.local` — funkii's credential set
+| commit | scope |
+|---|---|
+| `a08ccc0` | 🔒 feat(auth): mint + verify audric_session for mobile data routes — the B1 set (exchange mint, `session-token.ts` verify mirror, `api-guard` `authenticate()`, all 4 `+api` routes, client token carry in `exchange`/`session`/`useAuth`/`store`, jose dep + lock, `.env.example` docs) |
+| `85d0c6e` | 🔧 chore(auth): local bridge alias + dockerized exchange for native sign-in test — `app/auth/bridge/route.ts`, `env.ts` `MOBILE_AUTH_BRIDGE_PATH`, `config.ts` `EXPO_PUBLIC_BRIDGE_URL` override, `Dockerfile.dev` + `docker-compose.yml` + `.dockerignore` |
+| `eb9348e` | 📝 docs(mobile): handoff, prod-readiness, session-auth design |
 
-**New (untracked)**
-- `apps/mobile/src/auth/session-token.ts` — the verify mirror
-- `apps/mobile/{PROD_READINESS.md, SESSION_AUTH_DESIGN.md, HANDOFF.md}`
-- `apps/web-v3/app/auth/bridge/` — the redirect bridge route
-- `apps/web-v3/{Dockerfile.dev, docker-compose.yml, .dockerignore}` — local container for the funnel
+**Not in git (correctly):** `apps/mobile/.env.local` + `apps/web-v3/.env.local` hold funkii's credential set — both gitignored, local-only. A fresh clone must recreate them from `.env.example` + funkii's values.
 
-**Suggested commit when ready** (owner's call — grouped):
-- `🔒 feat(auth): authenticate mobile data routes with audric_session token` (B1 set)
-- env changes are local/gitignored — nothing to commit there.
+**Caveats carried by these commits:**
+- B1 is committed but **runtime-unverified** — the mint/verify path can't run until the redirect URI is registered (§2). Sound WIP, not proven working.
+- The `chore` commit is **removable scaffolding** — delete the bridge alias + `MOBILE_AUTH_BRIDGE_PATH`/`EXPO_PUBLIC_BRIDGE_URL` overrides once the canonical `/api/mobile-auth/bridge` URI is registered on the client.
+- web-v3's ~267 pre-existing `lib/db/queries.ts` typecheck errors are untouched (not introduced here).
 
 ---
 
