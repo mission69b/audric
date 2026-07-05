@@ -1,0 +1,5 @@
+# Dockerfile.dev copies nothing (deps come from the bind mount), so keep the
+# build context tiny — only affects how fast `docker compose build` runs.
+node_modules
+.next
+.turbo

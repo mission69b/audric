@@ -51,8 +51,19 @@ const exchangeBase = (): string =>
  * http(s) redirect URIs, so this is the server's bridge endpoint; the bridge
  * 302s the code on to APP_RETURN_URI (the custom scheme) so the system browser
  * hands control back to the app.
+ *
+ * Defaults to `${exchangeBase()}/bridge` (canonical). EXPO_PUBLIC_BRIDGE_URL
+ * overrides it with a FULL url when the exchange base and the registered
+ * redirect URI diverge — e.g. testing against the pre-registered
+ * `http://localhost:3002/auth/bridge` while the exchange stays under
+ * /api/mobile-auth. Must byte-match the exchange server's redirect_uri.
  */
-export const serverRedirectUri = (): string => `${exchangeBase()}/bridge`;
+export const serverRedirectUri = (): string => {
+  const override = process.env.EXPO_PUBLIC_BRIDGE_URL?.trim();
+  return override
+    ? override.replace(/\/+$/, "")
+    : `${exchangeBase()}/bridge`;
+};
 
 /** JSON endpoint the app POSTs { code, codeVerifier, redirectUri } to. */
 export const exchangeUrl = (): string => `${exchangeBase()}/exchange`;

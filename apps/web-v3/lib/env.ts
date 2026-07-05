@@ -43,6 +43,13 @@ const serverSchema = z.object({
   // id_token in-browser and never swaps a code, so unset → mobile login 503s
   // with no impact on web boot. Server-only. NEVER expose to the client.
   GOOGLE_CLIENT_SECRET: optionalString,
+  // Redirect path the mobile-auth bridge lives at, for the code→token swap.
+  // OPTIONAL — defaults to "/api/mobile-auth/bridge" (the canonical route). Set
+  // it only to point the flow at an ALREADY-REGISTERED Google redirect URI when
+  // the canonical one isn't in the Console yet (e.g. local testing via the
+  // pre-registered "/auth/bridge"). Must byte-match the mobile app's redirect
+  // URI and an actual server route. Server-controlled, never trusted from body.
+  MOBILE_AUTH_BRIDGE_PATH: optionalString,
   // Private Memory (MemWal) — OPTIONAL: memory is opt-in/off-by-default, so a
   // missing value just disables the feature (no boot failure). Set all three
   // to enable. The delegate private key + account live server-side only.
@@ -145,6 +152,7 @@ const runtimeEnv = {
   ENOKI_SECRET_KEY: process.env.ENOKI_SECRET_KEY,
   AUTH_SECRET: process.env.AUTH_SECRET,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  MOBILE_AUTH_BRIDGE_PATH: process.env.MOBILE_AUTH_BRIDGE_PATH,
   MEMWAL_PRIVATE_KEY: process.env.MEMWAL_PRIVATE_KEY,
   MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,

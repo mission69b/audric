@@ -1,0 +1,28 @@
+# Run web-v3 locally, in a container, as the mobile Google sign-in exchange
+# server. NOT a production setup — it reuses the host's installed deps.
+#
+#   docker compose -f apps/web-v3/docker-compose.yml up        # start (Ctrl-C to stop)
+#   docker compose -f apps/web-v3/docker-compose.yml up -d     # background
+#   docker compose -f apps/web-v3/docker-compose.yml down      # stop
+#
+# Serves http://localhost:3002 — routes /api/mobile-auth/{bridge,exchange}.
+# Reads apps/web-v3/.env.local (must hold GOOGLE_CLIENT_SECRET plus the usual
+# NEXT_PUBLIC_GOOGLE_CLIENT_ID / NEXT_PUBLIC_ENOKI_API_KEY / AUTH_SECRET /
+# NEXT_PUBLIC_SUI_NETWORK); Next loads it itself from the mounted tree.
+services:
+  web-v3:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /repo
+    # Bind 0.0.0.0 so the published port is reachable from the host (localhost).
+    command: pnpm --filter web-v3 exec next dev --turbo --port 3002 --hostname 0.0.0.0
+    ports:
+      - "3002:3002"
+    volumes:
+      # Reuse the host's node_modules + read .env.local from the same tree.
+      - ../../:/repo
+    environment:
+      # inotify events don't cross the WSL2/Docker bind mount — poll instead so
+      # HMR still picks up edits.
+      - WATCHPACK_POLLING=true

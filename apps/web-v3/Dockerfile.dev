@@ -1,0 +1,17 @@
+# Dev-only image to run web-v3 (the mobile Google-exchange server) locally in a
+# container. NOT for production. It copies nothing — the whole monorepo,
+# including the already-installed node_modules and apps/web-v3/.env.local, is
+# bind-mounted at /repo by docker-compose. Host + container are both
+# linux/x86_64 glibc, and we match the host's Node 23 line so any native ABIs in
+# node_modules line up (no reinstall needed).
+FROM node:23-bookworm-slim
+
+# pnpm, pinned by `packageManager` in the root package.json, via corepack.
+RUN corepack enable
+
+WORKDIR /repo
+EXPOSE 3002
+
+# Real command is set in docker-compose (binds 0.0.0.0 so the mapped port is
+# reachable from the host). This is only the fallback.
+CMD ["pnpm", "--filter", "web-v3", "dev"]
