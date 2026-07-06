@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { PosterTaskReview } from "@/components/poster-task-review";
 import { listMyBoardTasks, type PosterTask } from "@/lib/board-poster";
 import { PanelHead } from "@/components/panel-head";
+import { PostTaskButton } from "@/components/post-task-modal";
 
 const OPEN_STATUSES = new Set(["live", "pending_review"]);
 
@@ -80,9 +81,10 @@ export default async function PostedTasksPage() {
     <div className="max-w-3xl">
       <PanelHead
         action={
-          <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/tasks">
-            Post a task
-          </Link>
+          <PostTaskButton
+            className="ag-btn ag-btn--ghost ag-btn--sm"
+            label="Post a task"
+          />
         }
         sub="Tasks you funded. Approve pays the worker through the rail instantly; unspent budget auto-refunds at expiry."
         title="Posted tasks"

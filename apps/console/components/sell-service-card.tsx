@@ -95,6 +95,15 @@ export function SellServiceCard({
     );
   }
 
+  // Removing a SAVED row drops that header from the config on the next
+  // save (the gateway stores exactly the names sent).
+  function removeHeader(i: number) {
+    setHeaders((rows) => {
+      const next = rows.filter((_, idx) => idx !== i);
+      return next.length ? next : [{ k: "", v: "" }];
+    });
+  }
+
   async function save() {
     setError("");
     setStatus("busy");
@@ -191,7 +200,7 @@ export function SellServiceCard({
         </div>
         {isLive && (
           <span
-            className="ag-chip px-[9px] py-0.5 text-[10px] uppercase"
+            className="ag-chip px-[9px] py-0.5 text-[10px]"
             style={{
               color: "var(--ag-verify)",
               background: "var(--ag-verify-bg)",
@@ -252,7 +261,7 @@ export function SellServiceCard({
           </label>
           {headers.map((row, i) => (
             <div
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-[1fr_1fr_auto] items-end gap-3"
               key={`header-${i.toString()}`}
             >
               <label className="grid gap-[7px]">
@@ -276,6 +285,22 @@ export function SellServiceCard({
                   value={row.v}
                 />
               </label>
+              <button
+                aria-label="Remove header"
+                className="flex h-10 w-8 items-center justify-center rounded-md text-fg-subtle transition-colors hover:text-foreground"
+                onClick={() => removeHeader(i)}
+                title="Remove header"
+                type="button"
+              >
+                <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 16 16" width="14">
+                  <path
+                    d="M4 4l8 8M12 4l-8 8"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </button>
             </div>
           ))}
           <button
@@ -301,8 +326,8 @@ export function SellServiceCard({
         </>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-[7px]">
+      <div className="grid items-start gap-4 sm:grid-cols-2">
+        <label className="grid content-start gap-[7px]">
           <FieldLabel>Price (USDC / call)</FieldLabel>
           <input
             className="ag-input"
@@ -313,7 +338,7 @@ export function SellServiceCard({
           />
           <Hint>You receive the net after the 2.5% platform fee.</Hint>
         </label>
-        <label className="grid gap-[7px]">
+        <label className="grid content-start gap-[7px]">
           <FieldLabel>Store category</FieldLabel>
           <select
             className="ag-input"
