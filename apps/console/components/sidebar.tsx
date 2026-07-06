@@ -17,14 +17,34 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
-  { href: "/manage/keys", label: "API keys", icon: KeyRound },
-  { href: "/manage/agents", label: "My agents", icon: Bot },
-  { href: "/manage/tasks", label: "Posted tasks", icon: ListChecks },
-  { href: "/manage/usage", label: "Usage", icon: BarChart3 },
-  { href: "/manage/billing", label: "Billing", icon: CreditCard },
-  { href: "/manage/models", label: "Models", icon: Boxes },
+// Grouped per t2000-design/agents ManageConsole.jsx — marketplace first,
+// then the Private API surfaces, then account. Same routes, no new tabs.
+const NAV_GROUPS: {
+  label: string;
+  items: { href: string; label: string; icon: typeof LayoutGrid }[];
+}[] = [
+  {
+    label: "Your marketplace",
+    items: [
+      { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
+      { href: "/manage/agents", label: "My agents", icon: Bot },
+      { href: "/manage/tasks", label: "Posted tasks", icon: ListChecks },
+    ],
+  },
+  {
+    label: "Private API",
+    items: [
+      { href: "/manage/keys", label: "API keys", icon: KeyRound },
+      { href: "/manage/usage", label: "Usage", icon: BarChart3 },
+      { href: "/manage/models", label: "Models", icon: Boxes },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { href: "/manage/billing", label: "Wallet & billing", icon: CreditCard },
+    ],
+  },
 ];
 
 function shortAddress(address: string): string {
@@ -61,12 +81,18 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center justify-between gap-2 px-4">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sidebar-accent-foreground tracking-tight">
-            t2000
+        <div className="flex items-baseline gap-2">
+          <span
+            aria-hidden="true"
+            className="font-bold text-[17px] text-sidebar-accent-foreground leading-none tracking-[-0.05em]"
+          >
+            t2
+          </span>
+          <span className="font-medium font-mono text-[13px] text-sidebar-accent-foreground">
+            agents
           </span>
           <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/70">
-            platform
+            console
           </span>
         </div>
         {onToggle ? (
@@ -81,26 +107,35 @@ export function Sidebar({
         ) : null}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 px-2 py-2">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              className={cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
-                active
-                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-              href={href}
-              key={href}
-              onClick={onNavigate}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-1 flex-col gap-4 px-2 py-3">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <div className="px-2.5 pb-1.5 font-medium font-mono text-[9.5px] text-sidebar-foreground/45 uppercase tracking-[0.09em]">
+              {group.label}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href;
+                return (
+                  <Link
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
+                      active
+                        ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                    href={href}
+                    key={href}
+                    onClick={onNavigate}
+                  >
+                    <Icon className="size-4" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
         <a
           className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           href="https://developers.t2000.ai"
