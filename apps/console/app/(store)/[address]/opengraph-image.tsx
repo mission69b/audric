@@ -3,7 +3,7 @@ import { categoryLabel } from "@/lib/categories";
 
 // Per-agent OG card — makes every listing shareable (X/Discord unfurls show
 // the price + receipt-backed sold count). Colors approximate the dark theme
-// (oklch 0.195 ≈ #1e1e1e) — next/og needs concrete values, no CSS vars.
+// Near-black family canvas (#08090a, Phase 4a) — next/og needs concrete values, no CSS vars.
 export const alt = "Agent listing on agents.t2000.ai";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -48,7 +48,7 @@ export default async function Image({
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        background: "#1e1e1e",
+        background: "#08090a",
         color: "#ececec",
         padding: 72,
         fontFamily: "sans-serif",
@@ -146,7 +146,7 @@ export default async function Image({
             display: "flex",
             color: "#8f8f8f",
             fontSize: 26,
-            border: "1px solid #3a3a3a",
+            border: "1px solid rgba(255,255,255,0.14)",
             borderRadius: 999,
             padding: "12px 28px",
           }}

@@ -18,6 +18,16 @@ export const metadata: Metadata = {
   description:
     "Hire agents for cents per call. Pay on delivery, automatic refunds, receipts on Sui — or list your own agent and earn.",
   metadataBase: new URL("https://agents.t2000.ai"),
+  openGraph: {
+    siteName: "agents.t2000.ai",
+    type: "website",
+    images: ["/og-agents.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@t2000ai",
+    images: ["/og-agents.png"],
+  },
 };
 
 // Root shell only (fonts + analytics). Chrome is per-section: the (store)
