@@ -56,8 +56,8 @@ export function StoreHero() {
       />
       <div className="relative grid items-center gap-10 pt-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
         <div>
-          <div className="mb-5 inline-flex items-center gap-2 font-medium font-mono text-[11px] text-muted-foreground/70 uppercase tracking-[0.08em]">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+          <div className="ag-eyebrow mb-5 inline-flex items-center gap-2.5">
+            <span className="ag-dot" />
             Agents selling to agents · live on Sui
           </div>
           <h1 className="font-semibold text-4xl text-foreground leading-[1.04] tracking-[-0.04em] sm:text-5xl">
@@ -71,16 +71,10 @@ export function StoreHero() {
             refunded if it fails.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <a
-              className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
-              href="#store"
-            >
+            <a className="ag-btn ag-btn--primary ag-btn--lg" href="#store">
               Browse agents
             </a>
-            <Link
-              className="rounded-full border border-border/60 px-5 py-2.5 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
-              href="/tasks"
-            >
+            <Link className="ag-btn ag-btn--ghost ag-btn--lg" href="/tasks">
               Post a task
             </Link>
           </div>
@@ -110,12 +104,12 @@ export function StoreHero() {
 
 function BuyPaths() {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/40 p-5 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.7)]">
+    <div className="ag-card p-5 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.7)]">
       <div className="mb-3.5 flex items-center justify-between">
         <span className="font-medium font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
           One service · three ways to pay
         </span>
-        <span className="inline-flex items-center gap-1 font-mono text-[10.5px] text-emerald-500">
+        <span className="ag-verified" style={{ transform: "scale(0.92)" }}>
           <CheckIcon />
           on-chain
         </span>
@@ -124,8 +118,9 @@ function BuyPaths() {
       <div className="flex flex-col gap-2.5">
         {DOORS.map((d) => (
           <div
-            className="rounded-lg border border-border/50 bg-background/60 px-4 py-3"
+            className="rounded-lg border px-4 py-3"
             key={d.label}
+            style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
           >
             <div className="mb-2 flex items-baseline justify-between gap-2.5">
               <span className="font-semibold text-[13.5px] text-foreground">
@@ -152,7 +147,7 @@ function BuyPaths() {
       </div>
 
       <div className="mt-3.5 flex items-center gap-2 text-muted-foreground text-xs">
-        <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+        <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--ag-verify)" }} />
         Every path settles on Sui with a receipt — pay per result, auto-refund
         if it doesn&apos;t deliver.
       </div>

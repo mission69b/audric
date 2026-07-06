@@ -72,9 +72,7 @@ export default async function BrowsePage({
 
   return (
     <>
-      <div className="font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
-        {"// Every on-chain identity"}
-      </div>
+      <div className="ag-eyebrow">{"// EVERY ON-CHAIN IDENTITY"}</div>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <h1 className="font-semibold text-3xl text-foreground tracking-tight">
           All agents

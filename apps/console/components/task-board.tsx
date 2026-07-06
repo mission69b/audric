@@ -42,11 +42,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
       <div className="mt-6 flex flex-wrap gap-2">
         {cats.map((c) => (
           <button
-            className={`rounded-full border px-3.5 py-1.5 font-medium text-[13px] transition-colors ${
-              cat === c
-                ? "border-transparent bg-foreground text-background"
-                : "border-border/60 bg-card/40 text-muted-foreground hover:text-foreground"
-            }`}
+            className={`ag-filter${cat === c ? " is-active" : ""}`}
             key={c}
             onClick={() => setCat(c)}
             type="button"
@@ -59,26 +55,36 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
       <div className="mt-5 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {shown.map((t) => (
           <Link
-            className="flex min-h-[210px] flex-col rounded-2xl border border-border/50 bg-card/40 p-5 transition-colors hover:border-border hover:bg-muted/30"
+            className="ag-card ag-card--hover flex min-h-[210px] flex-col p-5"
             href={t.href}
             key={t.id}
           >
             <div className="flex items-start justify-between gap-3">
-              <span className="rounded-full border border-border/60 px-2 py-0.5 font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.04em]">
-                {t.cat}
-              </span>
+              <span className="ag-chip px-2 py-0.5 text-[10.5px] uppercase">{t.cat}</span>
               {t.kind === "reward" ? (
                 <span
-                  className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em] ${
+                  className="rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
+                  style={
                     t.paused
-                      ? "border-border/60 text-muted-foreground/60"
-                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-                  }`}
+                      ? { borderColor: "var(--ag-border-hi)", color: "var(--fg-subtle)" }
+                      : {
+                          color: "var(--ag-verify)",
+                          background: "var(--ag-verify-bg)",
+                          borderColor: "var(--ag-verify-bd)",
+                        }
+                  }
                 >
                   {t.paused ? "Budget spent" : "Reward"}
                 </span>
               ) : (
-                <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] text-sky-500 uppercase tracking-[0.04em]">
+                <span
+                  className="rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
+                  style={{
+                    color: "var(--ag-accent)",
+                    background: "var(--ag-accent-bg)",
+                    borderColor: "rgba(0,114,245,0.25)",
+                  }}
+                >
                   Open
                 </span>
               )}
@@ -92,13 +98,13 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
             <div className="mt-4 font-mono text-muted-foreground/60 text-xs">
               {t.meta}
             </div>
-            <hr className="my-3.5 border-border/50" />
+            <hr className="ag-rule my-3.5" />
             <div className="flex items-center justify-between">
               <span className="font-mono text-[15px] text-foreground tabular-nums">
                 {t.kind === "reward" ? "+" : ""}${t.rewardUsd.toFixed(2)}{" "}
                 <span className="text-muted-foreground/60 text-xs">USDC</span>
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2 py-0.5 font-mono text-[10px] text-emerald-500/90">
+              <span className="ag-verified px-2 py-0.5 text-[10px]">
                 <ShieldIcon />
                 {t.badge}
               </span>

@@ -57,10 +57,10 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
     // Stretched-link card (t2000-design/agents AgentCard): the overlay <Link>
     // makes the whole card clickable while the copy button sits ABOVE it
     // (z-10) — no nested interactives.
-    <div className="group relative flex flex-col rounded-2xl border border-border/50 bg-card/40 p-[18px] transition-colors hover:border-border hover:bg-muted/30">
+    <div className="ag-card ag-card--hover group relative flex flex-col p-[18px]">
       <Link
         aria-hidden="true"
-        className="absolute inset-0 rounded-2xl"
+        className="absolute inset-0 rounded-[10px]"
         href={`/${s.address}`}
         tabIndex={-1}
       />
@@ -80,7 +80,14 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
               {s.name}
             </Link>
             {featured && (
-              <span className="shrink-0 rounded-full border border-sky-500/25 bg-sky-500/10 px-1.5 py-px font-mono text-[10px] text-sky-400 uppercase tracking-[0.04em]">
+              <span
+                className="shrink-0 rounded-md border px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.04em]"
+                style={{
+                  color: "var(--ag-accent)",
+                  background: "var(--ag-accent-bg)",
+                  borderColor: "rgba(0,114,245,0.25)",
+                }}
+              >
                 Featured
               </span>
             )}
@@ -104,11 +111,11 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
         {s.description}
       </p>
 
-      <hr className="my-3.5 border-border/50" />
+      <hr className="ag-rule my-3.5" />
 
       <div className="flex items-center justify-between gap-2.5">
         {sold > 0 ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2 py-0.5 font-mono text-[10.5px] text-emerald-500">
+          <span className="ag-verified">
             <CheckIcon />
             Verified
           </span>
@@ -123,17 +130,20 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
           </span>
         )}
         {sold > 0 && (
-          <span className="font-mono text-[12px] text-muted-foreground/70 tabular-nums">
-            <b className="font-medium text-foreground">{sold}</b> sold ·{" "}
-            <b className="font-medium text-foreground">{s.stats?.buyers}</b>{" "}
-            buyers
+          <span className="ag-rep ag-tabular" style={{ fontSize: 12 }}>
+            <span>
+              <b>{sold}</b> sold
+            </span>
+            <span className="sep">·</span>
+            <span>
+              <b>{s.stats?.buyers}</b> buyers
+            </span>
             {typeof s.stats?.deliveredRate === "number" && (
               <>
-                {" "}
-                ·{" "}
-                <b className="font-medium text-foreground">
-                  {Math.round(s.stats.deliveredRate * 100)}%
-                </b>
+                <span className="sep">·</span>
+                <span>
+                  <b>{Math.round(s.stats.deliveredRate * 100)}%</b>
+                </span>
               </>
             )}
           </span>
@@ -153,10 +163,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
             description: s.description,
           })}
         />
-        <Link
-          className="rounded-full border border-border/60 px-3 py-1 font-medium text-foreground text-xs transition-colors group-hover:bg-secondary"
-          href={`/${s.address}`}
-        >
+        <Link className="ag-btn ag-btn--ghost ag-btn--sm" href={`/${s.address}`}>
           Use it →
         </Link>
       </div>
@@ -224,9 +231,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
     <section className="mt-12 scroll-mt-20" id="store">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="mb-2.5 font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
-            {"// The store"}
-          </div>
+          <div className="ag-eyebrow mb-3">{"// THE STORE"}</div>
           <h2 className="font-semibold text-2xl text-foreground tracking-tight">
             Agents on the job.
           </h2>
@@ -238,7 +243,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
       </div>
 
       {services.length > 1 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <button
             className={chipCls(category === "all")}
             onClick={() => setCategory("all")}
@@ -256,16 +261,13 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
               {categoryLabel(slug)} · {count}
             </button>
           ))}
-          <div className="ms-auto flex items-center gap-1 rounded-xl border border-border/60 bg-card/40 p-1">
+          <div className="ag-card ms-auto flex items-center gap-1 p-1">
             {SORTS.map((s) => (
               <button
-                className={`rounded-lg px-2.5 py-1 font-medium text-xs transition-colors ${
-                  sort === s.id
-                    ? "bg-secondary text-secondary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`ag-filter${sort === s.id ? " is-active" : ""}`}
                 key={s.id}
                 onClick={() => setSort(s.id)}
+                style={{ height: 30, padding: "0 12px", fontSize: 12.5 }}
                 type="button"
               >
                 {s.label}
@@ -276,7 +278,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
       )}
 
       {visible.length === 0 ? (
-        <div className="mt-4 rounded-2xl border border-border/50 border-dashed bg-card/20 p-8 text-center">
+        <div className="ag-card mt-4 border-dashed p-8 text-center">
           <p className="text-muted-foreground text-sm">
             No services listed yet.
           </p>
@@ -306,9 +308,5 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
 }
 
 function chipCls(active: boolean): string {
-  return `rounded-full border px-3 py-1.5 font-medium text-xs transition-colors ${
-    active
-      ? "border-transparent bg-secondary text-secondary-foreground"
-      : "border-border/60 bg-card/40 text-muted-foreground hover:text-foreground"
-  }`;
+  return `ag-filter${active ? " is-active" : ""}`;
 }

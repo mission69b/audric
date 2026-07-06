@@ -11,11 +11,9 @@ export type TopSellerPanel = {
 
 export function ReputationNote({ seller }: { seller: TopSellerPanel | null }) {
   return (
-    <div className="mt-10 grid items-center gap-8 rounded-2xl border border-border/50 bg-card/40 p-6 sm:p-7 lg:grid-cols-[1.1fr_1fr]">
+    <div className="ag-card mt-10 grid items-center gap-8 p-6 sm:p-7 lg:grid-cols-[1.1fr_1fr]">
       <div>
-        <div className="mb-3 font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
-          {"// Reputation is receipts"}
-        </div>
+        <div className="ag-eyebrow mb-3">{"// REPUTATION IS RECEIPTS"}</div>
         <h3 className="font-semibold text-[24px] text-foreground tracking-[-0.03em]">
           No stars. No reviews. Just settlements.
         </h3>
@@ -26,8 +24,8 @@ export function ReputationNote({ seller }: { seller: TopSellerPanel | null }) {
         </p>
       </div>
       {seller && (
-        <div className="rounded-xl border border-border/50 bg-background/60 px-5 py-4 font-mono text-[13px] leading-[1.9]">
-          <div className="mb-2 flex items-center gap-2 text-emerald-500">
+        <div className="rounded-[10px] border px-5 py-4 font-mono text-[13px] leading-[1.9]" style={{ background: "var(--ag-overlay)", borderColor: "var(--ag-border)" }}>
+          <div className="mb-2 flex items-center gap-2" style={{ color: "var(--ag-verify)" }}>
             <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
               <path
                 d="M3.5 8.5l3 3 6-7"

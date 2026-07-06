@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AgentAvatar } from "@/components/agent-avatar";
 
 type Agent = {
   address: string;
@@ -54,8 +55,7 @@ function Field({
   );
 }
 
-const inputCls =
-  "mt-1 w-full rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-foreground text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-ring";
+const inputCls = "ag-input mt-1";
 
 export function AgentManageCard({
   agent,
@@ -109,44 +109,88 @@ export function AgentManageCard({
     }
   }
 
+  // Address anchor — the public listing's "Manage it" bar deep-links here
+  // (/manage/agents#0x…): auto-expand the editor for that agent.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (window.location.hash === `#${agent.address}`) {
+      setOpen(true);
+    }
+  }, [agent.address]);
+
   return (
-    // Address anchor — the public listing's "Manage it" bar deep-links here
-    // (/manage/agents#0x…), landing the owner on the right card directly.
-    <div
-      className="scroll-mt-24 rounded-xl border border-border/50 bg-card/40 p-5"
-      id={agent.address}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <a
-            className="font-medium text-foreground hover:underline"
-            href={`https://agents.t2000.ai/${agent.address}`}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {agent.displayName || agent.name}
-          </a>
-          {agent.numericId != null && (
-            <span className="font-mono text-muted-foreground/60 text-xs">
-              #{agent.numericId}
+    // Compact row per t2000-design/agents ManageConsole §AgentsPanel;
+    // "Manage" expands the editor in place.
+    <div className="ag-card scroll-mt-24" id={agent.address}>
+      <div className="flex flex-wrap items-center gap-4 px-5 py-4">
+        <AgentAvatar
+          address={agent.address}
+          imageUrl={agent.imageUrl}
+          name={agent.displayName || agent.name}
+          size={42}
+        />
+        <div className="min-w-[180px] flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-[15px] text-foreground">
+              {agent.displayName || agent.name}
             </span>
-          )}
-          <span className="font-mono text-muted-foreground/50 text-xs">
-            {short(agent.address)}
-          </span>
-        </div>
-        {earnings && earnings.sales > 0 && (
-          <div className="text-muted-foreground text-xs">
-            <span className="font-medium text-foreground">
-              ${earnings.volumeUsd.toFixed(4)}
-            </span>{" "}
-            earned · {earnings.sales} sale{earnings.sales === 1 ? "" : "s"} ·{" "}
-            {earnings.buyers} buyer{earnings.buyers === 1 ? "" : "s"}
+            {agent.numericId != null && (
+              <span className="font-mono text-muted-foreground/60 text-xs">
+                #{agent.numericId}
+              </span>
+            )}
+            <span className="font-mono text-muted-foreground/50 text-xs">
+              {short(agent.address)}
+            </span>
           </div>
+          {earnings && earnings.sales > 0 ? (
+            <div className="ag-rep ag-tabular mt-1" style={{ fontSize: 11.5 }}>
+              <span>
+                <b>{earnings.sales}</b> sold
+              </span>
+              <span className="sep">·</span>
+              <span>
+                <b>${earnings.volumeUsd.toFixed(2)}</b> earned
+              </span>
+              <span className="sep">·</span>
+              <span>
+                <b>{earnings.buyers}</b> buyer{earnings.buyers === 1 ? "" : "s"}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-1 font-mono text-[11.5px] text-muted-foreground/50">
+              no sales yet
+            </div>
+          )}
+        </div>
+        {agent.active && (
+          <span className="ag-verified px-2.5 py-0.5">
+            <span className="ag-dot" style={{ width: 5, height: 5 }} /> Live
+          </span>
         )}
+        <a
+          className="ag-btn ag-btn--ghost ag-btn--sm"
+          href={`https://agents.t2000.ai/${agent.address}`}
+          rel="noreferrer"
+          target="_blank"
+        >
+          View
+        </a>
+        <button
+          className="ag-btn ag-btn--ghost ag-btn--sm"
+          onClick={() => setOpen((o) => !o)}
+          type="button"
+        >
+          {open ? "Close" : "Manage"}
+        </button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {open && (
+        <div
+          className="border-t px-5 pb-5"
+          style={{ borderColor: "var(--ag-border)" }}
+        >
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Field label="Display name">
           <input
             className={inputCls}
@@ -220,31 +264,35 @@ export function AgentManageCard({
         </Field>
       </div>
 
-      {agent.mcpEndpoint && (
-        <p className="mt-3 text-muted-foreground/60 text-xs">
-          Service endpoint:{" "}
-          <span className="font-mono break-all">{agent.mcpEndpoint}</span> —
-          changed on-chain by the agent ({" "}
-          <span className="font-mono">t2 agent service / deploy</span> ).
-        </p>
-      )}
+          {agent.mcpEndpoint && (
+            <p className="mt-3 text-muted-foreground/60 text-xs">
+              Service endpoint:{" "}
+              <span className="font-mono break-all">{agent.mcpEndpoint}</span>{" "}
+              — changed on-chain by the agent (
+              <span className="font-mono">t2 agent service / deploy</span>).
+            </p>
+          )}
 
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          className="rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-          disabled={status === "saving"}
-          onClick={save}
-          type="button"
-        >
-          {status === "saving" ? "Saving…" : "Save"}
-        </button>
-        {status === "saved" && (
-          <span className="text-green-500 text-sm">Saved ✓</span>
-        )}
-        {status === "error" && (
-          <span className="text-destructive text-sm">{error}</span>
-        )}
-      </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              className="ag-btn ag-btn--primary ag-btn--sm disabled:opacity-50"
+              disabled={status === "saving"}
+              onClick={save}
+              type="button"
+            >
+              {status === "saving" ? "Saving…" : "Save"}
+            </button>
+            {status === "saved" && (
+              <span className="text-sm" style={{ color: "var(--ag-verify)" }}>
+                Saved ✓
+              </span>
+            )}
+            {status === "error" && (
+              <span className="text-destructive text-sm">{error}</span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

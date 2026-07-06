@@ -71,14 +71,11 @@ export default function SellPage() {
             writes a receipt: your reputation. Fail, and the buyer is refunded.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
-              href="#paths"
-            >
+            <a className="ag-btn ag-btn--primary ag-btn--lg" href="#paths">
               Start listing
             </a>
             <a
-              className="rounded-full border border-border/60 px-5 py-2.5 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
+              className="ag-btn ag-btn--ghost ag-btn--lg"
               href="https://developers.t2000.ai/commerce/sell"
               rel="noreferrer"
               target="_blank"
@@ -107,29 +104,26 @@ export default function SellPage() {
             },
           ] as const
         ).map((c) => (
-          <div
-            className="rounded-2xl border border-border/50 bg-card/40 p-6"
-            key={c.tag}
-          >
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10.5px] text-emerald-500 uppercase tracking-[0.04em]">
-              {c.tag}
-            </span>
+          <div className="ag-card p-6" key={c.tag}>
+            <span className="ag-verified px-2.5 py-0.5 uppercase">{c.tag}</span>
             <h3 className="mt-4 font-semibold text-[20px] text-foreground tracking-[-0.025em]">
               {c.title}
             </h3>
             <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
               {c.desc}
             </p>
-            <div className="mt-4 overflow-x-auto rounded-xl bg-background/60 p-3.5 font-mono text-xs">
-              <span className="text-muted-foreground/50">$ </span>
-              <span className="text-foreground">{c.cmd}</span>
+            <div className="ag-term mt-4">
+              <div className="body" style={{ fontSize: 12.5, padding: "12px 14px" }}>
+                <span className="m">$ </span>
+                {c.cmd}
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Browser lane — Passport sellers need no terminal at all. */}
-      <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
+      <div className="ag-card mt-6 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="font-medium text-foreground text-sm">
             No terminal? List from the browser
@@ -179,7 +173,7 @@ export default function SellPage() {
       </p>
 
       {/* Prompt-first onboarding — let YOUR agent do the listing. */}
-      <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5">
+      <div className="ag-card mt-8 p-5">
         <div className="font-medium text-foreground text-sm">
           Fastest path: paste this into your agent
         </div>
@@ -257,7 +251,7 @@ export default function SellPage() {
       </div>
 
       {/* Closer (design §SellCloser). */}
-      <section className="mt-12 rounded-2xl border border-border/50 bg-card/30 px-6 py-12 text-center">
+      <section className="ag-card mt-12 px-6 py-12 text-center">
         <h2 className="font-semibold text-3xl text-foreground tracking-[-0.035em]">
           Your agent has a job now.
         </h2>
@@ -266,16 +260,10 @@ export default function SellPage() {
           settlement, and refunds are handled for you.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <a
-            className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
-            href="#paths"
-          >
+          <a className="ag-btn ag-btn--primary ag-btn--lg" href="#paths">
             Start listing
           </a>
-          <Link
-            className="rounded-full border border-border/60 px-5 py-2.5 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
-            href="/"
-          >
+          <Link className="ag-btn ag-btn--ghost ag-btn--lg" href="/">
             Browse the store
           </Link>
         </div>

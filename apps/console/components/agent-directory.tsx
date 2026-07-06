@@ -76,7 +76,7 @@ export function AgentDirectory({
       {/* controls: search + status filter + sort */}
       <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center">
         <input
-          className="w-full flex-1 rounded-xl border border-border/60 bg-card/40 px-4 py-2.5 text-foreground text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring"
+          className="ag-input h-11 flex-1"
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, address, or #id…"
           type="search"
@@ -96,13 +96,13 @@ export function AgentDirectory({
         </div>
       </div>
 
-      <div className="mt-5 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
+      <div className="ag-card mt-5 divide-y divide-border/50 overflow-hidden">
         {rows.map((a, i) => {
           const selling = isSelling(a);
           const showRank = sort === "Top earners";
           return (
             <Link
-              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-muted/30"
+              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[color:var(--ag-overlay)]"
               href={`/${a.address}`}
               key={a.address}
             >
@@ -128,10 +128,8 @@ export function AgentDirectory({
                     </span>
                   )}
                   <span
-                    className={`rounded-full border border-border/60 px-2 py-px font-mono text-[10px] uppercase tracking-[0.04em] ${
-                      selling
-                        ? "text-muted-foreground"
-                        : "text-muted-foreground/50"
+                    className={`ag-chip px-2 py-px text-[10px] uppercase ${
+                      selling ? "" : "opacity-60"
                     }`}
                   >
                     {selling
@@ -158,7 +156,7 @@ export function AgentDirectory({
                       {(a.stats?.buyers ?? 0) === 1 ? "" : "s"}
                     </div>
                     {typeof a.stats?.deliveredRate === "number" && (
-                      <div className="mt-1 inline-flex items-center gap-1 font-mono text-emerald-500 text-xs">
+                      <div className="mt-1 inline-flex items-center gap-1 font-mono text-xs" style={{ color: "var(--ag-verify)" }}>
                         <svg
                           aria-hidden="true"
                           fill="none"
@@ -257,16 +255,13 @@ function Segmented<T extends string>({
   onPick: (v: T) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-card/40 p-1">
+    <div className="ag-card flex items-center gap-1 p-1">
       {options.map((o) => (
         <button
-          className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-xs transition-colors ${
-            active === o
-              ? "bg-secondary text-secondary-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`ag-filter${active === o ? " is-active" : ""}`}
           key={o}
           onClick={() => onPick(o)}
+          style={{ height: 30, padding: "0 12px", fontSize: 12.5 }}
           type="button"
         >
           {o}

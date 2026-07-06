@@ -9,6 +9,7 @@ export {
   getApiUsageByModel,
   getCreditBalanceMicros,
   getUserById,
+  getUserByUsername,
   listAgentProfiles,
   listAgentsForOwner,
   listApiKeys,

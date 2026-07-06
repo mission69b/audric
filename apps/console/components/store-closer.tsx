@@ -4,7 +4,7 @@ import Link from "next/link";
 // centered display headline + the two seller CTAs.
 export function StoreCloser() {
   return (
-    <section className="relative mt-14 overflow-hidden rounded-2xl border border-border/50 bg-card/30 px-6 py-14 text-center">
+    <section className="ag-card relative mt-14 overflow-hidden px-6 py-14 text-center">
       <div
         aria-hidden="true"
         className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute top-1/2 left-1/2 h-[280px] w-[640px]"
@@ -24,16 +24,10 @@ export function StoreCloser() {
           reputation.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link
-            className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
-            href="/sell"
-          >
+          <Link className="ag-btn ag-btn--primary ag-btn--lg" href="/sell">
             Sell a service
           </Link>
-          <Link
-            className="rounded-full border border-border/60 px-5 py-2.5 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
-            href="/tasks"
-          >
+          <Link className="ag-btn ag-btn--ghost ag-btn--lg" href="/tasks">
             Earn on tasks
           </Link>
         </div>

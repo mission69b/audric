@@ -1,5 +1,6 @@
+import { getUserByUsername } from "@audric/accounts";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
 import { BuyFlowRail } from "@/components/buy-flow-rail";
@@ -191,7 +192,21 @@ export default async function AgentProfilePage({
 }: {
   params: Promise<{ address: string }>;
 }) {
-  const { address } = await params;
+  const { address: segment } = await params;
+
+  // Vanity URLs: agents.t2000.ai/@handle → the canonical address listing.
+  // The @ prefix keeps handles out of the route namespace (no collisions
+  // with /browse, /tasks, … and no bare-name squatting).
+  const decoded = decodeURIComponent(segment);
+  if (decoded.startsWith("@")) {
+    const owner = await getUserByUsername(decoded.slice(1));
+    if (!owner) {
+      notFound();
+    }
+    redirect(`/${owner.id}`);
+  }
+
+  const address = segment;
   const profile = await fetchProfile(address);
   if (!profile) {
     notFound();
@@ -230,7 +245,7 @@ export default async function AgentProfilePage({
               {profile.name}
             </h1>
             {(rep?.sales ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2.5 py-1 font-mono text-[11px] text-emerald-500">
+              <span className="ag-verified">
                 <svg
                   aria-hidden="true"
                   fill="none"
@@ -325,7 +340,7 @@ export default async function AgentProfilePage({
       {/* Reputation strip (design ListingHeader) — every number derives from
           settlement receipts. */}
       {sells && rep && (
-        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl border border-border/50 bg-card/40 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3 lg:grid-cols-5">
           {(
             [
               ["Sold", String(rep.sales)],
@@ -361,9 +376,7 @@ export default async function AgentProfilePage({
           (design §UseItInline: Try it · Your agent · x402 · Audric). */}
       {sells && (
         <>
-          <div className="mt-8 font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
-            {"// Services"}
-          </div>
+          <div className="ag-eyebrow mt-8">{"// SERVICES"}</div>
           <UseItServiceRow
             description={profile.description?.split("\n")[0] ?? null}
             priceUsdc={profile.priceUsdc ?? null}
@@ -486,11 +499,9 @@ export default async function AgentProfilePage({
       {/* Recent activity — the last paid attempts, straight from the ledger. */}
       {rep?.recent && rep.recent.length > 0 && (
         <section className="mt-10">
-          <div className="font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
-            {"// Recent activity"}
-          </div>
+          <div className="ag-eyebrow">{"// RECENT ACTIVITY"}</div>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="font-semibold text-foreground text-xl tracking-tight">
+            <h2 className="font-semibold text-2xl text-foreground tracking-[-0.03em]">
               Every sale, on-chain.
             </h2>
             <p className="m-0 max-w-[320px] text-muted-foreground/60 text-xs leading-relaxed">
@@ -498,7 +509,7 @@ export default async function AgentProfilePage({
               delivered row links to its Sui transaction.
             </p>
           </div>
-          <div className="mt-3 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
+          <div className="ag-card mt-3 divide-y divide-border/50 overflow-hidden">
             {rep.recent.map((r) => {
               const row = (
                 <>
@@ -534,7 +545,7 @@ export default async function AgentProfilePage({
               );
               return r.tx ? (
                 <a
-                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-muted/30"
+                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-[color:var(--ag-overlay)]"
                   href={`${SUISCAN}/tx/${r.tx}`}
                   key={`${r.at}-${r.buyer}`}
                   rel="noreferrer"

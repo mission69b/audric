@@ -51,7 +51,7 @@ export async function generateMetadata({
 
 function MetaRow({ cells }: { cells: [string, React.ReactNode][] }) {
   return (
-    <div className="mt-7 grid grid-cols-3 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
+    <div className="ag-card mt-7 grid grid-cols-3 overflow-hidden">
       {cells.map(([k, v], i) => (
         <div
           className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
@@ -71,7 +71,7 @@ function MetaRow({ cells }: { cells: [string, React.ReactNode][] }) {
 
 function Guaranteed({ label = "Guaranteed" }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-emerald-500">
+    <span className="inline-flex items-center gap-1.5" style={{ color: "var(--ag-verify)" }}>
       {label}
       <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
         <path
@@ -109,16 +109,19 @@ function RewardDetail({
       <div>
         <div className="flex flex-wrap items-center gap-2.5">
           {group && (
-            <span className="rounded-full border border-border/60 px-2.5 py-0.5 font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.04em]">
-              {group.title}
-            </span>
+            <span className="ag-chip px-2.5 py-0.5 text-[10.5px] uppercase">{group.title}</span>
           )}
           <span
-            className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em] ${
+            className="rounded-md border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
+            style={
               paused
-                ? "border-border/60 text-muted-foreground/60"
-                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-            }`}
+                ? { borderColor: "var(--ag-border-hi)", color: "var(--fg-subtle)" }
+                : {
+                    color: "var(--ag-verify)",
+                    background: "var(--ag-verify-bg)",
+                    borderColor: "var(--ag-verify-bd)",
+                  }
+            }
           >
             {paused ? "Budget spent" : "Rotating reward"}
           </span>
@@ -166,7 +169,7 @@ function RewardDetail({
         {t.xPost && (
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <a
-              className="rounded-full bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90"
+              className="ag-btn ag-btn--primary"
               href={intentUrl(t)}
               rel="noreferrer"
               target="_blank"
@@ -180,7 +183,7 @@ function RewardDetail({
 
       {/* RIGHT rail */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-20">
-        <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="ag-card p-5">
           <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
             Reward
           </div>
@@ -194,9 +197,10 @@ function RewardDetail({
             <div className="mt-3 flex items-center gap-3">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50">
                 <div
-                  className="h-full rounded-full bg-emerald-500/70"
+                  className="h-full rounded-full" 
                   style={{
                     width: `${Math.min((s.spentUsd / s.budgetUsd) * 100, 100)}%`,
+                    background: "var(--ag-verify)",
                   }}
                 />
               </div>
@@ -215,7 +219,7 @@ function RewardDetail({
         </div>
 
         {s && s.payouts.length > 0 && (
-          <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+          <div className="ag-card p-5">
             <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
               Paid on-chain
             </div>
@@ -225,7 +229,7 @@ function RewardDetail({
                   className="flex items-center gap-3 text-muted-foreground/70 text-xs"
                   key={p.tx}
                 >
-                  <span className="text-emerald-500">✓</span>
+                  <span style={{ color: "var(--ag-verify)" }}>✓</span>
                   <span className="font-mono">{shortAddress(p.wallet)}</span>
                   <span>${p.netUsd}</span>
                   <a
@@ -256,10 +260,15 @@ function CommunityDetail({ t }: { t: BoardTask }) {
       {/* LEFT */}
       <div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="rounded-full border border-border/60 px-2.5 py-0.5 font-mono text-[10.5px] text-muted-foreground uppercase tracking-[0.04em]">
-            {t.category}
-          </span>
-          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] text-amber-500 uppercase tracking-[0.04em]">
+          <span className="ag-chip px-2.5 py-0.5 text-[10.5px] uppercase">{t.category}</span>
+          <span
+            className="rounded-md border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
+            style={{
+              color: "var(--ag-accent)",
+              background: "var(--ag-accent-bg)",
+              borderColor: "rgba(0,114,245,0.25)",
+            }}
+          >
             Community · poster approves
           </span>
         </div>
@@ -297,7 +306,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
 
       {/* RIGHT rail */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-20">
-        <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="ag-card p-5">
           <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
             Pays
           </div>
@@ -310,7 +319,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
           <BoardSubmitForm taskId={t.id} />
         </div>
 
-        <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div className="ag-card p-5">
           <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
             Posted by
           </div>

@@ -28,16 +28,14 @@ export function UseItServiceRow({
   const active = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (
-    <div className="mt-6 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
+    <div className="ag-card mt-6 overflow-hidden">
       <div className="flex flex-wrap items-center gap-5 p-5">
         <div className="min-w-[240px] flex-1">
           <div className="flex items-center gap-2.5">
             <span className="font-semibold text-[16px] text-foreground tracking-tight">
               {title}
             </span>
-            <span className="rounded-full border border-border/60 px-2 py-px font-mono text-[10px] text-muted-foreground uppercase tracking-[0.04em]">
-              {typeLabel}
-            </span>
+            <span className="ag-chip px-2 py-px text-[10px] uppercase">{typeLabel}</span>
           </div>
           {description && (
             <p className="mt-2 line-clamp-2 max-w-[620px] text-muted-foreground text-sm leading-relaxed">
@@ -64,7 +62,7 @@ export function UseItServiceRow({
           </div>
           <button
             aria-expanded={open}
-            className="rounded-full bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90"
+            className="ag-btn ag-btn--blue"
             onClick={() => setOpen((o) => !o)}
             type="button"
           >
@@ -74,17 +72,21 @@ export function UseItServiceRow({
       </div>
 
       {open && (
-        <div className="border-border/50 border-t bg-background/50 p-5">
-          <div className="mb-4 inline-flex gap-1 rounded-lg border border-border/50 bg-card/60 p-1">
+        <div className="border-t p-5" style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}>
+          <div
+            className="mb-4 inline-flex gap-1 rounded-lg p-[3px]"
+            style={{ background: "var(--ag-overlay)" }}
+          >
             {tabs.map((t) => (
               <button
-                className={`rounded-md px-3.5 py-1.5 font-medium text-[12.5px] transition-colors ${
-                  tab === t.id
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className="rounded-md px-3.5 py-1.5 font-medium text-[12.5px] transition-colors"
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                style={
+                  tab === t.id
+                    ? { background: "#fff", color: "#0a0a0a" }
+                    : { color: "var(--fg-muted)" }
+                }
                 type="button"
               >
                 {t.label}
@@ -95,7 +97,7 @@ export function UseItServiceRow({
           <div>{active?.body}</div>
 
           <div className="mt-4 flex items-center gap-2 text-muted-foreground/60 text-xs">
-            <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+            <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--ag-verify)" }} />
             Paid from your USDC balance · escrowed, auto-refund if it
             doesn&apos;t deliver
           </div>

@@ -152,7 +152,362 @@
   }
 }
 
-/* Store-home status ticker (t2000-design/agents agents.css §ag-ticker). */
+/* ============================================================
+   t2000-design/agents agents.css — ported VERBATIM (values + classes)
+   so the store chrome matches the design exactly: tokens, radii,
+   hovers, buttons, filters, chips, badges, inputs, modals.
+   Fonts/foreground map to the console's existing slots.
+   ============================================================ */
+:root {
+  --fg: oklch(0.94 0 0);
+  --fg-muted: #a1a1a1;
+  --fg-subtle: #7d7d7d;
+  --font-display: var(--font-geist-sans);
+  --dur-fast: 120ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --ag-canvas: #08090a;
+  --ag-card: #0f1113;
+  --ag-overlay: #222222; /* nested / hover surface */
+  --ag-border: rgba(255, 255, 255, 0.08);
+  --ag-border-hi: #333333;
+
+  --ag-accent: #0072f3; /* family blue-700 */
+  --ag-accent-bg: rgba(0, 114, 245, 0.1);
+  --ag-accent-hi: #0062d1; /* blue-800 */
+
+  /* Green = settlement / receipt-verified reputation signal */
+  --ag-verify: #3ecf8e;
+  --ag-verify-bg: rgba(62, 207, 142, 0.1);
+  --ag-verify-bd: rgba(62, 207, 142, 0.28);
+
+  --ag-page-max: 1240px;
+}
+
+::selection {
+  background: var(--ag-accent);
+  color: #fff;
+}
+
+.ag-container {
+  max-width: var(--ag-page-max);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.ag-wide {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.ag-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-subtle);
+}
+
+/* Card — product shell: SOLID border, no shadow, tiny lift on hover */
+.ag-card {
+  background: var(--ag-card);
+  border: 1px solid var(--ag-border);
+  border-radius: 10px;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.ag-card--hover:hover {
+  border-color: var(--ag-border-hi);
+  background: var(--ag-overlay);
+}
+
+/* Buttons */
+.ag-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 7px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.011em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.ag-btn--primary {
+  background: #fff;
+  color: #0a0a0a;
+  border-color: #fff;
+}
+.ag-btn--primary:hover {
+  background: #e5e5e5;
+  border-color: #e5e5e5;
+  color: #0a0a0a;
+}
+.ag-btn--blue {
+  background: var(--ag-accent);
+  color: #fff;
+  border-color: var(--ag-accent);
+}
+.ag-btn--blue:hover {
+  background: var(--ag-accent-hi);
+  border-color: var(--ag-accent-hi);
+  color: #fff;
+}
+.ag-btn--ghost {
+  background: transparent;
+  color: var(--fg);
+  border-color: var(--ag-border-hi);
+}
+.ag-btn--ghost:hover {
+  background: var(--ag-overlay);
+  border-color: #444;
+  color: var(--fg);
+}
+.ag-btn--sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  border-radius: 6px;
+}
+.ag-btn--lg {
+  height: 46px;
+  padding: 0 22px;
+  font-size: 15px;
+}
+
+/* Mono chip / tag */
+.ag-chip {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  color: var(--fg-muted);
+  background: var(--ag-overlay);
+  border: 1px solid var(--ag-border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.ag-chip--on {
+  color: #0a0a0a;
+  background: #fff;
+  border-color: #fff;
+}
+
+/* Category filter pill row */
+.ag-filter {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.011em;
+  color: var(--fg-muted);
+  background: var(--ag-overlay);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
+.ag-filter:hover {
+  color: var(--fg);
+  background: #2a2a2a;
+}
+.ag-filter.is-active {
+  background: #fff;
+  color: #0a0a0a;
+}
+
+/* Receipt-backed reputation badge */
+.ag-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  color: var(--ag-verify);
+  background: var(--ag-verify-bg);
+  border: 1px solid var(--ag-verify-bd);
+  padding: 3px 9px 3px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.ag-verified svg {
+  flex: none;
+}
+
+/* Live status dot */
+.ag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--ag-verify);
+  box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.18);
+  animation: ag-pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes ag-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.04);
+  }
+}
+
+/* Reputation stat cluster (receipts, not stars) */
+.ag-rep {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+.ag-rep b {
+  color: var(--fg);
+  font-weight: 500;
+}
+.ag-rep .sep {
+  color: var(--fg-subtle);
+  opacity: 0.5;
+}
+
+/* Terminal code block */
+.ag-term {
+  background: #0d0d0d;
+  border: 1px solid var(--ag-border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg);
+  overflow: hidden;
+}
+.ag-term .bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ag-border);
+  background: #0a0a0a;
+}
+.ag-term .body {
+  padding: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ag-term .g {
+  color: var(--ag-verify);
+}
+.ag-term .b {
+  color: var(--ag-accent);
+}
+.ag-term .m {
+  color: var(--fg-subtle);
+}
+
+.ag-rule {
+  height: 1px;
+  background: var(--ag-border);
+  border: 0;
+  margin: 0;
+}
+.ag-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Form input (post-a-task, submit-proof, search) */
+.ag-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--ag-canvas);
+  color: var(--fg);
+  border: 1px solid var(--ag-border-hi);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.ag-input:focus {
+  outline: none;
+  border-color: var(--ag-accent);
+}
+.ag-input::placeholder {
+  color: var(--fg-subtle);
+}
+
+/* Modal scrim + panel */
+.ag-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.66);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: ag-fade 140ms var(--ease-out);
+}
+.ag-modal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--ag-card);
+  border: 1px solid var(--ag-border-hi);
+  border-radius: 12px;
+  overflow: hidden;
+  animation: ag-pop 160ms var(--ease-out);
+}
+@keyframes ag-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ag-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ag-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Store-home status ticker (agents.css §ag-ticker). */
 @keyframes ticker-scroll {
   from {
     transform: translateX(0);

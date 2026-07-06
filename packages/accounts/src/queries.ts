@@ -20,6 +20,21 @@ export async function getUserById(id: string): Promise<User | undefined> {
   return row;
 }
 
+/** Resolve a claimed @handle (the unique `username` column) to its user —
+ *  powers agents.t2000.ai/@handle vanity URLs. Case-insensitive would need a
+ *  citext/index migration; handles are minted lowercase, so exact-match works
+ *  against lowercased input. */
+export async function getUserByUsername(
+  username: string
+): Promise<User | undefined> {
+  const [row] = await db
+    .select()
+    .from(user)
+    .where(eq(user.username, username.toLowerCase()))
+    .limit(1);
+  return row;
+}
+
 // ── Agent ID directory (gate 6) ──────────────────────────────────────────────
 
 /** A generated default display name from the address (e.g. `agent-3948c`). The

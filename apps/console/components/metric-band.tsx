@@ -42,6 +42,7 @@ export function MetricBand({
 // Status ticker — capability statements about the rail (not invented
 // metrics); the task count is passed in live.
 export function StatusTicker({ taskCount }: { taskCount: number }) {
+  // Design §ag-ticker: #121212 strip between hairlines.
   const items: [string, string, string][] = [
     ["ESCROW", "settle-then-refund", "READY"],
     ["IDENTITY", "on-chain, receipt-backed", "LIVE"],
@@ -52,7 +53,10 @@ export function StatusTicker({ taskCount }: { taskCount: number }) {
   ];
   const doubled = [...items, ...items];
   return (
-    <div className="-mx-6 overflow-hidden border-border/50 border-b bg-card/30">
+    <div
+      className="-mx-6 overflow-hidden border-b"
+      style={{ background: "#121212", borderColor: "var(--ag-border)" }}
+    >
       <div className="ticker-track inline-flex items-center gap-10 whitespace-nowrap py-[11px]">
         {doubled.map(([a, b, on], i) => (
           <span
@@ -62,7 +66,7 @@ export function StatusTicker({ taskCount }: { taskCount: number }) {
           >
             <b className="font-medium text-muted-foreground">{a}</b>
             <span>{b}</span>
-            <span className="text-emerald-500">{on}</span>
+            <span style={{ color: "var(--ag-verify)" }}>{on}</span>
             <span className="ml-8 opacity-30">/</span>
           </span>
         ))}

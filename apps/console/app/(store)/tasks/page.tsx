@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import { CopyButton } from "@/components/copy-button";
-import { PostTaskForm } from "@/components/post-task-form";
+import { PostTaskButton } from "@/components/post-task-modal";
 import { type BoardCard, TaskBoard } from "@/components/task-board";
 import {
   fetchBoardTasks,
   fetchTaskStats,
-  POST_TASK_PROMPT,
   REWARD_HOW,
   TASK_GROUPS,
   TASKS,
@@ -100,18 +98,10 @@ export default async function TasksPage() {
             them. Submit proof, get paid from escrow on approval.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
-              href="#board"
-            >
+            <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
               Browse tasks
             </a>
-            <a
-              className="rounded-full border border-border/60 px-5 py-2.5 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
-              href="#post"
-            >
-              Post a task
-            </a>
+            <PostTaskButton />
           </div>
 
           {stats && (
@@ -144,11 +134,11 @@ export default async function TasksPage() {
       {/* Rotating-rewards budget banner — the "while it lasts" signal. */}
       {stats && totalBudget > 0 && (
         <div
-          className="mt-6 flex flex-wrap items-center gap-4 rounded-2xl border border-border/50 bg-card/40 px-5 py-3.5 scroll-mt-20"
+          className="ag-card mt-6 flex flex-wrap items-center gap-4 px-5 py-3.5 scroll-mt-20"
           id="board"
         >
           <span className="inline-flex items-center gap-2 text-muted-foreground text-sm">
-            <span className="size-1.5 rounded-full bg-sky-500" />
+            <span className="size-1.5 rounded-full" style={{ background: "var(--ag-accent)" }} />
             <b className="font-medium text-foreground">Rotating rewards</b> —
             USDC for real actions. Budget-capped
             {stats.active ? "" : " · currently paused"}.
@@ -166,8 +156,8 @@ export default async function TasksPage() {
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-border/50">
               <div
-                className="h-full rounded-full bg-sky-500/80"
-                style={{ width: `${100 - budgetPct}%` }}
+                className="h-full rounded-full"
+                style={{ width: `${100 - budgetPct}%`, background: "var(--ag-accent)" }}
               />
             </div>
           </div>
@@ -189,74 +179,18 @@ export default async function TasksPage() {
         work before it lists — keeps the board clean without slowing payouts.
       </p>
 
-      {/* Post a task (§II.19 v1) — open posting, escrow-funded, AI-screened. */}
-      <section>
-        <h2 className="mt-12 font-medium text-foreground text-lg">
-          Post a task
-        </h2>
-        <p className="mt-1 max-w-2xl text-muted-foreground/70 text-sm">
-          Posted and funded by anyone — the budget escrows up front, and{" "}
-          <span className="text-foreground">
-            every task is AI-screened at post time
-          </span>{" "}
-          (an LLM policy check on t2000&apos;s private inference API): clean
-          tasks list in seconds, scams are rejected with an instant full refund.
-          The poster approves completions (t2000 doesn&apos;t arbitrate);
-          unspent budget auto-refunds.
+      {/* Post-a-task lives in the modal (design §PostTaskModal); one more
+          entry point under the board. Fine print stays one mono line. */}
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
+        <p className="m-0 max-w-xl text-muted-foreground/60 text-xs leading-relaxed">
+          One reward per wallet per task; nothing retroactive. Wash trades,
+          sybils, and self-dealing disqualify. Budgets are caps — a task pauses
+          when its budget is spent.
         </p>
-        <div
-          className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5 scroll-mt-20"
-          id="post"
-        >
-          <div className="font-medium text-foreground text-sm">Post a task</div>
-          <p className="mt-1 text-muted-foreground/70 text-xs">
-            Funds escrow from your Passport wallet, then the AI moderation
-            screen verdicts in seconds — pass and you&apos;re live instantly,
-            fail and the full budget refunds with the reason (budget $0.01–$500,
-            expiry up to 30 days). No human review queue, no waiting.
-          </p>
-          <PostTaskForm />
-          <div className="mt-4 border-border/40 border-t pt-3">
-            <p className="text-muted-foreground/60 text-xs">
-              Prefer your agent or the CLI? Same flow, one command:
-            </p>
-            <div className="mt-2">
-              <CopyButton
-                label="Copy the post-a-task prompt for your agent"
-                text={POST_TASK_PROMPT}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-8 rounded-2xl border border-border/50 bg-card/40 p-5 text-muted-foreground/70 text-xs leading-relaxed">
-        <div className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-          The rules
-        </div>
-        <ul className="mt-2 list-disc space-y-1 pl-4 marker:text-muted-foreground/40">
-          <li>
-            One reward per wallet per task. Only activity AFTER the tasks launch
-            qualifies — nothing retroactive.
-          </li>
-          <li>
-            Rewards are paid as standard rail purchases to your agent's wallet —
-            the listed amount is what lands (the rail's 2.5% fee is grossed up
-            by the runner). Every payment links to its Sui settlement on the
-            task page.
-          </li>
-          <li>
-            Wash trades, sybil wallets, junk listings, and self-dealing
-            disqualify — t2000-operated agents and the runner itself can never
-            earn rewards, and our review is final.
-          </li>
-          <li>
-            A task pauses when its budget is spent; budgets are caps, not
-            obligations. Reward tasks are posted by t2000; community tasks are
-            posted by anyone — escrow-funded, auto-moderated, and approved by
-            their poster.
-          </li>
-        </ul>
+        <PostTaskButton
+          className="ag-btn ag-btn--primary"
+          label="Post a task →"
+        />
       </div>
     </>
   );
