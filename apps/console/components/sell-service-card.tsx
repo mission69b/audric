@@ -2,16 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { deploySelfConfig, removeSelfDeploy } from "@/lib/deploy-self";
+import { Segmented } from "@/components/segmented";
+import {
+  deploySelfConfig,
+  removeSelfDeploy,
+  type WrapConfig,
+} from "@/lib/deploy-self";
 import { updateSelfService } from "@/lib/update-self-service";
 
-// ONE selling card (S.639 — founder: "why two cards? it's so confusing").
-// The old SelfServiceCard + DeploySelfCard both wrote the SAME service
-// record and could silently overwrite each other. The only real difference
-// is where the compute lives, so that's now a mode toggle:
-//   • self-hosted — you run the endpoint; we point the listing at it
-//   • wrap — you only have an API key; t2000 hosts the proxy
-// Price + category + the one Save button are shared.
+// The service block on /manage/agents/[address] (t2000-design/agents
+// EditListing §ServiceDeployBlock). ONE card (S.639): where the compute
+// lives is a segmented toggle — self-hosted endpoint vs a wrapped API
+// (t2000 hosts the proxy, keys encrypted). S.657: the live wrap's
+// non-secret config prefills the form (header VALUES stay write-only —
+// leave one blank to keep the saved secret).
 const CATEGORIES = [
   "ai-models",
   "data-feeds",
@@ -24,36 +28,59 @@ const CATEGORIES = [
 
 const RAIL_BASE = "https://x402.t2000.ai";
 
-const inputCls =
-  "ag-input mt-1";
-
-type HeaderRow = { k: string; v: string };
+type HeaderRow = { k: string; v: string; saved?: boolean };
 type Mode = "self" | "wrap";
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-medium text-[12.5px] text-foreground">
+      {children}
+    </span>
+  );
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-[10.5px] text-fg-subtle leading-[1.5]">
+      {children}
+    </span>
+  );
+}
 
 export function SellServiceCard({
   address,
   mcpEndpoint,
   priceUsdc,
   category,
+  currentWrap,
 }: {
   address: string;
   mcpEndpoint: string | null;
   priceUsdc: string | null;
   category: string | null;
+  /** The live wrap's non-secret config (server-read) — null when none. */
+  currentWrap?: WrapConfig | null;
 }) {
   const router = useRouter();
   const buyUrl = `${RAIL_BASE}/commerce/pay/${address}`;
   const isWrapped = mcpEndpoint === buyUrl;
+  const isLive = Boolean(mcpEndpoint);
 
   const [mode, setMode] = useState<Mode>(isWrapped ? "wrap" : "self");
   // Self-hosted fields
   const [endpoint, setEndpoint] = useState(
     isWrapped ? "" : (mcpEndpoint ?? "")
   );
-  // Wrap fields (upstream + headers are write-only — never echoed back)
-  const [upstream, setUpstream] = useState("");
-  const [method, setMethod] = useState<"GET" | "POST">("POST");
-  const [headers, setHeaders] = useState<HeaderRow[]>([{ k: "", v: "" }]);
+  // Wrap fields — prefilled from the live config; header values write-only.
+  const [upstream, setUpstream] = useState(currentWrap?.upstreamUrl ?? "");
+  const [method, setMethod] = useState<"GET" | "POST">(
+    currentWrap?.method ?? "POST"
+  );
+  const [headers, setHeaders] = useState<HeaderRow[]>(
+    currentWrap?.headerNames.length
+      ? currentWrap.headerNames.map((k) => ({ k, v: "", saved: true }))
+      : [{ k: "", v: "" }]
+  );
   // Shared
   const [price, setPrice] = useState(priceUsdc ?? "");
   const [cat, setCat] = useState(category ?? "");
@@ -77,9 +104,11 @@ export function SellServiceCard({
         if (!(url.startsWith("https://") && price.trim())) {
           throw new Error("An https upstream URL and a price are required.");
         }
+        // Empty value on a SAVED header = keep the stored secret (the
+        // gateway merges); rows without a name are dropped.
         const headerMap = Object.fromEntries(
           headers
-            .filter((r) => r.k.trim() && r.v.trim())
+            .filter((r) => r.k.trim() && (r.v.trim() || r.saved))
             .map((r) => [r.k.trim(), r.v.trim()])
         );
         const stored = await deploySelfConfig({
@@ -96,9 +125,12 @@ export function SellServiceCard({
           priceUsdc: price.trim(),
           ...(cat ? { category: cat } : {}),
         });
-        // Write-only secrets: clear after success.
-        setHeaders([{ k: "", v: "" }]);
-        setUpstream("");
+        // Secrets are write-only: clear entered values, keep the names.
+        setHeaders((rows) =>
+          rows
+            .filter((r) => r.k.trim())
+            .map((r) => ({ k: r.k, v: "", saved: true }))
+        );
       } else {
         // Self-hosted: "" clears the endpoint (delists).
         await updateSelfService({
@@ -116,14 +148,16 @@ export function SellServiceCard({
     }
   }
 
-  async function takeDownWrap() {
+  async function takeDown() {
     setError("");
     setStatus("removing");
-    const removed = await removeSelfDeploy();
-    if (!removed.ok) {
-      setError(removed.message);
-      setStatus("error");
-      return;
+    if (isWrapped) {
+      const removed = await removeSelfDeploy();
+      if (!removed.ok) {
+        setError(removed.message);
+        setStatus("error");
+        return;
+      }
     }
     try {
       await updateSelfService({ mcpEndpoint: "", paymentMethods: [] });
@@ -135,154 +169,154 @@ export function SellServiceCard({
     }
   }
 
-  const modeBtn = (m: Mode, label: string) => (
-    <button
-      className={`rounded-full px-3 py-1 text-xs transition-colors ${
-        mode === m
-          ? "bg-primary font-medium text-primary-foreground"
-          : "border border-border/60 text-muted-foreground hover:text-foreground"
-      }`}
-      onClick={() => setMode(m)}
-      type="button"
-    >
-      {label}
-    </button>
-  );
-
   return (
-    <div className="rounded-xl border border-border/50 bg-card/40 p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="font-medium text-foreground text-sm">
-          Sell a service as this Passport
+    <div className="ag-card grid gap-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-[14.5px] text-foreground">
+            Sell a service as this Passport
+          </div>
+          <div className="mt-[3px] max-w-[440px] text-[12px] text-fg-muted leading-[1.5]">
+            Buyers pay per call — escrowed, auto-refund on failed delivery.
+            Where does the service run?{" "}
+            <a
+              className="text-foreground underline underline-offset-4"
+              href="https://developers.t2000.ai/commerce/sell"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Which one? ↗
+            </a>
+          </div>
         </div>
-        {isWrapped && (
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-500">
-            wrapped API · live
+        {isLive && (
+          <span
+            className="ag-chip px-[9px] py-0.5 text-[10px] uppercase"
+            style={{
+              color: "var(--ag-verify)",
+              background: "var(--ag-verify-bg)",
+              borderColor: "var(--ag-verify-bd)",
+            }}
+          >
+            live
           </span>
         )}
       </div>
-      <p className="mt-1 text-muted-foreground/70 text-xs">
-        List what this Passport sells — buyers pay per call (escrowed,
-        auto-refund on failed delivery). One question decides the form: where
-        does the service run?
-      </p>
 
-      <div className="mt-3 flex gap-2">
-        {modeBtn("self", "I host an endpoint")}
-        {modeBtn("wrap", "Wrap an API — no server")}
-      </div>
+      <Segmented
+        onChange={setMode}
+        options={[
+          { id: "self", label: "I host an endpoint" },
+          { id: "wrap", label: "Wrap an API — no server" },
+        ]}
+        value={mode}
+      />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {mode === "self" ? (
-          <label className="block sm:col-span-2">
-            <span className="text-muted-foreground/70 text-xs">
-              Your service endpoint (https) — empty delists.{" "}
-              <a
-                className="underline underline-offset-4"
-                href="https://developers.t2000.ai/commerce/sell"
-                rel="noreferrer"
-                target="_blank"
-              >
-                Delivery contract + a 25-line example →
-              </a>
-            </span>
-            <input
-              className={inputCls}
-              onChange={(e) => setEndpoint(e.target.value)}
-              placeholder="https://my-agent.example/svc/9f2ce81a"
-              value={endpoint}
-            />
-          </label>
-        ) : (
-          <>
-            <label className="block sm:col-span-2">
-              <span className="text-muted-foreground/70 text-xs">
-                Upstream URL (https) — the API your service calls. Your key is
-                stored encrypted, injected only inside the paid flow, never
-                shown again.
-              </span>
-              <input
-                className={inputCls}
-                onChange={(e) => setUpstream(e.target.value)}
-                placeholder="https://api.example.com/v1/endpoint"
-                value={upstream}
-              />
-            </label>
-            {headers.map((row, i) => (
-              <div
-                className="grid grid-cols-2 gap-3 sm:col-span-2"
-                key={`header-${i.toString()}`}
-              >
-                <label className="block">
-                  <span className="text-muted-foreground/70 text-xs">
-                    Header name (optional)
-                  </span>
-                  <input
-                    className={inputCls}
-                    onChange={(e) => setHeader(i, "k", e.target.value)}
-                    placeholder="Authorization"
-                    value={row.k}
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-muted-foreground/70 text-xs">
-                    Value (write-only)
-                  </span>
-                  <input
-                    className={inputCls}
-                    onChange={(e) => setHeader(i, "v", e.target.value)}
-                    placeholder="Bearer sk-…"
-                    type="password"
-                    value={row.v}
-                  />
-                </label>
-              </div>
-            ))}
-            <div className="sm:col-span-2">
-              <button
-                className="text-muted-foreground text-xs underline underline-offset-4 transition-colors hover:text-foreground"
-                onClick={() =>
-                  setHeaders((rows) => [...rows, { k: "", v: "" }])
-                }
-                type="button"
-              >
-                + add header
-              </button>
-            </div>
-            <label className="block">
-              <span className="text-muted-foreground/70 text-xs">Method</span>
-              <select
-                className={inputCls}
-                onChange={(e) =>
-                  setMethod(e.target.value === "GET" ? "GET" : "POST")
-                }
-                value={method}
-              >
-                <option value="POST">POST — buyer input as the body</option>
-                <option value="GET">GET — buyer input as query params</option>
-              </select>
-            </label>
-          </>
-        )}
-
-        <label className="block">
-          <span className="text-muted-foreground/70 text-xs">
-            Price (USDC / call) — you receive the net after the 2.5% rail fee
-          </span>
+      {mode === "self" ? (
+        <label className="grid gap-[7px]">
+          <FieldLabel>
+            Your service endpoint (https) — empty delists
+          </FieldLabel>
           <input
-            className={inputCls}
+            className="ag-input"
+            onChange={(e) => setEndpoint(e.target.value)}
+            placeholder="https://my-agent.example/svc/9f2ce81a"
+            value={endpoint}
+          />
+          <Hint>
+            Delivery contract + a 25-line example:{" "}
+            <a
+              className="text-fg-muted"
+              href="https://developers.t2000.ai/commerce/sell"
+              rel="noreferrer"
+              target="_blank"
+            >
+              developers.t2000.ai/commerce/sell ↗
+            </a>
+          </Hint>
+        </label>
+      ) : (
+        <>
+          <label className="grid gap-[7px]">
+            <FieldLabel>Upstream URL (https)</FieldLabel>
+            <input
+              className="ag-input"
+              onChange={(e) => setUpstream(e.target.value)}
+              placeholder="https://api.example.com/v1/endpoint"
+              value={upstream}
+            />
+            <Hint>
+              The API your service calls. Your key is stored encrypted,
+              injected only inside the paid flow, never shown again.
+            </Hint>
+          </label>
+          {headers.map((row, i) => (
+            <div
+              className="grid grid-cols-2 gap-4"
+              key={`header-${i.toString()}`}
+            >
+              <label className="grid gap-[7px]">
+                <FieldLabel>Header name (optional)</FieldLabel>
+                <input
+                  className="ag-input"
+                  onChange={(e) => setHeader(i, "k", e.target.value)}
+                  placeholder="Authorization"
+                  value={row.k}
+                />
+              </label>
+              <label className="grid gap-[7px]">
+                <FieldLabel>Value (write-only)</FieldLabel>
+                <input
+                  className="ag-input"
+                  onChange={(e) => setHeader(i, "v", e.target.value)}
+                  placeholder={
+                    row.saved ? "•••• saved — enter to replace" : "Bearer sk-…"
+                  }
+                  type="password"
+                  value={row.v}
+                />
+              </label>
+            </div>
+          ))}
+          <button
+            className="w-fit text-fg-muted text-xs underline underline-offset-4 transition-colors hover:text-foreground"
+            onClick={() => setHeaders((rows) => [...rows, { k: "", v: "" }])}
+            type="button"
+          >
+            + add header
+          </button>
+          <label className="grid gap-[7px]">
+            <FieldLabel>Method</FieldLabel>
+            <select
+              className="ag-input"
+              onChange={(e) =>
+                setMethod(e.target.value === "GET" ? "GET" : "POST")
+              }
+              value={method}
+            >
+              <option value="POST">POST — buyer input as the body</option>
+              <option value="GET">GET — buyer input as query params</option>
+            </select>
+          </label>
+        </>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="grid gap-[7px]">
+          <FieldLabel>Price (USDC / call)</FieldLabel>
+          <input
+            className="ag-input"
             inputMode="decimal"
             onChange={(e) => setPrice(e.target.value)}
             placeholder="0.02"
             value={price}
           />
+          <Hint>You receive the net after the 2.5% platform fee.</Hint>
         </label>
-        <label className="block">
-          <span className="text-muted-foreground/70 text-xs">
-            Store category
-          </span>
+        <label className="grid gap-[7px]">
+          <FieldLabel>Store category</FieldLabel>
           <select
-            className={inputCls}
+            className="ag-input"
             onChange={(e) => setCat(e.target.value)}
             value={cat}
           >
@@ -296,35 +330,36 @@ export function SellServiceCard({
         </label>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2.5">
         <button
-          className="rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="ag-btn ag-btn--primary ag-btn--sm disabled:opacity-50"
           disabled={status === "busy"}
           onClick={save}
           type="button"
         >
           {status === "busy"
             ? "Saving…"
-            : mode === "wrap"
-              ? isWrapped
-                ? "Update wrap"
-                : "Deploy & list"
+            : mode === "wrap" && !isWrapped
+              ? "Deploy & list"
               : "Save on-chain"}
         </button>
-        {isWrapped && (
+        {isLive && (
           <button
-            className="rounded-lg border border-border/60 px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-secondary disabled:opacity-50"
+            className="ag-btn ag-btn--ghost ag-btn--sm disabled:opacity-50"
             disabled={status === "removing"}
-            onClick={takeDownWrap}
+            onClick={takeDown}
             type="button"
           >
-            {status === "removing" ? "Removing…" : "Take down the wrap"}
+            {status === "removing" ? "Removing…" : "Take down this service"}
           </button>
         )}
         {status === "done" && (
-          <span className="text-green-500 text-sm">
+          <span className="text-sm" style={{ color: "var(--ag-verify)" }}>
             Live + listed ✓{" "}
-            <a className="underline underline-offset-4" href={`/${address}`}>
+            <a
+              className="underline underline-offset-4"
+              href={`/${address}`}
+            >
               view your listing
             </a>
           </span>

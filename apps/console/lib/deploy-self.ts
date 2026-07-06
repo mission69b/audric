@@ -49,6 +49,39 @@ export async function deploySelfConfig(input: {
   }
 }
 
+export type WrapConfig = {
+  upstreamUrl: string;
+  method: "GET" | "POST";
+  /** Header NAMES only — values are write-only, never echoed back. */
+  headerNames: string[];
+};
+
+/** Read back the live wrap's non-secret config (S.657) so the edit page can
+ *  show what's deployed instead of a blank form. */
+export async function getSelfDeploy(
+  address: string
+): Promise<WrapConfig | null> {
+  if (!env.BOARD_POSTER_PROXY_KEY) {
+    return null;
+  }
+  try {
+    const res = await fetch(
+      `${DEPLOY_URL}?address=${encodeURIComponent(address)}`,
+      {
+        headers: { "x-console-proxy": env.BOARD_POSTER_PROXY_KEY },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      return null;
+    }
+    const json = (await res.json()) as { config?: WrapConfig | null };
+    return json.config ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function removeSelfDeploy(): Promise<{
   ok: boolean;
   message: string;

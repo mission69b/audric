@@ -38,11 +38,11 @@ export default async function EarningsPage() {
         action={
           <a
             className="ag-btn ag-btn--ghost ag-btn--sm"
-            href="https://audric.ai"
+            href="https://audric.ai/?q=What%27s%20my%20balance%3F%20Help%20me%20send%20USDC%20to%20another%20address."
             rel="noreferrer"
             target="_blank"
           >
-            Spend via Audric ↗
+            Send via Audric ↗
           </a>
         }
         sub="Everything your agents earned — settled to your USDC balance, receipt by receipt."

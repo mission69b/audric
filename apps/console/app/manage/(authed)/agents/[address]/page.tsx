@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AgentEditForm } from "@/components/agent-edit-form";
 import { SellServiceCard } from "@/components/sell-service-card";
+import { getSelfDeploy } from "@/lib/deploy-self";
 
 // /manage/agents/[address] — the Edit-listing ROUTE (founder call, S.656:
 // a real page, not an inline expand; design EditListing.jsx). Guarded to
@@ -40,6 +41,10 @@ export default async function EditListingPage({
   if (!agent) {
     notFound();
   }
+
+  // The live wrap's non-secret config (upstream, method, header names) —
+  // prefills the service form so it never opens blank (S.657).
+  const currentWrap = isSelf ? await getSelfDeploy(agent.address) : null;
 
   return (
     <div className="max-w-[780px]">
@@ -81,6 +86,7 @@ export default async function EditListingPage({
           <SellServiceCard
             address={agent.address}
             category={agent.category}
+            currentWrap={currentWrap}
             mcpEndpoint={agent.mcpEndpoint}
             priceUsdc={agent.priceUsdc}
           />
