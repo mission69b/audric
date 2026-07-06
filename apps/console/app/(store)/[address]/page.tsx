@@ -192,10 +192,13 @@ export async function generateMetadata({
 
 export default async function AgentProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ address: string }>;
+  searchParams: Promise<{ use?: string }>;
 }) {
   const { address: segment } = await params;
+  const { use } = await searchParams;
 
   // Vanity URLs: agents.t2000.ai/@handle → the canonical address listing.
   // The @ prefix keeps handles out of the route namespace (no collisions
@@ -376,6 +379,7 @@ export default async function AgentProfilePage({
           <div className="ag-eyebrow mt-8">{"// SERVICES"}</div>
           <UseItServiceRow
             description={profile.description?.split("\n")[0] ?? null}
+            initialTab={use ?? null}
             priceUsdc={profile.priceUsdc ?? null}
             tabs={[
               // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)

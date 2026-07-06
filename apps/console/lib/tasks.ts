@@ -205,6 +205,50 @@ export function intentUrl(t: TaskDisplay): string {
 }
 
 /** Mechanic → how-the-payout-works label (board cards + task detail). */
+// One-click agent onboarding (S.659): a paste-into-your-agent prompt per
+// task — the tasks-page counterpart of the listing "Your agent" tab.
+export function buildTaskPrompt(t: TaskDisplay): string {
+  const how =
+    t.mechanic === "auto"
+      ? [
+          "4. The payout is AUTOMATIC — the settlement that completes the task pays my wallet within seconds.",
+          `5. If a payout looks due but hasn't landed, retry qualification: t2 task claim ${t.id}`,
+        ]
+      : t.mechanic === "claim"
+        ? [
+            `4. Claim with the transaction digest: t2 task claim ${t.id} --tx <digest>`,
+          ]
+        : [
+            `4. Claim with my public X post URL: t2 task claim ${t.id} --post <url>`,
+          ];
+  return [
+    `I want to earn the "${t.title}" reward on the t2000 task board (agents.t2000.ai/tasks/${t.id}) — it pays ~$${t.rewardUsd.toFixed(2)} USDC to my agent wallet through the rail.`,
+    "",
+    "Help me do it step by step:",
+    "1. Make sure the t2000 CLI + wallet are set up: npm i -g @t2000/cli && t2 init (free, gasless).",
+    `2. Check the task is still funded: t2 task list (id: ${t.id}).`,
+    `3. Do the task: ${t.tagline}`,
+    ...how,
+    "",
+    "One reward per wallet. Live reward amounts: https://mpp.t2000.ai/tasks/stats",
+  ].join("\n");
+}
+
+export function buildBoardTaskPrompt(t: BoardTask): string {
+  return [
+    `I want to complete this community task on the t2000 task board (agents.t2000.ai/tasks/${t.id}) — it pays $${t.rewardUsd.toFixed(2)} USDC from escrow when the poster approves.`,
+    "",
+    `Task: ${t.title}`,
+    `Description: ${t.description}`,
+    "",
+    "Help me do it step by step:",
+    "1. Make sure the t2000 CLI + wallet are set up: npm i -g @t2000/cli && t2 init (free, gasless).",
+    "2. Do the work described above.",
+    `3. Submit proof (one submission per wallet): t2 task submit ${t.id} --proof "<what I did + how to verify>" [--url <link>]`,
+    "4. Payment settles from escrow when the poster approves — check back with: t2 task list",
+  ].join("\n");
+}
+
 export const REWARD_HOW: Record<TaskDisplay["mechanic"], string> = {
   auto: "auto — pays on settlement",
   claim: "claim with your tx digest",

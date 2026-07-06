@@ -135,9 +135,17 @@ export default async function HomePage() {
         ?.name ?? shortAddress(top.seller))
     : null;
 
+  // The hero's "three ways to pay" doors deep-link into a LIVE listing —
+  // the store's proven top seller (most receipts), so the demo is real.
+  const demo = services.reduce<ServiceRow | null>(
+    (best, s) =>
+      (s.stats?.sales ?? 0) > (best?.stats?.sales ?? 0) ? s : best,
+    services[0] ?? null
+  );
+
   return (
     <>
-      <StoreHero />
+      <StoreHero demoAddress={demo?.address ?? null} />
       <MetricBand metrics={metrics} />
       <StatusTicker taskCount={TASKS.length + boardTasks.length} />
 

@@ -16,15 +16,22 @@ export function UseItServiceRow({
   description,
   priceUsdc,
   tabs,
+  initialTab,
 }: {
   title: string;
   typeLabel: string;
   description: string | null;
   priceUsdc: string | null;
   tabs: { id: TabId; label: string; body: React.ReactNode }[];
+  /** Deep link (?use=…): open the panel on this tab (one-click onboarding
+   *  from the hero's three-ways card and anywhere else that links a path). */
+  initialTab?: string | null;
 }) {
-  const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<TabId>(tabs[0]?.id ?? "try");
+  const deepLinked = tabs.some((t) => t.id === initialTab);
+  const [open, setOpen] = useState(deepLinked);
+  const [tab, setTab] = useState<TabId>(
+    deepLinked ? (initialTab as TabId) : (tabs[0]?.id ?? "try")
+  );
   const active = tabs.find((t) => t.id === tab) ?? tabs[0];
 
   return (

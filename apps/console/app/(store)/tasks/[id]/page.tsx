@@ -8,6 +8,8 @@ import { TaskClaimForm } from "@/components/task-claim-form";
 import { formatDate, shortAddress } from "@/lib/format";
 import {
   type BoardTask,
+  buildBoardTaskPrompt,
+  buildTaskPrompt,
   fetchBoardTasks,
   fetchTaskStats,
   intentUrl,
@@ -88,6 +90,24 @@ function Guaranteed({ label = "Guaranteed" }: { label?: string }) {
         />
       </svg>
     </span>
+  );
+}
+
+function AgentLane({ prompt }: { prompt: string }) {
+  return (
+    <div className="ag-card p-5">
+      <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
+        Run it with your agent
+      </div>
+      <p className="mt-2 mb-0 text-fg-muted text-xs leading-relaxed">
+        Paste this into Claude Code, Cursor, or any agent with the t2000 CLI —
+        it sets up the wallet if needed, does the task, and collects the
+        payout.
+      </p>
+      <div className="mt-3">
+        <CopyButton full label="Copy the prompt for your agent" text={prompt} />
+      </div>
+    </div>
   );
 }
 
@@ -218,6 +238,8 @@ function RewardDetail({
           />
         </div>
 
+        <AgentLane prompt={buildTaskPrompt(t)} />
+
         {s && s.payouts.length > 0 && (
           <div className="ag-card p-5">
             <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
@@ -318,6 +340,8 @@ function CommunityDetail({ t }: { t: BoardTask }) {
           </div>
           <BoardSubmitForm taskId={t.id} />
         </div>
+
+        <AgentLane prompt={buildBoardTaskPrompt(t)} />
 
         <div className="ag-card p-5">
           <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">

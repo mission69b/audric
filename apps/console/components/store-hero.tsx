@@ -1,14 +1,17 @@
 import Link from "next/link";
 
 // Store-home hero per t2000-design/agents/StoreHero.jsx — display headline +
-// the "one service, three ways to pay" card. Static, honest copy: every door
-// is a live path (browser buy-flow, t2 CLI/x402/MCP, Audric chat).
+// the "one service, three ways to pay" card. One-click onboarding (founder,
+// S.659): each door DEEP-LINKS into the live demo listing with the matching
+// Use-it tab already open (?use=try|agent|audric).
 
 const DOORS: {
   label: string;
   tag: string;
   lead: React.ReactNode;
   sub: string;
+  cta: string;
+  use: "try" | "agent" | "audric";
   mono?: boolean;
 }[] = [
   {
@@ -20,6 +23,8 @@ const DOORS: {
       </>
     ),
     sub: "No wallet. No seed phrase — a Passport wallet from your Google login.",
+    cta: "Try it now →",
+    use: "try",
   },
   {
     label: "Your agent",
@@ -31,6 +36,8 @@ const DOORS: {
       </>
     ),
     sub: "Same wallet in Claude & Cursor via MCP — it buys mid-task. Gasless.",
+    cta: "Get the prompt →",
+    use: "agent",
     mono: true,
   },
   {
@@ -38,10 +45,12 @@ const DOORS: {
     tag: "in chat",
     lead: <>&ldquo;Pull me a market brief.&rdquo;</>,
     sub: "Audric offers the service; you approve the buy with one tap.",
+    cta: "Ask in Audric →",
+    use: "audric",
   },
 ];
 
-export function StoreHero() {
+export function StoreHero({ demoAddress }: { demoAddress?: string | null }) {
   return (
     <section className="relative">
       {/* soft blue wash, top-right */}
@@ -96,13 +105,13 @@ export function StoreHero() {
           </div>
         </div>
 
-        <BuyPaths />
+        <BuyPaths demoAddress={demoAddress} />
       </div>
     </section>
   );
 }
 
-function BuyPaths() {
+function BuyPaths({ demoAddress }: { demoAddress?: string | null }) {
   return (
     <div className="ag-card p-5 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.7)]">
       <div className="mb-3.5 flex items-center justify-between">
@@ -116,34 +125,62 @@ function BuyPaths() {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        {DOORS.map((d) => (
-          <div
-            className="rounded-lg border px-4 py-3"
-            key={d.label}
-            style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
-          >
-            <div className="mb-2 flex items-baseline justify-between gap-2.5">
-              <span className="font-semibold text-[13.5px] text-foreground">
-                {d.label}
-              </span>
-              <span className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.06em]">
-                {d.tag}
-              </span>
-            </div>
-            <div
-              className={
-                d.mono
-                  ? "font-mono text-[13px] text-foreground leading-snug"
-                  : "text-[14.5px] text-foreground leading-snug"
-              }
+        {DOORS.map((d) => {
+          const inner = (
+            <>
+              <div className="mb-2 flex items-baseline justify-between gap-2.5">
+                <span className="font-semibold text-[13.5px] text-foreground">
+                  {d.label}
+                </span>
+                <span className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.06em]">
+                  {d.tag}
+                </span>
+              </div>
+              <div
+                className={
+                  d.mono
+                    ? "font-mono text-[13px] text-foreground leading-snug"
+                    : "text-[14.5px] text-foreground leading-snug"
+                }
+              >
+                {d.lead}
+              </div>
+              <div className="mt-1.5 flex items-end justify-between gap-3">
+                <span className="text-fg-muted text-xs leading-relaxed">
+                  {d.sub}
+                </span>
+                {demoAddress && (
+                  <span
+                    className="shrink-0 font-medium text-[11.5px]"
+                    style={{ color: "var(--ag-accent)" }}
+                  >
+                    {d.cta}
+                  </span>
+                )}
+              </div>
+            </>
+          );
+          // One-click: each door lands on the live demo listing with the
+          // matching Use-it tab open.
+          return demoAddress ? (
+            <Link
+              className="ag-card--hover rounded-lg border px-4 py-3 no-underline"
+              href={`/${demoAddress}?use=${d.use}`}
+              key={d.label}
+              style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
             >
-              {d.lead}
+              {inner}
+            </Link>
+          ) : (
+            <div
+              className="rounded-lg border px-4 py-3"
+              key={d.label}
+              style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
+            >
+              {inner}
             </div>
-            <div className="mt-1.5 text-fg-muted text-xs leading-relaxed">
-              {d.sub}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-3.5 flex items-center gap-2 text-muted-foreground text-xs">
