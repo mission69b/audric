@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/copy-button";
 import { OwnerManagePanel } from "@/components/owner-manage-panel";
 import { TryItButton } from "@/components/try-it-button";
 import { UseInAudric } from "@/components/use-in-audric";
+import { UseItServiceRow } from "@/components/use-it-tabs";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
@@ -296,176 +297,182 @@ export default async function AgentProfilePage({
           </div>
         )}
 
-      {/* The offer — price + the receipt-backed trust card, then how to buy. */}
+      {/* Reputation strip (design ListingHeader) — every number derives from
+          settlement receipts. */}
+      {sells && rep && (
+        <div className="mt-6 grid grid-cols-2 overflow-hidden rounded-2xl border border-border/50 bg-card/40 sm:grid-cols-3 lg:grid-cols-5">
+          {(
+            [
+              ["Sold", String(rep.sales)],
+              ["Distinct buyers", String(rep.buyers)],
+              ["Settled", `$${rep.volumeUsd.toFixed(2)}`],
+              [
+                "Delivered",
+                typeof rep.deliveredRate === "number"
+                  ? `${Math.round(rep.deliveredRate * 100)}%`
+                  : rep.sales > 0
+                    ? "100%"
+                    : "—",
+              ],
+              ["Agent ID", numericId == null ? "—" : `#${numericId}`],
+            ] as const
+          ).map(([k, v], i) => (
+            <div
+              className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
+              key={k}
+            >
+              <div className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+                {k}
+              </div>
+              <div className="mt-1.5 font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
+                {v}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* The service — ONE row, expanding into the tabbed Use-it panel
+          (design §UseItInline: Try it · Your agent · x402 · Audric). */}
       {sells && (
-        <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              {profile.priceUsdc ? (
-                <div className="font-semibold text-2xl text-foreground tracking-tight">
-                  ${profile.priceUsdc}
-                  <span className="ml-1.5 font-normal text-muted-foreground/60 text-sm">
-                    USDC / call
-                  </span>
-                </div>
-              ) : (
-                <div className="text-muted-foreground text-sm">
-                  Price on request (no declared price)
-                </div>
-              )}
-              {rep && rep.sales > 0 && (
-                <div className="mt-1 text-muted-foreground/70 text-xs">
-                  <span className="text-emerald-500">✓</span> Verified on the
-                  rail
-                </div>
-              )}
-              {rep && rep.sales === 0 && (
-                <div className="mt-1 text-muted-foreground/70 text-xs">
-                  <span className="text-destructive">⚠</span> No successful
-                  deliveries yet
-                </div>
-              )}
-              {!rep && (
-                <div className="mt-1 text-muted-foreground/50 text-xs">
-                  New listing — no settled sales yet.
-                </div>
-              )}
-            </div>
+        <>
+          <div className="mt-8 font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+            {"// Services"}
           </div>
-
-          {/* Trust card — every number derives from settlement receipts. */}
-          {rep && (
-            <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/50 bg-border/50 sm:grid-cols-4">
-              <div className="bg-card/60 p-3">
-                <div className="text-muted-foreground/60 text-xs">
-                  Delivered
-                </div>
-                <div className="mt-0.5 font-medium text-foreground">
-                  {typeof rep.deliveredRate === "number"
-                    ? `${Math.round(rep.deliveredRate * 100)}%`
-                    : "100%"}
-                  <span className="ml-1 text-muted-foreground/50 text-xs">
-                    of {rep.sales + (rep.refunds ?? 0)} paid
-                  </span>
-                </div>
-              </div>
-              <div className="bg-card/60 p-3">
-                <div className="text-muted-foreground/60 text-xs">Sales</div>
-                <div className="mt-0.5 font-medium text-foreground">
-                  {rep.sales}
-                  <span className="ml-1 text-muted-foreground/50 text-xs">
-                    ${rep.volumeUsd.toFixed(2)} settled
-                  </span>
-                </div>
-              </div>
-              <div className="bg-card/60 p-3">
-                <div className="text-muted-foreground/60 text-xs">Buyers</div>
-                <div className="mt-0.5 font-medium text-foreground">
-                  {rep.buyers}
-                  {(rep.repeatBuyers ?? 0) > 0 && (
-                    <span className="ml-1 text-muted-foreground/50 text-xs">
-                      {rep.repeatBuyers} repeat
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="bg-card/60 p-3">
-                <div className="text-muted-foreground/60 text-xs">
-                  Last sale
-                </div>
-                <div className="mt-0.5 font-medium text-foreground">
-                  {formatDate(rep.lastSaleAt)}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <BuyFlowRail />
-
-          {/* In-browser checkout — Passport signs the x402 payment (stage 4).
-              Client island: the public page never reads the session. */}
-          {profile.priceUsdc && (
-            <TryItButton
-              name={profile.name}
-              priceUsdc={profile.priceUsdc}
-              seller={profile.address}
-            />
-          )}
-
-          {/* Need-first Audric deep link (§II.12 C2) — prefills the QUESTION;
-              Audric offers the service + price and confirms on its own card.
-              Third parties qualify via the receipt bar (S.624) — the same
-              gate Audric's executor applies, so the button never dead-ends. */}
-          {profile.priceUsdc && (
-            <UseInAudric
-              address={profile.address}
-              name={profile.name}
-              priceUsdc={profile.priceUsdc}
-              qualified={
-                (rep?.sales ?? 0) >= 3 &&
-                (rep?.buyers ?? 0) >= 2 &&
-                (rep?.deliveredRate ?? 0) >= 0.8
-              }
-            />
-          )}
-
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <CommandBlock
-              lines={[
-                ["npm i -g @t2000/cli", "once"],
-                [`t2 agent pay ${profile.address}`],
-              ]}
-              note="Pays the declared price from your funded wallet, delivers the response, settles on Sui. Add --data '{…}' to pass input."
-              title="Buy it — CLI"
-            />
-            <CommandBlock
-              lines={[[`curl ${buyUrl}`]]}
-              note="Returns HTTP 402 + payment requirements. Any client that speaks the Sui x402 scheme (the t2000 CLI and SDK do) pays and gets the response in one round-trip."
-              title="Buy it — x402 (agents)"
-            />
-          </div>
-
-          {/* Prompt-first onboarding — paste the whole ask into YOUR agent. */}
-          <div className="mt-5 rounded-xl bg-background/60 p-4">
-            <div className="font-medium text-foreground text-sm">
-              Or use it from your agent
-            </div>
-            <p className="mt-1 text-muted-foreground/70 text-xs">
-              Copy a ready-made prompt (service, address, price, pay
-              instructions) and paste it into Claude Code, Cursor, or any agent
-              with the t2000 CLI or skills installed.
+          <UseItServiceRow
+            description={profile.description?.split("\n")[0] ?? null}
+            priceUsdc={profile.priceUsdc ?? null}
+            tabs={[
+              // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)
+              // — over the cap the island renders null, so skip the tab.
+              ...(profile.priceUsdc && Number.parseFloat(profile.priceUsdc) <= 5
+                ? [
+                    {
+                      id: "try" as const,
+                      label: "Try it",
+                      body: (
+                        <div>
+                          <BuyFlowRail />
+                          <TryItButton
+                            name={profile.name}
+                            priceUsdc={profile.priceUsdc}
+                            seller={profile.address}
+                          />
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
+              {
+                id: "agent" as const,
+                label: "Your agent",
+                body: (
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <div className="rounded-xl bg-background/60 p-4">
+                      <div className="font-medium text-foreground text-sm">
+                        Paste this into your agent
+                      </div>
+                      <p className="mt-1 text-muted-foreground/70 text-xs">
+                        A ready-made prompt (service, address, price, pay
+                        instructions) for Claude Code, Cursor, or any agent
+                        with the t2000 CLI or skills installed.
+                      </p>
+                      <div className="mt-3">
+                        <CopyButton
+                          full
+                          label="Copy the prompt for your agent"
+                          text={buildAgentPrompt({
+                            name: profile.name,
+                            numericId,
+                            address: profile.address,
+                            priceUsdc: profile.priceUsdc,
+                            description: profile.description,
+                          })}
+                        />
+                      </div>
+                    </div>
+                    <CommandBlock
+                      lines={[
+                        ["npm i -g @t2000/cli", "once"],
+                        [`t2 agent pay ${profile.address}`],
+                      ]}
+                      note="Pays the declared price from your funded wallet, delivers the response, settles on Sui. Add --data '{…}' to pass input."
+                      title="Or straight from the CLI"
+                    />
+                  </div>
+                ),
+              },
+              {
+                id: "x402" as const,
+                label: "x402",
+                body: (
+                  <CommandBlock
+                    lines={[[`curl ${buyUrl}`]]}
+                    note="Returns HTTP 402 + payment requirements. Any client that speaks the Sui x402 scheme (the t2000 CLI and SDK do) pays and gets the response in one round-trip."
+                    title="Machines — raw x402"
+                  />
+                ),
+              },
+              ...(profile.priceUsdc
+                ? [
+                    {
+                      id: "audric" as const,
+                      label: "Audric",
+                      body: (
+                        <UseInAudric
+                          address={profile.address}
+                          name={profile.name}
+                          priceUsdc={profile.priceUsdc}
+                          qualified={
+                            (rep?.sales ?? 0) >= 3 &&
+                            (rep?.buyers ?? 0) >= 2 &&
+                            (rep?.deliveredRate ?? 0) >= 0.8
+                          }
+                        />
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+            title={profile.name}
+            typeLabel="x402"
+          />
+          {!rep && (
+            <p className="mt-2 text-muted-foreground/50 text-xs">
+              New listing — no settled sales yet.
             </p>
-            <div className="mt-3">
-              <CopyButton
-                full
-                label="Copy the prompt for your agent"
-                text={buildAgentPrompt({
-                  name: profile.name,
-                  numericId,
-                  address: profile.address,
-                  priceUsdc: profile.priceUsdc,
-                  description: profile.description,
-                })}
-              />
-            </div>
-          </div>
-
+          )}
+          {rep && rep.sales === 0 && (
+            <p className="mt-2 text-muted-foreground/70 text-xs">
+              <span className="text-destructive">⚠</span> No successful
+              deliveries yet.
+            </p>
+          )}
           <p className="mt-4 text-muted-foreground/60 text-xs">
             Pay on delivery — a failed delivery refunds you automatically. You
-            pay exactly the listed price; the rail's 2.5% platform fee comes out
-            of the seller's side at settlement.
+            pay exactly the listed price; the rail&apos;s 2.5% platform fee
+            comes out of the seller&apos;s side at settlement.
             {rep &&
               " Every number above derives from on-chain settlement receipts, not self-reports — there are no star ratings to farm."}
           </p>
-        </div>
+        </>
       )}
 
       {/* Recent activity — the last paid attempts, straight from the ledger. */}
       {rep?.recent && rep.recent.length > 0 && (
-        <section className="mt-8">
-          <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            Recent activity
-          </h2>
+        <section className="mt-10">
+          <div className="font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+            {"// Recent activity"}
+          </div>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h2 className="font-semibold text-foreground text-xl tracking-tight">
+              Every sale, on-chain.
+            </h2>
+            <p className="m-0 max-w-[320px] text-muted-foreground/60 text-xs leading-relaxed">
+              The reputation above is computed from these settlements — each
+              delivered row links to its Sui transaction.
+            </p>
+          </div>
           <div className="mt-3 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
             {rep.recent.map((r) => {
               const row = (
@@ -520,10 +527,6 @@ export default async function AgentProfilePage({
               );
             })}
           </div>
-          <p className="mt-2 text-muted-foreground/60 text-xs">
-            From the on-chain settlement ledger — every row links to its Sui
-            transaction.
-          </p>
         </section>
       )}
 
