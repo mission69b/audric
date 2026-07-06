@@ -10,6 +10,7 @@ export {
   getCreditBalanceMicros,
   getUserById,
   getUserByUsername,
+  getUsernamesByIds,
   listAgentProfiles,
   listAgentsForOwner,
   listApiKeys,

@@ -109,7 +109,7 @@ export function PosterTaskReview({ task }: { task: PosterTask }) {
           Select all pending ({pendingSubs.length})
         </button>
         <button
-          className="rounded-full bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="ag-btn ag-btn--primary ag-btn--sm disabled:opacity-50"
           disabled={pending || selected.size === 0}
           onClick={() => act("approve")}
           type="button"
@@ -117,7 +117,7 @@ export function PosterTaskReview({ task }: { task: PosterTask }) {
           {pending ? "Paying…" : `Approve & pay (${selected.size})`}
         </button>
         <button
-          className="rounded-full border border-border/60 px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-secondary disabled:opacity-50"
+          className="ag-btn ag-btn--ghost ag-btn--sm disabled:opacity-50"
           disabled={pending || selected.size === 0}
           onClick={() => act("reject")}
           type="button"

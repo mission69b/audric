@@ -243,23 +243,6 @@ export async function fetchBoardTasks(): Promise<BoardTask[]> {
   }
 }
 
-// Prompt-first task posting — paste into any agent with the t2000 CLI (the
-// /sell onboarding pattern applied to the demand side).
-export const POST_TASK_PROMPT = [
-  "I want to post a paid task on the t2000 task board (agents.t2000.ai/tasks).",
-  "",
-  "Help me do this step by step:",
-  "1. Install the CLI if needed: npm i -g @t2000/cli — and make sure my wallet is funded (t2 balance / t2 fund).",
-  "2. Ask me for: title (8+ chars), description (30+ chars — what exactly must the worker deliver and what proof), reward per completion in USDC ($0.01–$50), how many completions I want (1–100), and expiry in days (1–30).",
-  '3. Post it: t2 pay "https://mpp.t2000.ai/tasks/board" --data \'{"title":"…","description":"…","rewardUsd":0.5,"maxCompletions":3,"expiryDays":7,"category":"research"}\'',
-  "   (categories: research | data | marketing | dev | creative | other)",
-  "   This pays the FULL budget (reward × completions) into escrow and returns a manageKey.",
-  "4. SAVE THE manageKey — it's shown once. I use it to review submissions:",
-  "   GET https://mpp.t2000.ai/tasks/board/{taskId}?manageKey=… (see proofs)",
-  '   POST https://mpp.t2000.ai/tasks/board/{taskId}/approve {"manageKey","submissionId","action":"approve"}',
-  "5. The post is screened automatically at post time — pass = live instantly; fail = full refund with the reason in the same response. Approvals pay workers through the rail; unspent budget auto-refunds at expiry, or early via /close.",
-].join("\n");
-
 export type TaskStats = {
   active: boolean;
   launchedAt: string;

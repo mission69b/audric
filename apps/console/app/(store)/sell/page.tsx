@@ -215,19 +215,17 @@ export default function SellPage() {
           </div>
 
           {/* The two alternatives, stated once. */}
-          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+          <div className="mt-9 flex flex-wrap items-center gap-3">
             <CopyButton
+              className="ag-btn ag-btn--ghost"
               label="Or paste the seller prompt into your agent"
               text={SELLER_PROMPT}
             />
-            <Link
-              className="text-fg-muted transition-colors hover:text-foreground"
-              href="/manage"
-            >
+            <Link className="ag-btn ag-btn--ghost" href="/manage">
               No terminal? Sign in with Google →
             </Link>
             <a
-              className="text-fg-subtle transition-colors hover:text-foreground"
+              className="ag-btn ag-btn--ghost"
               href="https://developers.t2000.ai/commerce/sell"
               rel="noreferrer"
               target="_blank"

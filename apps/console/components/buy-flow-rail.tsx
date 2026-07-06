@@ -56,7 +56,7 @@ export function BuyFlowRail() {
   }, []);
 
   return (
-    <div className="mt-5 flex items-center gap-2 overflow-x-auto">
+    <div className="flex items-center gap-2 overflow-x-auto">
       {STEPS.map((s, i) => (
         <div className="flex shrink-0 items-center gap-2" key={s}>
           {i > 0 && <span className="h-px w-4 bg-border/70" />}

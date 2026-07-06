@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, isNull, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, sum } from "drizzle-orm";
 import { db } from "./db";
 import {
   type AgentProfile,
@@ -33,6 +33,28 @@ export async function getUserByUsername(
     .where(eq(user.username, username.toLowerCase()))
     .limit(1);
   return row;
+}
+
+/** Batched reverse lookup: user ids (= Passport addresses) → claimed
+ *  @handles. Powers the store's `@handle · #id` card lines — one query per
+ *  page render, only rows that actually claimed a username come back. */
+export async function getUsernamesByIds(
+  ids: string[]
+): Promise<Map<string, string>> {
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ id: user.id, username: user.username })
+    .from(user)
+    .where(inArray(user.id, ids));
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    if (row.username) {
+      map.set(row.id, row.username);
+    }
+  }
+  return map;
 }
 
 // ── Agent ID directory (gate 6) ──────────────────────────────────────────────

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CopyButton } from "@/components/copy-button";
 import { PostTaskForm } from "@/components/post-task-form";
-import { POST_TASK_PROMPT } from "@/lib/tasks";
 
 // Post-a-task modal (t2000-design/agents TasksPage.jsx §PostTaskModal) —
 // the board CTA opens this; the form inside is the live escrow-funded flow
@@ -59,9 +57,8 @@ export function PostTaskButton({
                 <div className="font-semibold text-[16px] text-foreground">
                   Post a task
                 </div>
-                <div className="mt-0.5 text-[12.5px] text-muted-foreground">
-                  Escrow-funded, AI-screened in seconds — the poster approves,
-                  unspent budget auto-refunds.
+                <div className="mt-0.5 text-[12.5px] text-fg-muted">
+                  Describe it, fund escrow, approve on delivery.
                 </div>
               </div>
               <button
@@ -82,26 +79,7 @@ export function PostTaskButton({
             </div>
 
             <div className="p-5">
-              <PostTaskForm />
-              <div
-                className="mt-4 border-t pt-3"
-                style={{ borderColor: "var(--ag-border)" }}
-              >
-                <p className="text-fg-subtle text-xs">
-                  Prefer your agent or the CLI? Same flow, one command:
-                </p>
-                <div className="mt-2">
-                  <CopyButton
-                    label="Copy the post-a-task prompt for your agent"
-                    text={POST_TASK_PROMPT}
-                  />
-                </div>
-              </div>
-              <p className="mt-3 flex items-center gap-2 text-[12px] text-fg-subtle">
-                <span className="ag-dot" />
-                Budget $0.01–$500 · expiry up to 30 days · scams are rejected
-                with an instant full refund.
-              </p>
+              <PostTaskForm onDone={() => setOpen(false)} />
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import {
   type DirectoryRow,
 } from "@/components/agent-directory";
 import type { AgentRow } from "@/components/directory";
+import { getUsernamesByIds } from "@audric/accounts";
 import type { SellerStats } from "@/components/storefront";
 
 // /browse — the full registry (t2000-design/agents browse.html). ONE
@@ -64,10 +65,15 @@ export default async function BrowsePage({
     // directory unavailable — render an empty state
   }
   const stats = await fetchStats();
+  // Claimed @handles (accounts join — user.id IS the Passport address).
+  const handles = await getUsernamesByIds(agents.map((a) => a.address)).catch(
+    () => new Map<string, string>()
+  );
 
   const rows: DirectoryRow[] = agents.map((a) => ({
     ...a,
     stats: stats?.sellerStats?.[a.address] ?? null,
+    handle: handles.get(a.address) ?? null,
   }));
 
   return (

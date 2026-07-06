@@ -13,7 +13,11 @@ import { formatDate, shortAddress } from "@/lib/format";
 // separate section. Earnings join from the gateway's receipt-backed
 // sellerStats; sorts apply within the loaded page.
 
-export type DirectoryRow = AgentRow & { stats: SellerStats | null };
+export type DirectoryRow = AgentRow & {
+  stats: SellerStats | null;
+  /** Claimed @handle (accounts join) — Passport self-agents only. */
+  handle?: string | null;
+};
 
 type StatusFilter = "All" | "Selling" | "Idle";
 type SortKey = "Trending" | "Top earners" | "Newest";
@@ -143,6 +147,7 @@ export function AgentDirectory({
                   </div>
                 )}
                 <div className="mt-1 font-mono text-fg-subtle text-xs">
+                  {a.handle && <>@{a.handle} · </>}
                   {shortAddress(a.address)}
                 </div>
               </div>

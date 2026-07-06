@@ -25,7 +25,7 @@ const CATEGORIES = [
 const RAIL_BASE = "https://x402.t2000.ai";
 
 const inputCls =
-  "mt-1 w-full rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-foreground text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-ring";
+  "ag-input mt-1";
 
 type HeaderRow = { k: string; v: string };
 type Mode = "self" | "wrap";

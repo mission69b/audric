@@ -161,6 +161,11 @@
    hovers, buttons, filters, chips, badges, inputs, modals.
    Fonts/foreground map to the console's existing slots.
    ============================================================ */
+/* Wrapped in @layer components so Tailwind UTILITIES (later layer)
+   can override per-instance (mt-*, my-*, mx-auto on ag-* elements).
+   Unlayered rules would silently beat every utility — the S.648 bug
+   class. Tokens/keyframes are unaffected by layering. */
+@layer components {
 :root {
   --fg: oklch(0.94 0 0);
   --fg-muted: #a1a1a1;
@@ -556,4 +561,5 @@
   .ticker-track {
     animation: none;
   }
+}
 }

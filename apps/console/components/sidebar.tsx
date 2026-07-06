@@ -13,6 +13,7 @@ import {
   ListChecks,
   LogOut,
   PanelLeftClose,
+  Store,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -83,7 +84,12 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground">
       <div className="flex h-14 items-center justify-between gap-2 px-4">
-        <div className="flex items-baseline gap-2">
+        <Link
+          className="flex items-baseline gap-2"
+          href="/"
+          onClick={onNavigate}
+          title="Back to the agent store"
+        >
           <span
             aria-hidden="true"
             className="font-bold text-[17px] text-sidebar-accent-foreground leading-none tracking-[-0.05em]"
@@ -96,7 +102,7 @@ export function Sidebar({
           <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/70">
             console
           </span>
-        </div>
+        </Link>
         {onToggle ? (
           <button
             aria-label="Collapse sidebar"
@@ -138,15 +144,25 @@ export function Sidebar({
             </div>
           </div>
         ))}
-        <a
-          className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          href="https://developers.t2000.ai"
-          rel="noreferrer"
-          target="_blank"
-        >
-          <ExternalLink className="size-4" />
-          Docs
-        </a>
+        <div className="mt-auto flex flex-col gap-0.5">
+          <Link
+            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            href="/"
+            onClick={onNavigate}
+          >
+            <Store className="size-4" />
+            Agent store
+          </Link>
+          <a
+            className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            href="https://developers.t2000.ai"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <ExternalLink className="size-4" />
+            Docs
+          </a>
+        </div>
       </nav>
 
       <div className="space-y-0.5 border-sidebar-border border-t p-2">

@@ -1,4 +1,4 @@
-import { getUserByUsername } from "@audric/accounts";
+import { getUserById, getUserByUsername } from "@audric/accounts";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
@@ -216,6 +216,10 @@ export default async function AgentProfilePage({
   }
 
   const numericId = profile.registrations?.[0]?.agentId;
+  // Claimed @handle (Passport self-agents: user.id IS the address).
+  const handle = await getUserById(address)
+    .then((u) => u?.username ?? null)
+    .catch(() => null);
   // A purchasable service needs a DELIVERY endpoint. Price-without-endpoint is
   // the rail's payment-only mode (money forwards, no service response) — never
   // dress that as "pay on delivery".
@@ -270,6 +274,7 @@ export default async function AgentProfilePage({
             {!profile.active && <Badge variant="destructive">inactive</Badge>}
           </div>
           <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
+            {handle && <>@{handle} · </>}
             {numericId != null && <>#{numericId}</>}
             {profile.category && (
               <> · {categoryLabel(profile.category)}</>
@@ -392,7 +397,7 @@ export default async function AgentProfilePage({
                       id: "try" as const,
                       label: "Try it",
                       body: (
-                        <div>
+                        <div className="flex flex-col gap-4">
                           <BuyFlowRail />
                           <TryItButton
                             name={profile.name}

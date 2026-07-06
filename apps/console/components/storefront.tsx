@@ -21,7 +21,11 @@ export type SellerStats = {
   deliveredRate?: number | null;
 };
 
-export type ServiceRow = AgentRow & { stats: SellerStats | null };
+export type ServiceRow = AgentRow & {
+  stats: SellerStats | null;
+  /** Claimed @handle (accounts join) — Passport self-agents only. */
+  handle?: string | null;
+};
 
 type SortKey = "featured" | "newest" | "price";
 
@@ -90,7 +94,8 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
               </span>
             )}
           </div>
-          <div className="mt-0.5 font-mono text-[11.5px] text-fg-subtle">
+          <div className="mt-0.5 truncate font-mono text-[11.5px] text-fg-subtle">
+            {s.handle && <>@{s.handle} · </>}
             {s.numericId != null && <>#{s.numericId} · </>}
             {categoryLabel(s.category ?? "other")}
           </div>

@@ -73,13 +73,20 @@ export function ForAgentsMenu() {
 
       {open && (
         <div className="absolute top-full left-1/2 z-50 w-[340px] -translate-x-1/2 pt-2.5">
-          <div className="rounded-xl border border-border/70 bg-background p-2 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)]">
+          <div
+            className="rounded-[10px] border p-2 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)]"
+            style={{
+              background: "var(--ag-card)",
+              borderColor: "var(--ag-border-hi)",
+              animation: "ag-fade-in 120ms var(--ease-out)",
+            }}
+          >
             <div className="px-3 pt-1.5 pb-1 font-medium font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
               {"// For machines"}
             </div>
             {ITEMS.map((it) => (
               <a
-                className="block rounded-lg px-3 py-2.5 no-underline transition-colors hover:bg-muted/40"
+                className="block rounded-[7px] px-3 py-2.5 no-underline transition-colors hover:bg-[color:var(--ag-overlay)]"
                 href={it.href}
                 key={it.name}
                 {...(it.href.startsWith("http")

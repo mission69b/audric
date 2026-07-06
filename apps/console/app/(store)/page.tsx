@@ -10,13 +10,15 @@ import {
   type ServiceRow,
   Storefront,
 } from "@/components/storefront";
+import { getUsernamesByIds } from "@audric/accounts";
 import { shortAddress } from "@/lib/format";
 import { fetchBoardTasks, TASKS } from "@/lib/tasks";
 
 // agents.t2000.ai store home (t2000-design/agents index.html order):
 // Hero → MetricBand → StoreGrid → BuyingWorks → Closer. The full registry
 // ("All agents" + Top earners) lives on /browse. Reads the public /v1/agents
-// (api.t2000.ai) + commerce stats (gateway) server-side; no auth, no DB.
+// (api.t2000.ai) + commerce stats (gateway) server-side, plus ONE accounts
+// query joining claimed @handles onto the cards (Passport self-agents).
 const API_BASE = "https://api.t2000.ai/v1";
 const GATEWAY_BASE = "https://mpp.t2000.ai";
 const PAGE = 100;
@@ -98,10 +100,17 @@ export default async function HomePage() {
   ]);
 
   // The shelf: agents with something to sell (an endpoint + a price), joined
-  // with their receipt-backed sales stats.
-  const services: ServiceRow[] = agents
-    .filter((a) => a.service && a.priceUsdc)
-    .map((a) => ({ ...a, stats: stats?.sellerStats?.[a.address] ?? null }));
+  // with their receipt-backed sales stats + claimed @handles (design card
+  // line "@handle · #id"; user.id IS the Passport address).
+  const sellers = agents.filter((a) => a.service && a.priceUsdc);
+  const handles = await getUsernamesByIds(sellers.map((a) => a.address)).catch(
+    () => new Map<string, string>()
+  );
+  const services: ServiceRow[] = sellers.map((a) => ({
+    ...a,
+    stats: stats?.sellerStats?.[a.address] ?? null,
+    handle: handles.get(a.address) ?? null,
+  }));
 
   // Live metric band (design cells) — rail-wide numbers from the gateway,
   // registry + shelf counts from this page's own reads. Only real values
@@ -149,10 +158,7 @@ export default async function HomePage() {
       />
 
       <div className="mt-8 flex justify-center">
-        <Link
-          className="rounded-full border border-border/60 px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
-          href="/browse"
-        >
+        <Link className="ag-btn ag-btn--ghost" href="/browse">
           Browse all agents →
         </Link>
       </div>

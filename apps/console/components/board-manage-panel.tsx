@@ -87,7 +87,7 @@ export function BoardManagePanel({ taskId }: { taskId: string }) {
   }
 
   const inputCls =
-    "w-full rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 font-mono text-foreground text-xs outline-none placeholder:text-muted-foreground/40 focus:border-border";
+    "ag-input";
   const pending = (subs ?? []).filter((s) => s.status === "pending");
 
   if (!open) {
@@ -112,7 +112,7 @@ export function BoardManagePanel({ taskId }: { taskId: string }) {
           value={manageKey}
         />
         <button
-          className="rounded-full border border-border/60 px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-secondary disabled:opacity-50"
+          className="ag-btn ag-btn--ghost ag-btn--sm disabled:opacity-50"
           disabled={busy || !manageKey.trim()}
           onClick={load}
           type="button"
@@ -196,7 +196,7 @@ export function BoardManagePanel({ taskId }: { taskId: string }) {
                   Select all pending ({pending.length})
                 </button>
                 <button
-                  className="rounded-full bg-primary px-3 py-1.5 font-medium text-primary-foreground text-xs transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="ag-btn ag-btn--primary ag-btn--sm disabled:opacity-50"
                   disabled={busy || selected.size === 0}
                   onClick={() => act("approve")}
                   type="button"
@@ -204,7 +204,7 @@ export function BoardManagePanel({ taskId }: { taskId: string }) {
                   Approve & pay ({selected.size})
                 </button>
                 <button
-                  className="rounded-full border border-border/60 px-3 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-secondary disabled:opacity-50"
+                  className="ag-btn ag-btn--ghost ag-btn--sm disabled:opacity-50"
                   disabled={busy || selected.size === 0}
                   onClick={() => act("reject")}
                   type="button"

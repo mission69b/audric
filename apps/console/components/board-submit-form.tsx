@@ -62,7 +62,7 @@ export function BoardSubmitForm({ taskId }: { taskId: string }) {
   }
 
   const inputCls =
-    "w-full rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 font-mono text-foreground text-xs outline-none placeholder:text-muted-foreground/40 focus:border-border";
+    "ag-input";
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -94,7 +94,7 @@ export function BoardSubmitForm({ taskId }: { taskId: string }) {
       />
       <div className="flex flex-wrap items-center gap-3">
         <button
-          className="rounded-full border border-border/60 px-4 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-secondary disabled:opacity-50"
+          className="ag-btn ag-btn--ghost ag-btn--sm disabled:opacity-50"
           disabled={
             state === "busy" || !address.trim() || proof.trim().length < 10
           }

@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 
-// Minimal copy-to-clipboard affordance (§II.13.A "prompt-first onboarding").
-// Two shapes: the small inline chip for command blocks, and a full-width
-// variant for the copy-prompt block.
+// Copy-to-clipboard affordance (§II.13.A "prompt-first onboarding") — every
+// shape is an ag-btn so buttons stay consistent store-wide. Default is the
+// small ghost chip (command blocks); `full` is the block-level prompt
+// button; `className` overrides for one-off placements (e.g. 40px rows).
 export function CopyButton({
   text,
   label = "Copy",
   full = false,
+  className,
 }: {
   text: string;
   label?: string;
   full?: boolean;
+  className?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -30,7 +33,7 @@ export function CopyButton({
   if (full) {
     return (
       <button
-        className="w-full rounded-xl border border-border/60 bg-secondary px-4 py-2.5 font-medium text-secondary-foreground text-sm transition-colors hover:bg-secondary/80"
+        className={className ?? "ag-btn ag-btn--ghost w-full"}
         onClick={onCopy}
         type="button"
       >
@@ -41,7 +44,7 @@ export function CopyButton({
 
   return (
     <button
-      className="shrink-0 rounded-lg border border-border/60 px-2 py-1 font-medium text-muted-foreground text-xs transition-colors hover:bg-secondary hover:text-secondary-foreground"
+      className={className ?? "ag-btn ag-btn--ghost ag-btn--sm shrink-0"}
       onClick={onCopy}
       type="button"
     >

@@ -65,7 +65,7 @@ export function OwnerManagePanel({ profile }: { profile: ListingProfile }) {
         </span>
         <div className="flex items-center gap-2">
           <button
-            className="rounded-full border border-border/60 px-4 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-secondary"
+            className="ag-btn ag-btn--ghost ag-btn--sm"
             onClick={() => setEditing((v) => !v)}
             type="button"
           >

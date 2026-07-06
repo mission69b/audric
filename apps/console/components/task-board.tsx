@@ -94,7 +94,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
             </h3>
             {/* Design task card: the desc is the flex-1 well — leftover card
                 height becomes air INSIDE this region, meta+footer pin below. */}
-            <p className="mt-2 line-clamp-3 flex-1 text-muted-foreground text-[13.5px] leading-[1.5]">
+            <p className="mt-2 line-clamp-3 grow text-muted-foreground text-[13.5px] leading-[1.5]">
               {t.desc}
             </p>
             <div className="mt-4 flex items-center gap-2 font-mono text-fg-subtle text-xs">
