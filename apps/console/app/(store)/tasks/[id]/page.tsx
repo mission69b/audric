@@ -126,7 +126,7 @@ function RewardDetail({
             {paused ? "Budget spent" : "Rotating reward"}
           </span>
         </div>
-        <h1 className="mt-4 font-semibold text-3xl text-foreground tracking-[-0.035em] sm:text-4xl">
+        <h1 className="ag-title mt-4" style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}>
           {t.title}
         </h1>
         {s && (
@@ -272,7 +272,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
             Community · poster approves
           </span>
         </div>
-        <h1 className="mt-4 font-semibold text-3xl text-foreground tracking-[-0.035em] sm:text-4xl">
+        <h1 className="ag-title mt-4" style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}>
           {t.title}
         </h1>
         <div className="mt-3 font-mono text-[12.5px] text-muted-foreground/60">

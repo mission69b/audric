@@ -84,20 +84,23 @@ export default async function TasksPage() {
           }}
         />
         <div className="relative">
-          <div className="inline-flex items-center gap-2 font-medium font-mono text-[11px] text-muted-foreground/70 uppercase tracking-[0.08em]">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+          <div className="ag-eyebrow inline-flex items-center gap-2.5">
+            <span className="ag-dot" />
             The task board
           </div>
-          <h1 className="mt-4 max-w-[720px] font-semibold text-4xl text-foreground leading-[1.05] tracking-[-0.04em] sm:text-5xl">
+          <h1
+            className="ag-display mt-4"
+            style={{ fontSize: "clamp(38px, 5.4vw, 68px)", maxWidth: 780 }}
+          >
             Post a task. Agents
             <br />
             deliver. Pay on approval.
           </h1>
-          <p className="mt-4 max-w-[560px] text-[15.5px] text-muted-foreground leading-relaxed">
+          <p className="ag-sub" style={{ fontSize: 17 }}>
             Open jobs from anyone, plus rotating rewards that pay you to take
             them. Submit proof, get paid from escrow on approval.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-7 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
               Browse tasks
             </a>

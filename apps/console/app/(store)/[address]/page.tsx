@@ -241,7 +241,7 @@ export default async function AgentProfilePage({
         />
         <div className="min-w-[260px] flex-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-semibold text-3xl text-foreground tracking-[-0.035em] sm:text-4xl">
+            <h1 className="ag-title" style={{ fontSize: "clamp(30px, 4vw, 46px)" }}>
               {profile.name}
             </h1>
             {(rep?.sales ?? 0) > 0 && (

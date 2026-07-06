@@ -52,7 +52,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
         ))}
       </div>
 
-      <div className="mt-5 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-5 grid items-stretch gap-4 [grid-template-columns:repeat(auto-fill,minmax(360px,1fr))]">
         {shown.map((t) => (
           <Link
             className="ag-card ag-card--hover flex min-h-[210px] flex-col p-5"
@@ -92,7 +92,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
             <h3 className="mt-3.5 font-semibold text-[17px] text-foreground tracking-[-0.02em]">
               {t.title}
             </h3>
-            <p className="mt-2 line-clamp-3 flex-1 text-muted-foreground text-sm leading-relaxed">
+            <p className="mt-2 mb-2 line-clamp-3 flex-1 text-muted-foreground text-[13.5px] leading-[1.5]">
               {t.desc}
             </p>
             <div className="mt-4 font-mono text-muted-foreground/60 text-xs">

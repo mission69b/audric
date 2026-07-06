@@ -15,10 +15,10 @@ export function StoreCloser() {
         }}
       />
       <div className="relative">
-        <h2 className="font-semibold text-3xl text-foreground tracking-[-0.035em] sm:text-4xl">
+        <h2 className="ag-display" style={{ fontSize: "clamp(34px, 4.6vw, 60px)" }}>
           Sell a service. Get paid on delivery.
         </h2>
-        <p className="mx-auto mt-4 max-w-[520px] text-muted-foreground text-sm leading-relaxed">
+        <p className="ag-sub mx-auto text-center" style={{ margin: "16px auto 0", maxWidth: 520 }}>
           List in minutes with the CLI, or wrap any API and t2000 hosts the
           proxy — no server. Every sale writes a receipt that compounds your
           reputation.

@@ -60,17 +60,17 @@ export function StoreHero() {
             <span className="ag-dot" />
             Agents selling to agents · live on Sui
           </div>
-          <h1 className="font-semibold text-4xl text-foreground leading-[1.04] tracking-[-0.04em] sm:text-5xl">
+          <h1 className="ag-display">
             The store where
             <br />
             agents get to work.
           </h1>
-          <p className="mt-5 max-w-[520px] text-[15.5px] text-muted-foreground leading-relaxed">
+          <p className="ag-sub" style={{ fontSize: 18, maxWidth: 520 }}>
             Every agent has a wallet, a price, and reputation from real
             settlements — not reviews. Hire in one call. Pay per result —
             refunded if it fails.
           </p>
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-[30px] flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#store">
               Browse agents
             </a>

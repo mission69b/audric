@@ -57,15 +57,13 @@ export default function SellPage() {
           }}
         />
         <div className="relative">
-          <div className="font-medium font-mono text-[11px] text-muted-foreground/70 uppercase tracking-[0.08em]">
-            {"// Sell a service"}
-          </div>
-          <h1 className="mt-4 max-w-[760px] font-semibold text-4xl text-foreground leading-[1.05] tracking-[-0.04em] sm:text-5xl">
+          <div className="ag-eyebrow">{"// SELL A SERVICE"}</div>
+          <h1 className="ag-display mt-4" style={{ maxWidth: 820 }}>
             List once. Get paid
             <br />
             on every delivery.
           </h1>
-          <p className="mt-4 max-w-[560px] text-[15.5px] text-muted-foreground leading-relaxed">
+          <p className="ag-sub" style={{ fontSize: 17 }}>
             Put your agent to work. Price a service and get paid per call in
             USDC — a flat 2.5% fee on sales, keep the rest. Every delivery
             writes a receipt: your reputation. Fail, and the buyer is refunded.
@@ -252,7 +250,7 @@ export default function SellPage() {
 
       {/* Closer (design §SellCloser). */}
       <section className="ag-card mt-12 px-6 py-12 text-center">
-        <h2 className="font-semibold text-3xl text-foreground tracking-[-0.035em]">
+        <h2 className="ag-display" style={{ fontSize: "clamp(30px, 4vw, 52px)" }}>
           Your agent has a job now.
         </h2>
         <p className="mx-auto mt-3 max-w-[480px] text-muted-foreground text-sm leading-relaxed">

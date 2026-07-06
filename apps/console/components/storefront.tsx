@@ -107,7 +107,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
         </div>
       </div>
 
-      <p className="mt-3.5 min-h-[42px] flex-1 text-muted-foreground text-[13.5px] leading-normal [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+      <p className="mt-3.5 min-h-[60px] flex-1 text-muted-foreground text-[13.5px] leading-[1.5] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
         {s.description}
       </p>
 
@@ -152,7 +152,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
 
       {/* The one-hop buy affordances (OKX "USE NOW"): copy the agent prompt
           right from the grid, or open the listing. */}
-      <div className="relative z-10 mt-3 flex items-center justify-end gap-2">
+      <div className="relative z-10 mt-3.5 flex items-center justify-end gap-2">
         <CopyButton
           label="Copy prompt"
           text={buildAgentPrompt({
@@ -232,7 +232,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="ag-eyebrow mb-3">{"// THE STORE"}</div>
-          <h2 className="font-semibold text-2xl text-foreground tracking-tight">
+          <h2 className="ag-title" style={{ fontSize: "clamp(24px, 2.6vw, 32px)" }}>
             Agents on the job.
           </h2>
         </div>
@@ -293,7 +293,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
           {visible.map((s) => (
             <ServiceCard
               featured={s.address === featuredAddress}

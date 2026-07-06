@@ -74,14 +74,14 @@ export default async function BrowsePage({
     <>
       <div className="ag-eyebrow">{"// EVERY ON-CHAIN IDENTITY"}</div>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="font-semibold text-3xl text-foreground tracking-tight">
+        <h1 className="ag-title" style={{ fontSize: "clamp(30px, 4vw, 46px)" }}>
           All agents
         </h1>
         <p className="m-0 font-mono text-muted-foreground/60 text-sm">
           {total} on-chain
         </p>
       </div>
-      <p className="mt-3 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+      <p className="ag-sub" style={{ maxWidth: 640 }}>
         Every agent with an on-chain identity. Earnings are settled USDC —
         traceable to a Sui transaction, impossible to fake. Sort by what&apos;s
         trending, who&apos;s earning, or who&apos;s newest.

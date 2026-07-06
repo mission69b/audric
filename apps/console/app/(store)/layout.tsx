@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ForAgentsMenu } from "@/components/for-agents-menu";
+import { WalletChip } from "@/components/wallet-chip";
 
-// The public storefront chrome (agents.t2000.ai). No session reads here —
-// public pages stay cache-friendly; authed surfaces live under /manage.
-// Structure per t2000-design/agents AgentsNav/AgentsFooter (2026-07 family
-// redesign); the signed-in wallet chip stays a /manage concern by design.
+// The public storefront chrome (agents.t2000.ai). No SERVER session reads —
+// public pages stay cache-friendly; the wallet chip is a client island that
+// hydrates from localStorage. Structure per t2000-design/agents AgentsNav:
+// [t2 agents] Browse · Tasks · For agents ▾ … Activity ↗ · chip/Sign-in.
 export default function StoreLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -19,18 +20,20 @@ export default function StoreLayout({
       >
         <div className="mx-auto flex h-[62px] w-full max-w-[1400px] items-center gap-6 px-6">
           <Link
-            className="flex items-baseline gap-2 font-mono text-foreground text-sm"
+            className="inline-flex items-center gap-2 text-foreground no-underline"
             href="/"
           >
             <span
               aria-hidden="true"
-              className="font-bold font-sans text-[18px] leading-none tracking-[-0.05em]"
+              className="font-bold text-[20px] leading-none tracking-[-0.05em]"
             >
               t2
             </span>
-            agents<span className="text-muted-foreground">.t2000.ai</span>
+            <span className="font-semibold text-[16px] tracking-[-0.022em]">
+              agents
+            </span>
           </Link>
-          <nav className="flex items-center gap-4 text-muted-foreground text-sm">
+          <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
             <Link
               className="transition-colors hover:text-foreground"
               href="/browse"
@@ -43,35 +46,20 @@ export default function StoreLayout({
             >
               Tasks
             </Link>
-            <Link
-              className="hidden transition-colors hover:text-foreground sm:inline"
-              href="/sell"
-            >
-              Sell
-            </Link>
             <span className="hidden md:inline">
               <ForAgentsMenu />
             </span>
-            <a
-              className="hidden transition-colors hover:text-foreground md:inline"
-              href="https://mpp.t2000.ai/activity"
-              rel="noreferrer"
-              target="_blank"
-            >
-              Activity ↗
-            </a>
           </nav>
-          <div className="ms-auto flex items-center gap-4 text-muted-foreground text-sm">
-            <Link
-              className="hidden transition-colors hover:text-foreground sm:inline"
-              href="/manage"
-            >
-              Sign in
-            </Link>
-            <Link className="ag-btn ag-btn--primary ag-btn--sm" href="/sell">
-              List your agent →
-            </Link>
-          </div>
+          <span className="flex-1" />
+          <a
+            className="hidden font-medium font-mono text-[12.5px] text-muted-foreground transition-colors hover:text-foreground md:inline"
+            href="https://mpp.t2000.ai/activity"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Activity ↗
+          </a>
+          <WalletChip />
         </div>
       </header>
       <main className="mx-auto w-full max-w-[1240px] flex-1 px-6 py-10">
@@ -87,7 +75,7 @@ export default function StoreLayout({
               >
                 t2
               </span>
-              <span className="font-medium font-mono">agents.t2000.ai</span>
+              <span className="font-semibold tracking-[-0.022em]">agents.t2000</span>
             </div>
             <p className="m-0 max-w-[260px] leading-relaxed">
               Agents selling to agents — on-chain identity, escrowed buys,
