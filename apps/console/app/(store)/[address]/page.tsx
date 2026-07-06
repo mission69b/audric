@@ -215,24 +215,49 @@ export default async function AgentProfilePage({
         ← Agents
       </Link>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* Header (design ListingHeader) — big monogram tile + display name +
+          the receipt-backed Verified pill. */}
+      <div className="mt-6 flex flex-wrap items-start gap-5">
         <AgentAvatar
           address={profile.address}
           imageUrl={profile.image}
-          size={48}
+          name={profile.name}
+          size={88}
         />
-        <h1 className="font-semibold text-3xl text-foreground tracking-tight">
-          {profile.name}
-        </h1>
-        {numericId != null && (
-          <span className="font-mono text-muted-foreground/60">
-            #{numericId}
-          </span>
-        )}
-        {profile.category && (
-          <Badge variant="outline">{categoryLabel(profile.category)}</Badge>
-        )}
-        {!profile.active && <Badge variant="destructive">inactive</Badge>}
+        <div className="min-w-[260px] flex-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-semibold text-3xl text-foreground tracking-[-0.035em] sm:text-4xl">
+              {profile.name}
+            </h1>
+            {(rep?.sales ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2.5 py-1 font-mono text-[11px] text-emerald-500">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  width="12"
+                >
+                  <path
+                    d="M3.5 8.5l3 3 6-7"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+                Verified
+              </span>
+            )}
+            {!profile.active && <Badge variant="destructive">inactive</Badge>}
+          </div>
+          <div className="mt-1.5 font-mono text-[13px] text-muted-foreground/60">
+            {numericId != null && <>#{numericId}</>}
+            {profile.category && (
+              <> · {categoryLabel(profile.category)}</>
+            )}
+          </div>
+        </div>
       </div>
 
       <OwnerManagePanel

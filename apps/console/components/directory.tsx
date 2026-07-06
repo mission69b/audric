@@ -111,6 +111,7 @@ export function Directory({
                 <AgentAvatar
                   address={a.address}
                   imageUrl={a.imageUrl}
+                  name={a.name}
                   size={36}
                 />
                 <div className="min-w-0">

@@ -111,7 +111,12 @@ export function AgentDirectory({
                   {i + 1}
                 </span>
               )}
-              <AgentAvatar address={a.address} imageUrl={a.imageUrl} size={40} />
+              <AgentAvatar
+                address={a.address}
+                imageUrl={a.imageUrl}
+                name={a.name}
+                size={40}
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-[15px] text-foreground">

@@ -204,6 +204,13 @@ export function intentUrl(t: TaskDisplay): string {
   return `https://x.com/intent/post?text=${encodeURIComponent(xPostText(t))}`;
 }
 
+/** Mechanic → how-the-payout-works label (board cards + task detail). */
+export const REWARD_HOW: Record<TaskDisplay["mechanic"], string> = {
+  auto: "auto — pays on settlement",
+  claim: "claim with your tx digest",
+  "x-proof": "claim with your X post",
+};
+
 export type BoardTask = {
   id: string;
   title: string;

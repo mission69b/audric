@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ForAgentsMenu } from "@/components/for-agents-menu";
 
 // The public storefront chrome (agents.t2000.ai). No session reads here —
 // public pages stay cache-friendly; authed surfaces live under /manage.
@@ -42,6 +43,9 @@ export default function StoreLayout({
             >
               Sell
             </Link>
+            <span className="hidden md:inline">
+              <ForAgentsMenu />
+            </span>
             <a
               className="hidden transition-colors hover:text-foreground md:inline"
               href="https://mpp.t2000.ai/activity"

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { AgentRow } from "@/components/directory";
 import { BUYER_STEPS, HowItWorks } from "@/components/how-it-works";
-import { MetricBand } from "@/components/metric-band";
+import { MetricBand, StatusTicker } from "@/components/metric-band";
 import { ReputationNote } from "@/components/reputation-note";
 import { StoreCloser } from "@/components/store-closer";
 import { StoreHero } from "@/components/store-hero";
@@ -11,6 +11,7 @@ import {
   Storefront,
 } from "@/components/storefront";
 import { shortAddress } from "@/lib/format";
+import { fetchBoardTasks, TASKS } from "@/lib/tasks";
 
 // agents.t2000.ai store home (t2000-design/agents index.html order):
 // Hero → MetricBand → StoreGrid → BuyingWorks → Closer. The full registry
@@ -49,6 +50,29 @@ async function fetchStats(): Promise<CommerceStats | null> {
   }
 }
 
+// Gateway-wide rail stats (every x402 payment, not just store commerce) —
+// the design's metric band reads these (paid calls / settled / wallets).
+type RailStats = {
+  totalPayments: number;
+  totalVolume: string;
+  uniqueWallets: number;
+};
+
+async function fetchRailStats(): Promise<RailStats | null> {
+  try {
+    const res = await fetch(`${GATEWAY_BASE}/api/mpp/stats`, {
+      next: { revalidate: 120 },
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return (await res.json()) as RailStats;
+  } catch {
+    return null;
+  }
+}
+
+
 export default async function HomePage() {
   let total = 0;
   let agents: AgentRow[] = [];
@@ -67,7 +91,11 @@ export default async function HomePage() {
   } catch {
     // directory unavailable — render an empty shelf
   }
-  const stats = await fetchStats();
+  const [stats, rail, boardTasks] = await Promise.all([
+    fetchStats(),
+    fetchRailStats(),
+    fetchBoardTasks(),
+  ]);
 
   // The shelf: agents with something to sell (an endpoint + a price), joined
   // with their receipt-backed sales stats.
@@ -75,17 +103,20 @@ export default async function HomePage() {
     .filter((a) => a.service && a.priceUsdc)
     .map((a) => ({ ...a, stats: stats?.sellerStats?.[a.address] ?? null }));
 
-  // Live metric band — only cells with a real value render.
-  const metrics: [string, string][] = [
-    ["Registered agents", String(total)],
-  ];
-  if (stats) {
+  // Live metric band (design cells) — rail-wide numbers from the gateway,
+  // registry + shelf counts from this page's own reads. Only real values
+  // render.
+  const metrics: [string, string][] = [];
+  if (rail) {
     metrics.push(
-      ["Sales settled", String(stats.sales)],
-      ["USDC settled", `$${stats.volumeUsd.toFixed(2)}`],
-      ["Selling agents", String(stats.sellers)],
-      ["Buyers", String(stats.buyers)]
+      ["Paid calls", rail.totalPayments.toLocaleString()],
+      ["Settled", `$${Math.floor(Number.parseFloat(rail.totalVolume))}`],
+      ["Paying wallets", String(rail.uniqueWallets)]
     );
+  }
+  metrics.push(["Registered agents", String(total)]);
+  if (services.length > 0) {
+    metrics.push(["Live services", String(services.length)]);
   }
 
   // "Reputation is receipts" panel — the live top seller's actual numbers.
@@ -99,6 +130,7 @@ export default async function HomePage() {
     <>
       <StoreHero />
       <MetricBand metrics={metrics} />
+      <StatusTicker taskCount={TASKS.length + boardTasks.length} />
 
       {/* The shelf — services first. */}
       <Storefront services={services} />

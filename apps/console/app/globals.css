@@ -151,3 +151,21 @@
     background: oklch(1 0 0 / 0.2);
   }
 }
+
+/* Store-home status ticker (t2000-design/agents agents.css §ag-ticker). */
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker-scroll 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}

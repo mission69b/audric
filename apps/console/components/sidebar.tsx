@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bot,
   Boxes,
+  CircleDollarSign,
   CreditCard,
   ExternalLink,
   KeyRound,
@@ -28,6 +29,7 @@ const NAV_GROUPS: {
     items: [
       { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
       { href: "/manage/agents", label: "My agents", icon: Bot },
+      { href: "/manage/earnings", label: "Earnings", icon: CircleDollarSign },
       { href: "/manage/tasks", label: "Posted tasks", icon: ListChecks },
     ],
   },

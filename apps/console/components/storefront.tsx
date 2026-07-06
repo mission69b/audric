@@ -50,13 +50,14 @@ function sortServices(rows: ServiceRow[], sort: SortKey): ServiceRow[] {
   }
 }
 
-function ServiceCard({ s }: { s: ServiceRow }) {
+function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
   const sold = s.stats?.sales ?? 0;
   const refunds = s.stats?.refunds ?? 0;
   return (
-    // Stretched-link card: the overlay <Link> makes the whole card clickable
-    // while the copy button sits ABOVE it (z-10) — no nested interactives.
-    <div className="group relative flex flex-col rounded-2xl border border-border/50 bg-card/40 p-5 transition-colors hover:border-border hover:bg-muted/30">
+    // Stretched-link card (t2000-design/agents AgentCard): the overlay <Link>
+    // makes the whole card clickable while the copy button sits ABOVE it
+    // (z-10) — no nested interactives.
+    <div className="group relative flex flex-col rounded-2xl border border-border/50 bg-card/40 p-[18px] transition-colors hover:border-border hover:bg-muted/30">
       <Link
         aria-hidden="true"
         className="absolute inset-0 rounded-2xl"
@@ -64,84 +65,116 @@ function ServiceCard({ s }: { s: ServiceRow }) {
         tabIndex={-1}
       />
       <div className="flex items-center gap-3">
-        <AgentAvatar address={s.address} imageUrl={s.imageUrl} size={40} />
-        <div className="min-w-0">
+        <AgentAvatar
+          address={s.address}
+          imageUrl={s.imageUrl}
+          name={s.name}
+          size={46}
+        />
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
-              className="truncate font-medium text-foreground"
+              className="truncate font-semibold text-[15.5px] text-foreground tracking-[-0.02em]"
               href={`/${s.address}`}
             >
               {s.name}
             </Link>
-            {s.numericId != null && (
-              <span className="shrink-0 font-mono text-muted-foreground/60 text-xs">
-                #{s.numericId}
+            {featured && (
+              <span className="shrink-0 rounded-full border border-sky-500/25 bg-sky-500/10 px-1.5 py-px font-mono text-[10px] text-sky-400 uppercase tracking-[0.04em]">
+                Featured
               </span>
             )}
           </div>
-          {s.category && (
-            <div className="mt-0.5 text-muted-foreground/70 text-xs">
-              {categoryLabel(s.category)}
-            </div>
-          )}
+          <div className="mt-0.5 font-mono text-[11.5px] text-muted-foreground/60">
+            {s.numericId != null && <>#{s.numericId} · </>}
+            {categoryLabel(s.category ?? "other")}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="font-medium font-mono text-[15px] text-foreground tabular-nums">
+            ${s.priceUsdc}
+          </div>
+          <div className="mt-px font-mono text-[10.5px] text-muted-foreground/60">
+            / call
+          </div>
         </div>
       </div>
 
-      {s.description && (
-        <p className="mt-3 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
-          {s.description}
-        </p>
-      )}
+      <p className="mt-3.5 min-h-[42px] flex-1 text-muted-foreground text-[13.5px] leading-normal [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+        {s.description}
+      </p>
 
-      <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-        <div>
-          <div className="font-semibold text-foreground text-lg tracking-tight">
-            ${s.priceUsdc}
-            <span className="ml-1 font-normal text-muted-foreground/60 text-xs">
-              / call
-            </span>
-          </div>
-          {sold > 0 ? (
-            <div className="mt-0.5 text-muted-foreground/70 text-xs">
-              <span className="text-emerald-500">✓</span> {sold} sold
-              {typeof s.stats?.deliveredRate === "number" && (
-                <> · {Math.round(s.stats.deliveredRate * 100)}% delivered</>
-              )}
-            </div>
-          ) : refunds > 0 ? (
-            // Refund-only sellers are NOT a clean slate — say so.
-            <div className="mt-0.5 text-muted-foreground/70 text-xs">
-              <span className="text-destructive">⚠</span> 0 delivered ·{" "}
-              {refunds} refunded
-            </div>
-          ) : (
-            <div className="mt-0.5 text-muted-foreground/50 text-xs">
-              New listing
-            </div>
-          )}
-        </div>
-        {/* The one-hop buy affordances (OKX "USE NOW"): copy the agent prompt
-            right from the grid, or open the listing. */}
-        <div className="relative z-10 flex shrink-0 items-center gap-2">
-          <CopyButton
-            label="Copy prompt"
-            text={buildAgentPrompt({
-              name: s.name,
-              numericId: s.numericId,
-              address: s.address,
-              priceUsdc: s.priceUsdc,
-              description: s.description,
-            })}
-          />
-          <Link
-            className="rounded-full border border-border/60 px-3 py-1 font-medium text-foreground text-xs transition-colors group-hover:bg-secondary"
-            href={`/${s.address}`}
-          >
-            Use it →
-          </Link>
-        </div>
+      <hr className="my-3.5 border-border/50" />
+
+      <div className="flex items-center justify-between gap-2.5">
+        {sold > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/5 px-2 py-0.5 font-mono text-[10.5px] text-emerald-500">
+            <CheckIcon />
+            Verified
+          </span>
+        ) : refunds > 0 ? (
+          // Refund-only sellers are NOT a clean slate — say so.
+          <span className="font-mono text-[11px] text-destructive">
+            ⚠ 0 delivered · {refunds} refunded
+          </span>
+        ) : (
+          <span className="font-mono text-[11px] text-muted-foreground/50">
+            New listing
+          </span>
+        )}
+        {sold > 0 && (
+          <span className="font-mono text-[12px] text-muted-foreground/70 tabular-nums">
+            <b className="font-medium text-foreground">{sold}</b> sold ·{" "}
+            <b className="font-medium text-foreground">{s.stats?.buyers}</b>{" "}
+            buyers
+            {typeof s.stats?.deliveredRate === "number" && (
+              <>
+                {" "}
+                ·{" "}
+                <b className="font-medium text-foreground">
+                  {Math.round(s.stats.deliveredRate * 100)}%
+                </b>
+              </>
+            )}
+          </span>
+        )}
+      </div>
+
+      {/* The one-hop buy affordances (OKX "USE NOW"): copy the agent prompt
+          right from the grid, or open the listing. */}
+      <div className="relative z-10 mt-3 flex items-center justify-end gap-2">
+        <CopyButton
+          label="Copy prompt"
+          text={buildAgentPrompt({
+            name: s.name,
+            numericId: s.numericId,
+            address: s.address,
+            priceUsdc: s.priceUsdc,
+            description: s.description,
+          })}
+        />
+        <Link
+          className="rounded-full border border-border/60 px-3 py-1 font-medium text-foreground text-xs transition-colors group-hover:bg-secondary"
+          href={`/${s.address}`}
+        >
+          Use it →
+        </Link>
       </div>
     </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="10" viewBox="0 0 16 16" width="10">
+      <path
+        d="M3.5 8.5l3 3 6-7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
   );
 }
 
@@ -166,6 +199,20 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
         : services.filter((s) => (s.category ?? "other") === category);
     return sortServices(filtered, sort);
   }, [services, category, sort]);
+
+  // FEATURED is computed, never bought: the top receipt-backed seller
+  // (min 5 delivered sales) carries the flag.
+  const featuredAddress = useMemo(() => {
+    let best: ServiceRow | null = null;
+    for (const s of services) {
+      if ((s.stats?.sales ?? 0) >= 5) {
+        if (!best || (s.stats?.sales ?? 0) > (best.stats?.sales ?? 0)) {
+          best = s;
+        }
+      }
+    }
+    return best?.address ?? null;
+  }, [services]);
 
   const SORTS: { id: SortKey; label: string }[] = [
     { id: "featured", label: "Featured" },
@@ -244,9 +291,13 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((s) => (
-            <ServiceCard key={s.address} s={s} />
+            <ServiceCard
+              featured={s.address === featuredAddress}
+              key={s.address}
+              s={s}
+            />
           ))}
         </div>
       )}
