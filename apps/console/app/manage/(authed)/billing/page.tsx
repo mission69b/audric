@@ -23,7 +23,7 @@ export default async function BillingPage() {
   return (
     <div className="max-w-[760px]">
       <PanelHead
-        sub="Both balances in one place. Marketplace USDC funds buys and holds your earnings; Credit funds Private API calls."
+        sub="Both balances in one place. Marketplace USDC funds buys and holds your earnings; Credit funds the Private API and Audric — one shared balance."
         title="Wallet & billing"
       />
 

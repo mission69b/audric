@@ -104,7 +104,7 @@ export default async function OverviewPage() {
           color="var(--ag-accent)"
           href="/manage/billing"
           label="Credit"
-          unit="Private API"
+          unit="Private API + Audric"
           value={`$${credit}`}
         />
       </div>
@@ -125,7 +125,7 @@ export default async function OverviewPage() {
             style={{ background: "var(--ag-accent)" }}
           />
           <b className="text-foreground">Credit</b> → model calls on the
-          Private API only.
+          Private API and in Audric chat — one shared balance.
         </span>
       </div>
 

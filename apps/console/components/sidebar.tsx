@@ -179,7 +179,7 @@ export function Sidebar({
               "marketplace",
               "var(--ag-verify)",
             ],
-            ["Credit", `$${balance}`, "Private API", "var(--ag-accent)"],
+            ["Credit", `$${balance}`, "Private API + Audric", "var(--ag-accent)"],
           ] as const
         ).map(([k, v, note, c], i) => (
           <div

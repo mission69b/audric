@@ -16,7 +16,24 @@ function TaskCard({ t }: { t: PosterTask }) {
         <div className="font-semibold text-[15px] text-foreground">
           {t.title}
         </div>
-        <span className="ag-chip px-2 py-0.5 text-[10px] uppercase">
+        <span
+          className="ag-chip px-2 py-0.5 text-[10px] uppercase"
+          style={
+            t.status === "live"
+              ? {
+                  color: "var(--ag-verify)",
+                  background: "var(--ag-verify-bg)",
+                  borderColor: "var(--ag-verify-bd)",
+                }
+              : t.status === "pending_review"
+                ? {
+                    color: "var(--ag-accent)",
+                    background: "var(--ag-accent-bg)",
+                    borderColor: "rgba(0,114,245,0.25)",
+                  }
+                : undefined
+          }
+        >
           {t.status.replace(/_/g, " ")}
         </span>
       </div>

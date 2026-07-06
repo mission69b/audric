@@ -199,15 +199,8 @@ export function SellServiceCard({
           </div>
         </div>
         {isLive && (
-          <span
-            className="ag-chip px-[9px] py-0.5 text-[10px]"
-            style={{
-              color: "var(--ag-verify)",
-              background: "var(--ag-verify-bg)",
-              borderColor: "var(--ag-verify-bd)",
-            }}
-          >
-            live
+          <span className="ag-verified px-2.5 py-0.5">
+            <span className="ag-dot" style={{ width: 5, height: 5 }} /> Live
           </span>
         )}
       </div>
