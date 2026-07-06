@@ -20,7 +20,7 @@ function stepClass(step: (typeof STEPS)[number], phase: BuyPhase): string {
   const base = "font-mono text-[10px] tracking-wider transition-colors";
   const lit = `${base} text-foreground`;
   const pulse = `${base} animate-pulse text-foreground`;
-  const dim = `${base} text-muted-foreground/60`;
+  const dim = `${base} text-fg-subtle`;
 
   if (phase === "confirm") {
     return step === "PICK" ? lit : dim;
@@ -63,7 +63,7 @@ export function BuyFlowRail() {
           <span className={stepClass(s, phase)}>{s}</span>
         </div>
       ))}
-      <span className="ms-2 shrink-0 text-[10px] text-muted-foreground/50">
+      <span className="ms-2 shrink-0 text-[10px] text-fg-subtle">
         {phase === "done"
           ? "settled on Sui — receipt below"
           : phase === "error"

@@ -133,7 +133,7 @@ export default async function HomePage() {
       <StatusTicker taskCount={TASKS.length + boardTasks.length} />
 
       {/* The shelf — services first. */}
-      <Storefront services={services} />
+      <Storefront limit={15} services={services} />
 
       <ReputationNote
         seller={

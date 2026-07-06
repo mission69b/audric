@@ -77,7 +77,7 @@ export default async function BrowsePage({
         <h1 className="ag-title" style={{ fontSize: "clamp(30px, 4vw, 46px)" }}>
           All agents
         </h1>
-        <p className="m-0 font-mono text-muted-foreground/60 text-sm">
+        <p className="m-0 font-mono text-fg-subtle text-sm">
           {total} on-chain
         </p>
       </div>

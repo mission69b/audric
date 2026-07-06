@@ -90,7 +90,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
               </span>
             )}
           </div>
-          <div className="mt-0.5 font-mono text-[11.5px] text-muted-foreground/60">
+          <div className="mt-0.5 font-mono text-[11.5px] text-fg-subtle">
             {s.numericId != null && <>#{s.numericId} · </>}
             {categoryLabel(s.category ?? "other")}
           </div>
@@ -99,7 +99,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
           <div className="font-medium font-mono text-[15px] text-foreground tabular-nums">
             ${s.priceUsdc}
           </div>
-          <div className="mt-px font-mono text-[10.5px] text-muted-foreground/60">
+          <div className="mt-px font-mono text-[10.5px] text-fg-subtle">
             / call
           </div>
         </div>
@@ -127,7 +127,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
             ⚠ 0 delivered · {refunds} refunded
           </span>
         ) : (
-          <span className="font-mono text-[11px] text-muted-foreground/50">
+          <span className="font-mono text-[11px] text-fg-subtle">
             New listing
           </span>
         )}
@@ -169,7 +169,14 @@ function CheckIcon() {
   );
 }
 
-export function Storefront({ services }: { services: ServiceRow[] }) {
+export function Storefront({
+  services,
+  limit,
+}: {
+  services: ServiceRow[];
+  /** Cap the shelf (the home shows 15 = 5 rows; /browse has everything). */
+  limit?: number;
+}) {
   const [category, setCategory] = useState<string>("all");
   const [sort, setSort] = useState<SortKey>("featured");
 
@@ -188,8 +195,9 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
       category === "all"
         ? services
         : services.filter((s) => (s.category ?? "other") === category);
-    return sortServices(filtered, sort);
-  }, [services, category, sort]);
+    const sorted = sortServices(filtered, sort);
+    return limit ? sorted.slice(0, limit) : sorted;
+  }, [services, category, sort, limit]);
 
   // FEATURED is computed, never bought: the top receipt-backed seller
   // (min 5 delivered sales) carries the flag.
@@ -216,11 +224,11 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="ag-eyebrow mb-3">{"// THE STORE"}</div>
-          <h2 className="ag-title" style={{ fontSize: "clamp(24px, 2.6vw, 32px)" }}>
+          <h2 className="ag-title">
             Agents on the job.
           </h2>
         </div>
-        <p className="m-0 max-w-[340px] text-muted-foreground/70 text-sm leading-relaxed">
+        <p className="m-0 max-w-[340px] text-fg-muted text-sm leading-relaxed">
           Live on mainnet, sold for real. Pay per call, in cents — every sold
           count is a receipt on Sui.
         </p>
@@ -266,7 +274,7 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
           <p className="text-muted-foreground text-sm">
             No services listed yet.
           </p>
-          <p className="mt-1 text-muted-foreground/60 text-xs">
+          <p className="mt-1 text-fg-subtle text-xs">
             Wrap any API into a paid endpoint in one command —{" "}
             <Link
               className="text-foreground underline underline-offset-4"

@@ -124,7 +124,7 @@ export default async function TasksPage() {
                   <div className="font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
                     {v}
                   </div>
-                  <div className="mt-1 font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+                  <div className="mt-1 font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
                     {k}
                   </div>
                 </div>
@@ -148,7 +148,7 @@ export default async function TasksPage() {
           </span>
           <span className="flex-1" />
           <div className="min-w-[280px]">
-            <div className="mb-1.5 flex justify-between gap-4 font-mono text-[11px] text-muted-foreground/60">
+            <div className="mb-1.5 flex justify-between gap-4 font-mono text-[11px] text-fg-subtle">
               <span>Campaign budget</span>
               <span>
                 <b className="text-foreground">
@@ -170,7 +170,7 @@ export default async function TasksPage() {
       {/* The board — one filterable grid; forms live on the detail pages. */}
       <TaskBoard cards={cards} />
 
-      <p className="mt-5 flex items-center gap-2 font-mono text-muted-foreground/60 text-xs">
+      <p className="mt-5 flex items-center gap-2 font-mono text-fg-subtle text-xs">
         <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
           <path
             d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
@@ -185,7 +185,7 @@ export default async function TasksPage() {
       {/* Post-a-task lives in the modal (design §PostTaskModal); one more
           entry point under the board. Fine print stays one mono line. */}
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-        <p className="m-0 max-w-xl text-muted-foreground/60 text-xs leading-relaxed">
+        <p className="m-0 max-w-xl text-fg-subtle text-xs leading-relaxed">
           One reward per wallet per task; nothing retroactive. Wash trades,
           sybils, and self-dealing disqualify. Budgets are caps — a task pauses
           when its budget is spent.

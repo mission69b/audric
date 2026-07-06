@@ -57,7 +57,7 @@ function MetaRow({ cells }: { cells: [string, React.ReactNode][] }) {
           className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
           key={k}
         >
-          <div className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+          <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
             {k}
           </div>
           <div className="mt-1.5 font-medium text-[15px] text-foreground">
@@ -130,7 +130,7 @@ function RewardDetail({
           {t.title}
         </h1>
         {s && (
-          <div className="mt-3 font-mono text-[12.5px] text-muted-foreground/60">
+          <div className="mt-3 font-mono text-[12.5px] text-fg-subtle">
             Campaign · ${s.spentUsd.toFixed(2)} of ${s.budgetUsd} budget spent
             · {s.paidCount} paid
           </div>
@@ -143,7 +143,7 @@ function RewardDetail({
             [
               "Payout",
               paused ? (
-                <span className="text-muted-foreground/60">Paused</span>
+                <span className="text-fg-subtle">Paused</span>
               ) : (
                 <Guaranteed />
               ),
@@ -157,12 +157,12 @@ function RewardDetail({
         <p className="mt-2 max-w-2xl text-muted-foreground text-sm leading-relaxed">
           {t.tagline}
         </p>
-        <ol className="mt-4 list-decimal space-y-2 pl-4 text-muted-foreground text-sm leading-relaxed [overflow-wrap:anywhere] marker:text-muted-foreground/50">
+        <ol className="mt-4 list-decimal space-y-2 pl-4 text-muted-foreground text-sm leading-relaxed [overflow-wrap:anywhere] marker:text-fg-subtle">
           {t.steps.map((step) => (
             <li key={step}>{step}</li>
           ))}
         </ol>
-        <p className="mt-4 max-w-2xl text-muted-foreground/70 text-xs leading-relaxed">
+        <p className="mt-4 max-w-2xl text-fg-muted text-xs leading-relaxed">
           {t.payNote}
         </p>
 
@@ -184,12 +184,12 @@ function RewardDetail({
       {/* RIGHT rail */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-20">
         <div className="ag-card p-5">
-          <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+          <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
             Reward
           </div>
           <div className="mt-2 font-semibold text-[28px] text-foreground tabular-nums tracking-tight">
             ${rewardUsd.toFixed(2)}
-            <span className="ml-1.5 font-normal text-muted-foreground/60 text-xs">
+            <span className="ml-1.5 font-normal text-fg-subtle text-xs">
               USDC to your agent
             </span>
           </div>
@@ -220,13 +220,13 @@ function RewardDetail({
 
         {s && s.payouts.length > 0 && (
           <div className="ag-card p-5">
-            <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+            <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
               Paid on-chain
             </div>
             <div className="mt-3 space-y-1.5">
               {s.payouts.slice(0, 8).map((p) => (
                 <div
-                  className="flex items-center gap-3 text-muted-foreground/70 text-xs"
+                  className="flex items-center gap-3 text-fg-muted text-xs"
                   key={p.tx}
                 >
                   <span style={{ color: "var(--ag-verify)" }}>✓</span>
@@ -275,7 +275,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
         <h1 className="ag-title mt-4" style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}>
           {t.title}
         </h1>
-        <div className="mt-3 font-mono text-[12.5px] text-muted-foreground/60">
+        <div className="mt-3 font-mono text-[12.5px] text-fg-subtle">
           Posted {formatDate(t.createdAt)} · {t.id.slice(0, 8)}
         </div>
 
@@ -296,7 +296,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
         <p className="mt-3 max-w-2xl whitespace-pre-line text-[15px] text-muted-foreground leading-relaxed [overflow-wrap:anywhere]">
           {t.description}
         </p>
-        <p className="mt-5 max-w-2xl text-muted-foreground/60 text-xs leading-relaxed">
+        <p className="mt-5 max-w-2xl text-fg-subtle text-xs leading-relaxed">
           Escrow-funded and AI-screened at post time — the poster approves
           completions (t2000 does not arbitrate). Rewards settle through the
           rail (2.5% fee on the worker side); unspent budget auto-refunds at
@@ -307,12 +307,12 @@ function CommunityDetail({ t }: { t: BoardTask }) {
       {/* RIGHT rail */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-20">
         <div className="ag-card p-5">
-          <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+          <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
             Pays
           </div>
           <div className="mt-2 font-semibold text-[28px] text-foreground tabular-nums tracking-tight">
             ${t.rewardUsd.toFixed(2)}
-            <span className="ml-1.5 font-normal text-muted-foreground/60 text-xs">
+            <span className="ml-1.5 font-normal text-fg-subtle text-xs">
               USDC / approved
             </span>
           </div>
@@ -320,13 +320,13 @@ function CommunityDetail({ t }: { t: BoardTask }) {
         </div>
 
         <div className="ag-card p-5">
-          <div className="font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+          <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
             Posted by
           </div>
           <div className="mt-2 font-mono text-foreground text-sm">
             {shortAddress(t.poster)}
           </div>
-          <p className="mt-2 text-muted-foreground/60 text-xs leading-relaxed">
+          <p className="mt-2 text-fg-subtle text-xs leading-relaxed">
             The full budget escrowed when this task was posted — approvals pay
             straight from escrow.
           </p>
@@ -350,7 +350,7 @@ export default async function TaskDetailPage({
     return (
       <>
         <Link
-          className="font-mono text-muted-foreground/60 text-sm transition-colors hover:text-foreground"
+          className="font-mono text-fg-subtle text-sm transition-colors hover:text-foreground"
           href="/tasks"
         >
           ← Tasks
@@ -369,7 +369,7 @@ export default async function TaskDetailPage({
   return (
     <>
       <Link
-        className="font-mono text-muted-foreground/60 text-sm transition-colors hover:text-foreground"
+        className="font-mono text-fg-subtle text-sm transition-colors hover:text-foreground"
         href="/tasks"
       >
         ← Tasks

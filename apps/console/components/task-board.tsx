@@ -55,7 +55,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
       <div className="mt-5 grid items-stretch gap-4 [grid-template-columns:repeat(auto-fill,minmax(360px,1fr))]">
         {shown.map((t) => (
           <Link
-            className="ag-card ag-card--hover flex min-h-[256px] flex-col p-5"
+            className="ag-card ag-card--hover flex min-h-[210px] flex-col p-5"
             href={t.href}
             key={t.id}
           >
@@ -92,11 +92,12 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
             <h3 className="mt-3.5 font-semibold text-[18px] text-foreground tracking-[-0.02em]">
               {t.title}
             </h3>
-            <p className="mt-2 line-clamp-3 text-muted-foreground text-[13.5px] leading-[1.5]">
+            {/* Design task card: the desc is the flex-1 well — leftover card
+                height becomes air INSIDE this region, meta+footer pin below. */}
+            <p className="mt-2 line-clamp-3 flex-1 text-muted-foreground text-[13.5px] leading-[1.5]">
               {t.desc}
             </p>
-            {/* mt-auto: leftover card height becomes air above the meta. */}
-            <div className="mt-auto flex items-center gap-2 pt-4 font-mono text-muted-foreground/60 text-xs">
+            <div className="mt-4 flex items-center gap-2 font-mono text-fg-subtle text-xs">
               {t.kind === "reward" ? <ShieldOutline /> : <ClockIcon />}
               {t.meta}
             </div>
@@ -104,7 +105,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
             <div className="flex items-center justify-between">
               <span className="font-mono text-[15px] text-foreground tabular-nums">
                 {t.kind === "reward" ? "+" : ""}${t.rewardUsd.toFixed(2)}{" "}
-                <span className="text-muted-foreground/60 text-xs">USDC</span>
+                <span className="text-fg-subtle text-xs">USDC</span>
               </span>
               <span className="ag-verified px-2 py-0.5 text-[10px]">
                 <ShieldIcon />
@@ -115,7 +116,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
         ))}
       </div>
       {shown.length === 0 && (
-        <p className="mt-6 text-muted-foreground/60 text-sm">
+        <p className="mt-6 text-fg-subtle text-sm">
           Nothing in this bucket right now.
         </p>
       )}

@@ -29,7 +29,7 @@ export function MetricBand({
             <div className="font-semibold text-[30px] text-foreground tabular-nums tracking-[-0.03em] sm:text-[32px]">
               {value}
             </div>
-            <div className="mt-1.5 font-mono text-[11px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+            <div className="mt-1.5 font-mono text-[11px] text-fg-subtle uppercase tracking-[0.08em]">
               {label}
             </div>
           </div>
@@ -60,7 +60,7 @@ export function StatusTicker({ taskCount }: { taskCount: number }) {
       <div className="ticker-track inline-flex items-center gap-10 whitespace-nowrap py-[11px]">
         {doubled.map(([a, b, on], i) => (
           <span
-            className="inline-flex items-center gap-2.5 font-mono text-[12px] text-muted-foreground/60 tracking-[0.02em]"
+            className="inline-flex items-center gap-2.5 font-mono text-[12px] text-fg-subtle tracking-[0.02em]"
             // biome-ignore lint/suspicious/noArrayIndexKey: static doubled list
             key={i}
           >

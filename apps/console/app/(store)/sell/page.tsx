@@ -1,27 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
-import { HowItWorks, SELLER_STEPS } from "@/components/how-it-works";
 
-// agents.t2000.ai/sell — the seller on-ramp. Everything here is copy-paste
-// (prompts-as-onboarding): one install line, then each path is 1–2 commands.
-// The store home stays inventory-first; this page owns the "earn" pitch.
+// agents.t2000.ai/sell — the seller on-ramp, per t2000-design/agents
+// SellPage.jsx: hero → two paths → ONE five-step timeline → closer. One
+// clear road from install to paid; the browser lane and the
+// paste-into-your-agent prompt are alternatives, not parallel funnels.
 
 export const metadata: Metadata = {
   title: "Sell — your agent can earn money",
   description:
     "List what your agent does, set a price, get paid per call in USDC. Start in the browser with Google sign-in, or from the CLI. No listing review — buyers pay first, and every sale settles on Sui.",
 };
-
-const CATEGORIES = [
-  "ai-models",
-  "data-feeds",
-  "finance",
-  "research",
-  "dev-tools",
-  "creative",
-  "other",
-];
 
 // Prompt-first seller onboarding — paste into Claude Code / Cursor / any
 // agent with a terminal, and it walks you through listing (the OKX
@@ -120,133 +110,133 @@ export default function SellPage() {
         ))}
       </div>
 
-      {/* Browser lane — Passport sellers need no terminal at all. */}
-      <div className="ag-card mt-6 p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="font-medium text-foreground text-sm">
-            No terminal? List from the browser
+      {/* ONE road (design §Timeline): five steps, install → paid. Real
+          commands only. The browser lane and the paste-into-your-agent
+          prompt appear once, as alternatives — not parallel funnels. */}
+      <section
+        className="-mx-6 mt-12 border-t px-6 scroll-mt-20"
+        id="steps"
+        style={{ background: "#121212", borderColor: "var(--ag-border)" }}
+      >
+        <div className="py-12">
+          <div className="ag-eyebrow">{"// FIVE STEPS TO YOUR FIRST SALE"}</div>
+          <h2 className="ag-title mt-3" style={{ fontSize: "clamp(26px, 3vw, 40px)" }}>
+            From install to paid.
+          </h2>
+
+          <div className="relative mt-9">
+            <div
+              aria-hidden="true"
+              className="absolute top-5 bottom-5 left-[19px] w-px"
+              style={{ background: "var(--ag-border)" }}
+            />
+            <div className="flex flex-col gap-7">
+              {(
+                [
+                  {
+                    n: 1,
+                    title: "Install the agent wallet",
+                    body: "One line brings the wallet, spend limits, MCP server, and skills.",
+                    code: "npm i -g @t2000/cli",
+                    done: false,
+                  },
+                  {
+                    n: 2,
+                    title: "Create your wallet + Agent ID",
+                    body: "A local keypair and a free on-chain identity — gasless, no funding needed. No terminal? Sign in with Google at Manage and tap Create your Agent ID instead.",
+                    code: "t2 init",
+                    done: false,
+                  },
+                  {
+                    n: 3,
+                    title: "Write your storefront card",
+                    body: "Name + description ARE the card buyers see. Pick a category so the store chips find you.",
+                    code: 't2 agent profile --name "FX Oracle" --description "Live rates, one call." --category finance',
+                    done: false,
+                  },
+                  {
+                    n: 4,
+                    title: "List the service",
+                    body: "Wrap an API you already use (t2000 hosts the proxy, your key stays encrypted) — or point at your own endpoint with t2 agent service.",
+                    code: "t2 agent deploy --upstream <https url> --price 0.02",
+                    done: false,
+                  },
+                  {
+                    n: 5,
+                    title: "Get paid on delivery",
+                    body: "Buyers pay into escrow; on delivery the net lands in your wallet (2.5% fee) and the receipt compounds your reputation.",
+                    code: "✓ settled · t2 agent earnings",
+                    done: true,
+                  },
+                ] as const
+              ).map((s) => (
+                <div className="relative flex gap-5" key={s.n}>
+                  <div
+                    className="z-10 flex size-10 shrink-0 items-center justify-center rounded-full font-mono font-semibold text-sm"
+                    style={
+                      s.done
+                        ? {
+                            background: "var(--ag-verify-bg)",
+                            border: "1px solid var(--ag-verify-bd)",
+                            color: "var(--ag-verify)",
+                          }
+                        : {
+                            background: "var(--ag-card)",
+                            border: "1px solid var(--ag-border-hi)",
+                            color: "var(--fg)",
+                          }
+                    }
+                  >
+                    {s.n}
+                  </div>
+                  <div className="flex-1 pt-0.5">
+                    <h3 className="m-0 font-semibold text-[17px] text-foreground tracking-[-0.02em]">
+                      {s.title}
+                    </h3>
+                    <p className="mt-1.5 mb-3 max-w-[560px] text-fg-muted text-sm leading-[1.55]">
+                      {s.body}
+                    </p>
+                    <div className="ag-term max-w-[560px]">
+                      <div className="body" style={{ fontSize: 12.5, padding: "12px 14px" }}>
+                        {s.done ? (
+                          <span className="g">{s.code}</span>
+                        ) : (
+                          <>
+                            <span className="m">$ </span>
+                            {s.code}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <Link
-            className="text-foreground text-xs underline underline-offset-4 transition-colors hover:text-muted-foreground"
-            href="/manage"
-          >
-            Sign in with Google →
-          </Link>
-        </div>
-        <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-          Your Passport is your first agent. Sign in at{" "}
-          <Link
-            className="text-foreground underline underline-offset-4"
-            href="/manage"
-          >
-            Manage
-          </Link>{" "}
-          → tap{" "}
-          <span className="font-medium text-foreground">
-            Create your Agent ID
-          </span>{" "}
-          (one tap, sponsored) → set your name, description, price, and category
-          from <span className="font-medium text-foreground">My agents</span> —
-          every change zkLogin-signed, no keys to handle. Agents you own are
-          editable the same way, straight from their store listing.
-        </p>
-        <p className="mt-2 text-muted-foreground/60 text-xs">
-          Wrap-an-API deploys work in the browser too — pick "Wrap an API" on the sell card under{" "}
-          <Link className="underline underline-offset-4" href="/manage/agents">
-            My agents
-          </Link>{" "}
-          wraps any API you hold a key for (stored encrypted, injected only
-          inside the paid flow), same as{" "}
-          <span className="font-mono">t2 agent deploy</span>.
-        </p>
-      </div>
 
-      <p className="mt-3 text-muted-foreground/60 text-xs">
-        Both start from one install:{" "}
-        <span className="font-mono">npm i -g @t2000/cli</span> then{" "}
-        <span className="font-mono">t2 init</span> (wallet + free on-chain
-        Agent ID, gasless). Your listing is live at
-        agents.t2000.ai/&lt;your address&gt; within a minute; track sales with{" "}
-        <span className="font-mono">t2 agent earnings</span>.
-      </p>
-
-      {/* Prompt-first onboarding — let YOUR agent do the listing. */}
-      <div className="ag-card mt-8 p-5">
-        <div className="font-medium text-foreground text-sm">
-          Fastest path: paste this into your agent
-        </div>
-        <p className="mt-1 text-muted-foreground/70 text-xs">
-          Copy the prompt into Claude Code, Cursor, or any agent with a terminal
-          — it installs the CLI, registers your Agent ID, and walks you through
-          listing, asking for your details as it goes.
-        </p>
-        <div className="mt-3">
-          <CopyButton
-            full
-            label="Copy the seller prompt for your agent"
-            text={SELLER_PROMPT}
-          />
-        </div>
-      </div>
-
-      {/* The seller timeline — list → price → deliver → get paid → reputation. */}
-      <HowItWorks
-        heading="From listing to earning"
-        steps={SELLER_STEPS}
-        subheading="How selling works"
-      />
-
-      <section className="mt-10">
-        <h2 className="font-semibold text-foreground text-xl tracking-tight">
-          Make your listing sell
-        </h2>
-        <div className="mt-4 space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>
-            <span className="font-medium text-foreground">Pick a category</span>{" "}
-            so buyers find you in the store chips:{" "}
-            <span className="font-mono text-xs">{CATEGORIES.join(" · ")}</span>.
-            Set it at deploy time (
-            <span className="font-mono text-xs">--category</span>) or any time
-            with{" "}
-            <span className="font-mono text-xs">
-              t2 agent service --category finance
-            </span>
-            .
-          </p>
-          <p>
-            <span className="font-medium text-foreground">
-              Write the card copy
-            </span>{" "}
-            — your name + description are the storefront card.{" "}
-            <span className="font-mono text-xs">
-              t2 agent profile --name "FX Oracle" --description "Live
-              USD/EUR/JPY rates, one call."
-            </span>
-          </p>
-          <p>
-            <span className="font-medium text-foreground">
-              Reputation is automatic
-            </span>{" "}
-            — sold counts and settled volume come from on-chain settlement
-            receipts. No reviews to farm; deliver and the numbers are yours.
-          </p>
+          {/* The two alternatives, stated once. */}
+          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+            <CopyButton
+              label="Or paste the seller prompt into your agent"
+              text={SELLER_PROMPT}
+            />
+            <Link
+              className="text-fg-muted transition-colors hover:text-foreground"
+              href="/manage"
+            >
+              No terminal? Sign in with Google →
+            </Link>
+            <a
+              className="text-fg-subtle transition-colors hover:text-foreground"
+              href="https://developers.t2000.ai/commerce/sell"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Full guide ↗
+            </a>
+          </div>
         </div>
       </section>
-
-      <div className="mt-8 flex flex-wrap gap-4 text-sm">
-        <a
-          className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
-          href="https://developers.t2000.ai/commerce/sell"
-        >
-          How selling works →
-        </a>
-        <a
-          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
-          href="https://developers.t2000.ai/agent-id"
-        >
-          What is Agent ID? →
-        </a>
-      </div>
 
       {/* Closer (design §SellCloser). */}
       <section className="ag-card mt-12 px-6 py-12 text-center">

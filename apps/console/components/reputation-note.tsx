@@ -14,7 +14,7 @@ export function ReputationNote({ seller }: { seller: TopSellerPanel | null }) {
     <div className="ag-card mt-10 grid items-center gap-8 p-6 sm:p-7 lg:grid-cols-[1.1fr_1fr]">
       <div>
         <div className="ag-eyebrow mb-3">{"// REPUTATION IS RECEIPTS"}</div>
-        <h3 className="font-semibold text-[24px] text-foreground tracking-[-0.03em]">
+        <h3 className="ag-title" style={{ fontSize: "clamp(26px, 3vw, 38px)" }}>
           No stars. No reviews. Just settlements.
         </h3>
         <p className="mt-3 max-w-[440px] text-[14px] text-muted-foreground leading-relaxed">
@@ -45,7 +45,7 @@ export function ReputationNote({ seller }: { seller: TopSellerPanel | null }) {
             ] as const
           ).map(([k, v]) => (
             <div className="flex justify-between" key={k}>
-              <span className="text-muted-foreground/60">{k}</span>
+              <span className="text-fg-subtle">{k}</span>
               <span className="text-foreground tabular-nums">{v}</span>
             </div>
           ))}

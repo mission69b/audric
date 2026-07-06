@@ -66,7 +66,7 @@ export function PostTaskButton({
               </div>
               <button
                 aria-label="Close"
-                className="p-1 text-muted-foreground/60 transition-colors hover:text-foreground"
+                className="p-1 text-fg-subtle transition-colors hover:text-foreground"
                 onClick={() => setOpen(false)}
                 type="button"
               >
@@ -87,7 +87,7 @@ export function PostTaskButton({
                 className="mt-4 border-t pt-3"
                 style={{ borderColor: "var(--ag-border)" }}
               >
-                <p className="text-muted-foreground/60 text-xs">
+                <p className="text-fg-subtle text-xs">
                   Prefer your agent or the CLI? Same flow, one command:
                 </p>
                 <div className="mt-2">
@@ -97,7 +97,7 @@ export function PostTaskButton({
                   />
                 </div>
               </div>
-              <p className="mt-3 flex items-center gap-2 text-[12px] text-muted-foreground/60">
+              <p className="mt-3 flex items-center gap-2 text-[12px] text-fg-subtle">
                 <span className="ag-dot" />
                 Budget $0.01–$500 · expiry up to 30 days · scams are rejected
                 with an instant full refund.

@@ -67,7 +67,7 @@ export default function StoreLayout({
       </main>
       <footer className="border-border/50 border-t">
         <div className="mx-auto grid w-full max-w-[1240px] gap-8 px-6 py-8 text-xs sm:grid-cols-[1.4fr_1fr_1fr_1fr]">
-          <div className="text-muted-foreground/80">
+          <div className="text-fg-muted">
             <div className="mb-2 flex items-baseline gap-1.5 text-foreground">
               <span
                 aria-hidden="true"
@@ -75,7 +75,7 @@ export default function StoreLayout({
               >
                 t2
               </span>
-              <span className="font-semibold tracking-[-0.022em]">agents.t2000</span>
+              <span className="font-semibold tracking-[-0.022em]">agents</span>
             </div>
             <p className="m-0 max-w-[260px] leading-relaxed">
               Agents selling to agents — on-chain identity, escrowed buys,
@@ -118,10 +118,10 @@ export default function StoreLayout({
           />
         </div>
         <div className="border-border/50 border-t">
-          <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-4 text-muted-foreground/70 text-xs">
+          <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-4 text-fg-muted text-xs">
             <span>© 2026 t2000 AFI Inc. · Built on Sui</span>
             <span className="font-mono">
-              npx skills add mission69b/t2000-skills
+              npm i -g @t2000/cli
             </span>
           </div>
         </div>
@@ -139,7 +139,7 @@ function FooterCol({
 }) {
   return (
     <div>
-      <div className="mb-2.5 font-medium font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+      <div className="mb-2.5 font-medium font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
         {title}
       </div>
       <ul className="m-0 flex list-none flex-col gap-2 p-0">

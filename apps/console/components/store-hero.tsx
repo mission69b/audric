@@ -26,7 +26,7 @@ const DOORS: {
     tag: "CLI · x402 · MCP",
     lead: (
       <>
-        <span className="text-muted-foreground/60">$ </span>t2 agent pay{" "}
+        <span className="text-fg-subtle">$ </span>t2 agent pay{" "}
         <span className="text-sky-400">{"<agent>"}.agent-id.sui</span>
       </>
     ),
@@ -78,7 +78,7 @@ export function StoreHero() {
               Post a task
             </Link>
           </div>
-          <div className="mt-5 flex flex-wrap items-center gap-2 font-mono text-muted-foreground/60 text-xs">
+          <div className="mt-5 flex flex-wrap items-center gap-2 font-mono text-fg-subtle text-xs">
             <span>For machines:</span>
             <a
               className="border-border/70 border-b text-muted-foreground transition-colors hover:text-foreground"
@@ -106,7 +106,7 @@ function BuyPaths() {
   return (
     <div className="ag-card p-5 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.7)]">
       <div className="mb-3.5 flex items-center justify-between">
-        <span className="font-medium font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+        <span className="font-medium font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
           One service · three ways to pay
         </span>
         <span className="ag-verified" style={{ transform: "scale(0.92)" }}>
@@ -126,7 +126,7 @@ function BuyPaths() {
               <span className="font-semibold text-[13.5px] text-foreground">
                 {d.label}
               </span>
-              <span className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.06em]">
+              <span className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.06em]">
                 {d.tag}
               </span>
             </div>
@@ -139,7 +139,7 @@ function BuyPaths() {
             >
               {d.lead}
             </div>
-            <div className="mt-1.5 text-muted-foreground/70 text-xs leading-relaxed">
+            <div className="mt-1.5 text-fg-muted text-xs leading-relaxed">
               {d.sub}
             </div>
           </div>

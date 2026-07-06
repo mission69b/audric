@@ -57,11 +57,11 @@ export function HowItWorks({
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-semibold text-foreground text-xl tracking-tight">
+        <h2 className="ag-title" style={{ fontSize: "clamp(24px, 2.6vw, 34px)" }}>
           {heading}
         </h2>
         {subheading && (
-          <span className="text-muted-foreground/60 text-xs">{subheading}</span>
+          <span className="text-fg-subtle text-xs">{subheading}</span>
         )}
       </div>
 
@@ -102,7 +102,7 @@ export function HowItWorks({
                     className={`font-mono text-[11px] tracking-wider transition-colors ${
                       isActive
                         ? "text-foreground"
-                        : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                        : "text-fg-subtle group-hover:text-muted-foreground"
                     }`}
                   >
                     {s.label}
@@ -117,7 +117,7 @@ export function HowItWorks({
         <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl bg-background/60 p-4 sm:flex-row sm:items-center">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="rounded border border-border/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/70 tracking-wider">
+              <span className="rounded border border-border/60 px-1.5 py-0.5 font-mono text-[10px] text-fg-muted tracking-wider">
                 {step.actor}
               </span>
               <span className="font-medium text-foreground text-sm">
@@ -131,7 +131,7 @@ export function HowItWorks({
           <div className="flex shrink-0 gap-5 border-border/50 sm:border-l sm:pl-5">
             {step.facts.map(([k, v]) => (
               <div key={k}>
-                <div className="font-mono text-[10px] text-muted-foreground/50 uppercase tracking-wider">
+                <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-wider">
                   {k}
                 </div>
                 <div className="mt-0.5 font-mono text-foreground text-xs">
@@ -143,7 +143,7 @@ export function HowItWorks({
         </div>
 
         {footer && (
-          <div className="mt-3 text-muted-foreground/60 text-xs">{footer}</div>
+          <div className="mt-3 text-fg-subtle text-xs">{footer}</div>
         )}
       </div>
     </section>
@@ -201,60 +201,6 @@ export const BUYER_STEPS: Step[] = [
     facts: [
       ["ledger", "on-chain"],
       ["reputation", "receipt-backed"],
-    ],
-  },
-];
-
-/** The seller timeline — mirrors the buyer flow on /sell. */
-export const SELLER_STEPS: Step[] = [
-  {
-    label: "LIST",
-    actor: "YOU",
-    title: "Give your agent a name",
-    body: "One command registers your agent on-chain. Free, no gas, no forms, no listing review. Your name and description are the storefront card.",
-    facts: [
-      ["cost", "free"],
-      ["identity", "on-chain"],
-    ],
-  },
-  {
-    label: "PRICE",
-    actor: "YOU",
-    title: "Point at what it does, set a price",
-    body: "Declare your own endpoint, or wrap an API you already use — t2000 hosts the proxy and your key stays encrypted. Priced per call, in cents.",
-    facts: [
-      ["price", "per call"],
-      ["server", "optional"],
-    ],
-  },
-  {
-    label: "DELIVER",
-    actor: "GATEWAY",
-    title: "Buyers pay first",
-    body: "The buyer's money is already in escrow when your endpoint is called. Do the work, return the response — one round trip.",
-    facts: [
-      ["escrow", "treasury"],
-      ["timeout", "15s"],
-    ],
-  },
-  {
-    label: "GET PAID",
-    actor: "GATEWAY",
-    title: "The money is yours, instantly",
-    body: "Delivery confirms and the net lands in your wallet, gasless. Failures refund the buyer on their own — you will never chase a dispute.",
-    facts: [
-      ["fee", "2.5%"],
-      ["payout", "instant"],
-    ],
-  },
-  {
-    label: "REPUTATION",
-    actor: "SUI",
-    title: "Your track record builds itself",
-    body: "Every delivered sale is a receipt on Sui. Sold counts, volume, delivered rate — earned, verifiable, and impossible to buy.",
-    facts: [
-      ["proof", "receipts"],
-      ["view", "t2 agent earnings"],
     ],
   },
 ];

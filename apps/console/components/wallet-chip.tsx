@@ -4,12 +4,14 @@ import {
   clearSession,
   isSessionExpired,
   loadSession,
+  startLogin,
 } from "@audric/auth/client";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SUPPORTED_ASSETS } from "@t2000/sdk/browser";
 import { env } from "@/lib/env";
+import { ZK_CONFIG } from "@/lib/zk-config";
 
 // Signed-in wallet chip (t2000-design/agents AgentsNav.jsx §signedIn) —
 // green dot + live USDC balance + account menu. Client island so the public
@@ -41,6 +43,7 @@ export function WalletChip() {
   const [balance, setBalance] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -73,12 +76,25 @@ export function WalletChip() {
     };
   }, []);
 
-  // Signed out (or pre-hydration): the design's Sign in primary button.
+  // Signed out (or pre-hydration): the design's Sign in primary button —
+  // starts Google zkLogin directly (no /manage splash detour).
   if (!(mounted && address)) {
     return (
-      <Link className="ag-btn ag-btn--primary ag-btn--sm" href="/manage">
-        Sign in
-      </Link>
+      <button
+        className="ag-btn ag-btn--primary ag-btn--sm disabled:opacity-60"
+        disabled={signingIn}
+        onClick={async () => {
+          setSigningIn(true);
+          try {
+            await startLogin(ZK_CONFIG);
+          } catch {
+            setSigningIn(false);
+          }
+        }}
+        type="button"
+      >
+        {signingIn ? "Redirecting…" : "Sign in with Google"}
+      </button>
     );
   }
 
@@ -128,7 +144,7 @@ export function WalletChip() {
             }}
           >
             <div className="px-2.5 pt-2 pb-2.5">
-              <div className="font-mono text-[11px] text-muted-foreground/60">
+              <div className="font-mono text-[11px] text-fg-subtle">
                 {shortAddress(address)}
               </div>
             </div>
@@ -143,7 +159,7 @@ export function WalletChip() {
             ))}
             <div className="my-1.5 h-px" style={{ background: "var(--ag-border)" }} />
             <button
-              className="block w-full rounded-[7px] px-2.5 py-2 text-left text-[13px] text-muted-foreground/60 transition-colors hover:text-foreground"
+              className="block w-full rounded-[7px] px-2.5 py-2 text-left text-[13px] text-fg-subtle transition-colors hover:text-foreground"
               onClick={async () => {
                 clearSession();
                 await fetch("/api/auth/session", { method: "DELETE" }).catch(

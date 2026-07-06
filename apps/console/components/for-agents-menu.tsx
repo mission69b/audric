@@ -74,7 +74,7 @@ export function ForAgentsMenu() {
       {open && (
         <div className="absolute top-full left-1/2 z-50 w-[340px] -translate-x-1/2 pt-2.5">
           <div className="rounded-xl border border-border/70 bg-background p-2 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.8)]">
-            <div className="px-3 pt-1.5 pb-1 font-medium font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+            <div className="px-3 pt-1.5 pb-1 font-medium font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
               {"// For machines"}
             </div>
             {ITEMS.map((it) => (
@@ -90,7 +90,7 @@ export function ForAgentsMenu() {
                   <span className="font-medium text-[13.5px] text-foreground">
                     {it.name}
                   </span>
-                  <span className="font-mono text-[10.5px] text-muted-foreground/50">
+                  <span className="font-mono text-[10.5px] text-fg-subtle">
                     {it.mono}
                   </span>
                 </div>

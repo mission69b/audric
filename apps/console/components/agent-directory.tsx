@@ -107,7 +107,7 @@ export function AgentDirectory({
               key={a.address}
             >
               {showRank && (
-                <span className="w-5 shrink-0 text-right font-mono text-muted-foreground/50 text-sm tabular-nums">
+                <span className="w-5 shrink-0 text-right font-mono text-fg-subtle text-sm tabular-nums">
                   {i + 1}
                 </span>
               )}
@@ -123,7 +123,7 @@ export function AgentDirectory({
                     {a.name}
                   </span>
                   {a.numericId != null && (
-                    <span className="font-mono text-muted-foreground/60 text-xs">
+                    <span className="font-mono text-fg-subtle text-xs">
                       #{a.numericId}
                     </span>
                   )}
@@ -142,7 +142,7 @@ export function AgentDirectory({
                     {a.description}
                   </div>
                 )}
-                <div className="mt-1 font-mono text-muted-foreground/50 text-xs">
+                <div className="mt-1 font-mono text-fg-subtle text-xs">
                   {shortAddress(a.address)}
                 </div>
               </div>
@@ -151,7 +151,7 @@ export function AgentDirectory({
               <div className="hidden shrink-0 text-right sm:block">
                 {selling && (a.stats?.sales ?? 0) > 0 ? (
                   <>
-                    <div className="font-mono text-muted-foreground/70 text-xs">
+                    <div className="font-mono text-fg-muted text-xs">
                       {a.stats?.sales} sold · {a.stats?.buyers} buyer
                       {(a.stats?.buyers ?? 0) === 1 ? "" : "s"}
                     </div>
@@ -177,7 +177,7 @@ export function AgentDirectory({
                     )}
                   </>
                 ) : (
-                  <span className="font-mono text-muted-foreground/50 text-xs">
+                  <span className="font-mono text-fg-subtle text-xs">
                     {selling ? "no sales yet" : "identity only"}
                   </span>
                 )}
@@ -185,7 +185,7 @@ export function AgentDirectory({
 
               {/* metric column changes with sort */}
               {sort === "Newest" ? (
-                <span className="w-24 shrink-0 text-right font-mono text-muted-foreground/60 text-xs">
+                <span className="w-24 shrink-0 text-right font-mono text-fg-subtle text-xs">
                   {formatDate(a.createdAt)}
                 </span>
               ) : sort === "Top earners" ? (
@@ -197,7 +197,7 @@ export function AgentDirectory({
                   className={`w-16 shrink-0 text-right font-mono text-sm tabular-nums ${
                     a.priceUsdc
                       ? "text-foreground"
-                      : "text-muted-foreground/50"
+                      : "text-fg-subtle"
                   }`}
                 >
                   {a.priceUsdc ? `$${a.priceUsdc}` : "—"}
@@ -207,7 +207,7 @@ export function AgentDirectory({
           );
         })}
         {rows.length === 0 && (
-          <div className="px-5 py-10 text-center text-muted-foreground/60 text-sm">
+          <div className="px-5 py-10 text-center text-fg-subtle text-sm">
             No agents match{query ? ` “${query}”` : " that filter"}.
           </div>
         )}
@@ -226,7 +226,7 @@ export function AgentDirectory({
           ) : (
             <span />
           )}
-          <span className="text-muted-foreground/50 text-xs">
+          <span className="text-fg-subtle text-xs">
             {offset + 1}–{Math.min(offset + pageSize, total)} of {total}
           </span>
           {hasNext ? (

@@ -50,12 +50,12 @@ export function UseItServiceRow({
                 <div className="font-mono text-[15px] text-foreground tabular-nums">
                   ${priceUsdc}
                 </div>
-                <div className="font-mono text-[10.5px] text-muted-foreground/60">
+                <div className="font-mono text-[10.5px] text-fg-subtle">
                   USDC / call · from your wallet
                 </div>
               </>
             ) : (
-              <div className="font-mono text-[11px] text-muted-foreground/60">
+              <div className="font-mono text-[11px] text-fg-subtle">
                 price on request
               </div>
             )}
@@ -96,7 +96,7 @@ export function UseItServiceRow({
 
           <div>{active?.body}</div>
 
-          <div className="mt-4 flex items-center gap-2 text-muted-foreground/60 text-xs">
+          <div className="mt-4 flex items-center gap-2 text-fg-subtle text-xs">
             <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--ag-verify)" }} />
             Paid from your USDC balance · escrowed, auto-refund if it
             doesn&apos;t deliver

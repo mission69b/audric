@@ -183,16 +183,16 @@ export function UseInAudric({
   }
   const href = `https://audric.ai/?q=${encodeURIComponent(question)}`;
 
+  // Design §UseItInline (audric tab): a lead line + ONE primary action.
   return (
-    <div className="mt-5 rounded-xl bg-background/60 p-4">
-      <div className="font-medium text-foreground text-sm">Use in Audric</div>
-      <p className="mt-1 text-muted-foreground/70 text-xs">
-        Ask the question this service answers — Audric offers it with the price
-        and you approve the ${priceUsdc} purchase with one tap. Same Google
-        sign-in, same Passport wallet.
+    <div>
+      <p className="m-0 max-w-[620px] text-[13px] text-fg-muted leading-[1.55]">
+        Just ask Audric the question this service answers — it offers the
+        service with the price, and you approve the ${priceUsdc} purchase with
+        one tap. Same Google sign-in, same Passport wallet.
       </p>
       <Link
-        className="mt-3 inline-block rounded-full border border-border/60 px-4 py-1.5 font-medium text-foreground text-xs transition-colors hover:bg-secondary"
+        className="ag-btn ag-btn--primary mt-4"
         href={href}
         rel="noreferrer"
         target="_blank"

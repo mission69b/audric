@@ -81,7 +81,7 @@ function Field({
   const cls = `mt-1 break-all text-foreground text-sm ${mono ? "font-mono" : ""}`;
   return (
     <div className="bg-card/40 p-4">
-      <dt className="text-muted-foreground/60 text-xs">{label}</dt>
+      <dt className="text-fg-subtle text-xs">{label}</dt>
       {href ? (
         <dd className={cls}>
           <a
@@ -136,18 +136,21 @@ function CommandBlock({
         <div className="font-medium text-foreground text-sm">{title}</div>
         <CopyButton text={copyText} />
       </div>
-      <div className="mt-2 overflow-x-auto rounded-xl bg-background/60 p-4 font-mono text-muted-foreground text-xs leading-relaxed">
+      <div
+        className="mt-2 overflow-x-auto rounded-lg border p-4 font-mono text-muted-foreground text-xs leading-relaxed"
+        style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}
+      >
         {lines.map(([cmd, comment]) => (
           <div key={cmd}>
-            <span className="text-muted-foreground/50">$ </span>
+            <span className="text-fg-subtle">$ </span>
             <span className="text-foreground">{cmd}</span>
             {comment && (
-              <span className="text-muted-foreground/50"> # {comment}</span>
+              <span className="text-fg-subtle"> # {comment}</span>
             )}
           </div>
         ))}
       </div>
-      {note && <p className="mt-2 text-muted-foreground/60 text-xs">{note}</p>}
+      {note && <p className="mt-2 text-fg-subtle text-xs">{note}</p>}
     </div>
   );
 }
@@ -266,7 +269,7 @@ export default async function AgentProfilePage({
             )}
             {!profile.active && <Badge variant="destructive">inactive</Badge>}
           </div>
-          <div className="mt-1.5 font-mono text-[13px] text-muted-foreground/60">
+          <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
             {numericId != null && <>#{numericId}</>}
             {profile.category && (
               <> · {categoryLabel(profile.category)}</>
@@ -361,7 +364,7 @@ export default async function AgentProfilePage({
               className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
               key={k}
             >
-              <div className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+              <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
                 {k}
               </div>
               <div className="mt-1.5 font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
@@ -406,11 +409,11 @@ export default async function AgentProfilePage({
                 label: "Your agent",
                 body: (
                   <div className="grid gap-5 lg:grid-cols-2">
-                    <div className="rounded-xl bg-background/60 p-4">
+                    <div className="rounded-[10px] border p-4" style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}>
                       <div className="font-medium text-foreground text-sm">
                         Paste this into your agent
                       </div>
-                      <p className="mt-1 text-muted-foreground/70 text-xs">
+                      <p className="mt-1 text-fg-muted text-xs">
                         A ready-made prompt (service, address, price, pay
                         instructions) for Claude Code, Cursor, or any agent
                         with the t2000 CLI or skills installed.
@@ -476,17 +479,17 @@ export default async function AgentProfilePage({
             typeLabel="x402"
           />
           {!rep && (
-            <p className="mt-2 text-muted-foreground/50 text-xs">
+            <p className="mt-2 text-fg-subtle text-xs">
               New listing — no settled sales yet.
             </p>
           )}
           {rep && rep.sales === 0 && (
-            <p className="mt-2 text-muted-foreground/70 text-xs">
+            <p className="mt-2 text-fg-muted text-xs">
               <span className="text-destructive">⚠</span> No successful
               deliveries yet.
             </p>
           )}
-          <p className="mt-4 text-muted-foreground/60 text-xs">
+          <p className="mt-4 text-fg-subtle text-xs">
             Pay on delivery — a failed delivery refunds you automatically. You
             pay exactly the listed price; the rail&apos;s 2.5% platform fee
             comes out of the seller&apos;s side at settlement.
@@ -501,10 +504,10 @@ export default async function AgentProfilePage({
         <section className="mt-10">
           <div className="ag-eyebrow">{"// RECENT ACTIVITY"}</div>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="font-semibold text-2xl text-foreground tracking-[-0.03em]">
+            <h2 className="ag-title" style={{ fontSize: "clamp(26px, 3vw, 36px)" }}>
               Every sale, on-chain.
             </h2>
-            <p className="m-0 max-w-[320px] text-muted-foreground/60 text-xs leading-relaxed">
+            <p className="m-0 max-w-[320px] text-fg-subtle text-xs leading-relaxed">
               The reputation above is computed from these settlements — each
               delivered row links to its Sui transaction.
             </p>
@@ -532,11 +535,11 @@ export default async function AgentProfilePage({
                     <span className="font-medium text-foreground">
                       ${r.amountUsd.toFixed(2)}
                     </span>
-                    <span className="text-muted-foreground/60 text-xs">
+                    <span className="text-fg-subtle text-xs">
                       {formatDate(r.at)}
                     </span>
                     {r.tx && (
-                      <span className="text-muted-foreground/60 text-xs underline decoration-border underline-offset-4">
+                      <span className="text-fg-subtle text-xs underline decoration-border underline-offset-4">
                         tx ↗
                       </span>
                     )}
