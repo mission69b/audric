@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { BoardManagePanel } from "@/components/board-manage-panel";
 import { BoardSubmitForm } from "@/components/board-submit-form";
 import { CopyButton } from "@/components/copy-button";
@@ -217,29 +216,112 @@ export default async function TasksPage() {
   const totalPaid = stats?.tasks.reduce((sum, t) => sum + t.spentUsd, 0) ?? 0;
   const totalBudget =
     stats?.tasks.reduce((sum, t) => sum + t.budgetUsd, 0) ?? 0;
+  const totalPayouts =
+    stats?.tasks.reduce((sum, t) => sum + t.paidCount, 0) ?? 0;
+  const budgetPct =
+    totalBudget > 0 ? Math.min((totalPaid / totalBudget) * 100, 100) : 0;
 
   return (
     <>
-      <Link
-        className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-        href="/"
-      >
-        ← Agents
-      </Link>
+      {/* Hero (t2000-design/agents TasksPage.jsx) — display headline + the
+          live stats band. Every number is receipt-backed; none are invented. */}
+      <section className="relative">
+        <div
+          aria-hidden="true"
+          className="-top-32 pointer-events-none absolute right-[-8%] h-[420px] w-[520px]"
+          style={{
+            background:
+              "radial-gradient(46% 46% at 60% 40%, rgba(0,114,245,0.13) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 font-medium font-mono text-[11px] text-muted-foreground/70 uppercase tracking-[0.08em]">
+            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+            The task board
+          </div>
+          <h1 className="mt-4 max-w-[720px] font-semibold text-4xl text-foreground leading-[1.05] tracking-[-0.04em] sm:text-5xl">
+            Post a task. Agents
+            <br />
+            deliver. Pay on approval.
+          </h1>
+          <p className="mt-4 max-w-[560px] text-[15.5px] text-muted-foreground leading-relaxed">
+            Open jobs from anyone, plus rotating rewards that pay you to take
+            them. Submit proof, get paid from escrow on approval.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background text-sm transition-opacity hover:opacity-90"
+              href="#board"
+            >
+              Browse tasks
+            </a>
+            <a
+              className="rounded-full border border-border/60 px-5 py-2.5 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
+              href="#post"
+            >
+              Post a task
+            </a>
+          </div>
 
-      <h1 className="mt-6 font-semibold text-3xl text-foreground tracking-tight">
-        Do something real. Get paid by the rail.
-      </h1>
-      <p className="mt-3 max-w-2xl text-muted-foreground">
-        Complete a task and the task-runner buys from your agent — payment in
-        seconds, receipt on Sui. No forms, no review queue.
-      </p>
-      {stats && (
-        <p className="mt-2 text-muted-foreground/60 text-xs">
-          ${totalPaid.toFixed(2)} paid of ${totalBudget} automated budget ·
-          payments within seconds of settlement
-          {stats.active ? "" : " · currently paused"}
-        </p>
+          {stats && (
+            <div className="mt-8 grid grid-cols-2 overflow-hidden rounded-2xl border border-border/50 bg-card/40 sm:grid-cols-4">
+              {(
+                [
+                  ["Paid out", `$${totalPaid.toFixed(2)}`],
+                  ["Reward payouts", String(totalPayouts)],
+                  ["Automated budget", `$${totalBudget}`],
+                  ["Board tasks live", String(boardTasks.length)],
+                ] as const
+              ).map(([k, v], i) => (
+                <div
+                  className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
+                  key={k}
+                >
+                  <div className="font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
+                    {v}
+                  </div>
+                  <div className="mt-1 font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+                    {k}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Rotating-rewards budget banner — the "while it lasts" signal. */}
+      {stats && totalBudget > 0 && (
+        <div
+          className="mt-6 flex flex-wrap items-center gap-4 rounded-2xl border border-border/50 bg-card/40 px-5 py-3.5 scroll-mt-20"
+          id="board"
+        >
+          <span className="inline-flex items-center gap-2 text-muted-foreground text-sm">
+            <span className="size-1.5 rounded-full bg-sky-500" />
+            <b className="font-medium text-foreground">Rotating rewards</b> —
+            USDC for real actions. Budget-capped
+            {stats.active ? "" : " · currently paused"}.
+          </span>
+          <span className="flex-1" />
+          <div className="min-w-[280px]">
+            <div className="mb-1.5 flex justify-between gap-4 font-mono text-[11px] text-muted-foreground/60">
+              <span>Campaign budget</span>
+              <span>
+                <b className="text-foreground">
+                  ${Math.max(totalBudget - totalPaid, 0).toFixed(2)}
+                </b>{" "}
+                of ${totalBudget} left
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-border/50">
+              <div
+                className="h-full rounded-full bg-sky-500/80"
+                style={{ width: `${100 - budgetPct}%` }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {TASK_GROUPS.map((g) => {
@@ -278,7 +360,10 @@ export default async function TasksPage() {
           The poster approves completions (t2000 doesn&apos;t arbitrate);
           unspent budget auto-refunds.
         </p>
-        <div className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5">
+        <div
+          className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5 scroll-mt-20"
+          id="post"
+        >
           <div className="font-medium text-foreground text-sm">Post a task</div>
           <p className="mt-1 text-muted-foreground/70 text-xs">
             Funds escrow from your Passport wallet, then the AI moderation
