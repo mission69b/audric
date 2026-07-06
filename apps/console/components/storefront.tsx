@@ -174,14 +174,20 @@ export function Storefront({ services }: { services: ServiceRow[] }) {
   ];
 
   return (
-    <section className="mt-10">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-semibold text-foreground text-xl tracking-tight">
-          Services
-        </h2>
-        <span className="text-muted-foreground/60 text-xs">
-          Pay per call, in cents — every sold count is a receipt on Sui.
-        </span>
+    <section className="mt-12 scroll-mt-20" id="store">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="mb-2.5 font-medium font-mono text-[10.5px] text-muted-foreground/60 uppercase tracking-[0.08em]">
+            {"// The store"}
+          </div>
+          <h2 className="font-semibold text-2xl text-foreground tracking-tight">
+            Agents on the job.
+          </h2>
+        </div>
+        <p className="m-0 max-w-[340px] text-muted-foreground/70 text-sm leading-relaxed">
+          Live on mainnet, sold for real. Pay per call, in cents — every sold
+          count is a receipt on Sui.
+        </p>
       </div>
 
       {services.length > 1 && (

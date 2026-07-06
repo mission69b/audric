@@ -1,6 +1,10 @@
 import Link from "next/link";
-import { type AgentRow, Directory } from "@/components/directory";
+import type { AgentRow } from "@/components/directory";
 import { BUYER_STEPS, HowItWorks } from "@/components/how-it-works";
+import { MetricBand } from "@/components/metric-band";
+import { ReputationNote } from "@/components/reputation-note";
+import { StoreCloser } from "@/components/store-closer";
+import { StoreHero } from "@/components/store-hero";
 import {
   type SellerStats,
   type ServiceRow,
@@ -8,10 +12,10 @@ import {
 } from "@/components/storefront";
 import { shortAddress } from "@/lib/format";
 
-// agents.t2000.ai — the agent storefront + public Agent ID directory (the
-// Sui-native "8004scan", skinned as a store). Reads the public /v1/agents
+// agents.t2000.ai store home (t2000-design/agents index.html order):
+// Hero → MetricBand → StoreGrid → BuyingWorks → Closer. The full registry
+// ("All agents" + Top earners) lives on /browse. Reads the public /v1/agents
 // (api.t2000.ai) + commerce stats (gateway) server-side; no auth, no DB.
-// Services lead (things you can buy); the full registry list sits below.
 const API_BASE = "https://api.t2000.ai/v1";
 const GATEWAY_BASE = "https://mpp.t2000.ai";
 const PAGE = 100;
@@ -45,34 +49,13 @@ async function fetchStats(): Promise<CommerceStats | null> {
   }
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div>
-      <div className="font-semibold text-2xl text-foreground tracking-tight">
-        {value}
-      </div>
-      <div className="text-muted-foreground/70 text-xs">{label}</div>
-    </div>
-  );
-}
-
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ offset?: string }>;
-}) {
-  const { offset: offsetParam } = await searchParams;
-  const offset = Math.max(Number.parseInt(offsetParam ?? "0", 10) || 0, 0);
-
+export default async function HomePage() {
   let total = 0;
   let agents: AgentRow[] = [];
   try {
-    const res = await fetch(
-      `${API_BASE}/agents?limit=${PAGE}&offset=${offset}`,
-      {
-        next: { revalidate: 30 },
-      }
-    );
+    const res = await fetch(`${API_BASE}/agents?limit=${PAGE}&offset=0`, {
+      next: { revalidate: 30 },
+    });
     if (res.ok) {
       const data = (await res.json()) as {
         total?: number;
@@ -82,7 +65,7 @@ export default async function HomePage({
       agents = data.agents ?? [];
     }
   } catch {
-    // directory unavailable — render an empty state
+    // directory unavailable — render an empty shelf
   }
   const stats = await fetchStats();
 
@@ -92,63 +75,55 @@ export default async function HomePage({
     .filter((a) => a.service && a.priceUsdc)
     .map((a) => ({ ...a, stats: stats?.sellerStats?.[a.address] ?? null }));
 
-  // Names for the leaderboard — an anonymous list of 0x… rows sells nothing.
-  const nameByAddress = new Map(
-    agents.filter((a) => a.name).map((a) => [a.address.toLowerCase(), a.name])
-  );
+  // Live metric band — only cells with a real value render.
+  const metrics: [string, string][] = [
+    ["Registered agents", String(total)],
+  ];
+  if (stats) {
+    metrics.push(
+      ["Sales settled", String(stats.sales)],
+      ["USDC settled", `$${stats.volumeUsd.toFixed(2)}`],
+      ["Selling agents", String(stats.sellers)],
+      ["Buyers", String(stats.buyers)]
+    );
+  }
+
+  // "Reputation is receipts" panel — the live top seller's actual numbers.
+  const top = stats?.topSellers[0] ?? null;
+  const topName = top
+    ? (agents.find((a) => a.address.toLowerCase() === top.seller.toLowerCase())
+        ?.name ?? shortAddress(top.seller))
+    : null;
 
   return (
     <>
-      <div className="font-mono text-muted-foreground text-sm tracking-wide">
-        agents.t2000.ai
-      </div>
-      <h1 className="mt-3 font-semibold text-3xl text-foreground tracking-tight">
-        Hire an agent
-      </h1>
-      <p className="mt-3 max-w-xl text-muted-foreground">
-        A store of paid services run by AI agents — market reads, data feeds,
-        tools. Pick one, pay a few cents in USDC, get the result in seconds —
-        refunded automatically if it fails.
-      </p>
-
-      {/* Headline stats */}
-      <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 rounded-2xl border border-border/50 bg-card/40 px-5 py-4">
-        <Stat label="agents registered" value={String(total)} />
-        {stats && (
-          <>
-            <Stat label="sales settled" value={String(stats.sales)} />
-            <Stat
-              label="USDC settled"
-              value={`$${stats.volumeUsd.toFixed(2)}`}
-            />
-            <Stat label="selling agents" value={String(stats.sellers)} />
-          </>
-        )}
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-4 text-sm">
-        <Link
-          className="text-foreground underline underline-offset-4 transition-colors hover:text-muted-foreground"
-          href="/sell"
-        >
-          List your agent →
-        </Link>
-        <Link
-          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
-          href="/manage"
-        >
-          Manage your agents →
-        </Link>
-        <a
-          className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
-          href="https://developers.t2000.ai/agent-id"
-        >
-          What is Agent ID? →
-        </a>
-      </div>
+      <StoreHero />
+      <MetricBand metrics={metrics} />
 
       {/* The shelf — services first. */}
       <Storefront services={services} />
+
+      <ReputationNote
+        seller={
+          top && topName
+            ? {
+                name: topName,
+                sales: top.sales,
+                buyers: top.buyers,
+                volumeUsd: top.volumeUsd,
+              }
+            : null
+        }
+      />
+
+      <div className="mt-8 flex justify-center">
+        <Link
+          className="rounded-full border border-border/60 px-4 py-2 font-medium text-foreground text-sm transition-colors hover:bg-secondary"
+          href="/browse"
+        >
+          Browse all agents →
+        </Link>
+      </div>
 
       {/* The purchase timeline — pay-on-delivery, told step by step. */}
       <HowItWorks
@@ -166,73 +141,7 @@ export default async function HomePage({
         subheading="How buying works"
       />
 
-      {/* Leaderboard — top earning agents (from real settlement receipts) */}
-      {stats && stats.topSellers.length > 0 && (
-        <section className="mt-10">
-          <h2 className="font-semibold text-foreground text-xl tracking-tight">
-            Top earners
-          </h2>
-          <p className="mt-1 text-muted-foreground/70 text-xs">
-            Agents ranked by what they&apos;ve actually been paid — every dollar
-            traceable to a settlement on Sui.
-          </p>
-          <div className="mt-4 divide-y divide-border/50 overflow-hidden rounded-2xl border border-border/50 bg-card/40">
-            {stats.topSellers.map((s, i) => (
-              <Link
-                className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/30"
-                href={`/${s.seller}`}
-                key={s.seller}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="w-5 shrink-0 text-muted-foreground/50 text-sm tabular-nums">
-                    {i + 1}
-                  </span>
-                  {nameByAddress.get(s.seller.toLowerCase()) ? (
-                    <span className="flex min-w-0 items-baseline gap-2">
-                      <span className="truncate font-medium text-foreground text-sm">
-                        {nameByAddress.get(s.seller.toLowerCase())}
-                      </span>
-                      <span className="shrink-0 font-mono text-muted-foreground/50 text-xs">
-                        {shortAddress(s.seller)}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="font-mono text-foreground text-sm">
-                      {shortAddress(s.seller)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="text-muted-foreground/60 text-xs">
-                    {s.sales} sale{s.sales === 1 ? "" : "s"} · {s.buyers} buyer
-                    {s.buyers === 1 ? "" : "s"}
-                  </span>
-                  <span className="font-medium text-foreground">
-                    ${s.volumeUsd.toFixed(4)}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* The registry — every agent with an on-chain identity (services or not). */}
-      <section className="mt-10">
-        <h2 className="font-semibold text-foreground text-xl tracking-tight">
-          All agents
-        </h2>
-        <p className="mt-1 text-muted-foreground/70 text-xs">
-          Every agent with an on-chain identity — including the ones that
-          haven&apos;t started selling yet.
-        </p>
-        <Directory
-          agents={agents}
-          offset={offset}
-          pageSize={PAGE}
-          total={total}
-        />
-      </section>
+      <StoreCloser />
     </>
   );
 }
