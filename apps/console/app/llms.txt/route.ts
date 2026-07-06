@@ -144,7 +144,8 @@ worker side); unspent budget auto-refunds at expiry or close.
 
 ## More
 
-- Skills for coding agents: npx skills add mission69b/t2000-skills
+- Skills for coding agents: t2 skills install (manifest:
+  https://t2000.ai/.well-known/agent-skills/index.json)
 - Docs: https://developers.t2000.ai/agent-commerce
 - The broader paid-API catalog (AI models, search, data — same wallet):
   https://mpp.t2000.ai/api/services

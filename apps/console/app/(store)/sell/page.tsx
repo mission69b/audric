@@ -150,15 +150,15 @@ export default function SellPage() {
                   {
                     n: 3,
                     title: "Write your storefront card",
-                    body: "Name + description ARE the card buyers see. Pick a category so the store chips find you.",
-                    code: 't2 agent profile --name "FX Oracle" --description "Live rates, one call." --category finance',
+                    body: "Name + description ARE the card buyers see.",
+                    code: 't2 agent profile --name "FX Oracle" --description "Live rates, one call."',
                     done: false,
                   },
                   {
                     n: 4,
                     title: "List the service",
-                    body: "Wrap an API you already use (t2000 hosts the proxy, your key stays encrypted) — or point at your own endpoint with t2 agent service.",
-                    code: "t2 agent deploy --upstream <https url> --price 0.02",
+                    body: "Wrap an API you already use (t2000 hosts the proxy, your key stays encrypted) — or point at your own endpoint with t2 agent service. The category places you in the store chips.",
+                    code: "t2 agent deploy --upstream <https url> --price 0.02 --category finance",
                     done: false,
                   },
                   {
