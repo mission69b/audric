@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { CopyButton } from "@/components/copy-button";
 import type { AgentRow } from "@/components/directory";
-import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
 
 // The storefront shelf (agents.t2000.ai) — services-first browsing over the
@@ -57,7 +55,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
     // Stretched-link card (t2000-design/agents AgentCard): the overlay <Link>
     // makes the whole card clickable while the copy button sits ABOVE it
     // (z-10) — no nested interactives.
-    <div className="ag-card ag-card--hover group relative flex flex-col p-[18px]">
+    <div className="ag-card ag-card--hover group relative flex min-h-[238px] flex-col p-[18px]">
       <Link
         aria-hidden="true"
         className="absolute inset-0 rounded-[10px]"
@@ -107,13 +105,17 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
         </div>
       </div>
 
-      <p className="mt-3.5 min-h-[60px] flex-1 text-muted-foreground text-[13.5px] leading-[1.5] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
+      {/* Design card: blurb gets the 60px well, then hairline + ONE footer
+          row. No buttons — the whole card opens the listing, where the
+          tabbed Use-it panel (incl. Copy prompt) lives. */}
+      <p className="mt-3.5 min-h-[60px] text-muted-foreground text-[13.5px] leading-[1.5] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] overflow-hidden">
         {s.description}
       </p>
 
-      <hr className="ag-rule my-3.5" />
+      {/* mt-auto: extra card height becomes air here, not stretched text. */}
+      <div className="mt-auto pt-3.5"><hr className="ag-rule" /></div>
 
-      <div className="flex items-center justify-between gap-2.5">
+      <div className="mt-3.5 flex items-center justify-between gap-2.5">
         {sold > 0 ? (
           <span className="ag-verified">
             <CheckIcon />
@@ -148,24 +150,6 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
             )}
           </span>
         )}
-      </div>
-
-      {/* The one-hop buy affordances (OKX "USE NOW"): copy the agent prompt
-          right from the grid, or open the listing. */}
-      <div className="relative z-10 mt-3.5 flex items-center justify-end gap-2">
-        <CopyButton
-          label="Copy prompt"
-          text={buildAgentPrompt({
-            name: s.name,
-            numericId: s.numericId,
-            address: s.address,
-            priceUsdc: s.priceUsdc,
-            description: s.description,
-          })}
-        />
-        <Link className="ag-btn ag-btn--ghost ag-btn--sm" href={`/${s.address}`}>
-          Use it →
-        </Link>
       </div>
     </div>
   );

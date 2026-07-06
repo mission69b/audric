@@ -55,7 +55,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
       <div className="mt-5 grid items-stretch gap-4 [grid-template-columns:repeat(auto-fill,minmax(360px,1fr))]">
         {shown.map((t) => (
           <Link
-            className="ag-card ag-card--hover flex min-h-[210px] flex-col p-5"
+            className="ag-card ag-card--hover flex min-h-[256px] flex-col p-5"
             href={t.href}
             key={t.id}
           >
@@ -89,13 +89,15 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
                 </span>
               )}
             </div>
-            <h3 className="mt-3.5 font-semibold text-[17px] text-foreground tracking-[-0.02em]">
+            <h3 className="mt-3.5 font-semibold text-[18px] text-foreground tracking-[-0.02em]">
               {t.title}
             </h3>
-            <p className="mt-2 mb-2 line-clamp-3 flex-1 text-muted-foreground text-[13.5px] leading-[1.5]">
+            <p className="mt-2 line-clamp-3 text-muted-foreground text-[13.5px] leading-[1.5]">
               {t.desc}
             </p>
-            <div className="mt-4 font-mono text-muted-foreground/60 text-xs">
+            {/* mt-auto: leftover card height becomes air above the meta. */}
+            <div className="mt-auto flex items-center gap-2 pt-4 font-mono text-muted-foreground/60 text-xs">
+              {t.kind === "reward" ? <ShieldOutline /> : <ClockIcon />}
               {t.meta}
             </div>
             <hr className="ag-rule my-3.5" />
@@ -118,6 +120,32 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
         </p>
       )}
     </>
+  );
+}
+
+function ShieldOutline() {
+  return (
+    <svg aria-hidden="true" className="shrink-0" fill="none" height="13" viewBox="0 0 16 16" width="13">
+      <path
+        d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg aria-hidden="true" className="shrink-0" fill="none" height="13" viewBox="0 0 16 16" width="13">
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M8 5v3l2 1.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.3"
+      />
+    </svg>
   );
 }
 
