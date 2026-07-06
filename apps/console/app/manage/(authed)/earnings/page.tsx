@@ -1,61 +1,18 @@
-import { getAgentProfile, listAgentsForOwner } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Section } from "@/components/section";
+import { AgentAvatar } from "@/components/agent-avatar";
+import { PanelHead } from "@/components/panel-head";
+import { fetchMyEarnings } from "@/lib/earnings";
 
-// /manage/earnings (t2000-design/agents ManageConsole §Earnings) — what your
-// agents have actually been paid. Every number derives from on-chain
-// settlement receipts (the public agent profiles' reputation object); the
-// recent list links each row to its Sui transaction.
+// /manage/earnings (t2000-design/agents ManageConsole §EarningsPanel):
+// stat cards → By agent → Recent settlements. Every number derives from
+// on-chain settlement receipts; every row links to its Sui transaction.
 
 export const metadata: Metadata = { title: "Earnings" };
 
-const API_BASE = "https://api.t2000.ai/v1";
 const SUISCAN = "https://suiscan.xyz/mainnet";
-
-type Reputation = {
-  sales: number;
-  volumeUsd: number;
-  buyers: number;
-  refunds?: number;
-  deliveredRate?: number | null;
-  lastSaleAt: string | null;
-  recent?: {
-    at: string;
-    buyer: string;
-    amountUsd: number;
-    delivered: boolean;
-    tx?: string;
-  }[];
-};
-
-type AgentEarnings = {
-  address: string;
-  name: string;
-  numericId: number | null;
-  rep: Reputation | null;
-};
-
-async function fetchReputation(address: string): Promise<Reputation | null> {
-  try {
-    const res = await fetch(`${API_BASE}/agents/${address}`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) {
-      return null;
-    }
-    const data = (await res.json()) as { reputation?: Reputation };
-    return data.reputation ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function short(a: string): string {
-  return `${a.slice(0, 6)}…${a.slice(-4)}`;
-}
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -70,187 +27,194 @@ export default async function EarningsPage() {
   if (!session) {
     redirect("/manage");
   }
-
-  const [{ owned }, selfAgent] = await Promise.all([
-    listAgentsForOwner(session.user.id),
-    getAgentProfile(session.user.id),
-  ]);
-  const all = [
-    ...(selfAgent ? [selfAgent] : []),
-    ...owned.filter((a) => a.address !== selfAgent?.address),
-  ];
-
-  const reps = await Promise.all(all.map((a) => fetchReputation(a.address)));
-  const rows: AgentEarnings[] = all.map((a, i) => ({
-    address: a.address,
-    name: a.name,
-    numericId: a.numericId ?? null,
-    rep: reps[i],
-  }));
-
-  const totalEarned = rows.reduce((s, r) => s + (r.rep?.volumeUsd ?? 0), 0);
-  const totalSales = rows.reduce((s, r) => s + (r.rep?.sales ?? 0), 0);
+  const { rows, totalEarned, totalSales, recent } = await fetchMyEarnings(
+    session.user.id
+  );
   const selling = rows.filter((r) => (r.rep?.sales ?? 0) > 0).length;
 
-  // Merge every agent's recent settlements into one feed, newest first.
-  const recent = rows
-    .flatMap((r) =>
-      (r.rep?.recent ?? []).map((s) => ({ ...s, agent: r.name }))
-    )
-    .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
-    .slice(0, 12);
-
   return (
-    <div className="flex flex-col gap-4">
-      <Section
-        description="Settled USDC across your agents — every number derives from on-chain settlement receipts, and every row links to its Sui transaction."
+    <>
+      <PanelHead
+        action={
+          <a
+            className="ag-btn ag-btn--ghost ag-btn--sm"
+            href="https://audric.ai"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Spend via Audric ↗
+          </a>
+        }
+        sub="Everything your agents earned — settled to your USDC balance, receipt by receipt."
         title="Earnings"
-      >
-        <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-border/50">
-          {(
-            [
-              ["Settled", `$${totalEarned.toFixed(2)}`],
-              ["Sales", String(totalSales)],
-              ["Agents selling", `${selling} of ${rows.length}`],
-            ] as const
-          ).map(([k, v], i) => (
-            <div
-              className={`px-4 py-3.5 ${i > 0 ? "border-border/50 border-l" : ""}`}
-              key={k}
-            >
-              <div className="font-mono text-[10px] text-muted-foreground/60 uppercase tracking-[0.08em]">
-                {k}
-              </div>
-              <div className="mt-1 font-semibold text-[20px] text-foreground tabular-nums tracking-tight">
-                {v}
-              </div>
+      />
+
+      <div className="mb-[22px] grid grid-cols-3 gap-3.5">
+        {(
+          [
+            ["Total earned", `$${totalEarned.toFixed(2)}`, "all time", "var(--ag-verify)"],
+            ["Sales", String(totalSales), "settled", null],
+            ["Agents selling", `${selling} of ${rows.length}`, "with receipts", null],
+          ] as const
+        ).map(([k, v, u, c]) => (
+          <div className="ag-card p-[18px]" key={k}>
+            <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.07em]">
+              {k}
             </div>
+            <div
+              className="mt-2 font-semibold text-[27px] tabular-nums tracking-[-0.03em]"
+              style={{ color: c ?? "var(--fg)" }}
+            >
+              {v}
+            </div>
+            <div className="mt-[3px] font-mono text-[11px] text-fg-subtle">
+              {u}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="m-0 text-fg-muted text-sm">
+          No agents yet — register one from{" "}
+          <Link className="text-foreground" href="/manage/agents">
+            My agents
+          </Link>{" "}
+          and list a service to start earning.
+        </p>
+      ) : (
+        <div className="ag-card mb-4 overflow-hidden p-0">
+          <div
+            className="border-b px-5 py-[13px] font-semibold text-[14px] text-foreground"
+            style={{ borderColor: "var(--ag-border)" }}
+          >
+            By agent
+          </div>
+          {rows.map((r, i) => (
+            <Link
+              className="flex items-center gap-3.5 px-5 py-3.5 no-underline transition-colors hover:bg-[color:var(--ag-overlay)]"
+              href={`/${r.address}`}
+              key={r.address}
+              style={i ? { borderTop: "1px solid var(--ag-border)" } : undefined}
+            >
+              <AgentAvatar
+                address={r.address}
+                imageUrl={r.imageUrl}
+                name={r.name}
+                size={30}
+              />
+              <span className="flex-1 font-medium text-[14px] text-foreground">
+                {r.name}
+                {r.numericId != null && (
+                  <span className="ml-2 font-mono font-normal text-fg-subtle text-xs">
+                    #{r.numericId}
+                  </span>
+                )}
+              </span>
+              <span className="w-24 text-right font-mono text-[12px] text-fg-muted">
+                {r.rep?.sales ?? 0} sold
+              </span>
+              <span
+                className="w-[70px] text-right font-mono text-[13.5px] tabular-nums"
+                style={{ color: "var(--ag-verify)" }}
+              >
+                ${(r.rep?.volumeUsd ?? 0).toFixed(2)}
+              </span>
+            </Link>
           ))}
         </div>
-
-        {rows.length === 0 ? (
-          <p className="mt-4 text-muted-foreground text-sm">
-            No agents yet — register one from{" "}
-            <Link className="underline underline-offset-4" href="/manage/agents">
-              My agents
-            </Link>{" "}
-            and list a service to start earning.
-          </p>
-        ) : (
-          <div className="mt-4 divide-y divide-border/40 overflow-hidden rounded-xl border border-border/50">
-            {rows.map((r) => (
-              <div
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                key={r.address}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <a
-                      className="font-medium text-foreground text-sm hover:underline"
-                      href={`https://agents.t2000.ai/${r.address}`}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {r.name}
-                    </a>
-                    {r.numericId != null && (
-                      <span className="font-mono text-muted-foreground/60 text-xs">
-                        #{r.numericId}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 font-mono text-muted-foreground/50 text-xs">
-                    {short(r.address)}
-                  </div>
-                </div>
-                <div className="flex items-center gap-5 text-sm">
-                  <span className="text-muted-foreground/70 text-xs">
-                    {r.rep?.sales ?? 0} sold · {r.rep?.buyers ?? 0} buyer
-                    {(r.rep?.buyers ?? 0) === 1 ? "" : "s"}
-                    {typeof r.rep?.deliveredRate === "number" && (
-                      <>
-                        {" "}
-                        ·{" "}
-                        <span className="text-emerald-500">
-                          {Math.round(r.rep.deliveredRate * 100)}% delivered
-                        </span>
-                      </>
-                    )}
-                  </span>
-                  <span className="font-medium text-foreground tabular-nums">
-                    ${(r.rep?.volumeUsd ?? 0).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
+      )}
 
       {recent.length > 0 && (
-        <Section
-          description="The last settlements across your agents, straight from the ledger."
-          title="Recent settlements"
-        >
-          <div className="divide-y divide-border/40 overflow-hidden rounded-xl border border-border/50">
-            {recent.map((s) => {
-              const row = (
+        <>
+          <div className="ag-card overflow-hidden p-0">
+            <div
+              className="border-b px-5 py-[13px] font-semibold text-[14px] text-foreground"
+              style={{ borderColor: "var(--ag-border)" }}
+            >
+              Recent settlements
+            </div>
+            {recent.map((s, i) => {
+              const inner = (
                 <>
-                  <div className="flex min-w-0 items-center gap-3 text-sm">
-                    <span
-                      className={
-                        s.delivered ? "text-emerald-500" : "text-destructive"
-                      }
-                    >
-                      {s.delivered ? "✓" : "↩"}
-                    </span>
-                    <span className="truncate text-muted-foreground">
-                      <span className="text-foreground">{s.agent}</span>{" "}
-                      {s.delivered ? "delivered to" : "auto-refunded"}{" "}
-                      <span className="font-mono text-xs">{s.buyer}</span>
-                    </span>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-4 text-sm">
-                    <span className="font-medium text-foreground tabular-nums">
-                      ${s.amountUsd.toFixed(2)}
-                    </span>
-                    <span className="text-muted-foreground/60 text-xs">
-                      {fmtDate(s.at)}
-                    </span>
-                    {s.tx && (
-                      <span className="font-mono text-muted-foreground/60 text-xs underline underline-offset-4">
-                        tx ↗
-                      </span>
+                  <span
+                    className="shrink-0"
+                    style={{
+                      color: s.delivered
+                        ? "var(--ag-verify)"
+                        : "var(--fg-subtle)",
+                    }}
+                  >
+                    {s.delivered ? (
+                      <svg
+                        aria-hidden="true"
+                        fill="none"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        width="14"
+                      >
+                        <path
+                          d="M3.5 8.5l3 3 6-7"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.8"
+                        />
+                      </svg>
+                    ) : (
+                      "↩"
                     )}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] text-foreground">
+                      {s.agent}{" "}
+                      <span className="text-fg-subtle">
+                        {s.delivered ? "· paid by" : "· auto-refunded"}{" "}
+                        <span className="font-mono text-xs">{s.buyer}</span>
+                      </span>
+                    </div>
                   </div>
+                  <span
+                    className="font-mono text-[13px] tabular-nums"
+                    style={{
+                      color: s.delivered ? "var(--ag-verify)" : "var(--fg)",
+                    }}
+                  >
+                    {s.delivered ? "+" : ""}${s.amountUsd.toFixed(2)} USDC
+                  </span>
+                  <span className="w-16 shrink-0 text-right font-mono text-[11.5px] text-fg-subtle">
+                    {fmtDate(s.at)}
+                  </span>
                 </>
               );
               const key = `${s.at}-${s.buyer}-${s.agent}`;
+              const cls = "flex items-center gap-3.5 px-5 py-[13px]";
+              const style = i
+                ? { borderTop: "1px solid var(--ag-border)" }
+                : undefined;
               return s.tx ? (
                 <a
-                  className="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/30"
+                  className={`${cls} no-underline transition-colors hover:bg-[color:var(--ag-overlay)]`}
                   href={`${SUISCAN}/tx/${s.tx}`}
                   key={key}
                   rel="noreferrer"
+                  style={style}
                   target="_blank"
                 >
-                  {row}
+                  {inner}
                 </a>
               ) : (
-                <div
-                  className="flex items-center justify-between gap-4 px-4 py-3"
-                  key={key}
-                >
-                  {row}
+                <div className={cls} key={key} style={style}>
+                  {inner}
                 </div>
               );
             })}
           </div>
-          <p className="mt-3 font-mono text-muted-foreground/60 text-xs">
+          <p className="mt-3 font-mono text-fg-subtle text-xs">
             $ t2 agent earnings — the same numbers from the CLI.
           </p>
-        </Section>
+        </>
       )}
-    </div>
+    </>
   );
 }

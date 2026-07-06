@@ -7,9 +7,8 @@ import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
 import { AgentManageCard } from "@/components/agent-manage-card";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
+import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
-import { Section } from "@/components/section";
-import { SellServiceCard } from "@/components/sell-service-card";
 import { Badge } from "@/components/ui/badge";
 
 const GATEWAY = "https://mpp.t2000.ai";
@@ -34,15 +33,12 @@ function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
-function AgentRow({
-  agent,
-  action,
-}: {
-  agent: AgentProfile;
-  action?: React.ReactNode;
-}) {
+function PendingRow({ agent }: { agent: AgentProfile }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div
+      className="flex items-center justify-between gap-4 px-5 py-3.5 first:border-t-0"
+      style={{ borderTop: "1px solid var(--ag-border)" }}
+    >
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <a
@@ -54,17 +50,25 @@ function AgentRow({
             {agent.name}
           </a>
           {agent.numericId != null && (
-            <span className="font-mono text-muted-foreground/60 text-xs">
+            <span className="font-mono text-fg-subtle text-xs">
               #{agent.numericId}
             </span>
           )}
           {!agent.active && <Badge variant="destructive">inactive</Badge>}
         </div>
-        <div className="mt-0.5 font-mono text-muted-foreground text-xs">
+        <div className="mt-0.5 font-mono text-fg-subtle text-xs">
           {short(agent.address)}
         </div>
       </div>
-      {action}
+      <ConfirmOwnershipButton agent={agent.address} />
+    </div>
+  );
+}
+
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-6 mb-2 font-medium font-mono text-[10px] text-fg-subtle uppercase tracking-[0.12em] first:mt-0">
+      {children}
     </div>
   );
 }
@@ -87,69 +91,48 @@ export default async function MyAgentsPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Section
-        description="The agent you are — your Passport, selling as itself."
-        title="You"
-      >
-        {selfAgent ? (
-          <div className="flex flex-col gap-3">
-            <AgentManageCard agent={selfAgent} earnings={selfEarnings} />
-            <SellServiceCard
-              address={selfAgent.address}
-              category={selfAgent.category}
-              mcpEndpoint={selfAgent.mcpEndpoint}
-              priceUsdc={selfAgent.priceUsdc}
-            />
-          </div>
-        ) : (
-          <RegisterSelfCard />
-        )}
-      </Section>
+    <>
+      <PanelHead
+        sub="Listings you operate. Each earns to your USDC balance — Manage opens the listing editor."
+        title="My agents"
+      />
 
-      <Section
-        description="Agents that proposed you as their owner. Confirming is one gasless signature."
-        title="Awaiting your confirmation"
-      >
-        {pending.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nothing pending.</p>
-        ) : (
-          <div className="divide-y divide-border/50">
+      <GroupLabel>You — your Passport, selling as itself</GroupLabel>
+      {selfAgent ? (
+        <AgentManageCard agent={selfAgent} earnings={selfEarnings} />
+      ) : (
+        <RegisterSelfCard />
+      )}
+
+      {pending.length > 0 && (
+        <>
+          <GroupLabel>
+            Awaiting your confirmation — one gasless signature
+          </GroupLabel>
+          <div className="ag-card overflow-hidden">
             {pending.map((a) => (
-              <AgentRow
-                action={<ConfirmOwnershipButton agent={a.address} />}
-                agent={a}
-                key={a.address}
-              />
+              <PendingRow agent={a} key={a.address} />
             ))}
           </div>
-        )}
-      </Section>
+        </>
+      )}
 
-      <Section
-        description="Edit profiles and prices, see what each agent has earned. (Endpoints are set by the agent itself.)"
-        title="Your agents"
-      >
-        {owned.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            You don't own any agents yet. An agent links to you with{" "}
-            <code className="font-mono text-foreground text-xs">
-              t2 agent link &lt;your-address&gt;
-            </code>
-            , then you confirm here.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {owned.map((a, i) => (
-              <AgentManageCard
-                agent={a}
-                earnings={earnings[i]}
-                key={a.address}
-              />
-            ))}
-          </div>
-        )}
-      </Section>
-    </div>
+      <GroupLabel>Agents you own</GroupLabel>
+      {owned.length === 0 ? (
+        <p className="m-0 text-fg-muted text-sm">
+          You don&apos;t own any agents yet. An agent links to you with{" "}
+          <code className="font-mono text-foreground text-xs">
+            t2 agent link &lt;your-address&gt;
+          </code>
+          , then you confirm here.
+        </p>
+      ) : (
+        <div className="grid gap-3.5">
+          {owned.map((a, i) => (
+            <AgentManageCard agent={a} earnings={earnings[i]} key={a.address} />
+          ))}
+        </div>
+      )}
+    </>
   );
 }

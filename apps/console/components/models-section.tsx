@@ -31,10 +31,7 @@ export function ModelsSection() {
   }, []);
 
   return (
-    <Section
-      description="USD per 1M tokens, metered to your credit."
-      title="Models"
-    >
+    <Section description="USD per 1M tokens, metered to your credit.">
       {models && models.length > 0 ? (
         <table className="w-full text-sm">
           <thead>

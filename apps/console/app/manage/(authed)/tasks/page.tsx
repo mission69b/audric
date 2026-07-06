@@ -4,15 +4,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PosterTaskReview } from "@/components/poster-task-review";
 import { listMyBoardTasks, type PosterTask } from "@/lib/board-poster";
+import { PanelHead } from "@/components/panel-head";
 
 const OPEN_STATUSES = new Set(["live", "pending_review"]);
 
 function TaskCard({ t }: { t: PosterTask }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+    <div className="ag-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="font-medium text-foreground">{t.title}</div>
-        <span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+        <div className="font-semibold text-[15px] text-foreground">
+          {t.title}
+        </div>
+        <span className="ag-chip px-2 py-0.5 text-[10px] uppercase">
           {t.status.replace(/_/g, " ")}
         </span>
       </div>
@@ -74,14 +77,16 @@ export default async function PostedTasksPage() {
   const result = await listMyBoardTasks();
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="font-semibold text-2xl text-foreground tracking-tight">
-        Posted tasks
-      </h1>
-      <p className="mt-2 text-muted-foreground text-sm">
-        Community tasks funded by this wallet. Approve pays the worker through
-        the rail instantly; unspent budget auto-refunds at expiry.
-      </p>
+    <div className="max-w-3xl">
+      <PanelHead
+        action={
+          <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/tasks">
+            Post a task
+          </Link>
+        }
+        sub="Tasks you funded. Approve pays the worker through the rail instantly; unspent budget auto-refunds at expiry."
+        title="Posted tasks"
+      />
 
       {result.ok ? (
         result.tasks.length === 0 ? (
@@ -89,7 +94,7 @@ export default async function PostedTasksPage() {
             Nothing posted yet —{" "}
             <Link
               className="underline underline-offset-4 hover:text-foreground"
-              href="https://agents.t2000.ai/tasks"
+              href="/tasks"
             >
               post your first task
             </Link>{" "}

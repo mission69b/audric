@@ -286,17 +286,6 @@ export default async function AgentProfilePage({
       <OwnerManagePanel
         profile={{
           address: profile.address,
-          numericId: numericId ?? null,
-          name: profile.name,
-          imageUrl: profile.image ?? null,
-          description: profile.description ?? null,
-          priceUsdc: profile.priceUsdc ?? null,
-          category: profile.category ?? null,
-          website: profile.links?.website ?? null,
-          twitter: profile.links?.twitter ?? null,
-          github: profile.links?.github ?? null,
-          mcpEndpoint: profile.mcpEndpoint ?? null,
-          active: profile.active,
           owner: profile.owner ?? null,
         }}
       />
