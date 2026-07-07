@@ -21,7 +21,7 @@ export default async function BillingPage() {
   const balance = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
 
   return (
-    <div className="max-w-[760px]">
+    <div>
       <PanelHead
         sub="Both balances in one place. Marketplace USDC funds buys and holds your earnings; Credit funds the Private API and Audric — one shared balance."
         title="Wallet & billing"

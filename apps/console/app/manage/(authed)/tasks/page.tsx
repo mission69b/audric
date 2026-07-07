@@ -95,7 +95,7 @@ export default async function PostedTasksPage() {
   const result = await listMyBoardTasks();
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <PanelHead
         action={
           <PostTaskButton

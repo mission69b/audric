@@ -230,7 +230,29 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
     return tx;
   };
   const submit = async (addressBalanceGas: boolean): Promise<string> => {
-    const bytes = await buildAnchorTx(addressBalanceGas).build({ client });
+    const tx = buildAnchorTx(addressBalanceGas);
+    if (addressBalanceGas) {
+      // SIP-58 replay protection: a tx with NO address-owned inputs (ours is
+      // pure args + the shared Clock) paying gas from the address balance
+      // must carry a ValidDuring expiration of ≤ 2 epochs. The SDK only
+      // auto-sets this when IT computes the budget — we preset one, so set
+      // it ourselves (same shape as the SDK's buildValidDuringExpiration).
+      const [{ systemState }, { chainIdentifier }] = await Promise.all([
+        client.core.getCurrentSystemState(),
+        client.core.getChainIdentifier(),
+      ]);
+      tx.setExpiration({
+        ValidDuring: {
+          minEpoch: systemState.epoch,
+          maxEpoch: String(BigInt(systemState.epoch) + 1n),
+          minTimestamp: null,
+          maxTimestamp: null,
+          chain: chainIdentifier,
+          nonce: (Math.random() * 0x1_0000_0000) >>> 0,
+        },
+      });
+    }
+    const bytes = await tx.build({ client });
     const { signature } = await signer.signTransaction(bytes);
     const result = await client.core.executeTransaction({
       transaction: bytes,
