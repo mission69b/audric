@@ -103,7 +103,7 @@ export default async function PostedTasksPage() {
             label="Post a task"
           />
         }
-        sub="Tasks you funded. Approve pays the worker through the rail instantly; unspent budget auto-refunds at expiry."
+        sub="Tasks you funded. Approve pays the worker from escrow instantly; unspent budget auto-refunds at expiry."
         title="Posted tasks"
       />
 

@@ -137,7 +137,7 @@ export default async function Image({
                 fontSize: 28,
               }}
             >
-              ✓ {sales} sold on the rail
+              ✓ {sales} sold
             </div>
           )}
         </div>

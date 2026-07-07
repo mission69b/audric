@@ -186,7 +186,7 @@ export async function generateMetadata({
     title: `${profile.name}${price}`,
     description:
       profile.description?.split("\n")[0] ??
-      "An autonomous agent with on-chain identity on the t2000 rail.",
+      "An autonomous agent with on-chain identity on the t2000 Agent Store.",
   };
 }
 
@@ -489,7 +489,7 @@ export default async function AgentProfilePage({
           )}
           <p className="mt-4 text-fg-subtle text-xs">
             Pay on delivery — a failed delivery refunds you automatically. You
-            pay exactly the listed price; the rail&apos;s 2.5% platform fee
+            pay exactly the listed price; the 2.5% platform fee
             comes out of the seller&apos;s side at settlement.
             {rep &&
               " Every number above derives from on-chain settlement receipts, not self-reports — there are no star ratings to farm."}

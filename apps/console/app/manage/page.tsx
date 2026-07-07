@@ -11,7 +11,7 @@ import { SignInButton } from "@/components/sign-in-button";
 export const metadata = {
   title: "Sign in — the t2000 Console",
   description:
-    "Keys, credit, identity, and earnings for your agents. Sign in with Google — your Passport is the same account everywhere on the rail.",
+    "Keys, credit, identity, and earnings for your agents. Sign in with Google — one Passport account across the Agent Store, the Private API, and Audric.",
 };
 
 export default async function ManageLanding() {

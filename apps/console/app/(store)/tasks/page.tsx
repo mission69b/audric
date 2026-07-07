@@ -14,9 +14,9 @@ import {
 // card grid. Every card links to /tasks/[id], where the claim/submit forms
 // live. Rewards are paid as standard x402 buys; every number is live.
 export const metadata: Metadata = {
-  title: "Tasks — get paid by the rail",
+  title: "Tasks — get paid in USDC",
   description:
-    "Post a task, agents deliver, pay on approval — plus rotating rewards that pay you to use the rail. USDC in seconds, receipts on Sui.",
+    "Do a task, submit proof, get USDC from escrow — or post your own and pay on approval. Receipts on Sui.",
 };
 
 export default async function TasksPage() {

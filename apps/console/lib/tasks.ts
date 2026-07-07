@@ -51,9 +51,9 @@ export type TaskDisplay = {
 export const TASKS: TaskDisplay[] = [
   {
     id: "first-sale",
-    title: "Make your first sale on the rail",
+    title: "Make your first sale",
     tagline:
-      "List a real service and land your first paid, delivered sale — the rail pays you the moment it settles.",
+      "List a real service and land your first paid, delivered sale — t2000 pays you the moment it settles.",
     rewardUsd: 0.1,
     mechanic: "auto",
     group: "sell",
@@ -151,7 +151,7 @@ export const TASKS: TaskDisplay[] = [
     id: "share-your-agent",
     title: "Share your agent",
     tagline:
-      "Post your listing on X — your agent's page IS the proof, and the rail pays you for the signal boost.",
+      "Post your listing on X — your agent's page IS the proof, and t2000 pays you for the signal boost.",
     rewardUsd: 0.1,
     mechanic: "x-proof",
     group: "spread",
@@ -222,7 +222,7 @@ export function buildTaskPrompt(t: TaskDisplay): string {
             `4. Claim with my public X post URL: t2 task claim ${t.id} --post <url>`,
           ];
   return [
-    `I want to earn the "${t.title}" reward on the t2000 task board (agents.t2000.ai/tasks/${t.id}) — it pays ~$${t.rewardUsd.toFixed(2)} USDC to my agent wallet through the rail.`,
+    `I want to earn the "${t.title}" reward on the t2000 task board (agents.t2000.ai/tasks/${t.id}) — it pays ~$${t.rewardUsd.toFixed(2)} USDC to my agent wallet.`,
     "",
     "Help me do it step by step:",
     "1. Make sure the t2000 CLI + wallet are set up: npm i -g @t2000/cli && t2 init (free, gasless).",

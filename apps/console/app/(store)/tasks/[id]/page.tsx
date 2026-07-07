@@ -321,7 +321,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
         <p className="mt-5 max-w-2xl text-fg-subtle text-xs leading-relaxed">
           Escrow-funded and AI-screened at post time — the poster approves
           completions (t2000 does not arbitrate). Rewards settle through the
-          rail (2.5% fee on the worker side); unspent budget auto-refunds at
+          x402 gateway (2.5% fee on the worker side); unspent budget auto-refunds at
           expiry.
         </p>
       </div>
