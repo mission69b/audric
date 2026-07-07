@@ -78,7 +78,7 @@ export default async function TasksPage() {
       <section className="relative">
         <div
           aria-hidden="true"
-          className="-top-32 pointer-events-none absolute right-[-8%] h-[420px] w-[520px]"
+          className="-top-32 pointer-events-none absolute right-0 h-[420px] w-[520px] max-w-full"
           style={{
             background:
               "radial-gradient(46% 46% at 60% 40%, rgba(0,114,245,0.13) 0%, transparent 70%)",

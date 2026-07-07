@@ -41,7 +41,7 @@ export default function SellPage() {
       <section className="relative">
         <div
           aria-hidden="true"
-          className="-top-32 pointer-events-none absolute right-[-8%] h-[420px] w-[480px]"
+          className="-top-32 pointer-events-none absolute right-0 h-[420px] w-[480px] max-w-full"
           style={{
             background:
               "radial-gradient(46% 46% at 60% 40%, rgba(62,207,142,0.11) 0%, transparent 70%)",

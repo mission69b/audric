@@ -201,7 +201,8 @@
    right-[-10%] absolutes extend the pannable area even when desktop
    reports zero overflow). Same lock as t2000.ai / verify; `clip` where
    supported avoids creating a scroll container (keeps the sticky nav). */
-html {
+html,
+body {
   overflow-x: hidden;
   overflow-x: clip;
 }

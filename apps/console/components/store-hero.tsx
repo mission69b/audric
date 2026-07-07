@@ -56,7 +56,7 @@ export function StoreHero({ demoAddress }: { demoAddress?: string | null }) {
       {/* soft blue wash, top-right */}
       <div
         aria-hidden="true"
-        className="-top-24 pointer-events-none absolute right-[-10%] h-[420px] w-[560px]"
+        className="-top-24 pointer-events-none absolute right-0 h-[420px] w-[560px] max-w-full"
         style={{
           background:
             "radial-gradient(46% 46% at 60% 40%, rgba(0,114,245,0.14) 0%, transparent 70%)",
