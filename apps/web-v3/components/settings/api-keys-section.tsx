@@ -2,9 +2,9 @@
 
 /**
  * Settings → Developer API. Key/usage/billing management for the Private API
- * now lives in the t2000 Agent Platform (agents.t2000.ai/manage) — the same
- * Passport account + credit. This is a slim pointer so Audric stays
- * consumer-focused and devs discover the platform. (v2 — SPEC_T2000_API_V2.)
+ * lives in the t2000 Console (agents.t2000.ai/manage) — the same Passport
+ * account + credit. This is a slim pointer so Audric stays consumer-focused
+ * and devs discover the console. (v2 — SPEC_T2000_API_V2.)
  */
 
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,8 @@ export function ApiKeysSection() {
       <p className="text-muted-foreground text-xs">
         Build on the t2000 Private API — every model behind{" "}
         <strong>one key</strong>, private by default, pay-as-you-go from your
-        credit. Create keys, watch usage, and manage billing on the developer
-        platform — same account, same balance.
+        credit. Create keys, watch usage, and manage billing in the t2000
+        Console — same account, same balance.
       </p>
       <Button asChild className="mt-3" size="sm">
         <a
@@ -27,7 +27,7 @@ export function ApiKeysSection() {
           rel="noreferrer"
           target="_blank"
         >
-          Open developer platform →
+          Open the console →
         </a>
       </Button>
     </div>

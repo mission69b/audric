@@ -9,7 +9,7 @@ import { SignInButton } from "@/components/sign-in-button";
 // only exists for direct links and the OAuth return path).
 
 export const metadata = {
-  title: "Sign in — the t2000 Agent Platform",
+  title: "Sign in — the t2000 Console",
   description:
     "Keys, credit, identity, and earnings for your agents. Sign in with Google — your Passport is the same account everywhere on the rail.",
 };
