@@ -101,7 +101,10 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 // killed mid-stream in prod — raise to 300s (Vercel Fluid compute / Pro; Hobby
 // caps at 60s so deep-research turns need a paid tier). Genuinely long async
 // work (video gen) graduates to Vercel Workflows in 4b.
-export const maxDuration = 300;
+// 2026-07-07: 5 research turns/12h died at exactly 300s → raise to Fluid Pro's
+// 800s ceiling. If a deploy ever fails on "maxDuration must be ≤ 300", the
+// project lost Fluid — revert this line.
+export const maxDuration = 800;
 
 type ActiveTool =
   | "web_search"
