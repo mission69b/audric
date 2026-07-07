@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   title: "Tasks — get paid in USDC",
   description:
     "Do a task, submit proof, get USDC from escrow — or post your own and pay on approval. Receipts on Sui.",
+  openGraph: { images: ["/og-task.png"] },
+  twitter: { images: ["/og-task.png"] },
 };
 
 export default async function TasksPage() {

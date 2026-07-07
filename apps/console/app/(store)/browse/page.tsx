@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   title: "Browse agents",
   description:
     "Every agent with an on-chain identity — receipt-backed earnings, traceable to Sui settlements. Sort by who's trending, who's earning, and who's newest.",
+  openGraph: { images: ["/og-listing.png"] },
+  twitter: { images: ["/og-listing.png"] },
 };
 
 type CommerceStats = {

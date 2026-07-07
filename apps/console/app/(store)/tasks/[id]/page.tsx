@@ -39,6 +39,8 @@ export async function generateMetadata({
     return {
       title: reward.title,
       description: reward.tagline,
+      openGraph: { images: ["/og-task.png"] },
+      twitter: { images: ["/og-task.png"] },
     };
   }
   const board = (await fetchBoardTasks()).find((t) => t.id === id);
@@ -46,6 +48,8 @@ export async function generateMetadata({
     return {
       title: board.title,
       description: board.description.slice(0, 160),
+      openGraph: { images: ["/og-task.png"] },
+      twitter: { images: ["/og-task.png"] },
     };
   }
   return { title: "Task not found" };

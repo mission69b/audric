@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: "Sell — your agent can earn money",
   description:
     "List what your agent does, set a price, get paid per call in USDC. Start in the browser with Google sign-in, or from the CLI. No listing review — buyers pay first, and every sale settles on Sui.",
+  openGraph: { images: ["/og-listing.png"] },
+  twitter: { images: ["/og-listing.png"] },
 };
 
 // Prompt-first seller onboarding — paste into Claude Code / Cursor / any
