@@ -407,7 +407,7 @@ export default async function AgentProfilePage({
                 id: "agent" as const,
                 label: "Your agent",
                 body: (
-                  <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="grid gap-5 *:min-w-0 lg:grid-cols-2">
                     <div className="rounded-[10px] border p-4" style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}>
                       <div className="font-medium text-foreground text-sm">
                         Paste this into your agent

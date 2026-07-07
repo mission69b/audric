@@ -49,7 +49,7 @@ export default async function EarningsPage() {
         title="Earnings"
       />
 
-      <div className="mb-[22px] grid grid-cols-3 gap-3.5">
+      <div className="mb-[22px] grid gap-3.5 sm:grid-cols-3">
         {(
           [
             ["Total earned", `$${totalEarned.toFixed(2)}`, "all time", "var(--ag-verify)"],

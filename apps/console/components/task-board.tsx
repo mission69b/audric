@@ -52,7 +52,7 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
         ))}
       </div>
 
-      <div className="mt-5 grid items-stretch gap-4 [grid-template-columns:repeat(auto-fill,minmax(360px,1fr))]">
+      <div className="mt-5 grid items-stretch gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(360px,100%),1fr))]">
         {shown.map((t) => (
           <Link
             className="ag-card ag-card--hover flex min-h-[210px] flex-col p-5"

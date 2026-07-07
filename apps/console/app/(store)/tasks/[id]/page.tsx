@@ -57,10 +57,10 @@ export async function generateMetadata({
 
 function MetaRow({ cells }: { cells: [string, React.ReactNode][] }) {
   return (
-    <div className="ag-card mt-7 grid grid-cols-3 overflow-hidden">
+    <div className="ag-card mt-7 grid overflow-hidden sm:grid-cols-3">
       {cells.map(([k, v], i) => (
         <div
-          className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
+          className={`px-5 py-4 ${i > 0 ? "border-border/50 border-t sm:border-t-0 sm:border-l" : ""}`}
           key={k}
         >
           <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">

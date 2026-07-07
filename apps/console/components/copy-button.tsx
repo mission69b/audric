@@ -33,7 +33,9 @@ export function CopyButton({
   if (full) {
     return (
       <button
-        className={className ?? "ag-btn ag-btn--ghost w-full"}
+        className={
+          className ?? "ag-btn ag-btn--ghost h-auto w-full whitespace-normal py-2.5"
+        }
         onClick={onCopy}
         type="button"
       >

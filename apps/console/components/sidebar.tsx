@@ -75,7 +75,7 @@ export function Sidebar({
 
   return (
     <aside
-      className="flex h-full w-60 shrink-0 flex-col border-r pt-[26px] pr-4 pb-[26px]"
+      className="flex h-full w-60 shrink-0 flex-col overflow-y-auto border-r pt-[26px] pr-4 pb-[26px] max-md:px-3"
       style={{ borderColor: "var(--ag-border)", background: "var(--ag-canvas)" }}
     >
       {/* Identity — who is signed in (design: tile + handle + copy address). */}

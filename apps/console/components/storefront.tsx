@@ -290,7 +290,7 @@ export function Storefront({
           </p>
         </div>
       ) : (
-        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(340px,1fr))]">
+        <div className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr))]">
           {visible.map((s) => (
             <ServiceCard
               featured={s.address === featuredAddress}

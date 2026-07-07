@@ -14,7 +14,7 @@ export function Segmented<T extends string>({
 }) {
   return (
     <div
-      className="inline-flex w-fit gap-1 rounded-lg border p-[3px]"
+      className="inline-flex w-fit max-w-full flex-wrap gap-1 rounded-lg border p-[3px]"
       style={{
         background: "var(--ag-overlay)",
         borderColor: "var(--ag-border)",

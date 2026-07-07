@@ -33,7 +33,8 @@ export function ModelsSection() {
   return (
     <Section description="USD per 1M tokens, metered to your credit.">
       {models && models.length > 0 ? (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[480px] text-sm">
           <thead>
             <tr className="border-border border-b text-left text-[11px] text-muted-foreground uppercase tracking-wide">
               <th className="pb-2 font-medium">Model</th>
@@ -71,6 +72,7 @@ export function ModelsSection() {
             ))}
           </tbody>
         </table>
+        </div>
       ) : (
         <p className="text-muted-foreground text-xs">Loading catalog…</p>
       )}
