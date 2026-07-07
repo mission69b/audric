@@ -1,4 +1,5 @@
 import { getAgentProfile, listAgentsForOwner } from "@audric/accounts";
+import { fetchRetry } from "@/lib/fetch-retry";
 
 // Receipt-backed earnings rollup for a signed-in Passport — the self-agent
 // plus every confirmed owned agent, with each agent's public reputation
@@ -34,7 +35,7 @@ export type AgentEarnings = {
 
 async function fetchReputation(address: string): Promise<Reputation | null> {
   try {
-    const res = await fetch(`${API_BASE}/agents/${address}`, {
+    const res = await fetchRetry(`${API_BASE}/agents/${address}`, {
       next: { revalidate: 30 },
     });
     if (!res.ok) {

@@ -11,6 +11,7 @@ import {
   Storefront,
 } from "@/components/storefront";
 import { getUsernamesByIds } from "@audric/accounts";
+import { fetchRetry } from "@/lib/fetch-retry";
 import { shortAddress } from "@/lib/format";
 import { fetchBoardTasks, TASKS } from "@/lib/tasks";
 
@@ -40,7 +41,7 @@ type CommerceStats = {
 
 async function fetchStats(): Promise<CommerceStats | null> {
   try {
-    const res = await fetch(`${GATEWAY_BASE}/commerce/stats`, {
+    const res = await fetchRetry(`${GATEWAY_BASE}/commerce/stats`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) {
@@ -62,7 +63,7 @@ type RailStats = {
 
 async function fetchRailStats(): Promise<RailStats | null> {
   try {
-    const res = await fetch(`${GATEWAY_BASE}/api/mpp/stats`, {
+    const res = await fetchRetry(`${GATEWAY_BASE}/api/mpp/stats`, {
       next: { revalidate: 120 },
     });
     if (!res.ok) {
@@ -79,7 +80,7 @@ export default async function HomePage() {
   let total = 0;
   let agents: AgentRow[] = [];
   try {
-    const res = await fetch(`${API_BASE}/agents?limit=${PAGE}&offset=0`, {
+    const res = await fetchRetry(`${API_BASE}/agents?limit=${PAGE}&offset=0`, {
       next: { revalidate: 30 },
     });
     if (res.ok) {

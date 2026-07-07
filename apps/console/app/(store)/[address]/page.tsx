@@ -11,6 +11,7 @@ import { TryItButton } from "@/components/try-it-button";
 import { UseInAudric } from "@/components/use-in-audric";
 import { UseItServiceRow } from "@/components/use-it-tabs";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
+import { fetchRetry } from "@/lib/fetch-retry";
 import { categoryLabel } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
 
@@ -159,7 +160,7 @@ function CommandBlock({
 async function fetchProfile(address: string): Promise<Profile | null> {
   try {
     // Same URL + revalidate as generateMetadata → Next dedupes the fetch.
-    const res = await fetch(`${API_BASE}/agents/${address}`, {
+    const res = await fetchRetry(`${API_BASE}/agents/${address}`, {
       next: { revalidate: 30 },
     });
     if (res.ok) {

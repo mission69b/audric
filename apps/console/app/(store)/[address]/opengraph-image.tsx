@@ -137,7 +137,19 @@ export default async function Image({
                 fontSize: 28,
               }}
             >
-              ✓ {sales} sold
+              {/* Inline SVG check — the "✓" glyph isn't in next/og's default
+                  font subset and triggered a dynamic-font 400 on every
+                  render (Vercel log noise; glyph silently dropped). */}
+              <svg fill="none" height="26" viewBox="0 0 16 16" width="26">
+                <path
+                  d="M3.5 8.5l3 3 6-7"
+                  stroke="#34d399"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.8"
+                />
+              </svg>
+              {sales} sold
             </div>
           )}
         </div>

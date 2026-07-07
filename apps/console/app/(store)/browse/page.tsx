@@ -5,6 +5,7 @@ import {
 } from "@/components/agent-directory";
 import type { AgentRow } from "@/components/directory";
 import { getUsernamesByIds } from "@audric/accounts";
+import { fetchRetry } from "@/lib/fetch-retry";
 import type { SellerStats } from "@/components/storefront";
 
 // /browse — the full registry (t2000-design/agents browse.html). ONE
@@ -28,7 +29,7 @@ type CommerceStats = {
 
 async function fetchStats(): Promise<CommerceStats | null> {
   try {
-    const res = await fetch(`${GATEWAY_BASE}/commerce/stats`, {
+    const res = await fetchRetry(`${GATEWAY_BASE}/commerce/stats`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) {
@@ -51,7 +52,7 @@ export default async function BrowsePage({
   let total = 0;
   let agents: AgentRow[] = [];
   try {
-    const res = await fetch(
+    const res = await fetchRetry(
       `${API_BASE}/agents?limit=${PAGE}&offset=${offset}`,
       { next: { revalidate: 30 } }
     );
