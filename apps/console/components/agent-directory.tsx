@@ -147,7 +147,7 @@ export function AgentDirectory({
                   </div>
                 )}
                 <div className="mt-1 font-mono text-fg-subtle text-xs">
-                  {a.handle && <>@{a.handle} · </>}
+                  {a.handle && <>{`${a.handle}@audric`} · </>}
                   {shortAddress(a.address)}
                 </div>
               </div>

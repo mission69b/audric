@@ -95,7 +95,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
             )}
           </div>
           <div className="mt-0.5 truncate font-mono text-[11.5px] text-fg-subtle">
-            {s.handle && <>@{s.handle} · </>}
+            {s.handle && <>{`${s.handle}@audric`} · </>}
             {s.numericId != null && <>#{s.numericId} · </>}
             {categoryLabel(s.category ?? "other")}
           </div>

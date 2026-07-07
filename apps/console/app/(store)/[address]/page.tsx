@@ -1,4 +1,5 @@
 import { getUserById, getUserByUsername } from "@audric/accounts";
+import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
@@ -277,7 +278,7 @@ export default async function AgentProfilePage({
             {!profile.active && <Badge variant="destructive">inactive</Badge>}
           </div>
           <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
-            {handle && <>@{handle} · </>}
+            {handle && <>{displayHandle(handle)} · </>}
             {numericId != null && <>#{numericId}</>}
             {profile.category && (
               <> · {categoryLabel(profile.category)}</>
