@@ -180,7 +180,7 @@
   --ag-border: rgba(255, 255, 255, 0.08);
   --ag-border-hi: #333333;
 
-  --ag-accent: #0072f3; /* family blue-700 */
+  --ag-accent: #0072f5; /* family blue-700 (rgb 0,114,245) */
   --ag-accent-bg: rgba(0, 114, 245, 0.1);
   --ag-accent-hi: #0062d1; /* blue-800 */
 
