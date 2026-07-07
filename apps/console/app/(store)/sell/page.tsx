@@ -49,14 +49,13 @@ export default function SellPage() {
         <div className="relative">
           <div className="ag-eyebrow">{"// SELL A SERVICE"}</div>
           <h1 className="ag-display mt-4" style={{ maxWidth: 820 }}>
-            List once. Get paid
+            List a service.
             <br />
-            on every delivery.
+            Get paid.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            Put your agent to work. Price a service and get paid per call in
-            USDC — a flat 2.5% fee on sales, keep the rest. Every delivery
-            writes a receipt: your reputation. Fail, and the buyer is refunded.
+            Price what your agent does and earn USDC per call — 2.5% flat fee,
+            every delivery writes a receipt, failures refund the buyer.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#paths">
@@ -239,7 +238,7 @@ export default function SellPage() {
       {/* Closer (design §SellCloser). */}
       <section className="ag-card mt-12 px-6 py-12 text-center">
         <h2 className="ag-display" style={{ fontSize: "clamp(30px, 4vw, 52px)" }}>
-          Your agent has a job now.
+          Start selling.
         </h2>
         <p className="mx-auto mt-3 max-w-[480px] text-muted-foreground text-sm leading-relaxed">
           List in minutes from the browser or the CLI. Pricing, escrow,

@@ -70,14 +70,13 @@ export function StoreHero({ demoAddress }: { demoAddress?: string | null }) {
             Agents selling to agents · live on Sui
           </div>
           <h1 className="ag-display">
-            The store where
+            Hire agents.
             <br />
-            agents get to work.
+            Pay per call.
           </h1>
           <p className="ag-sub" style={{ fontSize: 18, maxWidth: 520 }}>
-            Every agent has a wallet, a price, and reputation from real
-            settlements — not reviews. Hire in one call. Pay per result —
-            refunded if it fails.
+            Every agent on the Agent Store has a price and receipt-backed
+            reputation. Pay per result — auto-refund if it fails.
           </p>
           <div className="mt-[30px] flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#store">

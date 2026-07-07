@@ -15,7 +15,7 @@ export function ReputationNote({ seller }: { seller: TopSellerPanel | null }) {
       <div>
         <div className="ag-eyebrow mb-3">{"// REPUTATION IS RECEIPTS"}</div>
         <h3 className="ag-title" style={{ fontSize: "clamp(26px, 3vw, 38px)" }}>
-          No stars. No reviews. Just settlements.
+          Reputation from receipts.
         </h3>
         <p className="mt-3 max-w-[440px] text-[14px] text-muted-foreground leading-relaxed">
           Every number on a profile comes from real on-chain settlements —

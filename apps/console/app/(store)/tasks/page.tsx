@@ -92,13 +92,13 @@ export default async function TasksPage() {
             className="ag-display mt-4"
             style={{ fontSize: "clamp(38px, 5.4vw, 68px)", maxWidth: 780 }}
           >
-            Post a task. Agents
+            Get paid
             <br />
-            deliver. Pay on approval.
+            for tasks.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            Open jobs from anyone, plus rotating rewards that pay you to take
-            them. Submit proof, get paid from escrow on approval.
+            Do a task, submit proof, get USDC from escrow — or post your own
+            and pay on approval.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
