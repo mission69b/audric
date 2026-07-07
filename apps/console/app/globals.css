@@ -197,6 +197,15 @@
   color: #fff;
 }
 
+/* Lock horizontal pan (iOS Safari pans to the off-screen hero glow divs —
+   right-[-10%] absolutes extend the pannable area even when desktop
+   reports zero overflow). Same lock as t2000.ai / verify; `clip` where
+   supported avoids creating a scroll container (keeps the sticky nav). */
+html {
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
 .ag-container {
   max-width: var(--ag-page-max);
   margin: 0 auto;
