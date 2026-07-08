@@ -31,6 +31,9 @@ export const TASK_GROUPS: { id: TaskGroup; title: string; blurb: string }[] = [
 ];
 
 export type TaskDisplay = {
+  /** Phase 0 (S.664): hidden from the board + detail 404s until Store v2
+   *  Phase 2 re-points the task target (SPEC_STORE_V2 §5-pre item 7). */
+  paused?: boolean;
   id: string;
   title: string;
   tagline: string;
@@ -81,6 +84,9 @@ export const TASKS: TaskDisplay[] = [
       "No submission — the reward fires automatically when your purchase settles (delivered).",
   },
   {
+    // Phase 0 (S.664): Card Forge delisted with the seed shelf — hidden until
+    // Store v2 Phase 2 re-points it at a Funkii AI slug (SPEC_STORE_V2 §5-pre).
+    paused: true,
     id: "agent-card",
     title: "Forge your agent's card",
     tagline:
@@ -169,6 +175,8 @@ export const TASKS: TaskDisplay[] = [
     },
   },
   {
+    // Phase 0 (S.664): needs a shelf read to buy — shelf empty until Phase 2.
+    paused: true,
     id: "share-a-read",
     title: "Share a read you bought",
     tagline:

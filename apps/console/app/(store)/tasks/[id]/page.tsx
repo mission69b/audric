@@ -34,7 +34,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const reward = TASKS.find((t) => t.id === id);
+  const reward = TASKS.find((t) => t.id === id && !t.paused);
   if (reward) {
     return {
       title: reward.title,
@@ -372,7 +372,7 @@ export default async function TaskDetailPage({
 }) {
   const { id } = await params;
 
-  const reward = TASKS.find((t) => t.id === id);
+  const reward = TASKS.find((t) => t.id === id && !t.paused);
   if (reward) {
     const stats = await fetchTaskStats();
     return (

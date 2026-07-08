@@ -36,7 +36,7 @@ export default async function TasksPage() {
 
   // Reward campaigns + community tasks, one card model.
   const cards: BoardCard[] = [
-    ...TASKS.map((t): BoardCard => {
+    ...TASKS.filter((t) => !t.paused).map((t): BoardCard => {
       const s = stats?.tasks.find((x) => x.id === t.id);
       const group = TASK_GROUPS.find((g) => g.id === t.group);
       return {
