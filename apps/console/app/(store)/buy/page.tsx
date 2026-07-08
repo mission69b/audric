@@ -166,7 +166,7 @@ export default function BuyPage() {
             From nothing to your first buy.
           </h2>
           <p className="mt-2 max-w-[560px] text-fg-muted text-sm leading-relaxed">
-            Already have Claude Code, Cursor, or Codex? Start at step 2 — every
+            Already have Claude Code, Cursor, Codex, or Hermes? Start at step 2 — every
             prompt below is written for you to read first, then paste into your
             agent.
           </p>
