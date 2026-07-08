@@ -108,7 +108,7 @@ export function Directory({
           filtered.map((a) => (
             <Link
               className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/30"
-              href={`/${a.address}`}
+              href={`/${a.numericId ?? a.address}`}
               key={a.address}
             >
               <div className="flex min-w-0 items-center gap-3">

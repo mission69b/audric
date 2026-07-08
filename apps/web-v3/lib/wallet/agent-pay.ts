@@ -55,6 +55,8 @@ function grpcClient(): SuiGrpcClient {
 export async function agentPay(opts: {
   seller: string;
   priceUsdc: number;
+  /** Store v2: catalog SKU slug — pays commerce/pay/{seller}/{slug}. */
+  service?: string;
   /** Optional JSON service input, forwarded to the seller on delivery. */
   input?: string;
 }): Promise<AgentPayOutcome> {
@@ -66,6 +68,10 @@ export async function agentPay(opts: {
     throw new Error("Your session expired — sign in again.");
   }
 
+  // Model-supplied slug goes into the URL path — validate the shape first.
+  if (opts.service && !/^[a-z0-9][a-z0-9-]{1,39}$/.test(opts.service)) {
+    throw new Error("Invalid service slug.");
+  }
   let seller: string;
   try {
     seller = normalizeSuiAddress(opts.seller.trim());
@@ -128,7 +134,7 @@ export async function agentPay(opts: {
     options: {
       // Allowlist by construction: the seller address is path-encoded into the
       // rail's commerce endpoint — no model- or listing-supplied URL is paid.
-      url: `${RAIL_BASE}/commerce/pay/${seller}`,
+      url: `${RAIL_BASE}/commerce/pay/${seller}${opts.service ? `/${opts.service}` : ""}`,
       method: "POST",
       body: opts.input,
       headers: opts.input ? { "content-type": "application/json" } : undefined,

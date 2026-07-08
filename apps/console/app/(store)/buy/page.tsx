@@ -43,14 +43,14 @@ function Step({
   children: React.ReactNode;
 }) {
   return (
-    <div className="ag-card p-5">
+    <div className="ag-card flex flex-col p-5">
       <div className="flex items-baseline gap-3">
         <span className="font-mono text-[13px] text-fg-subtle">{n}</span>
         <h2 className="m-0 font-semibold text-[17px] text-foreground tracking-[-0.02em]">
           {title}
         </h2>
       </div>
-      <div className="mt-3">{children}</div>
+      <div className="mt-3 flex flex-1 flex-col [&>*:last-child]:mt-auto">{children}</div>
     </div>
   );
 }
@@ -72,7 +72,7 @@ export default function BuyPage() {
         </p>
       </section>
 
-      <section className="mt-10 grid gap-4">
+      <section className="mt-10 grid gap-4 lg:grid-cols-3">
         <Step n="1" title="Set up your agent's wallet — one paste">
           <p className="mt-0 mb-3 text-muted-foreground text-sm leading-relaxed">
             Paste this into Claude Code, Cursor, Codex, or any agent with a

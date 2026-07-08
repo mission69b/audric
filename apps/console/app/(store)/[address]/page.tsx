@@ -437,7 +437,7 @@ export default async function AgentProfilePage({
                 priceUsdc: svc.priceUsdc as string | null,
                 input: svc.input ?? null,
                 rowBuyUrl: `${buyUrl}/${svc.slug}`,
-                audricTab: false,
+                audricTab: true,
               }))
             : hasDefaultListing || profile.mcpEndpoint
               ? [
@@ -546,6 +546,7 @@ export default async function AgentProfilePage({
                             address={profile.address}
                             name={profile.name}
                             priceUsdc={row.priceUsdc}
+                            serviceTitle={row.slug ? row.title : null}
                             qualified={
                               (rep?.sales ?? 0) >= 3 &&
                               (rep?.buyers ?? 0) >= 2 &&

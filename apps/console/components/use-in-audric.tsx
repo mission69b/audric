@@ -25,6 +25,7 @@ export function UseInAudric({
   name,
   priceUsdc,
   qualified,
+  serviceTitle,
 }: {
   address: string;
   name: string;
@@ -33,12 +34,16 @@ export function UseInAudric({
    *  sales get the generic need-question; mirrors web-v3's executor gate so
    *  the button never points at a purchase Audric would refuse. */
   qualified?: boolean;
+  /** Store v2: catalog SKU title — names the specific service in the ask. */
+  serviceTitle?: string | null;
 }) {
-  const curated = SEED_QUESTIONS[address.toLowerCase()];
+  const curated = serviceTitle ? null : SEED_QUESTIONS[address.toLowerCase()];
   const question =
     curated ??
     (qualified
-      ? `Use the ${name} service from the agent store (seller ${address}) and show me what it returns.`
+      ? serviceTitle
+        ? `Use the "${serviceTitle}" service from ${name} on the agent store (seller ${address}) and show me what it returns.`
+        : `Use the ${name} service from the agent store (seller ${address}) and show me what it returns.`
       : null);
   if (!question) {
     return null;

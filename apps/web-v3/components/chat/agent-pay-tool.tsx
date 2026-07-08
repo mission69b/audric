@@ -108,6 +108,7 @@ export function AgentPayTool({ part }: { part: AgentPayPart }) {
     try {
       const result = await agentPay({
         seller,
+        service: input.service,
         priceUsdc,
         input: input.input,
       });

@@ -100,119 +100,107 @@ export function AgentDirectory({
         </div>
       </div>
 
-      <div className="ag-card mt-5 divide-y divide-border/50 overflow-hidden">
+      {/* Card grid (founder 2026-07-08: match the store shelf, not a list). */}
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {rows.map((a, i) => {
           const selling = isSelling(a);
           const showRank = sort === "Top earners";
+          const price =
+            (a.servicesCount ?? 0) > 1
+              ? `$${a.servicesFromUsdc ?? a.priceUsdc}+`
+              : a.priceUsdc
+                ? `$${a.priceUsdc}`
+                : null;
           return (
             <Link
-              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[color:var(--ag-overlay)]"
-              href={`/${a.address}`}
+              className="ag-card ag-card--hover flex min-h-[172px] flex-col p-[18px]"
+              href={`/${a.numericId ?? a.address}`}
               key={a.address}
             >
-              {showRank && (
-                <span className="w-5 shrink-0 text-right font-mono text-fg-subtle text-sm tabular-nums">
-                  {i + 1}
-                </span>
-              )}
-              <AgentAvatar
-                address={a.address}
-                imageUrl={a.imageUrl}
-                name={a.name}
-                size={40}
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-[15px] text-foreground">
-                    {a.name}
-                  </span>
-                  {a.numericId != null && (
-                    <span className="font-mono text-fg-subtle text-xs">
-                      #{a.numericId}
+              <div className="flex items-center gap-3">
+                <AgentAvatar
+                  address={a.address}
+                  imageUrl={a.imageUrl}
+                  name={a.name}
+                  size={42}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate font-semibold text-[15px] text-foreground tracking-[-0.02em]">
+                      {showRank && (
+                        <span className="mr-1.5 font-mono font-normal text-fg-subtle text-xs">
+                          {i + 1}.
+                        </span>
+                      )}
+                      {a.name}
                     </span>
-                  )}
-                  <span
-                    className={`ag-chip px-2 py-px text-[10px] uppercase ${
-                      selling ? "" : "opacity-60"
-                    }`}
-                  >
+                  </div>
+                  <div className="mt-0.5 truncate font-mono text-[11.5px] text-fg-subtle">
+                    {a.handle && <>{`${a.handle}@audric`} · </>}
+                    {a.numericId != null && <>#{a.numericId} · </>}
                     {selling
                       ? categoryLabel(a.category ?? "other")
-                      : "Not selling"}
-                  </span>
-                </div>
-                {a.description && (
-                  <div className="mt-1 max-w-[420px] truncate text-muted-foreground text-sm">
-                    {a.description}
+                      : shortAddress(a.address)}
                   </div>
-                )}
-                <div className="mt-1 font-mono text-fg-subtle text-xs">
-                  {a.handle && <>{`${a.handle}@audric`} · </>}
-                  {shortAddress(a.address)}
+                </div>
+                <div className="shrink-0 text-right">
+                  {price ? (
+                    <>
+                      <div className="font-medium font-mono text-[14.5px] text-foreground tabular-nums">
+                        {price}
+                      </div>
+                      <div className="mt-px font-mono text-[10px] text-fg-subtle">
+                        {(a.servicesCount ?? 0) > 1
+                          ? `${a.servicesCount} services`
+                          : "/ call"}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="font-mono text-[10.5px] text-fg-subtle">
+                      identity
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* reputation column */}
-              <div className="hidden shrink-0 text-right sm:block">
-                {selling && (a.stats?.sales ?? 0) > 0 ? (
-                  <>
-                    <div className="font-mono text-fg-muted text-xs">
-                      {a.stats?.sales} sold · {a.stats?.buyers} buyer
-                      {(a.stats?.buyers ?? 0) === 1 ? "" : "s"}
-                    </div>
-                    {typeof a.stats?.deliveredRate === "number" && (
-                      <div className="mt-1 inline-flex items-center gap-1 font-mono text-xs" style={{ color: "var(--ag-verify)" }}>
-                        <svg
-                          aria-hidden="true"
-                          fill="none"
-                          height="10"
-                          viewBox="0 0 16 16"
-                          width="10"
-                        >
-                          <path
-                            d="M3.5 8.5l3 3 6-7"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="1.9"
-                          />
-                        </svg>
-                        {Math.round(a.stats.deliveredRate * 100)}% delivered
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <span className="font-mono text-fg-subtle text-xs">
-                    {selling ? "no sales yet" : "identity only"}
-                  </span>
-                )}
-              </div>
-
-              {/* metric column changes with sort */}
-              {sort === "Newest" ? (
-                <span className="w-24 shrink-0 text-right font-mono text-fg-subtle text-xs">
-                  {formatDate(a.createdAt)}
-                </span>
-              ) : sort === "Top earners" ? (
-                <span className="w-[84px] shrink-0 text-right font-mono text-[15px] text-foreground tabular-nums">
-                  ${(a.stats?.volumeUsd ?? 0).toFixed(4)}
-                </span>
-              ) : (
-                <span
-                  className={`w-16 shrink-0 text-right font-mono text-sm tabular-nums ${
-                    a.priceUsdc
-                      ? "text-foreground"
-                      : "text-fg-subtle"
-                  }`}
-                >
-                  {a.priceUsdc ? `$${a.priceUsdc}` : "—"}
-                </span>
+              {a.description && (
+                <p className="mt-3 text-[13px] text-muted-foreground leading-[1.5] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+                  {a.description}
+                </p>
               )}
+
+              <div className="mt-auto pt-3"><hr className="ag-rule" /></div>
+              <div className="mt-3 flex items-center justify-between gap-2 font-mono text-[11.5px] text-fg-subtle">
+                {selling && (a.stats?.sales ?? 0) > 0 ? (
+                  <span className="inline-flex items-center gap-1.5" style={{ color: "var(--ag-verify)" }}>
+                    <svg aria-hidden="true" fill="none" height="10" viewBox="0 0 16 16" width="10">
+                      <path
+                        d="M3.5 8.5l3 3 6-7"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="1.9"
+                      />
+                    </svg>
+                    {a.stats?.sales} sold · {a.stats?.buyers} buyer
+                    {(a.stats?.buyers ?? 0) === 1 ? "" : "s"}
+                    {typeof a.stats?.deliveredRate === "number" &&
+                      ` · ${Math.round(a.stats.deliveredRate * 100)}%`}
+                  </span>
+                ) : (
+                  <span>{selling ? "no sales yet" : "identity only"}</span>
+                )}
+                <span>
+                  {sort === "Top earners"
+                    ? `$${(a.stats?.volumeUsd ?? 0).toFixed(2)} earned`
+                    : formatDate(a.createdAt)}
+                </span>
+              </div>
             </Link>
           );
         })}
         {rows.length === 0 && (
-          <div className="px-5 py-10 text-center text-fg-subtle text-sm">
+          <div className="col-span-full px-5 py-10 text-center text-fg-subtle text-sm">
             No agents match{query ? ` “${query}”` : " that filter"}.
           </div>
         )}

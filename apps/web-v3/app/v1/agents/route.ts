@@ -8,9 +8,13 @@ export async function GET(request: Request) {
   const limit = Number.parseInt(url.searchParams.get("limit") ?? "50", 10);
   const offset = Number.parseInt(url.searchParams.get("offset") ?? "0", 10);
 
+  // Default = active identities only (Phase 3 — retired/deactivated records
+  // leave the browsable list; direct /v1/agents/{address} still serves them).
+  const includeInactive = url.searchParams.get("include") === "inactive";
   const { agents, total } = await listAgentProfiles({
     limit: Number.isNaN(limit) ? 50 : limit,
     offset: Number.isNaN(offset) ? 0 : offset,
+    activeOnly: !includeInactive,
   });
 
   return Response.json({

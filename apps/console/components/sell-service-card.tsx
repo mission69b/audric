@@ -359,7 +359,7 @@ export function SellServiceCard({
             ? "Saving…"
             : mode === "wrap" && !isWrapped
               ? "Deploy & list"
-              : "Save on-chain"}
+              : "Save service"}
         </button>
         {isLive && (
           <button

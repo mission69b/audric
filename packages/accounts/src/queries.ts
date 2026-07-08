@@ -388,17 +388,24 @@ export async function getAgentProfile(
 export async function listAgentProfiles(opts?: {
   limit?: number;
   offset?: number;
+  /** Default true (Store v2 Phase 3): deactivated records (e.g. the retired
+   *  seed shelf) stay out of the browsable directory; direct address URLs
+   *  still resolve them. Pass false for the full registry. */
+  activeOnly?: boolean;
 }): Promise<{ agents: AgentProfile[]; total: number }> {
   const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
   const offset = Math.max(opts?.offset ?? 0, 0);
+  const activeOnly = opts?.activeOnly !== false;
+  const where = activeOnly ? eq(agentProfile.active, true) : undefined;
   const [rows, [totalRow]] = await Promise.all([
     db
       .select()
       .from(agentProfile)
+      .where(where)
       .orderBy(desc(agentProfile.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ value: count() }).from(agentProfile),
+    db.select({ value: count() }).from(agentProfile).where(where),
   ]);
   return { agents: rows, total: totalRow?.value ?? 0 };
 }

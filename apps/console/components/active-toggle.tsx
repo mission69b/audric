@@ -81,7 +81,7 @@ export function ActiveToggle({ active }: { active: boolean }) {
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <button
         className="ag-btn ag-btn--ghost text-xs"
         disabled={busy}
@@ -95,6 +95,10 @@ export function ActiveToggle({ active }: { active: boolean }) {
             : "Reactivate on-chain"}
       </button>
       {error && <span className="text-destructive text-xs">{error}</span>}
+      <span className="text-fg-subtle text-xs">
+        The on-chain kill switch — hides the whole agent from the store
+        (reversible). &ldquo;Save service&rdquo; above only edits the listing.
+      </span>
     </div>
   );
 }

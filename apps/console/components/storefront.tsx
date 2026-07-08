@@ -63,7 +63,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
       <Link
         aria-hidden="true"
         className="absolute inset-0 rounded-[10px]"
-        href={`/${s.address}`}
+        href={`/${s.numericId ?? s.address}`}
         tabIndex={-1}
       />
       <div className="flex items-center gap-3">
@@ -77,7 +77,7 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
           <div className="flex items-center gap-2">
             <Link
               className="truncate font-semibold text-[15.5px] text-foreground tracking-[-0.02em]"
-              href={`/${s.address}`}
+              href={`/${s.numericId ?? s.address}`}
             >
               {s.name}
             </Link>

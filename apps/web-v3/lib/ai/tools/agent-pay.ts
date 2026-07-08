@@ -40,6 +40,13 @@ export const agentPay = tool({
       .describe(
         'JSON service input per the listing\'s Input hint (e.g. \'{"address":"0x…"}\'). Omit when the service takes no input.'
       ),
+    // Store v2: multi-service agents list slug-addressed SKUs.
+    service: z
+      .string()
+      .optional()
+      .describe(
+        "The service SLUG from <agent_store> when the seller lists multiple services (buys commerce/pay/<seller>/<slug>). Omit for single-service sellers."
+      ),
   }),
   // NO execute — client-executed via the zkLogin session key (see file header).
 });
