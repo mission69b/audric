@@ -5,6 +5,7 @@ export {
   createApiKey,
   defaultAgentName,
   getAgentProfile,
+  getAgentProfileByNumericId,
   getAgentService,
   getApiKeyByHash,
   getApiUsageByModel,

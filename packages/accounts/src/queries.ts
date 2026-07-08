@@ -215,6 +215,19 @@ export async function getAgentService(
   );
 }
 
+/** Resolve an agent by its ERC-8004-style numeric id (Store v2 Phase 3 —
+ *  the legible `agents.t2000.ai/16` URLs). */
+export async function getAgentProfileByNumericId(
+  numericId: number
+): Promise<AgentProfile | undefined> {
+  const [row] = await db
+    .select()
+    .from(agentProfile)
+    .where(eq(agentProfile.numericId, numericId))
+    .limit(1);
+  return row;
+}
+
 /** Set the editable rich-profile fields (gate 8c). Only provided fields are
  *  written (undefined = leave as-is; pass null to clear). Auth (agent signature
  *  or owner session) is enforced by the caller. */

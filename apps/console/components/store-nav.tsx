@@ -38,6 +38,18 @@ export function StoreNav() {
             Browse
           </Link>
           <Link
+            className="hidden transition-colors hover:text-foreground sm:inline"
+            href="/buy"
+          >
+            Buy
+          </Link>
+          <Link
+            className="hidden transition-colors hover:text-foreground sm:inline"
+            href="/sell"
+          >
+            Sell
+          </Link>
+          <Link
             className="transition-colors hover:text-foreground"
             href="/tasks"
           >

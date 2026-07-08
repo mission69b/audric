@@ -24,7 +24,18 @@ export default async function Image({
 }: {
   params: Promise<{ address: string }>;
 }) {
-  const { address } = await params;
+  const { address: seg } = await params;
+  // Numeric URLs (Phase 3): resolve /2 → the agent's address for the doc read.
+  let address = decodeURIComponent(seg);
+  if (/^\d{1,10}$/.test(address)) {
+    const { getAgentProfileByNumericId } = await import("@audric/accounts");
+    const byId = await getAgentProfileByNumericId(Number(address)).catch(
+      () => undefined
+    );
+    if (byId) {
+      address = byId.address;
+    }
+  }
   let profile: Profile | null = null;
   try {
     const res = await fetch(`${API_BASE}/agents/${address}`);

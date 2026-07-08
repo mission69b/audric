@@ -3,6 +3,7 @@ import { getCurrentUser } from "@audric/auth/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ActiveToggle } from "@/components/active-toggle";
 import { AgentEditForm } from "@/components/agent-edit-form";
 import { SellServiceCard } from "@/components/sell-service-card";
 import { getSelfDeploy } from "@/lib/deploy-self";
@@ -136,6 +137,10 @@ export default async function EditListingPage({
             </p>
           )
         )}
+
+        {/* On-chain kill switch (registry set_active) — self-agent signs with
+            the Passport, sponsored. Reversible; the record + history persist. */}
+        {isSelf && <ActiveToggle active={agent.active} />}
 
         <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
           Listing fields are off-chain; the endpoint &amp; price are set

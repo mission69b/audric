@@ -1,7 +1,11 @@
-import { getUserById, getUserByUsername } from "@audric/accounts";
+import {
+  getAgentProfileByNumericId,
+  getUserById,
+  getUserByUsername,
+} from "@audric/accounts";
 import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
 import { BuyFlowRail } from "@/components/buy-flow-rail";
@@ -187,7 +191,17 @@ export async function generateMetadata({
 }: {
   params: Promise<{ address: string }>;
 }) {
-  const { address } = await params;
+  const { address: seg } = await params;
+  let address = decodeURIComponent(seg);
+  if (/^\d{1,10}$/.test(address)) {
+    const byId = await getAgentProfileByNumericId(Number(address)).catch(
+      () => undefined
+    );
+    if (!byId) {
+      return { title: "Agent not found" };
+    }
+    address = byId.address;
+  }
   const profile = await fetchProfile(address);
   if (!profile) {
     return { title: "Agent not found" };
@@ -223,10 +237,31 @@ export default async function AgentProfilePage({
     redirect(`/${owner.id}`);
   }
 
-  const address = segment;
+  // Legible numeric URLs (Store v2 Phase 3): agents.t2000.ai/2 = agent #2.
+  // Numeric is CANONICAL — hex address URLs 301 to it below (OKX-pattern
+  // short links; the on-chain numeric id is permanent, so the URL is too).
+  let address = segment;
+  if (/^\d{1,10}$/.test(decoded)) {
+    const byId = await getAgentProfileByNumericId(Number(decoded)).catch(
+      () => undefined
+    );
+    if (!byId) {
+      notFound();
+    }
+    address = byId.address;
+  }
+
   const profile = await fetchProfile(address);
   if (!profile) {
     notFound();
+  }
+  // Hex → numeric canonicalization (permanent: numeric ids never change).
+  if (
+    address === segment &&
+    segment.startsWith("0x") &&
+    profile.registrations?.[0]?.agentId != null
+  ) {
+    permanentRedirect(`/${profile.registrations[0].agentId}`);
   }
 
   const numericId = profile.registrations?.[0]?.agentId;
@@ -425,27 +460,6 @@ export default async function AgentProfilePage({
               key={row.slug ?? "default"}
               priceUsdc={row.priceUsdc}
               tabs={[
-                // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)
-                // — over the cap the island renders null, so skip the tab.
-                ...(row.priceUsdc && Number.parseFloat(row.priceUsdc) <= 5
-                  ? [
-                      {
-                        id: "try" as const,
-                        label: "Try it",
-                        body: (
-                          <div className="flex flex-col gap-4">
-                            <BuyFlowRail />
-                            <TryItButton
-                              name={row.title}
-                              priceUsdc={row.priceUsdc}
-                              seller={profile.address}
-                              slug={row.slug}
-                            />
-                          </div>
-                        ),
-                      },
-                    ]
-                  : []),
                 {
                   id: "agent" as const,
                   label: "Your agent",
@@ -490,6 +504,27 @@ export default async function AgentProfilePage({
                     </div>
                   ),
                 },
+                // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)
+                // — over the cap the island renders null, so skip the tab.
+                ...(row.priceUsdc && Number.parseFloat(row.priceUsdc) <= 5
+                  ? [
+                      {
+                        id: "try" as const,
+                        label: "Try it",
+                        body: (
+                          <div className="flex flex-col gap-4">
+                            <BuyFlowRail />
+                            <TryItButton
+                              name={row.title}
+                              priceUsdc={row.priceUsdc}
+                              seller={profile.address}
+                              slug={row.slug}
+                            />
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
                 {
                   id: "x402" as const,
                   label: "x402",
