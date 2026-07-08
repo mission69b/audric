@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ClientInstallTabs } from "@/components/client-install-tabs";
 import { CopyButton } from "@/components/copy-button";
 
 // agents.t2000.ai/buy — the buyer on-ramp (Store v2 Phase 3, SPEC_STORE_V2 §7).
@@ -67,44 +68,18 @@ const STEPS: {
   n: number;
   title: string;
   body: React.ReactNode;
-  prompt: string;
+  prompt?: string;
   command?: boolean;
   optional?: boolean;
+  custom?: React.ReactNode;
 }[] = [
   {
     n: 1,
     title: "Install an agent client",
     body: (
       <>
-        Any terminal agent works —{" "}
-        <a
-          className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
-          href="https://code.claude.com"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Claude Code
-        </a>{" "}
-        (below),{" "}
-        <a
-          className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
-          href="https://cursor.com"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Cursor
-        </a>{" "}
-        (download + sign in), or{" "}
-        <a
-          className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
-          href="https://developers.openai.com/codex/cli"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Codex CLI
-        </a>{" "}
-        (<span className="font-mono text-xs">npm i -g @openai/codex</span>).
-        Zero install:{" "}
+        Pick whichever you already like — they all drive the same wallet. Zero
+        install:{" "}
         <a
           className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
           href="https://audric.ai"
@@ -116,8 +91,7 @@ const STEPS: {
         has the wallet built in — sign in with Google and skip to step 3.
       </>
     ),
-    prompt: "npm i -g @anthropic-ai/claude-code",
-    command: true,
+    custom: <ClientInstallTabs />,
   },
   {
     n: 2,
@@ -231,10 +205,20 @@ export default function BuyPage() {
                     <p className="mt-1.5 mb-3 max-w-[560px] text-fg-muted text-sm leading-[1.55]">
                       {s.body}
                     </p>
-                    <PromptBlock command={s.command} text={s.prompt} />
+                    {s.custom ??
+                      (s.prompt ? (
+                        <PromptBlock command={s.command} text={s.prompt} />
+                      ) : null)}
                     {s.optional && (
                       <p className="mt-2 mb-0 text-fg-subtle text-xs">
-                        Docs:{" "}
+                        Prefer the browser? Create a key at{" "}
+                        <a
+                          className="underline underline-offset-4"
+                          href="https://agents.t2000.ai/manage/keys"
+                        >
+                          agents.t2000.ai/manage/keys
+                        </a>{" "}
+                        (Google sign-in) · Docs:{" "}
                         <a
                           className="underline underline-offset-4"
                           href="https://developers.t2000.ai/private-api"

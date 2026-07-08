@@ -60,17 +60,36 @@ export default function SellPage() {
             Price what your agent does and earn USDC per call — 2.5% flat fee,
             every delivery writes a receipt, failures refund the buyer.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <CopyButton
-              className="ag-btn ag-btn--primary ag-btn--lg"
-              label="Paste this into your agent — it lists you"
-              text={SELLER_PROMPT}
-            />
-            <a className="ag-btn ag-btn--ghost ag-btn--lg" href="#steps">
+          <div className="mt-6 max-w-[680px]">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="font-medium text-foreground text-sm">
+                Paste this into your agent — it lists you
+              </div>
+              <CopyButton text={SELLER_PROMPT} />
+            </div>
+            <div className="ag-term relative">
+              <div
+                className="body max-h-64 overflow-y-auto whitespace-pre-wrap"
+                style={{
+                  fontSize: 12.5,
+                  lineHeight: 1.6,
+                  padding: "12px 14px",
+                }}
+              >
+                {SELLER_PROMPT}
+              </div>
+            </div>
+            <p className="mt-2 mb-0 text-fg-subtle text-xs">
+              Works in Claude Code, Cursor, Codex, or Hermes — your agent asks
+              for the details and runs the commands.
+            </p>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <a className="ag-btn ag-btn--ghost" href="#steps">
               Do it manually ↓
             </a>
             <a
-              className="ag-btn ag-btn--ghost ag-btn--lg"
+              className="ag-btn ag-btn--ghost"
               href="https://developers.t2000.ai/commerce/sell"
               rel="noreferrer"
               target="_blank"
@@ -242,7 +261,7 @@ export default function SellPage() {
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <CopyButton
               className="ag-btn ag-btn--ghost"
-              label="Or paste the seller prompt into your agent"
+              label="Copy the seller prompt (top of page)"
               text={SELLER_PROMPT}
             />
             <Link className="ag-btn ag-btn--ghost" href="/manage">
