@@ -101,6 +101,19 @@ export async function POST(request: Request) {
           "invalid_price"
         );
       }
+      // Settle floor (S.676, mirrors catalog validation): the net after the
+      // 2.5% fee must clear the $0.01 gasless-transfer minimum, or every buy
+      // of this listing 400s at settlement.
+      const grossMicros = Math.floor(n * 1_000_000);
+      const netMicros = grossMicros - Math.floor((grossMicros * 250) / 10_000);
+      if (netMicros < 10_000) {
+        return openAiError(
+          400,
+          "priceUsdc too low to settle — net after the 2.5% fee must be ≥ $0.01 (list at $0.011 or higher).",
+          "invalid_request_error",
+          "invalid_price"
+        );
+      }
       priceUsdc = String(body.priceUsdc).trim();
     }
     if (body?.category !== undefined && body?.category !== null) {

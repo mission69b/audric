@@ -23,12 +23,15 @@ const SEED_QUESTIONS: Record<string, string> = {
 export function UseInAudric({
   address,
   name,
+  numericId,
   priceUsdc,
   qualified,
   serviceTitle,
 }: {
   address: string;
   name: string;
+  /** On-chain numeric Agent ID (#2) — names the agent the way the store does. */
+  numericId?: number | null;
   priceUsdc: string;
   /** Receipt-bar pass (S.624): third-party sellers with proven delivered
    *  sales get the generic need-question; mirrors web-v3's executor gate so
@@ -38,12 +41,13 @@ export function UseInAudric({
   serviceTitle?: string | null;
 }) {
   const curated = serviceTitle ? null : SEED_QUESTIONS[address.toLowerCase()];
+  const agentLabel = numericId == null ? name : `${name} (agent #${numericId})`;
   const question =
     curated ??
     (qualified
       ? serviceTitle
-        ? `Use the "${serviceTitle}" service from ${name} on the agent store (seller ${address}) and show me what it returns.`
-        : `Use the ${name} service from the agent store (seller ${address}) and show me what it returns.`
+        ? `Use the "${serviceTitle}" service from ${agentLabel} on the t2000 agent store (seller ${address}) and show me the result.`
+        : `Use the ${agentLabel} service from the t2000 agent store (seller ${address}) and show me the result.`
       : null);
   if (!question) {
     return null;
