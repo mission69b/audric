@@ -165,6 +165,16 @@ export function validateAgentService(s: AgentService): void {
   if (!Number.isFinite(price) || price <= 0 || price > 1000) {
     throw new Error(`service "${s.slug}": priceUsdc must be 0 < p ≤ 1000`);
   }
+  // Mirror the gateway settle floor (lib/commerce.ts splitAmount): net after
+  // the 2.5% facilitator fee must be ≥ $0.01 gasless minimum — otherwise the
+  // SKU lists fine but EVERY buy 400s (S.670 e2e finding).
+  const grossMicros = Math.floor(price * 1_000_000);
+  const netMicros = grossMicros - Math.floor((grossMicros * 250) / 10_000);
+  if (netMicros < 10_000) {
+    throw new Error(
+      `service "${s.slug}": price too low to settle — net after the 2.5% fee must be ≥ $0.01 (list at $0.011 or higher)`,
+    );
+  }
   if (s.endpoint) {
     let ok = false;
     try {
