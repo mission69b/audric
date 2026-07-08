@@ -19,6 +19,10 @@ export type AgentRow = {
   category: string | null;
   description: string | null;
   createdAt: string;
+  /** Store v2: catalog size (0 = single/default-service agent). */
+  servicesCount?: number;
+  /** Store v2: cheapest active catalog price ("N services · from $X"). */
+  servicesFromUsdc?: string | null;
 };
 
 export function Directory({

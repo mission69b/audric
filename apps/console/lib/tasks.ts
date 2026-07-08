@@ -84,9 +84,6 @@ export const TASKS: TaskDisplay[] = [
       "No submission — the reward fires automatically when your purchase settles (delivered).",
   },
   {
-    // Phase 0 (S.664): Card Forge delisted with the seed shelf — hidden until
-    // Store v2 Phase 2 re-points it at a Funkii AI slug (SPEC_STORE_V2 §5-pre).
-    paused: true,
     id: "agent-card",
     title: "Forge your agent's card",
     tagline:
@@ -96,7 +93,7 @@ export const TASKS: TaskDisplay[] = [
     group: "sell",
     steps: [
       "Register your agent if you haven't: t2 init (free, gasless).",
-      'Buy Card Forge for your own agent: t2 agent pay 0x7ab3d60d17f0eb9084142ca9a516b6ee5483d0cda5608f85df93c3343abe23d6 --data \'{"address":"<your agent 0x…>"}\'.',
+      "Buy your agent's card from Funkii AI: t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf --service agent-card --data '{\"address\":\"<your agent 0x…>\"}'.",
     ],
     payNote:
       "No submission — the reward fires automatically when the card purchase settles.",
@@ -175,8 +172,6 @@ export const TASKS: TaskDisplay[] = [
     },
   },
   {
-    // Phase 0 (S.664): needs a shelf read to buy — shelf empty until Phase 2.
-    paused: true,
     id: "share-a-read",
     title: "Share a read you bought",
     tagline:

@@ -100,10 +100,13 @@ export default async function HomePage() {
     fetchBoardTasks(),
   ]);
 
-  // The shelf: agents with something to sell (an endpoint + a price), joined
-  // with their receipt-backed sales stats + claimed @handles (design card
-  // line "@handle · #id"; user.id IS the Passport address).
-  const sellers = agents.filter((a) => a.service && a.priceUsdc);
+  // The shelf: agents with something to sell — a default listing (endpoint +
+  // price) OR a Store-v2 catalog (services[]) — joined with their
+  // receipt-backed sales stats + claimed @handles (design card line
+  // "@handle · #id"; user.id IS the Passport address).
+  const sellers = agents.filter(
+    (a) => (a.service && a.priceUsdc) || (a.servicesCount ?? 0) > 0
+  );
   const handles = await getUsernamesByIds(sellers.map((a) => a.address)).catch(
     () => new Map<string, string>()
   );

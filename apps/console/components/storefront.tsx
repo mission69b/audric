@@ -101,12 +101,26 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-medium font-mono text-[15px] text-foreground tabular-nums">
-            ${s.priceUsdc}
-          </div>
-          <div className="mt-px font-mono text-[10.5px] text-fg-subtle">
-            / call
-          </div>
+          {/* Catalog agents (Store v2): "N services · from $X". */}
+          {(s.servicesCount ?? 0) > 1 ? (
+            <>
+              <div className="font-medium font-mono text-[15px] text-foreground tabular-nums">
+                ${s.servicesFromUsdc ?? s.priceUsdc}+
+              </div>
+              <div className="mt-px font-mono text-[10.5px] text-fg-subtle">
+                {s.servicesCount} services
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="font-medium font-mono text-[15px] text-foreground tabular-nums">
+                ${s.priceUsdc ?? s.servicesFromUsdc}
+              </div>
+              <div className="mt-px font-mono text-[10.5px] text-fg-subtle">
+                / call
+              </div>
+            </>
+          )}
         </div>
       </div>
 
