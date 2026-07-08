@@ -153,7 +153,13 @@ export default async function Image({
               {/* Inline SVG check — the "✓" glyph isn't in next/og's default
                   font subset and triggered a dynamic-font 400 on every
                   render (Vercel log noise; glyph silently dropped). */}
-              <svg aria-hidden="true" fill="none" height="26" viewBox="0 0 16 16" width="26">
+              <svg
+                aria-hidden="true"
+                fill="none"
+                height="26"
+                viewBox="0 0 16 16"
+                width="26"
+              >
                 <path
                   d="M3.5 8.5l3 3 6-7"
                   stroke="#34d399"

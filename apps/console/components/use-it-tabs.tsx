@@ -34,41 +34,50 @@ export function UseItServiceRow({
   );
   const active = tabs.find((t) => t.id === tab) ?? tabs[0];
 
+  // CARD in the catalog grid; the open card spans the full grid row so the
+  // tabbed panel gets full width (founder 2026-07-08 — 21 services read as a
+  // menu of cards, not a wall of rows).
   return (
-    <div className="ag-card mt-6 overflow-hidden">
-      <div className="flex flex-wrap items-center gap-5 p-5">
-        <div className="min-w-[240px] flex-1">
-          <div className="flex items-center gap-2.5">
-            <span className="font-semibold text-[16px] text-foreground tracking-tight">
+    <div
+      className={`ag-card flex flex-col overflow-hidden ${
+        open ? "col-span-full" : ""
+      }`}
+    >
+      <div className="flex flex-1 flex-col p-[18px]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="truncate font-semibold text-[15.5px] text-foreground tracking-tight">
               {title}
             </span>
-            <span className="ag-chip px-2 py-px text-[10px] uppercase">
+            <span className="ag-chip shrink-0 px-2 py-px text-[10px] uppercase">
               {typeLabel}
             </span>
           </div>
-          {description && (
-            <p className="mt-2 line-clamp-2 max-w-[620px] text-muted-foreground text-sm leading-relaxed">
-              {description}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-3.5">
-          <div className="text-right">
+          <div className="shrink-0 text-right">
             {priceUsdc ? (
-              <>
-                <div className="font-mono text-[15px] text-foreground tabular-nums">
-                  ${priceUsdc}
-                </div>
-                <div className="font-mono text-[10.5px] text-fg-subtle">
-                  USDC / call · from your wallet
-                </div>
-              </>
+              <div className="font-mono text-[15px] text-foreground tabular-nums">
+                ${priceUsdc}
+              </div>
             ) : (
               <div className="font-mono text-[11px] text-fg-subtle">
                 price on request
               </div>
             )}
           </div>
+        </div>
+        {description && (
+          <p
+            className={`mt-2 text-[13px] text-muted-foreground leading-[1.5] ${
+              open ? "" : "line-clamp-2 min-h-[40px]"
+            }`}
+          >
+            {description}
+          </p>
+        )}
+        <div className="mt-auto flex items-center justify-between gap-3 pt-3.5">
+          <span className="font-mono text-[10.5px] text-fg-subtle">
+            USDC / call · from your wallet
+          </span>
           <button
             aria-expanded={open}
             className="ag-btn ag-btn--blue"
