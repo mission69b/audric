@@ -14,6 +14,7 @@ export {
   getUserByUsername,
   getUsernamesByIds,
   listAgentProfiles,
+  meetsSettleFloor,
   listAgentsForOwner,
   listApiKeys,
   listCreditLedger,

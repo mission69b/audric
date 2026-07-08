@@ -1,4 +1,4 @@
-import { listAgentProfiles } from "@audric/accounts";
+import { listAgentProfiles, meetsSettleFloor } from "@audric/accounts";
 
 // GET /v1/agents?limit&offset → the public Agent ID directory (newest first).
 // Agent ID B.1 gate 6 — the browsable index (our Sui-native 8004scan list).
@@ -28,11 +28,15 @@ export async function GET(request: Request) {
       owner: a.owner,
       active: a.active,
       // Directory columns (8004scan-style): service type + x402 support.
+      // A sub-floor price is unbuyable (every settle 400s at the gateway),
+      // so it doesn't count as a purchasable signal — S.677: junk listings
+      // (e.g. $0.001) self-delist from the store without touching the
+      // on-chain record. The detail route stays truthful.
       service: a.mcpEndpoint ? "MCP" : null,
       x402: Array.isArray(a.paymentMethods)
         ? a.paymentMethods.includes("x402")
         : false,
-      priceUsdc: a.priceUsdc,
+      priceUsdc: meetsSettleFloor(a.priceUsdc) ? a.priceUsdc : null,
       // Storefront fields (agents.t2000.ai services grid).
       category: a.category,
       description: a.description,

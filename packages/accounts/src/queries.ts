@@ -14,6 +14,20 @@ import {
   user,
 } from "./schema";
 
+/** The settle floor (mirrors the gateway's splitAmount): a listing price
+ *  whose net after the 2.5% facilitator fee clears the $0.01 gasless-transfer
+ *  minimum. Sub-floor listings are unbuyable — every settle 400s — so read
+ *  paths treat them as not purchasable (S.677: how junk like a $0.001
+ *  listing self-delists). */
+export function meetsSettleFloor(priceUsdc: string | null | undefined): boolean {
+  const price = Number(priceUsdc);
+  if (!Number.isFinite(price) || price <= 0) {
+    return false;
+  }
+  const grossMicros = Math.floor(price * 1_000_000);
+  return grossMicros - Math.floor((grossMicros * 250) / 10_000) >= 10_000;
+}
+
 // ── Identity ─────────────────────────────────────────────────────────────────
 
 export async function getUserById(id: string): Promise<User | undefined> {
@@ -168,9 +182,7 @@ export function validateAgentService(s: AgentService): void {
   // Mirror the gateway settle floor (lib/commerce.ts splitAmount): net after
   // the 2.5% facilitator fee must be ≥ $0.01 gasless minimum — otherwise the
   // SKU lists fine but EVERY buy 400s (S.670 e2e finding).
-  const grossMicros = Math.floor(price * 1_000_000);
-  const netMicros = grossMicros - Math.floor((grossMicros * 250) / 10_000);
-  if (netMicros < 10_000) {
+  if (!meetsSettleFloor(s.priceUsdc)) {
     throw new Error(
       `service "${s.slug}": price too low to settle — net after the 2.5% fee must be ≥ $0.01 (list at $0.011 or higher)`,
     );

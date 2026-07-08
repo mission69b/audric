@@ -1,5 +1,6 @@
 import {
   getAgentProfileByNumericId,
+  meetsSettleFloor,
   getUserById,
   getUserByUsername,
 } from "@audric/accounts";
@@ -319,10 +320,20 @@ export default async function AgentProfilePage({
   // dress that as "pay on delivery".
   // Store v2 Phase 1: the catalog. Slug rows come from services[]; a legacy
   // default listing (bare mcpEndpoint+price) renders as one slug-less row.
-  const catalog = (profile.services ?? []).filter((s) => s.active !== false);
-  const hasDefaultListing = Boolean(profile.mcpEndpoint && profile.priceUsdc);
-  const sells = catalog.length > 0 || Boolean(profile.mcpEndpoint);
-  const priceOnly = Boolean(!profile.mcpEndpoint && profile.priceUsdc);
+  const catalog = (profile.services ?? []).filter(
+    (s) => s.active !== false && meetsSettleFloor(s.priceUsdc)
+  );
+  // Sub-floor default prices are unbuyable (every settle 400s) — treat as
+  // not purchasable so junk listings self-delist from the store (S.677).
+  const defaultPriceOk = meetsSettleFloor(profile.priceUsdc);
+  const hasDefaultListing = Boolean(
+    profile.mcpEndpoint && profile.priceUsdc && defaultPriceOk
+  );
+  const sells =
+    catalog.length > 0 || Boolean(profile.mcpEndpoint && defaultPriceOk);
+  const priceOnly = Boolean(
+    !profile.mcpEndpoint && profile.priceUsdc && defaultPriceOk
+  );
   const rep = profile.reputation;
   const reviews = sells ? await fetchReviews(profile.address) : null;
   const buyUrl = `${RAIL_BASE}/commerce/pay/${profile.address}`;
