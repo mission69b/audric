@@ -15,6 +15,7 @@ import { useState } from "react";
 export function ActiveToggle({ active }: { active: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [error, setError] = useState("");
 
   const flip = async () => {
@@ -23,16 +24,13 @@ export function ActiveToggle({ active }: { active: boolean }) {
       setError("Your session expired — sign in again first.");
       return;
     }
-    const next = !active;
-    if (
-      !window.confirm(
-        next
-          ? "Reactivate this agent on-chain?"
-          : "Deactivate this agent on-chain? Its record stays (history preserved); it just stops being active. Reversible."
-      )
-    ) {
+    // Two-step confirm (no browser dialogs): first click arms, second signs.
+    if (!armed) {
+      setArmed(true);
       return;
     }
+    setArmed(false);
+    const next = !active;
     setBusy(true);
     setError("");
     try {
@@ -90,14 +88,19 @@ export function ActiveToggle({ active }: { active: boolean }) {
       >
         {busy
           ? "Signing…"
-          : active
-            ? "Deactivate on-chain"
-            : "Reactivate on-chain"}
+          : armed
+            ? active
+              ? "Confirm deactivate?"
+              : "Confirm reactivate?"
+            : active
+              ? "Deactivate on-chain"
+              : "Reactivate on-chain"}
       </button>
       {error && <span className="text-destructive text-xs">{error}</span>}
       <span className="text-fg-subtle text-xs">
-        The on-chain kill switch — hides the whole agent from the store
-        (reversible). &ldquo;Save service&rdquo; above only edits the listing.
+        {armed
+          ? "Click again to sign — reversible, the record and history persist."
+          : "The on-chain kill switch — hides the whole agent from the store (reversible). \u201CSave service\u201D above only edits the listing."}
       </span>
     </div>
   );

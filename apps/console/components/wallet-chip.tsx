@@ -7,9 +7,9 @@ import {
   startLogin,
 } from "@audric/auth/client";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
+import { SUPPORTED_ASSETS } from "@t2000/sdk/browser";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { SUPPORTED_ASSETS } from "@t2000/sdk/browser";
 import { env } from "@/lib/env";
 import { ZK_CONFIG } from "@/lib/zk-config";
 
@@ -100,10 +100,7 @@ export function WalletChip() {
   }
 
   return (
-    <div
-      className="relative"
-      onMouseLeave={() => setOpen(false)}
-    >
+    <div className="relative" onMouseLeave={() => setOpen(false)}>
       <button
         className="flex h-9 items-center gap-2.5 rounded-[9px] border pr-2.5 pl-3 transition-colors"
         onClick={() => setOpen((o) => !o)}
@@ -118,12 +115,13 @@ export function WalletChip() {
             className="size-1.5 rounded-full"
             style={{ background: "var(--ag-verify)" }}
           />
-          {balance !== null ? `$${balance}` : shortAddress(address)}
+          {balance === null ? shortAddress(address) : `$${balance}`}
         </span>
         <span
           className="flex size-[26px] items-center justify-center rounded-[7px] font-mono text-[11px]"
           style={{
-            background: "linear-gradient(140deg, rgba(0,114,245,0.2), rgba(0,114,245,0.07))",
+            background:
+              "linear-gradient(140deg, rgba(0,114,245,0.2), rgba(0,114,245,0.07))",
             border: "1px solid rgba(0,114,245,0.27)",
             color: "var(--ag-accent)",
           }}
@@ -164,12 +162,17 @@ export function WalletChip() {
               </span>
               <span
                 className="font-mono text-[10px]"
-                style={{ color: copied ? "var(--ag-verify)" : "var(--fg-subtle)" }}
+                style={{
+                  color: copied ? "var(--ag-verify)" : "var(--fg-subtle)",
+                }}
               >
                 {copied ? "✓ Copied" : "Copy"}
               </span>
             </button>
-            <div className="my-1.5 h-px" style={{ background: "var(--ag-border)" }} />
+            <div
+              className="my-1.5 h-px"
+              style={{ background: "var(--ag-border)" }}
+            />
             {MENU.map((m) => (
               <Link
                 className="block rounded-[7px] px-2.5 py-2 text-[13px] text-muted-foreground no-underline transition-colors hover:bg-[color:var(--ag-overlay)] hover:text-foreground"
@@ -179,7 +182,10 @@ export function WalletChip() {
                 {m.label}
               </Link>
             ))}
-            <div className="my-1.5 h-px" style={{ background: "var(--ag-border)" }} />
+            <div
+              className="my-1.5 h-px"
+              style={{ background: "var(--ag-border)" }}
+            />
             <button
               className="block w-full rounded-[7px] px-2.5 py-2 text-left text-[13px] text-fg-subtle transition-colors hover:text-foreground"
               onClick={async () => {

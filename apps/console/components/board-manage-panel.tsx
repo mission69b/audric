@@ -86,8 +86,7 @@ export function BoardManagePanel({ taskId }: { taskId: string }) {
     }
   }
 
-  const inputCls =
-    "ag-input";
+  const inputCls = "ag-input";
   const pending = (subs ?? []).filter((s) => s.status === "pending");
 
   if (!open) {

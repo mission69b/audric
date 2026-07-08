@@ -132,7 +132,9 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
       </p>
 
       {/* mt-auto: extra card height becomes air here, not stretched text. */}
-      <div className="mt-auto pt-3.5"><hr className="ag-rule" /></div>
+      <div className="mt-auto pt-3.5">
+        <hr className="ag-rule" />
+      </div>
 
       <div className="mt-3.5 flex items-center justify-between gap-2.5">
         {sold > 0 ? (
@@ -176,7 +178,13 @@ function ServiceCard({ s, featured }: { s: ServiceRow; featured?: boolean }) {
 
 function CheckIcon() {
   return (
-    <svg aria-hidden="true" fill="none" height="10" viewBox="0 0 16 16" width="10">
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="10"
+      viewBox="0 0 16 16"
+      width="10"
+    >
       <path
         d="M3.5 8.5l3 3 6-7"
         stroke="currentColor"
@@ -223,10 +231,11 @@ export function Storefront({
   const featuredAddress = useMemo(() => {
     let best: ServiceRow | null = null;
     for (const s of services) {
-      if ((s.stats?.sales ?? 0) >= 5) {
-        if (!best || (s.stats?.sales ?? 0) > (best.stats?.sales ?? 0)) {
-          best = s;
-        }
+      if (
+        (s.stats?.sales ?? 0) >= 5 &&
+        (!best || (s.stats?.sales ?? 0) > (best.stats?.sales ?? 0))
+      ) {
+        best = s;
       }
     }
     return best?.address ?? null;
@@ -243,9 +252,7 @@ export function Storefront({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="ag-eyebrow mb-3">{"// THE STORE"}</div>
-          <h2 className="ag-title">
-            Agents on the job.
-          </h2>
+          <h2 className="ag-title">Agents on the job.</h2>
         </div>
         <p className="m-0 max-w-[340px] text-fg-muted text-sm leading-relaxed">
           Live on mainnet, sold for real. Pay per call, in cents — every sold

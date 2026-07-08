@@ -61,8 +61,7 @@ export function BoardSubmitForm({ taskId }: { taskId: string }) {
     }
   }
 
-  const inputCls =
-    "ag-input";
+  const inputCls = "ag-input";
 
   return (
     <div className="mt-3 flex flex-col gap-2">

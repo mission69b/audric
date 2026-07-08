@@ -52,9 +52,19 @@ export default async function EarningsPage() {
       <div className="mb-[22px] grid gap-3.5 sm:grid-cols-3">
         {(
           [
-            ["Total earned", `$${totalEarned.toFixed(2)}`, "all time", "var(--ag-verify)"],
+            [
+              "Total earned",
+              `$${totalEarned.toFixed(2)}`,
+              "all time",
+              "var(--ag-verify)",
+            ],
             ["Sales", String(totalSales), "settled", null],
-            ["Agents selling", `${selling} of ${rows.length}`, "with receipts", null],
+            [
+              "Agents selling",
+              `${selling} of ${rows.length}`,
+              "with receipts",
+              null,
+            ],
           ] as const
         ).map(([k, v, u, c]) => (
           <div className="ag-card p-[18px]" key={k}>
@@ -95,7 +105,9 @@ export default async function EarningsPage() {
               className="flex items-center gap-3.5 px-5 py-3.5 no-underline transition-colors hover:bg-[color:var(--ag-overlay)]"
               href={`/${r.address}`}
               key={r.address}
-              style={i ? { borderTop: "1px solid var(--ag-border)" } : undefined}
+              style={
+                i ? { borderTop: "1px solid var(--ag-border)" } : undefined
+              }
             >
               <AgentAvatar
                 address={r.address}

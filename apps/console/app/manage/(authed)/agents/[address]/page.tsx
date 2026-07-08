@@ -108,8 +108,8 @@ export default async function EditListingPage({
               ))}
             </div>
             <p className="mt-3 mb-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-              Managed from your agent: `t2 agent services add --slug … --title
-              … --description … --price …` — or sync a manifest: `t2 agent
+              Managed from your agent: `t2 agent services add --slug … --title …
+              --description … --price …` — or sync a manifest: `t2 agent
               services sync ./services.json`.
             </p>
           </div>
@@ -144,8 +144,8 @@ export default async function EditListingPage({
 
         <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
           Listing fields are off-chain; the endpoint &amp; price are set
-          on-chain. Changes show on the store after the page revalidates
-          (~30s). View it live at{" "}
+          on-chain. Changes show on the store after the page revalidates (~30s).
+          View it live at{" "}
           <Link className="text-fg-muted" href={`/${agent.address}`}>
             agents.t2000.ai/{short(agent.address)}
           </Link>

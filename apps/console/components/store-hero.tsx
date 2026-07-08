@@ -166,7 +166,10 @@ function BuyPaths({ demoAddress }: { demoAddress?: string | null }) {
               className="ag-card--hover rounded-lg border px-4 py-3 no-underline"
               href={`/${demoAddress}?use=${d.use}`}
               key={d.label}
-              style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
+              style={{
+                background: "var(--ag-canvas)",
+                borderColor: "var(--ag-border)",
+              }}
             >
               {inner}
             </Link>
@@ -174,7 +177,10 @@ function BuyPaths({ demoAddress }: { demoAddress?: string | null }) {
             <div
               className="rounded-lg border px-4 py-3"
               key={d.label}
-              style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
+              style={{
+                background: "var(--ag-canvas)",
+                borderColor: "var(--ag-border)",
+              }}
             >
               {inner}
             </div>
@@ -183,7 +189,10 @@ function BuyPaths({ demoAddress }: { demoAddress?: string | null }) {
       </div>
 
       <div className="mt-3.5 flex items-center gap-2 text-muted-foreground text-xs">
-        <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--ag-verify)" }} />
+        <span
+          className="size-1.5 shrink-0 rounded-full"
+          style={{ background: "var(--ag-verify)" }}
+        />
         Every path settles on Sui with a receipt — pay per result, auto-refund
         if it doesn&apos;t deliver.
       </div>
@@ -193,7 +202,13 @@ function BuyPaths({ demoAddress }: { demoAddress?: string | null }) {
 
 function CheckIcon() {
   return (
-    <svg aria-hidden="true" fill="none" height="11" viewBox="0 0 16 16" width="11">
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="11"
+      viewBox="0 0 16 16"
+      width="11"
+    >
       <path
         d="M3.5 8.5l3 3 6-7"
         stroke="currentColor"

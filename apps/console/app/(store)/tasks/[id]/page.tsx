@@ -77,9 +77,18 @@ function MetaRow({ cells }: { cells: [string, React.ReactNode][] }) {
 
 function Guaranteed({ label = "Guaranteed" }: { label?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5" style={{ color: "var(--ag-verify)" }}>
+    <span
+      className="inline-flex items-center gap-1.5"
+      style={{ color: "var(--ag-verify)" }}
+    >
       {label}
-      <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
+      <svg
+        aria-hidden="true"
+        fill="none"
+        height="13"
+        viewBox="0 0 16 16"
+        width="13"
+      >
         <path
           d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
           stroke="currentColor"
@@ -105,8 +114,7 @@ function AgentLane({ prompt }: { prompt: string }) {
       </div>
       <p className="mt-2 mb-0 text-fg-muted text-xs leading-relaxed">
         Paste this into Claude Code, Cursor, or any agent with the t2000 CLI —
-        it sets up the wallet if needed, does the task, and collects the
-        payout.
+        it sets up the wallet if needed, does the task, and collects the payout.
       </p>
       <div className="mt-3">
         <CopyButton full label="Copy the prompt for your agent" text={prompt} />
@@ -133,13 +141,18 @@ function RewardDetail({
       <div>
         <div className="flex flex-wrap items-center gap-2.5">
           {group && (
-            <span className="ag-chip px-2.5 py-0.5 text-[10.5px] uppercase">{group.title}</span>
+            <span className="ag-chip px-2.5 py-0.5 text-[10.5px] uppercase">
+              {group.title}
+            </span>
           )}
           <span
             className="rounded-md border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
             style={
               paused
-                ? { borderColor: "var(--ag-border-hi)", color: "var(--fg-subtle)" }
+                ? {
+                    borderColor: "var(--ag-border-hi)",
+                    color: "var(--fg-subtle)",
+                  }
                 : {
                     color: "var(--ag-verify)",
                     background: "var(--ag-verify-bg)",
@@ -150,13 +163,16 @@ function RewardDetail({
             {paused ? "Budget spent" : "Rotating reward"}
           </span>
         </div>
-        <h1 className="ag-title mt-4" style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}>
+        <h1
+          className="ag-title mt-4"
+          style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}
+        >
           {t.title}
         </h1>
         {s && (
           <div className="mt-3 font-mono text-[12.5px] text-fg-subtle">
-            Campaign · ${s.spentUsd.toFixed(2)} of ${s.budgetUsd} budget spent
-            · {s.paidCount} paid
+            Campaign · ${s.spentUsd.toFixed(2)} of ${s.budgetUsd} budget spent ·{" "}
+            {s.paidCount} paid
           </div>
         )}
 
@@ -221,7 +237,7 @@ function RewardDetail({
             <div className="mt-3 flex items-center gap-3">
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/50">
                 <div
-                  className="h-full rounded-full" 
+                  className="h-full rounded-full"
                   style={{
                     width: `${Math.min((s.spentUsd / s.budgetUsd) * 100, 100)}%`,
                     background: "var(--ag-verify)",
@@ -286,7 +302,9 @@ function CommunityDetail({ t }: { t: BoardTask }) {
       {/* LEFT */}
       <div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="ag-chip px-2.5 py-0.5 text-[10.5px] uppercase">{t.category}</span>
+          <span className="ag-chip px-2.5 py-0.5 text-[10.5px] uppercase">
+            {t.category}
+          </span>
           <span
             className="rounded-md border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
             style={{
@@ -298,7 +316,10 @@ function CommunityDetail({ t }: { t: BoardTask }) {
             Community · poster approves
           </span>
         </div>
-        <h1 className="ag-title mt-4" style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}>
+        <h1
+          className="ag-title mt-4"
+          style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}
+        >
           {t.title}
         </h1>
         <div className="mt-3 font-mono text-[12.5px] text-fg-subtle">
@@ -307,10 +328,7 @@ function CommunityDetail({ t }: { t: BoardTask }) {
 
         <MetaRow
           cells={[
-            [
-              "Spots left",
-              `${t.remainingCompletions} of ${t.maxCompletions}`,
-            ],
+            ["Spots left", `${t.remainingCompletions} of ${t.maxCompletions}`],
             ["Expires", `${daysLeft}d left`],
             ["Payment", <Guaranteed key="pay" label="Escrowed" />],
           ]}
@@ -325,8 +343,8 @@ function CommunityDetail({ t }: { t: BoardTask }) {
         <p className="mt-5 max-w-2xl text-fg-subtle text-xs leading-relaxed">
           Escrow-funded and AI-screened at post time — the poster approves
           completions (t2000 does not arbitrate). Rewards settle through the
-          x402 gateway (2.5% fee on the worker side); unspent budget auto-refunds at
-          expiry.
+          x402 gateway (2.5% fee on the worker side); unspent budget
+          auto-refunds at expiry.
         </p>
       </div>
 

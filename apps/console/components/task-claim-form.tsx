@@ -75,8 +75,7 @@ export function TaskClaimForm({
     }
   }
 
-  const inputCls =
-    "ag-input";
+  const inputCls = "ag-input";
 
   return (
     <div className="mt-3 flex flex-col gap-2">

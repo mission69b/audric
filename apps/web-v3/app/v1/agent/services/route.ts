@@ -43,7 +43,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   let address: string;
   try {
-    address = normalizeSuiAddress((url.searchParams.get("address") ?? "").trim());
+    address = normalizeSuiAddress(
+      (url.searchParams.get("address") ?? "").trim()
+    );
   } catch {
     address = "";
   }

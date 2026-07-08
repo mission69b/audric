@@ -35,7 +35,10 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <Link className="ag-card ag-card--hover block p-[18px] no-underline" href={href}>
+    <Link
+      className="ag-card ag-card--hover block p-[18px] no-underline"
+      href={href}
+    >
       <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.07em]">
         {label}
       </div>
@@ -124,8 +127,8 @@ export default async function OverviewPage() {
             className="size-[7px] rounded-full"
             style={{ background: "var(--ag-accent)" }}
           />
-          <b className="text-foreground">Credit</b> → model calls on the
-          Private API and in Audric chat — one shared balance.
+          <b className="text-foreground">Credit</b> → model calls on the Private
+          API and in Audric chat — one shared balance.
         </span>
       </div>
 
@@ -160,7 +163,9 @@ export default async function OverviewPage() {
                 <span
                   className="shrink-0"
                   style={{
-                    color: s.delivered ? "var(--ag-verify)" : "var(--fg-subtle)",
+                    color: s.delivered
+                      ? "var(--ag-verify)"
+                      : "var(--fg-subtle)",
                   }}
                 >
                   {s.delivered ? "✓" : "↩"}

@@ -55,7 +55,10 @@ export function TryItButton({
     return (
       <div
         className="rounded-[10px] border p-4"
-        style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
+        style={{
+          background: "var(--ag-canvas)",
+          borderColor: "var(--ag-border)",
+        }}
       >
         <div className="font-medium text-foreground text-sm">
           Try it in the browser
@@ -74,7 +77,10 @@ export function TryItButton({
   return (
     <div
       className="rounded-[10px] border p-4"
-      style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}
+      style={{
+        background: "var(--ag-canvas)",
+        borderColor: "var(--ag-border)",
+      }}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -98,7 +104,10 @@ export function TryItButton({
       </div>
 
       {phase === "confirm" && (
-        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border p-3" style={{ borderColor: "var(--ag-border-hi)" }}>
+        <div
+          className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border p-3"
+          style={{ borderColor: "var(--ag-border-hi)" }}
+        >
           <span className="text-foreground text-sm">
             Pay <span className="font-semibold">${priceUsdc} USDC</span> to{" "}
             {name}?
@@ -142,10 +151,16 @@ export function TryItButton({
 
       {phase === "done" && result && (
         <div className="mt-3">
-          <div className="font-mono text-xs" style={{ color: "var(--ag-verify)" }}>
+          <div
+            className="font-mono text-xs"
+            style={{ color: "var(--ag-verify)" }}
+          >
             ✓ Delivered{result.digest ? " · settled on Sui" : ""}
           </div>
-          <pre className="mt-2 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-muted-foreground text-xs leading-relaxed" style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}>
+          <pre
+            className="mt-2 max-h-80 overflow-auto rounded-lg border p-3 font-mono text-muted-foreground text-xs leading-relaxed"
+            style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}
+          >
             {typeof result.response === "string"
               ? result.response
               : JSON.stringify(result.response, null, 2)}

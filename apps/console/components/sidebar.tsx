@@ -76,7 +76,10 @@ export function Sidebar({
   return (
     <aside
       className="flex h-full w-60 shrink-0 flex-col overflow-y-auto border-r pt-[26px] pr-4 pb-[26px] max-md:px-3"
-      style={{ borderColor: "var(--ag-border)", background: "var(--ag-canvas)" }}
+      style={{
+        borderColor: "var(--ag-border)",
+        background: "var(--ag-canvas)",
+      }}
     >
       {/* Identity — who is signed in (design: tile + handle + copy address). */}
       <div className="px-3 pb-[18px]">
@@ -179,7 +182,12 @@ export function Sidebar({
               "marketplace",
               "var(--ag-verify)",
             ],
-            ["Credit", `$${balance}`, "Private API + Audric", "var(--ag-accent)"],
+            [
+              "Credit",
+              `$${balance}`,
+              "Private API + Audric",
+              "var(--ag-accent)",
+            ],
           ] as const
         ).map(([k, v, note, c], i) => (
           <div

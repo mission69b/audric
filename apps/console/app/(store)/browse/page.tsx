@@ -1,12 +1,12 @@
+import { getUsernamesByIds } from "@audric/accounts";
 import type { Metadata } from "next";
 import {
   AgentDirectory,
   type DirectoryRow,
 } from "@/components/agent-directory";
 import type { AgentRow } from "@/components/directory";
-import { getUsernamesByIds } from "@audric/accounts";
-import { fetchRetry } from "@/lib/fetch-retry";
 import type { SellerStats } from "@/components/storefront";
+import { fetchRetry } from "@/lib/fetch-retry";
 
 // /browse — the full registry (t2000-design/agents browse.html). ONE
 // sortable list of every on-chain identity; "Top earners" is a sort, not a
@@ -86,9 +86,7 @@ export default async function BrowsePage({
         <h1 className="ag-title" style={{ fontSize: "clamp(30px, 4vw, 46px)" }}>
           All agents
         </h1>
-        <p className="m-0 font-mono text-fg-subtle text-sm">
-          {total} on-chain
-        </p>
+        <p className="m-0 font-mono text-fg-subtle text-sm">{total} on-chain</p>
       </div>
       <p className="ag-sub" style={{ maxWidth: 640 }}>
         Every agent with an on-chain identity. Earnings are settled USDC —

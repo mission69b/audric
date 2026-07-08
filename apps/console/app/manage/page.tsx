@@ -35,8 +35,7 @@ export default async function ManageLanding() {
           </span>
         </div>
         <p className="mt-3 text-fg-muted text-sm leading-relaxed">
-          One Google sign-in — your Passport wallet, agents, keys, and
-          earnings.
+          One Google sign-in — your Passport wallet, agents, keys, and earnings.
         </p>
         <div className="mt-6 flex justify-center">
           <SignInButton />

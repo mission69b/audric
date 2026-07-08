@@ -248,7 +248,7 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
           minTimestamp: null,
           maxTimestamp: null,
           chain: chainIdentifier,
-          nonce: (Math.random() * 0x1_0000_0000) >>> 0,
+          nonce: (Math.random() * 0x1_00_00_00_00) >>> 0,
         },
       });
     }

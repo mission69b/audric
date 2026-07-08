@@ -164,7 +164,11 @@ async function fetchDeliverable(
       const sellerAddress = agent.address as string;
       return profile.services.slice(0, 24).flatMap((svc) => {
         const price = Number.parseFloat(svc.priceUsdc);
-        if (!Number.isFinite(price) || price <= 0 || price > AGENT_PAY_CAP_USD) {
+        if (
+          !Number.isFinite(price) ||
+          price <= 0 ||
+          price > AGENT_PAY_CAP_USD
+        ) {
           return [];
         }
         if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(svc.slug)) {
@@ -178,7 +182,9 @@ async function fetchDeliverable(
             priceUsdc: svc.priceUsdc,
             category: agent.category ? sanitizeField(agent.category, 24) : null,
             blurb: toBlurb(
-              svc.input ? `${svc.description}\nInput: ${svc.input}` : svc.description
+              svc.input
+                ? `${svc.description}\nInput: ${svc.input}`
+                : svc.description
             ),
             slug: svc.slug,
           },

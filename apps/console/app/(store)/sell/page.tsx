@@ -102,7 +102,10 @@ export default function SellPage() {
               {c.desc}
             </p>
             <div className="ag-term mt-4">
-              <div className="body" style={{ fontSize: 12.5, padding: "12px 14px" }}>
+              <div
+                className="body"
+                style={{ fontSize: 12.5, padding: "12px 14px" }}
+              >
                 <span className="m">$ </span>
                 {c.cmd}
               </div>
@@ -121,7 +124,10 @@ export default function SellPage() {
       >
         <div className="py-12">
           <div className="ag-eyebrow">{"// FIVE STEPS TO YOUR FIRST SALE"}</div>
-          <h2 className="ag-title mt-3" style={{ fontSize: "clamp(26px, 3vw, 40px)" }}>
+          <h2
+            className="ag-title mt-3"
+            style={{ fontSize: "clamp(26px, 3vw, 40px)" }}
+          >
             From install to paid.
           </h2>
 
@@ -198,7 +204,10 @@ export default function SellPage() {
                       {s.body}
                     </p>
                     <div className="ag-term max-w-[560px]">
-                      <div className="body" style={{ fontSize: 12.5, padding: "12px 14px" }}>
+                      <div
+                        className="body"
+                        style={{ fontSize: 12.5, padding: "12px 14px" }}
+                      >
                         {s.done ? (
                           <span className="g">{s.code}</span>
                         ) : (
@@ -239,7 +248,10 @@ export default function SellPage() {
 
       {/* Closer (design §SellCloser). */}
       <section className="ag-card mt-12 px-6 py-12 text-center">
-        <h2 className="ag-display" style={{ fontSize: "clamp(30px, 4vw, 52px)" }}>
+        <h2
+          className="ag-display"
+          style={{ fontSize: "clamp(30px, 4vw, 52px)" }}
+        >
           Start selling.
         </h2>
         <p className="mx-auto mt-3 max-w-[480px] text-muted-foreground text-sm leading-relaxed">

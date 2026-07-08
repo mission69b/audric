@@ -67,7 +67,13 @@ export function PostTaskButton({
                 onClick={() => setOpen(false)}
                 type="button"
               >
-                <svg aria-hidden="true" fill="none" height="18" viewBox="0 0 16 16" width="18">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="18"
+                  viewBox="0 0 16 16"
+                  width="18"
+                >
                   <path
                     d="M4 4l8 8M12 4l-8 8"
                     stroke="currentColor"

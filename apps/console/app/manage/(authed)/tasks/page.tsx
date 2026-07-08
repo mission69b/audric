@@ -2,10 +2,10 @@ import { getCurrentUser } from "@audric/auth/server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PosterTaskReview } from "@/components/poster-task-review";
-import { listMyBoardTasks, type PosterTask } from "@/lib/board-poster";
 import { PanelHead } from "@/components/panel-head";
 import { PostTaskButton } from "@/components/post-task-modal";
+import { PosterTaskReview } from "@/components/poster-task-review";
+import { listMyBoardTasks, type PosterTask } from "@/lib/board-poster";
 
 const OPEN_STATUSES = new Set(["live", "pending_review"]);
 

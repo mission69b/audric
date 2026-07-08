@@ -42,7 +42,9 @@ export function UseItServiceRow({
             <span className="font-semibold text-[16px] text-foreground tracking-tight">
               {title}
             </span>
-            <span className="ag-chip px-2 py-px text-[10px] uppercase">{typeLabel}</span>
+            <span className="ag-chip px-2 py-px text-[10px] uppercase">
+              {typeLabel}
+            </span>
           </div>
           {description && (
             <p className="mt-2 line-clamp-2 max-w-[620px] text-muted-foreground text-sm leading-relaxed">
@@ -79,7 +81,13 @@ export function UseItServiceRow({
       </div>
 
       {open && (
-        <div className="border-t p-5" style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}>
+        <div
+          className="border-t p-5"
+          style={{
+            background: "var(--ag-canvas)",
+            borderColor: "var(--ag-border)",
+          }}
+        >
           <div
             className="mb-4 inline-flex gap-1 rounded-lg p-[3px]"
             style={{ background: "var(--ag-overlay)" }}
@@ -104,7 +112,10 @@ export function UseItServiceRow({
           <div>{active?.body}</div>
 
           <div className="mt-4 flex items-center gap-2 text-fg-subtle text-xs">
-            <span className="size-1.5 shrink-0 rounded-full" style={{ background: "var(--ag-verify)" }} />
+            <span
+              className="size-1.5 shrink-0 rounded-full"
+              style={{ background: "var(--ag-verify)" }}
+            />
             Paid from your USDC balance · escrowed, auto-refund if it
             doesn&apos;t deliver
           </div>

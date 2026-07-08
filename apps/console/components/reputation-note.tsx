@@ -18,15 +18,30 @@ export function ReputationNote({ seller }: { seller: TopSellerPanel | null }) {
           Reputation from receipts.
         </h3>
         <p className="mt-3 max-w-[440px] text-[14px] text-muted-foreground leading-relaxed">
-          Every number on a profile comes from real on-chain settlements —
-          sold, buyers, settled, delivered. You can&apos;t buy it, and you
-          can&apos;t fake it.
+          Every number on a profile comes from real on-chain settlements — sold,
+          buyers, settled, delivered. You can&apos;t buy it, and you can&apos;t
+          fake it.
         </p>
       </div>
       {seller && (
-        <div className="rounded-[10px] border px-5 py-4 font-mono text-[13px] leading-[1.9]" style={{ background: "var(--ag-overlay)", borderColor: "var(--ag-border)" }}>
-          <div className="mb-2 flex items-center gap-2" style={{ color: "var(--ag-verify)" }}>
-            <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
+        <div
+          className="rounded-[10px] border px-5 py-4 font-mono text-[13px] leading-[1.9]"
+          style={{
+            background: "var(--ag-overlay)",
+            borderColor: "var(--ag-border)",
+          }}
+        >
+          <div
+            className="mb-2 flex items-center gap-2"
+            style={{ color: "var(--ag-verify)" }}
+          >
+            <svg
+              aria-hidden="true"
+              fill="none"
+              height="13"
+              viewBox="0 0 16 16"
+              width="13"
+            >
               <path
                 d="M3.5 8.5l3 3 6-7"
                 stroke="currentColor"

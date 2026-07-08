@@ -69,9 +69,7 @@ export default function StoreLayout({
         <div className="border-border/50 border-t">
           <div className="mx-auto flex w-full max-w-[1240px] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-6 py-4 text-fg-muted text-xs">
             <span>© 2026 t2000 AFI Inc. · Built on Sui</span>
-            <span className="font-mono">
-              npm i -g @t2000/cli
-            </span>
+            <span className="font-mono">npm i -g @t2000/cli</span>
           </div>
         </div>
       </footer>
@@ -113,7 +111,7 @@ function FooterCol({
                 {l.label} ↗
               </a>
             </li>
-          ),
+          )
         )}
       </ul>
     </div>

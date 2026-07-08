@@ -39,8 +39,7 @@ export async function GET(request: Request) {
       createdAt: a.createdAt,
       // Store v2 Phase 1/2: catalog agents (services[]) — count + min price
       // let the grid render "N services · from $X" without N+1 doc fetches.
-      servicesCount:
-        a.services?.filter((s) => s.active !== false).length ?? 0,
+      servicesCount: a.services?.filter((s) => s.active !== false).length ?? 0,
       servicesFromUsdc: a.services?.length
         ? a.services
             .filter((s) => s.active !== false)

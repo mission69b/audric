@@ -169,11 +169,22 @@ export function AgentDirectory({
                 </p>
               )}
 
-              <div className="mt-auto pt-3"><hr className="ag-rule" /></div>
+              <div className="mt-auto pt-3">
+                <hr className="ag-rule" />
+              </div>
               <div className="mt-3 flex items-center justify-between gap-2 font-mono text-[11.5px] text-fg-subtle">
                 {selling && (a.stats?.sales ?? 0) > 0 ? (
-                  <span className="inline-flex items-center gap-1.5" style={{ color: "var(--ag-verify)" }}>
-                    <svg aria-hidden="true" fill="none" height="10" viewBox="0 0 16 16" width="10">
+                  <span
+                    className="inline-flex items-center gap-1.5"
+                    style={{ color: "var(--ag-verify)" }}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      fill="none"
+                      height="10"
+                      viewBox="0 0 16 16"
+                      width="10"
+                    >
                       <path
                         d="M3.5 8.5l3 3 6-7"
                         stroke="currentColor"

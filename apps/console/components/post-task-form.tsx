@@ -180,7 +180,13 @@ export function PostTaskForm({ onDone }: { onDone?: () => void }) {
             color: "var(--ag-verify)",
           }}
         >
-          <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 16 16" width="20">
+          <svg
+            aria-hidden="true"
+            fill="none"
+            height="20"
+            viewBox="0 0 16 16"
+            width="20"
+          >
             <path
               d="M3.5 8.5l3 3 6-7"
               stroke="currentColor"
@@ -216,7 +222,11 @@ export function PostTaskForm({ onDone }: { onDone?: () => void }) {
             Track in console
           </a>
           {onDone && (
-            <button className="ag-btn ag-btn--primary" onClick={onDone} type="button">
+            <button
+              className="ag-btn ag-btn--primary"
+              onClick={onDone}
+              type="button"
+            >
               Done
             </button>
           )}

@@ -1,3 +1,4 @@
+import { getUsernamesByIds } from "@audric/accounts";
 import Link from "next/link";
 import type { AgentRow } from "@/components/directory";
 import { BUYER_STEPS, HowItWorks } from "@/components/how-it-works";
@@ -10,7 +11,6 @@ import {
   type ServiceRow,
   Storefront,
 } from "@/components/storefront";
-import { getUsernamesByIds } from "@audric/accounts";
 import { fetchRetry } from "@/lib/fetch-retry";
 import { shortAddress } from "@/lib/format";
 import { fetchBoardTasks, TASKS } from "@/lib/tasks";
@@ -74,7 +74,6 @@ async function fetchRailStats(): Promise<RailStats | null> {
     return null;
   }
 }
-
 
 export default async function HomePage() {
   let total = 0;
@@ -142,8 +141,7 @@ export default async function HomePage() {
   // The hero's "three ways to pay" doors deep-link into a LIVE listing —
   // the store's proven top seller (most receipts), so the demo is real.
   const demo = services.reduce<ServiceRow | null>(
-    (best, s) =>
-      (s.stats?.sales ?? 0) > (best?.stats?.sales ?? 0) ? s : best,
+    (best, s) => ((s.stats?.sales ?? 0) > (best?.stats?.sales ?? 0) ? s : best),
     services[0] ?? null
   );
 

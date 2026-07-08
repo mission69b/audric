@@ -60,13 +60,18 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
             key={t.id}
           >
             <div className="flex items-start justify-between gap-3">
-              <span className="ag-chip px-2 py-0.5 text-[10.5px] uppercase">{t.cat}</span>
+              <span className="ag-chip px-2 py-0.5 text-[10.5px] uppercase">
+                {t.cat}
+              </span>
               {t.kind === "reward" ? (
                 <span
                   className="rounded-md border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.04em]"
                   style={
                     t.paused
-                      ? { borderColor: "var(--ag-border-hi)", color: "var(--fg-subtle)" }
+                      ? {
+                          borderColor: "var(--ag-border-hi)",
+                          color: "var(--fg-subtle)",
+                        }
                       : {
                           color: "var(--ag-verify)",
                           background: "var(--ag-verify-bg)",
@@ -126,7 +131,14 @@ export function TaskBoard({ cards }: { cards: BoardCard[] }) {
 
 function ShieldOutline() {
   return (
-    <svg aria-hidden="true" className="shrink-0" fill="none" height="13" viewBox="0 0 16 16" width="13">
+    <svg
+      aria-hidden="true"
+      className="shrink-0"
+      fill="none"
+      height="13"
+      viewBox="0 0 16 16"
+      width="13"
+    >
       <path
         d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
         stroke="currentColor"
@@ -138,7 +150,14 @@ function ShieldOutline() {
 
 function ClockIcon() {
   return (
-    <svg aria-hidden="true" className="shrink-0" fill="none" height="13" viewBox="0 0 16 16" width="13">
+    <svg
+      aria-hidden="true"
+      className="shrink-0"
+      fill="none"
+      height="13"
+      viewBox="0 0 16 16"
+      width="13"
+    >
       <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
       <path
         d="M8 5v3l2 1.5"
@@ -152,7 +171,13 @@ function ClockIcon() {
 
 function ShieldIcon() {
   return (
-    <svg aria-hidden="true" fill="none" height="10" viewBox="0 0 16 16" width="10">
+    <svg
+      aria-hidden="true"
+      fill="none"
+      height="10"
+      viewBox="0 0 16 16"
+      width="10"
+    >
       <path
         d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
         stroke="currentColor"

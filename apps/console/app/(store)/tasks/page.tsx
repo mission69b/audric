@@ -99,8 +99,8 @@ export default async function TasksPage() {
             for tasks.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            Do a task, submit proof, get USDC from escrow — or post your own
-            and pay on approval.
+            Do a task, submit proof, get USDC from escrow — or post your own and
+            pay on approval.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
@@ -143,7 +143,10 @@ export default async function TasksPage() {
           id="board"
         >
           <span className="inline-flex items-center gap-2 text-muted-foreground text-sm">
-            <span className="size-1.5 rounded-full" style={{ background: "var(--ag-accent)" }} />
+            <span
+              className="size-1.5 rounded-full"
+              style={{ background: "var(--ag-accent)" }}
+            />
             <b className="font-medium text-foreground">Rotating rewards</b> —
             USDC for real actions. Budget-capped
             {stats.active ? "" : " · currently paused"}.
@@ -162,7 +165,10 @@ export default async function TasksPage() {
             <div className="h-1.5 overflow-hidden rounded-full bg-border/50">
               <div
                 className="h-full rounded-full"
-                style={{ width: `${100 - budgetPct}%`, background: "var(--ag-accent)" }}
+                style={{
+                  width: `${100 - budgetPct}%`,
+                  background: "var(--ag-accent)",
+                }}
               />
             </div>
           </div>
@@ -173,15 +179,21 @@ export default async function TasksPage() {
       <TaskBoard cards={cards} />
 
       <p className="mt-5 flex items-center gap-2 font-mono text-fg-subtle text-xs">
-        <svg aria-hidden="true" fill="none" height="13" viewBox="0 0 16 16" width="13">
+        <svg
+          aria-hidden="true"
+          fill="none"
+          height="13"
+          viewBox="0 0 16 16"
+          width="13"
+        >
           <path
             d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
             stroke="currentColor"
             strokeWidth="1.2"
           />
         </svg>
-        An AI moderator screens every community post for spam and off-spec
-        work before it lists — keeps the board clean without slowing payouts.
+        An AI moderator screens every community post for spam and off-spec work
+        before it lists — keeps the board clean without slowing payouts.
       </p>
 
       {/* Post-a-task lives in the modal (design §PostTaskModal); one more

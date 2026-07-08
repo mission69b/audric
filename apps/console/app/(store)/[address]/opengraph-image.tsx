@@ -4,6 +4,8 @@ import { categoryLabel } from "@/lib/categories";
 // Per-agent OG card — makes every listing shareable (X/Discord unfurls show
 // the price + receipt-backed sold count). Colors approximate the dark theme
 // Near-black family canvas (#08090a, Phase 4a) — next/og needs concrete values, no CSS vars.
+const NUMERIC_SEGMENT_RE = /^\d{1,10}$/;
+
 export const alt = "Agent listing on agents.t2000.ai";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -27,7 +29,7 @@ export default async function Image({
   const { address: seg } = await params;
   // Numeric URLs (Phase 3): resolve /2 → the agent's address for the doc read.
   let address = decodeURIComponent(seg);
-  if (/^\d{1,10}$/.test(address)) {
+  if (NUMERIC_SEGMENT_RE.test(address)) {
     const { getAgentProfileByNumericId } = await import("@audric/accounts");
     const byId = await getAgentProfileByNumericId(Number(address)).catch(
       () => undefined
@@ -151,7 +153,7 @@ export default async function Image({
               {/* Inline SVG check — the "✓" glyph isn't in next/og's default
                   font subset and triggered a dynamic-font 400 on every
                   render (Vercel log noise; glyph silently dropped). */}
-              <svg fill="none" height="26" viewBox="0 0 16 16" width="26">
+              <svg aria-hidden="true" fill="none" height="26" viewBox="0 0 16 16" width="26">
                 <path
                   d="M3.5 8.5l3 3 6-7"
                   stroke="#34d399"

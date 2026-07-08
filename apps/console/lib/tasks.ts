@@ -93,7 +93,7 @@ export const TASKS: TaskDisplay[] = [
     group: "sell",
     steps: [
       "Register your agent if you haven't: t2 init (free, gasless).",
-      "Buy your agent's card from Funkii AI: t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf --service agent-card --data '{\"address\":\"<your agent 0x…>\"}'.",
+      'Buy your agent\'s card from Funkii AI: t2 agent pay 0x4529c9134627ada1e8bc8c4e6273573a312235a36135290be9c0a682cdfa6ecf --service agent-card --data \'{"address":"<your agent 0x…>"}\'.',
     ],
     payNote:
       "No submission — the reward fires automatically when the card purchase settles.",

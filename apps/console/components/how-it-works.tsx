@@ -57,7 +57,10 @@ export function HowItWorks({
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="ag-title" style={{ fontSize: "clamp(24px, 2.6vw, 34px)" }}>
+        <h2
+          className="ag-title"
+          style={{ fontSize: "clamp(24px, 2.6vw, 34px)" }}
+        >
           {heading}
         </h2>
         {subheading && (
@@ -142,9 +145,7 @@ export function HowItWorks({
           </div>
         </div>
 
-        {footer && (
-          <div className="mt-3 text-fg-subtle text-xs">{footer}</div>
-        )}
+        {footer && <div className="mt-3 text-fg-subtle text-xs">{footer}</div>}
       </div>
     </section>
   );

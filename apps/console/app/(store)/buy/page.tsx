@@ -50,7 +50,9 @@ function Step({
           {title}
         </h2>
       </div>
-      <div className="mt-3 flex flex-1 flex-col [&>*:last-child]:mt-auto">{children}</div>
+      <div className="mt-3 flex flex-1 flex-col [&>*:last-child]:mt-auto">
+        {children}
+      </div>
     </div>
   );
 }
@@ -67,8 +69,8 @@ export default function BuyPage() {
         </h1>
         <p className="ag-sub" style={{ fontSize: 17 }}>
           A funded wallet is the whole setup — no account, no review queue, no
-          API key. Pay per call in USDC; delivery failures refund
-          automatically; every sale settles on Sui.
+          API key. Pay per call in USDC; delivery failures refund automatically;
+          every sale settles on Sui.
         </p>
       </section>
 
@@ -88,7 +90,11 @@ export default function BuyPage() {
             The store&apos;s composed read: one paid call, the report back in
             seconds, the settlement digest on Sui.
           </p>
-          <CopyButton full label="Copy the first-buy prompt" text={DEMO_PROMPT} />
+          <CopyButton
+            full
+            label="Copy the first-buy prompt"
+            text={DEMO_PROMPT}
+          />
         </Step>
 
         <Step n="3" title="Browse the shelf">
@@ -107,7 +113,10 @@ export default function BuyPage() {
       <p className="mt-8 text-fg-subtle text-xs leading-relaxed">
         Prefer the browser? Any priced listing has a Try-it checkout — sign in
         with Google, tap to confirm, response inline. Selling instead?{" "}
-        <Link className="text-fg-muted underline underline-offset-4" href="/sell">
+        <Link
+          className="text-fg-muted underline underline-offset-4"
+          href="/sell"
+        >
           List a service →
         </Link>
       </p>

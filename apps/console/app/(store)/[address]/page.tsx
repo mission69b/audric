@@ -15,8 +15,8 @@ import { TryItButton } from "@/components/try-it-button";
 import { UseInAudric } from "@/components/use-in-audric";
 import { UseItServiceRow } from "@/components/use-it-tabs";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
-import { fetchRetry } from "@/lib/fetch-retry";
 import { categoryLabel } from "@/lib/categories";
+import { fetchRetry } from "@/lib/fetch-retry";
 import { formatDate } from "@/lib/format";
 
 // Public agent listing (agents.t2000.ai/<address>). Service-first when the
@@ -77,6 +77,8 @@ type Profile = {
 };
 
 const SUISCAN = "https://suiscan.xyz/mainnet";
+// Numeric listing URLs (Phase 3): /2 = agent #2.
+const NUMERIC_SEGMENT_RE = /^\d{1,10}$/;
 
 function short(v: string): string {
   return v.length > 16 ? `${v.slice(0, 8)}…${v.slice(-6)}` : v;
@@ -159,9 +161,7 @@ function CommandBlock({
           <div key={cmd}>
             <span className="text-fg-subtle">$ </span>
             <span className="text-foreground">{cmd}</span>
-            {comment && (
-              <span className="text-fg-subtle"> # {comment}</span>
-            )}
+            {comment && <span className="text-fg-subtle"> # {comment}</span>}
           </div>
         ))}
       </div>
@@ -193,7 +193,7 @@ export async function generateMetadata({
 }) {
   const { address: seg } = await params;
   let address = decodeURIComponent(seg);
-  if (/^\d{1,10}$/.test(address)) {
+  if (NUMERIC_SEGMENT_RE.test(address)) {
     const byId = await getAgentProfileByNumericId(Number(address)).catch(
       () => undefined
     );
@@ -241,7 +241,7 @@ export default async function AgentProfilePage({
   // Numeric is CANONICAL — hex address URLs 301 to it below (OKX-pattern
   // short links; the on-chain numeric id is permanent, so the URL is too).
   let address = segment;
-  if (/^\d{1,10}$/.test(decoded)) {
+  if (NUMERIC_SEGMENT_RE.test(decoded)) {
     const byId = await getAgentProfileByNumericId(Number(decoded)).catch(
       () => undefined
     );
@@ -301,7 +301,10 @@ export default async function AgentProfilePage({
         />
         <div className="min-w-[260px] flex-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="ag-title" style={{ fontSize: "clamp(30px, 4vw, 46px)" }}>
+            <h1
+              className="ag-title"
+              style={{ fontSize: "clamp(30px, 4vw, 46px)" }}
+            >
               {profile.name}
             </h1>
             {(rep?.sales ?? 0) > 0 && (
@@ -329,9 +332,7 @@ export default async function AgentProfilePage({
           <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
             {handle && <>{displayHandle(handle)} · </>}
             {numericId != null && <>#{numericId}</>}
-            {profile.category && (
-              <> · {categoryLabel(profile.category)}</>
-            )}
+            {profile.category && <> · {categoryLabel(profile.category)}</>}
           </div>
         </div>
       </div>
@@ -444,8 +445,7 @@ export default async function AgentProfilePage({
                   {
                     slug: null as string | null,
                     title: profile.name,
-                    rowDescription:
-                      profile.description?.split("\n")[0] ?? null,
+                    rowDescription: profile.description?.split("\n")[0] ?? null,
                     priceUsdc: (profile.priceUsdc ?? null) as string | null,
                     input: null as string | null,
                     rowBuyUrl: buyUrl,
@@ -465,7 +465,13 @@ export default async function AgentProfilePage({
                   label: "Your agent",
                   body: (
                     <div className="grid gap-5 *:min-w-0 lg:grid-cols-2">
-                      <div className="rounded-[10px] border p-4" style={{ background: "var(--ag-canvas)", borderColor: "var(--ag-border)" }}>
+                      <div
+                        className="rounded-[10px] border p-4"
+                        style={{
+                          background: "var(--ag-canvas)",
+                          borderColor: "var(--ag-border)",
+                        }}
+                      >
                         <div className="font-medium text-foreground text-sm">
                           Paste this into your agent
                         </div>
@@ -546,12 +552,12 @@ export default async function AgentProfilePage({
                             address={profile.address}
                             name={profile.name}
                             priceUsdc={row.priceUsdc}
-                            serviceTitle={row.slug ? row.title : null}
                             qualified={
                               (rep?.sales ?? 0) >= 3 &&
                               (rep?.buyers ?? 0) >= 2 &&
                               (rep?.deliveredRate ?? 0) >= 0.8
                             }
+                            serviceTitle={row.slug ? row.title : null}
                           />
                         ),
                       },
@@ -575,8 +581,8 @@ export default async function AgentProfilePage({
           )}
           <p className="mt-4 text-fg-subtle text-xs">
             Pay on delivery — a failed delivery refunds you automatically. You
-            pay exactly the listed price; the 2.5% platform fee
-            comes out of the seller&apos;s side at settlement.
+            pay exactly the listed price; the 2.5% platform fee comes out of the
+            seller&apos;s side at settlement.
             {rep &&
               " Every number above derives from on-chain settlement receipts, not self-reports — there are no star ratings to farm."}
           </p>
@@ -588,7 +594,10 @@ export default async function AgentProfilePage({
         <section className="mt-10">
           <div className="ag-eyebrow">{"// RECENT ACTIVITY"}</div>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="ag-title" style={{ fontSize: "clamp(26px, 3vw, 36px)" }}>
+            <h2
+              className="ag-title"
+              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+            >
               Every sale, on-chain.
             </h2>
             <p className="m-0 max-w-[320px] text-fg-subtle text-xs leading-relaxed">

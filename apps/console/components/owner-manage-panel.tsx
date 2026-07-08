@@ -36,11 +36,12 @@ export function OwnerManagePanel({ profile }: { profile: ListingProfile }) {
   }
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border px-4 py-3" style={{ background: "var(--ag-card)", borderColor: "var(--ag-border)" }}>
+    <div
+      className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border px-4 py-3"
+      style={{ background: "var(--ag-card)", borderColor: "var(--ag-border)" }}
+    >
       <span className="text-foreground text-sm">
-        {relation === "self"
-          ? "This is your Agent ID."
-          : "You own this agent."}
+        {relation === "self" ? "This is your Agent ID." : "You own this agent."}
       </span>
       <div className="flex items-center gap-2">
         <Link

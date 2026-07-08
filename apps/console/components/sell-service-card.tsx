@@ -216,9 +216,7 @@ export function SellServiceCard({
 
       {mode === "self" ? (
         <label className="grid gap-[7px]">
-          <FieldLabel>
-            Your service endpoint (https) — empty delists
-          </FieldLabel>
+          <FieldLabel>Your service endpoint (https) — empty delists</FieldLabel>
           <input
             className="ag-input"
             onChange={(e) => setEndpoint(e.target.value)}
@@ -248,8 +246,8 @@ export function SellServiceCard({
               value={upstream}
             />
             <Hint>
-              The API your service calls. Your key is stored encrypted,
-              injected only inside the paid flow, never shown again.
+              The API your service calls. Your key is stored encrypted, injected
+              only inside the paid flow, never shown again.
             </Hint>
           </label>
           {headers.map((row, i) => (
@@ -285,7 +283,13 @@ export function SellServiceCard({
                 title="Remove header"
                 type="button"
               >
-                <svg aria-hidden="true" fill="none" height="14" viewBox="0 0 16 16" width="14">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  width="14"
+                >
                   <path
                     d="M4 4l8 8M12 4l-8 8"
                     stroke="currentColor"
@@ -374,10 +378,7 @@ export function SellServiceCard({
         {status === "done" && (
           <span className="text-sm" style={{ color: "var(--ag-verify)" }}>
             Live + listed ✓{" "}
-            <a
-              className="underline underline-offset-4"
-              href={`/${address}`}
-            >
+            <a className="underline underline-offset-4" href={`/${address}`}>
               view your listing
             </a>
           </span>

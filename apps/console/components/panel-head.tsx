@@ -15,7 +15,9 @@ export function PanelHead({
         <h1 className="m-0 font-semibold text-[26px] text-foreground tracking-[-0.03em]">
           {title}
         </h1>
-        {sub && <p className="mt-1.5 mb-0 text-[13.5px] text-fg-muted">{sub}</p>}
+        {sub && (
+          <p className="mt-1.5 mb-0 text-[13.5px] text-fg-muted">{sub}</p>
+        )}
       </div>
       {action}
     </div>
