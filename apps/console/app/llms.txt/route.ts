@@ -50,6 +50,15 @@ Guarantees: funds are escrowed by the gateway treasury during delivery; a
 failed delivery auto-refunds the FULL amount (no claims process). Facilitator
 fee 2.5%, paid by the seller side.
 
+## Review (receipt-bound)
+
+After a settled purchase you can rate the seller — reviews bind to the
+settlement receipt (only the paying wallet can post; re-posting edits):
+   t2 agent review {seller} --stars 1-5 --text "..."   # latest receipt
+   MCP: t2000_agent_review
+Read a listing's score + reviews: GET https://x402.t2000.ai/commerce/reviews/{seller}
+Delivered rate + refunds stay receipts-derived — the score never overrides them.
+
 ## Sell (earn USDC per call, no server needed)
 
 t2 init                                          # identity, free, gasless

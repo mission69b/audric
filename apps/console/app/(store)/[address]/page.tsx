@@ -62,6 +62,9 @@ type Profile = {
     repeatBuyers?: number;
     refunds?: number;
     deliveredRate?: number | null;
+    /** Star average over receipt-bound reviews (Phase 4); null until reviewed. */
+    score?: number | null;
+    reviewCount?: number;
     lastSaleAt: string | null;
     recent?: {
       at: string;
@@ -185,6 +188,46 @@ async function fetchProfile(address: string): Promise<Profile | null> {
   return null;
 }
 
+type ReviewsPayload = {
+  score: number | null;
+  count: number;
+  /** index 0 = 1 star … index 4 = 5 stars */
+  histogram: number[];
+  reviews: {
+    buyer: string;
+    stars: number;
+    text: string | null;
+    at: string;
+    tx: string;
+  }[];
+};
+
+// Phase 4 (SPEC_STORE_V2 §8): receipt-bound reviews, straight from the
+// gateway. Empty state renders nothing — sold counts stay the only numbers.
+async function fetchReviews(address: string): Promise<ReviewsPayload | null> {
+  try {
+    const res = await fetchRetry(`${RAIL_BASE}/commerce/reviews/${address}`, {
+      next: { revalidate: 30 },
+    });
+    if (res.ok) {
+      const d = (await res.json()) as ReviewsPayload;
+      return d.count > 0 ? d : null;
+    }
+  } catch {
+    // fall through to null
+  }
+  return null;
+}
+
+function Stars({ n }: { n: number }) {
+  return (
+    <span className="text-amber-400" style={{ letterSpacing: 2 }}>
+      {"★".repeat(n)}
+      <span className="text-fg-subtle">{"★".repeat(5 - n)}</span>
+    </span>
+  );
+}
+
 // Per-listing tab title + share description (the store's SEO surface).
 export async function generateMetadata({
   params,
@@ -281,6 +324,7 @@ export default async function AgentProfilePage({
   const sells = catalog.length > 0 || Boolean(profile.mcpEndpoint);
   const priceOnly = Boolean(!profile.mcpEndpoint && profile.priceUsdc);
   const rep = profile.reputation;
+  const reviews = sells ? await fetchReviews(profile.address) : null;
   const buyUrl = `${RAIL_BASE}/commerce/pay/${profile.address}`;
 
   return (
@@ -393,9 +437,23 @@ export default async function AgentProfilePage({
       {/* Reputation strip (design ListingHeader) — every number derives from
           settlement receipts. */}
       {sells && rep && (
-        <div className="ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3 lg:grid-cols-5">
+        <div
+          className={`ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3 ${
+            typeof rep.score === "number" ? "lg:grid-cols-6" : "lg:grid-cols-5"
+          }`}
+        >
           {(
             [
+              // Score sits NEXT TO the receipts numbers, never instead of
+              // them — "5.0 stars, 3 refunds" must stay visibly readable.
+              ...(typeof rep.score === "number"
+                ? [
+                    [
+                      "Score",
+                      `★ ${rep.score.toFixed(rep.score === 5 ? 1 : 2)} (${rep.reviewCount})`,
+                    ] as const,
+                  ]
+                : []),
               ["Sold", String(rep.sales)],
               ["Distinct buyers", String(rep.buyers)],
               ["Settled", `$${rep.volumeUsd.toFixed(2)}`],
@@ -602,7 +660,7 @@ export default async function AgentProfilePage({
             pay exactly the listed price; the 2.5% platform fee comes out of the
             seller&apos;s side at settlement.
             {rep &&
-              " Every number above derives from on-chain settlement receipts, not self-reports — there are no star ratings to farm."}
+              " Every number above derives from on-chain settlement receipts, not self-reports — and reviews can only be posted by wallets with a settled purchase."}
           </p>
         </>
       )}
@@ -677,6 +735,100 @@ export default async function AgentProfilePage({
               );
             })}
           </div>
+        </section>
+      )}
+
+      {/* Reviews (Phase 4, SPEC_STORE_V2 §8) — receipt-bound text + stars.
+          Score = plain average; the histogram bars scale RELATIVE to the
+          largest band (OKX display convention). Receipts numbers stay
+          sovereign in the strip above — this section never replaces them. */}
+      {reviews && (
+        <section className="mt-10">
+          <div className="ag-eyebrow">{"// REVIEWS"}</div>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h2
+              className="ag-title"
+              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+            >
+              Reviewed by buyers.
+            </h2>
+            <p className="m-0 max-w-[340px] text-fg-subtle text-xs leading-relaxed">
+              Only wallets with a settled purchase can review — every review
+              links its on-chain receipt. Score is the plain average.
+            </p>
+          </div>
+          <div className="mt-3 grid gap-4 md:grid-cols-[220px_1fr]">
+            <div className="ag-card p-5">
+              <div className="font-semibold text-[40px] text-foreground tabular-nums tracking-tight">
+                {reviews.score?.toFixed(reviews.score === 5 ? 1 : 2)}
+              </div>
+              <div className="mt-1">
+                <Stars n={Math.round(reviews.score ?? 0)} />
+              </div>
+              <div className="mt-2 text-fg-subtle text-xs">
+                {reviews.count} review{reviews.count === 1 ? "" : "s"}
+              </div>
+              <div className="mt-4 flex flex-col gap-1.5">
+                {[5, 4, 3, 2, 1].map((band) => {
+                  const n = reviews.histogram[band - 1] ?? 0;
+                  const max = Math.max(...reviews.histogram, 1);
+                  return (
+                    <div className="flex items-center gap-2" key={band}>
+                      <span className="w-7 shrink-0 text-fg-subtle text-xs">
+                        {band}★
+                      </span>
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--ag-overlay)]">
+                        <span
+                          className="block h-full rounded-full bg-amber-400/80"
+                          style={{ width: `${(n / max) * 100}%` }}
+                        />
+                      </span>
+                      <span className="w-5 shrink-0 text-right text-fg-subtle text-xs tabular-nums">
+                        {n}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="ag-card divide-y divide-border/50 overflow-hidden">
+              {reviews.reviews.slice(0, 8).map((r) => (
+                <div className="px-5 py-4" key={r.tx}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <Stars n={r.stars} />
+                      <span className="font-mono text-fg-subtle text-xs">
+                        {r.buyer}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-fg-subtle text-xs">
+                      <span>{formatDate(r.at)}</span>
+                      <a
+                        className="underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                        href={`${SUISCAN}/tx/${r.tx}`}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        receipt ↗
+                      </a>
+                    </div>
+                  </div>
+                  {r.text && (
+                    <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
+                      {r.text}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-3 text-fg-subtle text-xs">
+            Bought from this agent? Review it:{" "}
+            <span className="font-mono">
+              t2 agent review {profile.address.slice(0, 10)}… --stars 5 --text
+              &quot;…&quot;
+            </span>
+          </p>
         </section>
       )}
 

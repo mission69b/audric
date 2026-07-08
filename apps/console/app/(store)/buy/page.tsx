@@ -23,6 +23,14 @@ const SETUP_PROMPT = [
   "Then run `t2 fund` and show me the deposit address + QR so I can send it a few dollars of USDC (everything is gasless — no SUI needed, and there is no account to register: the funded wallet IS the account).",
 ].join("\n");
 
+// The Private API on-ramp (the same wallet funds it — one command mints the
+// key). Copy stays factual to developers.t2000.ai/private-api.
+const PRIVATE_API_PROMPT = [
+  "Run `t2 agent onboard --fund 5` to fund $5 of t2000 API credit from my Agent Wallet and mint a Private API key.",
+  "",
+  "Then configure yourself (or any OpenAI-compatible client) to use it: base URL https://api.t2000.ai/v1, the minted key, and list the models with GET /v1/models — private open + confidential (TEE) models, zero retention.",
+].join("\n");
+
 // The hero demo (SPEC_STORE_V2 §7 — the founder's morning-brief script):
 // three paid calls chained by the agent, zero taps, receipts on Sui.
 const DEMO_PROMPT = [
@@ -108,6 +116,118 @@ export default function BuyPage() {
             Browse agents
           </Link>
         </Step>
+      </section>
+
+      {/* The OKX tutorial's "step 1: install a client" — for people who don't
+          have an agent yet. Doubles as the Private API on-ramp: the same
+          wallet that buys store services can mint a key for private open
+          models (the promo the founder asked for, 2026-07-08). */}
+      <section className="mt-12">
+        <div className="ag-eyebrow">{"// NO AGENT YET?"}</div>
+        <h2
+          className="ag-title mt-3"
+          style={{ fontSize: "clamp(24px, 2.6vw, 32px)" }}
+        >
+          Start from zero in three steps.
+        </h2>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <Step n="1" title="Install an agent client">
+            <p className="mt-0 mb-3 text-muted-foreground text-sm leading-relaxed">
+              Any terminal agent works. Pick one:
+            </p>
+            <ul className="mt-0 mb-3 flex list-none flex-col gap-2 p-0 text-muted-foreground text-sm">
+              <li>
+                <a
+                  className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+                  href="https://cursor.com"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Cursor
+                </a>{" "}
+                — editor + agent, download and sign in.
+              </li>
+              <li>
+                <a
+                  className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+                  href="https://code.claude.com"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Claude Code
+                </a>{" "}
+                —{" "}
+                <span className="font-mono text-xs">
+                  npm i -g @anthropic-ai/claude-code
+                </span>
+              </li>
+              <li>
+                <a
+                  className="text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
+                  href="https://developers.openai.com/codex/cli"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Codex CLI
+                </a>{" "}
+                —{" "}
+                <span className="font-mono text-xs">
+                  npm i -g @openai/codex
+                </span>
+              </li>
+            </ul>
+            <p className="mt-0 mb-0 text-fg-subtle text-xs leading-relaxed">
+              No install at all:{" "}
+              <a
+                className="underline underline-offset-4"
+                href="https://audric.ai"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Audric
+              </a>{" "}
+              has the wallet built in — sign in with Google and skip to step 3.
+            </p>
+          </Step>
+
+          <Step n="2" title="Give it a wallet">
+            <p className="mt-0 mb-3 text-muted-foreground text-sm leading-relaxed">
+              The same setup paste as above — CLI, local keys, spending limits
+              on by default, then fund it with a few dollars of USDC.
+            </p>
+            <CopyButton
+              full
+              label="Copy the setup prompt"
+              text={SETUP_PROMPT}
+            />
+          </Step>
+
+          <Step n="3" title="Power it with private models (optional)">
+            <p className="mt-0 mb-3 text-muted-foreground text-sm leading-relaxed">
+              That wallet can also mint a{" "}
+              <span className="text-foreground">Private API</span> key — open +
+              confidential models (DeepSeek, GLM, gpt-oss, TEE-attested options)
+              behind one OpenAI-compatible endpoint. Zero retention, no account:
+              the wallet funds it.
+            </p>
+            <CopyButton
+              full
+              label="Copy the Private API prompt"
+              text={PRIVATE_API_PROMPT}
+            />
+            <p className="mt-3 mb-0 text-fg-subtle text-xs">
+              Docs:{" "}
+              <a
+                className="underline underline-offset-4"
+                href="https://developers.t2000.ai/private-api"
+                rel="noreferrer"
+                target="_blank"
+              >
+                developers.t2000.ai/private-api
+              </a>
+            </p>
+          </Step>
+        </div>
       </section>
 
       <p className="mt-8 text-fg-subtle text-xs leading-relaxed">

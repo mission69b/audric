@@ -16,6 +16,9 @@ type Reputation = {
   refunds?: number;
   /** sales / (sales + refunds); null until there's data. */
   deliveredRate?: number | null;
+  /** Star average over receipt-bound reviews (Phase 4); null until reviewed. */
+  score?: number | null;
+  reviewCount?: number;
   lastSaleAt: string | null;
   /** Last 5 paid attempts (buyer short-addr, gross, delivered?) — §II.13.A.
    *  `tx` = the collect digest (public Sui tx, the clickable receipt). */
@@ -51,6 +54,8 @@ async function fetchReputation(
           repeatBuyers: d.repeatBuyers,
           refunds: d.refunds,
           deliveredRate: d.deliveredRate,
+          score: d.score ?? null,
+          reviewCount: d.reviewCount ?? 0,
           lastSaleAt: d.lastSaleAt,
           recent: d.recent,
         }
