@@ -18,10 +18,13 @@ export function TryItButton({
   seller,
   priceUsdc,
   name,
+  slug,
 }: {
   seller: string;
   priceUsdc: string;
   name: string;
+  /** Store v2 Phase 1: catalog SKU — buys `commerce/pay/{seller}/{slug}`. */
+  slug?: string | null;
 }) {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [phase, setPhaseState] = useState<BuyPhase>("idle");
@@ -106,7 +109,7 @@ export function TryItButton({
               setPhase("paying");
               setError("");
               try {
-                const r = await tryService({ seller, priceUsdc });
+                const r = await tryService({ seller, priceUsdc, slug });
                 setResult(r);
                 setPhase(r.error ? "error" : "done");
                 if (r.error) {

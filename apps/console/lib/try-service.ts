@@ -46,6 +46,8 @@ export function hasWalletSession(): boolean {
 export async function tryService(opts: {
   seller: string;
   priceUsdc: string;
+  /** Store v2 Phase 1: catalog SKU — pays the slug buy URL when present. */
+  slug?: string | null;
 }): Promise<TryResult> {
   const session = loadSession();
   if (!session || isSessionExpired(session)) {
@@ -64,7 +66,7 @@ export async function tryService(opts: {
     signer,
     client: grpcClient(),
     options: {
-      url: `${RAIL_BASE}/commerce/pay/${opts.seller}`,
+      url: `${RAIL_BASE}/commerce/pay/${opts.seller}${opts.slug ? `/${opts.slug}` : ""}`,
       method: "POST",
       // The declared price is the exact charge; cap approves nothing above it.
       maxPrice: price,

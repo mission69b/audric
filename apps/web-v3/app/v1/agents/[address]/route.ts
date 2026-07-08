@@ -101,9 +101,18 @@ export async function GET(
     owner: profile.owner ?? undefined,
     metadataUri: profile.metadataUri ?? undefined,
     mcpEndpoint: profile.mcpEndpoint ?? undefined,
+    // Preferred name for the same field — `mcpEndpoint` kept as a read alias
+    // (SPEC_STORE_V2 §5b: the delivery leg is plain HTTPS, not MCP protocol).
+    serviceEndpoint: profile.mcpEndpoint ?? undefined,
     paymentMethods: profile.paymentMethods ?? undefined,
     priceUsdc: profile.priceUsdc ?? undefined,
     category: profile.category ?? undefined,
+    // Store v2 Phase 1: the service catalog (slug-addressed SKUs). Buy URLs:
+    // `commerce/pay/{address}/{slug}`; the bare URL serves the default service.
+    services:
+      profile.services && profile.services.length > 0
+        ? profile.services.filter((s) => s.active !== false)
+        : undefined,
     // Off-chain social links — omitted entirely when none are set.
     links:
       profile.website || profile.twitter || profile.github

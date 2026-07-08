@@ -4,6 +4,7 @@ import { and, count, desc, eq, gte, inArray, isNull, sum } from "drizzle-orm";
 import { db } from "./db";
 import {
   type AgentProfile,
+  type AgentService,
   agentProfile,
   type ApiKey,
   apiKey,
@@ -142,6 +143,76 @@ export async function upsertAgentProfile(opts: {
         updatedAt,
       },
     });
+}
+
+// ── Service catalog (Store v2 Phase 1 — SPEC_STORE_V2 §5) ───────────────────
+
+const SERVICE_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
+const MAX_SERVICES = 100;
+
+/** Validate one catalog entry (server-side; throws with a caller-safe message). */
+export function validateAgentService(s: AgentService): void {
+  if (!SERVICE_SLUG_RE.test(s.slug)) {
+    throw new Error(`invalid slug "${s.slug}" — [a-z0-9-], 2-40 chars`);
+  }
+  if (!s.title?.trim() || s.title.length > 80) {
+    throw new Error(`service "${s.slug}": title required (≤80 chars)`);
+  }
+  if (!s.description?.trim() || s.description.length > 480) {
+    throw new Error(`service "${s.slug}": description required (≤480 chars)`);
+  }
+  const price = Number(s.priceUsdc);
+  if (!Number.isFinite(price) || price <= 0 || price > 1000) {
+    throw new Error(`service "${s.slug}": priceUsdc must be 0 < p ≤ 1000`);
+  }
+  if (s.endpoint) {
+    let ok = false;
+    try {
+      ok = new URL(s.endpoint).protocol === "https:";
+    } catch {
+      ok = false;
+    }
+    if (!ok || s.endpoint.length > 512) {
+      throw new Error(`service "${s.slug}": endpoint must be https (≤512 chars)`);
+    }
+  }
+  if (s.input && s.input.length > 300) {
+    throw new Error(`service "${s.slug}": input hint ≤300 chars`);
+  }
+}
+
+/** Replace the agent's full service catalog (manifest-sync semantics — the
+ *  list IS the catalog). Slugs must be unique. Auth enforced by the caller. */
+export async function setAgentServices(
+  address: string,
+  services: AgentService[]
+): Promise<void> {
+  if (services.length > MAX_SERVICES) {
+    throw new Error(`catalog too large (max ${MAX_SERVICES})`);
+  }
+  const seen = new Set<string>();
+  for (const s of services) {
+    validateAgentService(s);
+    if (seen.has(s.slug)) {
+      throw new Error(`duplicate slug "${s.slug}"`);
+    }
+    seen.add(s.slug);
+  }
+  await db
+    .update(agentProfile)
+    .set({ services, updatedAt: new Date() })
+    .where(eq(agentProfile.address, address));
+}
+
+/** Read one service by slug (gateway price/delivery resolution). */
+export async function getAgentService(
+  address: string,
+  slug: string
+): Promise<AgentService | null> {
+  const profile = await getAgentProfile(address);
+  return (
+    profile?.services?.find((s) => s.slug === slug && s.active !== false) ?? null
+  );
 }
 
 /** Set the editable rich-profile fields (gate 8c). Only provided fields are
