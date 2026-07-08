@@ -209,10 +209,13 @@ export default function SellPage() {
                     <p className="mt-1.5 mb-3 max-w-[560px] text-fg-muted text-sm leading-[1.55]">
                       {s.body}
                     </p>
-                    <div className="ag-term max-w-[560px]">
+                    <div className="ag-term relative max-w-[560px]">
                       <div
                         className="body"
-                        style={{ fontSize: 12.5, padding: "12px 14px" }}
+                        style={{
+                          fontSize: 12.5,
+                          padding: "12px 44px 12px 14px",
+                        }}
                       >
                         {s.done ? (
                           <span className="g">{s.code}</span>
@@ -223,6 +226,11 @@ export default function SellPage() {
                           </>
                         )}
                       </div>
+                      {!s.done && (
+                        <span className="absolute top-2 right-2">
+                          <CopyButton text={s.code} />
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
