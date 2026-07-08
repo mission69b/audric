@@ -50,7 +50,7 @@ function PromptBlock({ text, command }: { text: string; command?: boolean }) {
         style={{
           fontSize: 12.5,
           lineHeight: 1.6,
-          padding: "12px 44px 12px 14px",
+          padding: "12px 84px 12px 14px",
         }}
       >
         {command && <span className="m">$ </span>}

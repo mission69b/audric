@@ -522,127 +522,130 @@ export default async function AgentProfilePage({
                     },
                   ]
                 : []
-            ).map((row) => (
-              <UseItServiceRow
-                description={row.rowDescription}
-                initialTab={
-                  row.slug
-                    ? row.slug === catalog[0]?.slug
-                      ? (use ?? null)
-                      : null
-                    : (use ?? null)
-                }
-                key={row.slug ?? "default"}
-                priceUsdc={row.priceUsdc}
-                tabs={[
-                  {
-                    id: "agent" as const,
-                    label: "Your agent",
-                    body: (
-                      <div className="grid gap-5 *:min-w-0 lg:grid-cols-2">
-                        <div
-                          className="rounded-[10px] border p-4"
-                          style={{
-                            background: "var(--ag-canvas)",
-                            borderColor: "var(--ag-border)",
-                          }}
-                        >
-                          <div className="font-medium text-foreground text-sm">
-                            Paste this into your agent
-                          </div>
-                          <p className="mt-1 text-fg-muted text-xs">
-                            A ready-made prompt (service, address, price, pay
-                            instructions) for Claude Code, Cursor, or any agent
-                            with the t2000 CLI or skills installed.
-                          </p>
-                          <div className="mt-3">
-                            <CopyButton
-                              full
-                              label="Copy the prompt for your agent"
-                              text={buildAgentPrompt({
-                                name: profile.name,
-                                numericId,
-                                address: profile.address,
-                                priceUsdc: row.priceUsdc,
-                                description: row.rowDescription,
-                                slug: row.slug,
-                                serviceTitle: row.slug ? row.title : null,
-                                input: row.input,
-                              })}
-                            />
-                          </div>
-                        </div>
-                        <CommandBlock
-                          lines={[
-                            ["npm i -g @t2000/cli", "once"],
-                            [
-                              `t2 agent pay ${profile.address}${row.slug ? ` --service ${row.slug}` : ""}`,
-                            ],
-                          ]}
-                          note="Pays the declared price from your funded wallet, delivers the response, settles on Sui. Add --data '{…}' to pass input."
-                          title="Or straight from the CLI"
-                        />
-                      </div>
-                    ),
-                  },
-                  // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)
-                  // — over the cap the island renders null, so skip the tab.
-                  ...(row.priceUsdc && Number.parseFloat(row.priceUsdc) <= 5
-                    ? [
-                        {
-                          id: "try" as const,
-                          label: "Try it",
-                          body: (
-                            <div className="flex flex-col gap-4">
-                              <BuyFlowRail />
-                              <TryItButton
-                                name={row.title}
-                                priceUsdc={row.priceUsdc}
-                                seller={profile.address}
-                                slug={row.slug}
-                              />
+            ).map((row) => {
+              // The prompt renders VISIBLY (founder 2026-07-08 — read it
+              // before you copy it; the OKX how-to-use-modal pattern).
+              const agentPrompt = buildAgentPrompt({
+                name: profile.name,
+                numericId,
+                address: profile.address,
+                priceUsdc: row.priceUsdc,
+                description: row.rowDescription,
+                slug: row.slug,
+                serviceTitle: row.slug ? row.title : null,
+                input: row.input,
+              });
+              return (
+                <UseItServiceRow
+                  description={row.rowDescription}
+                  initialTab={
+                    row.slug
+                      ? row.slug === catalog[0]?.slug
+                        ? (use ?? null)
+                        : null
+                      : (use ?? null)
+                  }
+                  key={row.slug ?? "default"}
+                  priceUsdc={row.priceUsdc}
+                  tabs={[
+                    {
+                      id: "agent" as const,
+                      label: "Your agent",
+                      body: (
+                        <div className="flex flex-col gap-4 *:min-w-0">
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="font-medium text-foreground text-sm">
+                                Paste this into your agent
+                              </div>
+                              <CopyButton text={agentPrompt} />
                             </div>
-                          ),
-                        },
-                      ]
-                    : []),
-                  {
-                    id: "x402" as const,
-                    label: "x402",
-                    body: (
-                      <CommandBlock
-                        lines={[[`curl ${row.rowBuyUrl}`]]}
-                        note="Returns HTTP 402 + payment requirements. Any client that speaks the Sui x402 scheme (the t2000 CLI and SDK do) pays and gets the response in one round-trip."
-                        title="Machines — raw x402"
-                      />
-                    ),
-                  },
-                  ...(row.audricTab && row.priceUsdc
-                    ? [
-                        {
-                          id: "audric" as const,
-                          label: "Audric",
-                          body: (
-                            <UseInAudric
-                              address={profile.address}
-                              name={profile.name}
-                              priceUsdc={row.priceUsdc}
-                              qualified={
-                                (rep?.sales ?? 0) >= 3 &&
-                                (rep?.buyers ?? 0) >= 2 &&
-                                (rep?.deliveredRate ?? 0) >= 0.8
-                              }
-                              serviceTitle={row.slug ? row.title : null}
-                            />
-                          ),
-                        },
-                      ]
-                    : []),
-                ]}
-                title={row.title}
-                typeLabel="x402"
-              />
-            ))}
+                            <p className="mt-1 mb-2 text-fg-muted text-xs">
+                              Works in Claude Code, Cursor, or any agent with
+                              the t2000 CLI or skills installed.
+                            </p>
+                            <pre
+                              className="m-0 max-h-56 overflow-auto whitespace-pre-wrap rounded-[10px] border p-3.5 font-mono text-[11.5px] text-muted-foreground leading-relaxed"
+                              style={{
+                                background: "#0d0d0d",
+                                borderColor: "var(--ag-border)",
+                              }}
+                            >
+                              {agentPrompt}
+                            </pre>
+                          </div>
+                          <CommandBlock
+                            lines={[
+                              ["npm i -g @t2000/cli", "once"],
+                              [
+                                `t2 agent pay ${profile.address}${row.slug ? ` --service ${row.slug}` : ""}`,
+                              ],
+                            ]}
+                            note="Pays the declared price from your funded wallet, delivers the response, settles on Sui. Add --data '{…}' to pass input."
+                            title="Or straight from the CLI"
+                          />
+                        </div>
+                      ),
+                    },
+                    // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)
+                    // — over the cap the island renders null, so skip the tab.
+                    ...(row.priceUsdc && Number.parseFloat(row.priceUsdc) <= 5
+                      ? [
+                          {
+                            id: "try" as const,
+                            label: "Try it",
+                            body: (
+                              <div className="flex flex-col gap-4">
+                                <BuyFlowRail />
+                                <TryItButton
+                                  name={row.title}
+                                  priceUsdc={row.priceUsdc}
+                                  seller={profile.address}
+                                  slug={row.slug}
+                                />
+                              </div>
+                            ),
+                          },
+                        ]
+                      : []),
+                    {
+                      id: "x402" as const,
+                      label: "x402",
+                      body: (
+                        <CommandBlock
+                          lines={[[`curl ${row.rowBuyUrl}`]]}
+                          note="Returns HTTP 402 + payment requirements. Any client that speaks the Sui x402 scheme (the t2000 CLI and SDK do) pays and gets the response in one round-trip."
+                          title="Machines — raw x402"
+                        />
+                      ),
+                    },
+                    ...(row.audricTab && row.priceUsdc
+                      ? [
+                          {
+                            id: "audric" as const,
+                            label: "Audric",
+                            body: (
+                              <UseInAudric
+                                address={profile.address}
+                                name={profile.name}
+                                priceUsdc={row.priceUsdc}
+                                qualified={
+                                  (rep?.sales ?? 0) >= 3 &&
+                                  (rep?.buyers ?? 0) >= 2 &&
+                                  (rep?.deliveredRate ?? 0) >= 0.8
+                                }
+                                serviceTitle={row.slug ? row.title : null}
+                              />
+                            ),
+                          },
+                        ]
+                      : []),
+                  ]}
+                  title={row.title}
+                  typeLabel="x402"
+                />
+              );
+            })}
           </div>
           {!rep && (
             <p className="mt-2 text-fg-subtle text-xs">
