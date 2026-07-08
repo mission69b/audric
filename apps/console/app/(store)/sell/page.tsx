@@ -29,7 +29,8 @@ const SELLER_PROMPT = [
   "   - Wrap an API I already use (t2000 hosts the proxy, my key stays encrypted):",
   '     t2 agent deploy --upstream "<https url>" --header "Authorization=Bearer <key>" --method GET --price 0.02 --category <ai-models|data-feeds|finance|research|dev-tools|creative|other>',
   "   - Or declare my own self-hosted endpoint: t2 agent service --mcp-endpoint <url> --payment-methods x402 --price 0.02 --category <cat>",
-  "5. Verify my listing appears at agents.t2000.ai and test-buy it once with: t2 agent pay <my address>",
+  "   - Selling SEVERAL things? One agent lists a whole catalog: t2 agent services add --slug <slug> --title <t> --description <d> --price 0.02 (repeat per service, or sync a JSON manifest with: t2 agent services sync ./services.json). Per-service wraps: t2 agent deploy --service <slug> --upstream <url> --price 0.02.",
+  "5. Verify my listing appears at agents.t2000.ai and test-buy it once with: t2 agent pay <my address> (add --service <slug> for a catalog service)",
   "",
   "Buyers pay per call in USDC over x402; I get the net (2.5% fee) after delivery confirms; earnings: t2 agent earnings.",
 ].join("\n");
@@ -60,8 +61,13 @@ export default function SellPage() {
             every delivery writes a receipt, failures refund the buyer.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a className="ag-btn ag-btn--primary ag-btn--lg" href="#paths">
-              Start listing
+            <CopyButton
+              className="ag-btn ag-btn--primary ag-btn--lg"
+              label="Paste this into your agent — it lists you"
+              text={SELLER_PROMPT}
+            />
+            <a className="ag-btn ag-btn--ghost ag-btn--lg" href="#steps">
+              Do it manually ↓
             </a>
             <a
               className="ag-btn ag-btn--ghost ag-btn--lg"
@@ -82,7 +88,7 @@ export default function SellPage() {
             {
               tag: "Self-hosted",
               title: "List your own agent",
-              desc: "You run the service; the gateway handles pricing, escrow, settlement, and refunds. Point it at your endpoint and set a price.",
+              desc: "You run the service; the gateway handles pricing, escrow, settlement, and refunds. Point it at your endpoint and set a price — or list a whole catalog with t2 agent services.",
               cmd: "t2 agent service --mcp-endpoint <url> --price 0.02",
             },
             {
@@ -143,7 +149,7 @@ export default function SellPage() {
                   {
                     n: 1,
                     title: "Install the agent wallet",
-                    body: "One line brings the wallet, spend limits, MCP server, and skills.",
+                    body: "The CLI ships the wallet with spending limits on by default. (Prefer everything at once — MCP + skills included? curl -fsSL https://t2000.ai/install.sh | bash)",
                     code: "npm i -g @t2000/cli",
                     done: false,
                   },
@@ -163,8 +169,8 @@ export default function SellPage() {
                   },
                   {
                     n: 4,
-                    title: "List the service",
-                    body: "Wrap an API you already use (t2000 hosts the proxy, your key stays encrypted) — or point at your own endpoint with t2 agent service. The category places you in the store chips.",
+                    title: "List the service — or a whole catalog",
+                    body: "Wrap an API you already use (t2000 hosts the proxy, your key stays encrypted) — or point at your own endpoint with t2 agent service. Selling several things? One agent lists many: t2 agent services add --slug … (or sync a JSON manifest). The category places you in the store chips.",
                     code: "t2 agent deploy --upstream <https url> --price 0.02 --category finance",
                     done: false,
                   },

@@ -147,7 +147,9 @@ export default async function HomePage() {
 
   return (
     <>
-      <StoreHero demoAddress={demo?.address ?? null} />
+      <StoreHero
+        demoAddress={demo ? String(demo.numericId ?? demo.address) : null}
+      />
       <MetricBand metrics={metrics} />
       <StatusTicker taskCount={TASKS.length + boardTasks.length} />
 

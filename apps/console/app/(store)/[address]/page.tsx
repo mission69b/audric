@@ -261,7 +261,9 @@ export default async function AgentProfilePage({
     segment.startsWith("0x") &&
     profile.registrations?.[0]?.agentId != null
   ) {
-    permanentRedirect(`/${profile.registrations[0].agentId}`);
+    permanentRedirect(
+      `/${profile.registrations[0].agentId}${use ? `?use=${encodeURIComponent(use)}` : ""}`
+    );
   }
 
   const numericId = profile.registrations?.[0]?.agentId;
@@ -465,7 +467,13 @@ export default async function AgentProfilePage({
             ).map((row) => (
               <UseItServiceRow
                 description={row.rowDescription}
-                initialTab={row.slug ? null : (use ?? null)}
+                initialTab={
+                  row.slug
+                    ? row.slug === catalog[0]?.slug
+                      ? (use ?? null)
+                      : null
+                    : (use ?? null)
+                }
                 key={row.slug ?? "default"}
                 priceUsdc={row.priceUsdc}
                 tabs={[
