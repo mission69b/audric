@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentEditForm } from "@/components/agent-edit-form";
+import { CatalogEditor } from "@/components/catalog-editor";
 import { SellServiceCard } from "@/components/sell-service-card";
 import { getSelfDeploy } from "@/lib/deploy-self";
 
@@ -80,40 +81,23 @@ export default async function EditListingPage({
           }}
         />
 
-        {/* Store v2 Phase 1 (SPEC_STORE_V2 §5b): the service CATALOG —
-            READ-ONLY by design (console = window, not workshop). Add/edit
-            happens agent-side: `t2 agent services add/sync`. */}
-        {(agent.services?.length ?? 0) > 0 && (
-          <div className="ag-card p-5">
-            <div className="ag-eyebrow">{"// CATALOG"}</div>
-            <div className="mt-3 divide-y divide-border/50">
-              {agent.services?.map((svc) => (
-                <div
-                  className="flex items-baseline justify-between gap-3 py-2.5"
-                  key={svc.slug}
-                >
-                  <div className="min-w-0">
-                    <span className="font-medium text-foreground text-sm">
-                      {svc.title}
-                    </span>
-                    <span className="ml-2 font-mono text-[11px] text-fg-subtle">
-                      /{svc.slug}
-                      {svc.active === false && " · inactive"}
-                    </span>
-                  </div>
-                  <span className="shrink-0 font-mono text-fg-muted text-xs tabular-nums">
-                    ${svc.priceUsdc}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-3 mb-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-              Managed from your agent: `t2 agent services add --slug … --title …
-              --description … --price …` — or sync a manifest: `t2 agent
-              services sync ./services.json`.
-            </p>
-          </div>
-        )}
+        {/* The service CATALOG — owner-editable since S.693 (founder GO
+            reversed S.656's read-only stance: browser-created owned agents
+            must be sellable without a terminal). Same REPLACE semantics as
+            `t2 agent services`. */}
+        <CatalogEditor
+          agent={agent.address}
+          initial={(agent.services ?? []).map((s) => ({
+            slug: s.slug,
+            title: s.title,
+            description: s.description,
+            priceUsdc: s.priceUsdc,
+            input: s.input ?? "",
+            endpoint: s.endpoint ?? "",
+            method: s.method === "GET" ? "GET" : "POST",
+            active: s.active !== false,
+          }))}
+        />
 
         {/* The service block (design §ServiceDeployBlock) — Passport
             self-agents deploy from the browser; owned agents set their

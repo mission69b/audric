@@ -103,14 +103,6 @@ export function AgentManageCard({
       </Link>
       {removable && (
         <AgentActionButton
-          action="hide"
-          active={agent.active}
-          agent={agent.address}
-          name={agent.displayName || agent.name}
-        />
-      )}
-      {removable && (
-        <AgentActionButton
           action="unlink"
           active={agent.active}
           agent={agent.address}

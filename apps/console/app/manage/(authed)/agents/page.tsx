@@ -202,10 +202,10 @@ export default async function MyAgentsPage() {
             ))}
           </div>
           <p className="mt-2 mb-0 text-fg-subtle text-xs">
-            Hide only affects your console — the on-chain record and receipts
-            persist (the registry has no delete). Unlink goes further: it
-            publicly renounces your on-chain ownership, and the agent can only
-            come back by proposing the link again.
+            Dismissed proposals and previously hidden agents — restore brings
+            them back (their on-chain records and receipts always persist).
+            Unlink publicly renounces your on-chain ownership; the agent can
+            only come back by proposing the link again.
           </p>
         </>
       )}

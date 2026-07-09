@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { renounceOwnership } from "@/lib/renounce-ownership";
 
-// The Hide / Dismiss / Unlink actions behind ONE real confirmation modal
-// (founder catch, S.692: the inline two-tap read as broken — several rows
-// could sit in "confirm" at once, and nothing explained what each verb
-// does). Each action states exactly what happens, warns when the agent is
-// LIVE, and uses a destructive confirm for the on-chain one.
+// The Dismiss / Unlink actions behind ONE real confirmation modal (founder
+// catch, S.692: the inline two-tap read as broken — several rows could sit
+// in "confirm" at once, and nothing explained what each verb does). Each
+// action states exactly what happens, warns when the agent is LIVE, and
+// uses a destructive confirm for the on-chain one. (The separate "Hide"
+// verb on owned rows was CUT in S.693 — founder: "keep it simple, have it
+// unlink"; the archive flag lives on for dismissals + the restore footer.)
 
-type Action = "hide" | "dismiss" | "unlink";
+type Action = "dismiss" | "unlink";
 
 const COPY: Record<
   Action,
@@ -22,14 +24,6 @@ const COPY: Record<
     confirm: string;
   }
 > = {
-  hide: {
-    trigger: "Hide",
-    title: (n) => `Hide ${n}?`,
-    body: "Hides this agent from your console only. Its on-chain record, store listing, and receipts all persist — restore it anytime from the footer of this page.",
-    liveWarning:
-      "This agent is LIVE — hiding it does not delist it; it keeps selling.",
-    confirm: "Hide agent",
-  },
   dismiss: {
     trigger: "Dismiss",
     title: (n) => `Dismiss the proposal from ${n}?`,
