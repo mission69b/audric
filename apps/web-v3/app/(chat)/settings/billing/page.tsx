@@ -269,7 +269,16 @@ export default function BillingPage() {
         </div>
         <p className="mt-0.5 text-muted-foreground text-xs">
           Top up gaslessly from your Passport — no card. Send USDC or USDsui to
-          your Passport on Sui first:
+          your Passport on Sui first — or{" "}
+          <a
+            className="underline underline-offset-2 hover:text-foreground"
+            href="https://agents.t2000.ai/manage/topup"
+            rel="noreferrer"
+            target="_blank"
+          >
+            buy USDC with a card
+          </a>{" "}
+          (same Passport, delivered on Sui):
         </p>
         {address ? (
           <button

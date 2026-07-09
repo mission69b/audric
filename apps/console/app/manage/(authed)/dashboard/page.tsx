@@ -132,14 +132,15 @@ export default async function OverviewPage() {
         </span>
       </div>
 
-      {/* Recent activity — the last settlements across your agents. */}
+      {/* Recent sales — settlement receipts only (wallet transfers like
+          Fund sends live on-chain — the Fund ✓ tx link / Suiscan). */}
       <div className="ag-card overflow-hidden p-0">
         <div
           className="flex items-center justify-between border-b px-5 py-3.5"
           style={{ borderColor: "var(--ag-border)" }}
         >
           <span className="font-semibold text-[14px] text-foreground">
-            Recent activity
+            Recent sales
           </span>
           <Link
             className="font-mono text-[12px] text-fg-subtle no-underline transition-colors hover:text-foreground"

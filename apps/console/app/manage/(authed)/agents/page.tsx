@@ -99,7 +99,11 @@ export default async function MyAgentsPage() {
 
       <GroupLabel>You — your Passport, selling as itself</GroupLabel>
       {selfAgent ? (
-        <AgentManageCard agent={selfAgent} earnings={selfEarnings} />
+        <AgentManageCard
+          agent={selfAgent}
+          earnings={selfEarnings}
+          fundable={false}
+        />
       ) : (
         <RegisterSelfCard />
       )}

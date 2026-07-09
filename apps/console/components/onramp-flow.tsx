@@ -23,12 +23,16 @@ type OnrampCoordinator = {
     fullName?: string;
   }): Promise<{ created?: boolean }>;
   submitKycInfo(info: Record<string, unknown>): Promise<void>;
-  verifyDocuments(): Promise<string | undefined>;
+  /** Presents the Stripe-hosted doc+selfie flow. */
+  verifyDocuments(): Promise<{ result: "success" | "abandoned" }>;
   registerWalletAddress(address: string, network: string): Promise<unknown>;
+  /** Returns the Payment Element UI — the CALLER must mount it (same
+   *  contract as `authenticate`; confirmed against the shipped SDK). The
+   *  callback fires when the user submits a payment method. */
   collectPaymentMethod(
     options: Record<string, unknown>,
     callback: (result: { cryptoPaymentToken?: string }) => void
-  ): Promise<unknown>;
+  ): Promise<HTMLElement>;
   performCheckout(
     sessionId: string,
     callback: (sessionId: string) => Promise<string>
@@ -79,8 +83,10 @@ export function OnrampFlow({
   const [amount, setAmount] = useState("20");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [formMounted, setFormMounted] = useState(false);
   const onrampRef = useRef<OnrampCoordinator | null>(null);
   const authContainerRef = useRef<HTMLDivElement>(null);
+  const paymentContainerRef = useRef<HTMLDivElement>(null);
 
   // Load + init the SDK once.
   useEffect(() => {
@@ -222,7 +228,11 @@ export function OnrampFlow({
       if (!onramp) {
         throw new Error("Payment SDK is still loading — try again.");
       }
-      await onramp.verifyDocuments();
+      const verify = await onramp.verifyDocuments();
+      if (verify.result === "abandoned") {
+        setBusy(false);
+        return;
+      }
       await onramp.registerWalletAddress(address, "sui");
       setStep("payment");
       setBusy(false);
@@ -239,19 +249,24 @@ export function OnrampFlow({
       if (!onramp) {
         throw new Error("Payment SDK is still loading — try again.");
       }
-      await onramp.collectPaymentMethod(
+      // The SDK RETURNS the Payment Element — it must be mounted (the bug the
+      // founder's first live test hit: awaiting without mounting = blank).
+      const el = await onramp.collectPaymentMethod(
         {
           payment_method_types: ["card"],
           wallets: { applePay: "auto", googlePay: "auto" },
         },
         (result) => {
           if (result.cryptoPaymentToken) {
+            paymentContainerRef.current?.replaceChildren();
             setPaymentToken(result.cryptoPaymentToken);
             setStep("amount");
           }
-          setBusy(false);
         }
       );
+      paymentContainerRef.current?.replaceChildren(el);
+      setFormMounted(true);
+      setBusy(false);
     } catch (e) {
       fail(e);
     }
@@ -389,15 +404,24 @@ export function OnrampFlow({
           <p className="m-0 text-fg-muted text-sm">
             Add a card (Apple Pay / Google Pay supported).
           </p>
-          <button
-            className="ag-btn ag-btn--primary"
-            disabled={busy}
-            onClick={onCollectPayment}
-            type="button"
-          >
-            {busy ? "Opening…" : "Add payment method"}
-          </button>
+          {!formMounted && (
+            <button
+              className="ag-btn ag-btn--primary"
+              disabled={busy}
+              onClick={onCollectPayment}
+              type="button"
+            >
+              {busy ? "Opening…" : "Add payment method"}
+            </button>
+          )}
         </div>
+      )}
+      {/* Stripe's Payment Element mounts here (card fields + submit). */}
+      <div className="mt-3" ref={paymentContainerRef} />
+      {step === "payment" && formMounted && (
+        <p className="mt-2 mb-0 text-fg-subtle text-xs">
+          Card details go to Stripe directly — t2000 never sees them.
+        </p>
       )}
 
       {step === "amount" && (

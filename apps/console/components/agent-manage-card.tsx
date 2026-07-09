@@ -29,9 +29,13 @@ function short(a: string): string {
 export function AgentManageCard({
   agent,
   earnings,
+  fundable = true,
 }: {
   agent: Agent;
   earnings: Earnings;
+  /** False for the SELF row — funding your own Passport from itself is a
+   *  no-op self-send (founder catch, first live test). */
+  fundable?: boolean;
 }) {
   return (
     <div className="ag-card flex flex-wrap items-center gap-4 px-5 py-[18px]">
@@ -80,7 +84,7 @@ export function AgentManageCard({
           <span className="ag-dot" style={{ width: 5, height: 5 }} /> Live
         </span>
       )}
-      <FundAgent agentAddress={agent.address} />
+      {fundable && <FundAgent agentAddress={agent.address} />}
       <Link
         className="ag-btn ag-btn--ghost ag-btn--sm"
         href={`/${agent.address}`}
