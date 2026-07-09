@@ -84,13 +84,18 @@ export function OnrampFlow({
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
   const [formMounted, setFormMounted] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
+  const [sdkTry, setSdkTry] = useState(0);
   const onrampRef = useRef<OnrampCoordinator | null>(null);
   const authContainerRef = useRef<HTMLDivElement>(null);
   const paymentContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load + init the SDK once.
+  // Load + init the SDK (retryable — a failed controller frame or slow CDN
+  // must surface a Retry, not the dead-end "still loading" message).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sdkTry is the retry trigger — bumping it re-runs the load.
   useEffect(() => {
     let cancelled = false;
+    setSdkReady(false);
     (async () => {
       try {
         const mod = (await import("@stripe/crypto")) as unknown as {
@@ -106,11 +111,13 @@ export function OnrampFlow({
         const coordinator = await load(publishableKey, { theme: "night" });
         if (!cancelled) {
           onrampRef.current = coordinator;
+          setSdkReady(true);
+          setError(null);
         }
       } catch (e) {
         if (!cancelled) {
           setError(
-            e instanceof Error ? e.message : "Couldn't load the payment SDK."
+            `Couldn't load Stripe's payment SDK${e instanceof Error ? ` — ${e.message}` : ""}. Retry below.`
           );
         }
       }
@@ -118,7 +125,7 @@ export function OnrampFlow({
     return () => {
       cancelled = true;
     };
-  }, [publishableKey]);
+  }, [publishableKey, sdkTry]);
 
   const fail = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : String(e));
@@ -315,6 +322,15 @@ export function OnrampFlow({
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
           {error}
+          {!sdkReady && (
+            <button
+              className="ml-3 underline underline-offset-2"
+              onClick={() => setSdkTry((n) => n + 1)}
+              type="button"
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 
@@ -334,11 +350,15 @@ export function OnrampFlow({
           />
           <button
             className="ag-btn ag-btn--primary"
-            disabled={busy || !email.includes("@")}
+            disabled={busy || !sdkReady || !email.includes("@")}
             onClick={onEmailSubmit}
             type="button"
           >
-            {busy ? "Checking…" : "Continue"}
+            {busy
+              ? "Checking…"
+              : sdkReady
+                ? "Continue"
+                : "Loading payment SDK…"}
           </button>
         </div>
       )}
