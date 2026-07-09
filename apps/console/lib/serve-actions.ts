@@ -210,7 +210,10 @@ export async function serveDeploy(input: {
       message: `Deployed, but the listing failed: ${e instanceof Error ? e.message : "invalid service"}. Fix the fields and deploy again.`,
     };
   }
-  return { ok: true, message: "Deployed + listed." };
+  return {
+    ok: true,
+    message: `Deployed + listed. Buy URL: https://x402.t2000.ai/commerce/pay/${g.agent}/${slug}`,
+  };
 }
 
 export async function serveUndeploy(input: {

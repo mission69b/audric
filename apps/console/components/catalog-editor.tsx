@@ -51,9 +51,14 @@ function Field({
 export function CatalogEditor({
   agent,
   initial,
+  hostedSlugs = [],
 }: {
   agent: string;
   initial: EditableService[];
+  /** Slugs with a LIVE deployed handler (S.697): these deliver via t2000
+   *  compute — the endpoint fields are hidden so a stray endpoint can't
+   *  shadow the handler. */
+  hostedSlugs?: string[];
 }) {
   const router = useRouter();
   const [services, setServices] = useState<EditableService[]>(initial);
@@ -153,31 +158,41 @@ export function CatalogEditor({
               />
             </Field>
             <div className="flex flex-wrap items-end gap-3">
-              <Field
-                grow
-                label="Endpoint (https — where t2000 fetches the result)"
-              >
-                <input
-                  className="ag-input font-mono"
-                  onChange={(e) => patch(i, { endpoint: e.target.value })}
-                  placeholder="https://api.example.com/whale-alerts"
-                  value={s.endpoint ?? ""}
-                />
-              </Field>
-              <Field label="Method">
-                <select
-                  className="ag-input w-24"
-                  onChange={(e) =>
-                    patch(i, {
-                      method: e.target.value === "GET" ? "GET" : "POST",
-                    })
-                  }
-                  value={s.method ?? "POST"}
-                >
-                  <option value="POST">POST</option>
-                  <option value="GET">GET</option>
-                </select>
-              </Field>
+              {hostedSlugs.includes(s.slug) ? (
+                <div className="flex-1 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 text-[12px] text-fg-muted">
+                  <span className="text-emerald-500">Hosted on t2000</span> —
+                  delivered by your deployed handler (Deploy card above). No
+                  endpoint needed.
+                </div>
+              ) : (
+                <>
+                  <Field
+                    grow
+                    label="Endpoint (https — where t2000 fetches the result)"
+                  >
+                    <input
+                      className="ag-input font-mono"
+                      onChange={(e) => patch(i, { endpoint: e.target.value })}
+                      placeholder="https://api.example.com/whale-alerts"
+                      value={s.endpoint ?? ""}
+                    />
+                  </Field>
+                  <Field label="Method">
+                    <select
+                      className="ag-input w-24"
+                      onChange={(e) =>
+                        patch(i, {
+                          method: e.target.value === "GET" ? "GET" : "POST",
+                        })
+                      }
+                      value={s.method ?? "POST"}
+                    >
+                      <option value="POST">POST</option>
+                      <option value="GET">GET</option>
+                    </select>
+                  </Field>
+                </>
+              )}
               <button
                 className="ag-btn ag-btn--ghost ag-btn--sm mb-1 text-fg-subtle"
                 onClick={() => {

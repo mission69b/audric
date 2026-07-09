@@ -1,8 +1,8 @@
 import {
   getAgentProfileByNumericId,
-  meetsSettleFloor,
   getUserById,
   getUserByUsername,
+  meetsSettleFloor,
 } from "@audric/accounts";
 import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
@@ -220,6 +220,26 @@ async function fetchReviews(address: string): Promise<ReviewsPayload | null> {
   return null;
 }
 
+// R1 (S.697): slugs with a LIVE hosted handler — powers the "hosted on
+// t2000" service marker. Public gateway read; empty on any failure.
+async function fetchHostedSlugs(address: string): Promise<string[]> {
+  try {
+    const res = await fetchRetry(
+      `https://mpp.t2000.ai/serve/status?address=${encodeURIComponent(address)}`,
+      { next: { revalidate: 30 } }
+    );
+    if (res.ok) {
+      const d = (await res.json()) as {
+        handlers?: { slug: string; active: boolean }[];
+      };
+      return (d.handlers ?? []).filter((h) => h.active).map((h) => h.slug);
+    }
+  } catch {
+    // fall through to empty
+  }
+  return [];
+}
+
 function Stars({ n }: { n: number }) {
   return (
     <span className="text-amber-400" style={{ letterSpacing: 2 }}>
@@ -337,6 +357,9 @@ export default async function AgentProfilePage({
   const rep = profile.reputation;
   const reviews = sells ? await fetchReviews(profile.address) : null;
   const buyUrl = `${RAIL_BASE}/commerce/pay/${profile.address}`;
+  // R1 (S.697): SKUs backed by a LIVE hosted handler get the "hosted on
+  // t2000" marker (trust + uptime signal; also disambiguates from wraps).
+  const hostedSlugs = await fetchHostedSlugs(profile.address);
 
   return (
     <>
@@ -653,7 +676,11 @@ export default async function AgentProfilePage({
                       : []),
                   ]}
                   title={row.title}
-                  typeLabel="x402"
+                  typeLabel={
+                    row.slug && hostedSlugs.includes(row.slug)
+                      ? "x402 · hosted on t2000"
+                      : "x402"
+                  }
                 />
               );
             })}

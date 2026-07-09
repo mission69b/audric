@@ -108,6 +108,7 @@ export default async function EditListingPage({
 
         <CatalogEditor
           agent={agent.address}
+          hostedSlugs={handlers.filter((h) => h.active).map((h) => h.slug)}
           initial={(agent.services ?? []).map((s) => ({
             slug: s.slug,
             title: s.title,
