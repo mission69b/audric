@@ -36,13 +36,31 @@ export function onrampConfig(env: OnrampEnv): OnrampConfig {
   return { stripeSecretKey: env.STRIPE_SECRET_KEY as string };
 }
 
+const GEO_UNSUPPORTED_CODES = new Set([
+  "crypto_onramp_unsupported_country",
+  "crypto_onramp_unsupportable_customer",
+]);
+
 /** Mint an onramp session pinned to the Passport: USDC on Sui, wallet
  *  locked. Returns the widget `client_secret` AND the hosted-page
- *  `redirect_url` (same session works for both surfaces). */
+ *  `redirect_url` (same session works for both surfaces). Passing the
+ *  visitor's IP lets Stripe geo-check up front — an unsupported country
+ *  (their onramp covers US + EU) comes back as `unsupported: true` so the
+ *  UI can show a useful fallback instead of Stripe's error banner. */
 export async function createOnrampSession(
   cfg: OnrampConfig,
-  opts: { walletAddress: string; email?: string; finishUrl?: string }
-): Promise<{ clientSecret?: string; redirectUrl?: string; error?: string }> {
+  opts: {
+    walletAddress: string;
+    email?: string;
+    finishUrl?: string;
+    customerIp?: string;
+  }
+): Promise<{
+  clientSecret?: string;
+  redirectUrl?: string;
+  unsupported?: boolean;
+  error?: string;
+}> {
   const params = new URLSearchParams({
     "wallet_addresses[sui]": opts.walletAddress,
     lock_wallet_address: "true",
@@ -57,6 +75,9 @@ export async function createOnrampSession(
   if (opts.finishUrl) {
     params.set("finish_url", opts.finishUrl);
   }
+  if (opts.customerIp) {
+    params.set("customer_ip_address", opts.customerIp);
+  }
   const res = await fetch("https://api.stripe.com/v1/crypto/onramp_sessions", {
     method: "POST",
     headers: {
@@ -69,9 +90,12 @@ export async function createOnrampSession(
     id?: string;
     client_secret?: string;
     redirect_url?: string;
-    error?: { message?: string };
+    error?: { code?: string; message?: string };
   };
   if (!(res.ok && data.client_secret)) {
+    if (data.error?.code && GEO_UNSUPPORTED_CODES.has(data.error.code)) {
+      return { unsupported: true };
+    }
     console.error(
       "[onramp] session create failed",
       res.status,
@@ -86,6 +110,25 @@ export async function createOnrampSession(
 }
 
 // ── The one route handler (both apps mount this) ────────────────────────────
+
+/** The visitor's IP, only when it's a real public address — private/loopback
+ *  values (local dev) would make Stripe reject the param as malformed. */
+function publicClientIp(req: Request): string | undefined {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  if (!ip) {
+    return;
+  }
+  const isPrivate =
+    ip === "::1" ||
+    ip.startsWith("127.") ||
+    ip.startsWith("10.") ||
+    ip.startsWith("192.168.") ||
+    ip.startsWith("172.16.") ||
+    ip.startsWith("fe80:") ||
+    ip.startsWith("fc") ||
+    ip.startsWith("fd");
+  return isPrivate ? undefined : ip;
+}
 
 /**
  * POST handler for /api/onramp. Actions:
@@ -122,7 +165,11 @@ export async function handleOnrampPost(
       const r = await createOnrampSession(cfg, {
         walletAddress: passportAddress,
         email: sessionEmail ?? undefined,
+        customerIp: publicClientIp(req),
       });
+      if (r.unsupported) {
+        return Response.json({ unsupported: true });
+      }
       if (r.error) {
         return Response.json({ error: r.error }, { status: 502 });
       }
@@ -139,7 +186,11 @@ export async function handleOnrampPost(
         walletAddress: passportAddress,
         email: sessionEmail ?? undefined,
         finishUrl,
+        customerIp: publicClientIp(req),
       });
+      if (r.unsupported) {
+        return Response.json({ unsupported: true });
+      }
       if (r.error) {
         return Response.json({ error: r.error }, { status: 502 });
       }

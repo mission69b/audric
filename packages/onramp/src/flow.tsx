@@ -51,6 +51,7 @@ export function OnrampFlow({
   const [status, setStatus] = useState<SessionStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [tryCount, setTryCount] = useState(0);
+  const [unsupported, setUnsupported] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onHosted = useCallback(async () => {
@@ -85,6 +86,11 @@ export function OnrampFlow({
         if (cancelled) {
           return;
         }
+        if (session.unsupported) {
+          setUnsupported(true);
+          setLoading(false);
+          return;
+        }
         const clientSecret = String(session.client_secret ?? "");
         if (!(onramp && clientSecret)) {
           throw new Error("Couldn't load Stripe's onramp — try again.");
@@ -112,6 +118,21 @@ export function OnrampFlow({
       cancelled = true;
     };
   }, [publishableKey, tryCount]);
+
+  if (unsupported) {
+    return (
+      <div className="max-w-[480px]">
+        <p className="m-0 text-muted-foreground text-sm">
+          Card purchases aren't available in your country yet — Stripe's onramp
+          currently covers the US and EU. You can still fund the wallet by
+          sending USDC on Sui to your Passport address:
+        </p>
+        <p className="mt-3 mb-0 break-all rounded-lg border border-border px-3 py-2 font-mono text-foreground text-xs">
+          {address}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[480px]">
