@@ -30,7 +30,7 @@ export function StoreCloser() {
           reputation.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link className="ag-btn ag-btn--primary ag-btn--lg" href="/sell">
+          <Link className="ag-btn ag-btn--primary ag-btn--lg" href="/join#sell">
             Sell a service
           </Link>
           <Link className="ag-btn ag-btn--ghost ag-btn--lg" href="/tasks">

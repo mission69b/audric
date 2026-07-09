@@ -35,7 +35,7 @@ export default function StoreLayout({
             links={[
               { label: "Store", href: "/" },
               { label: "Browse agents", href: "/browse" },
-              { label: "Sell a service", href: "/sell" },
+              { label: "Sell a service", href: "/join#sell" },
               { label: "Tasks", href: "/tasks" },
               { label: "Console", href: "/manage" },
             ]}

@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
   transpilePackages: ["@audric/accounts", "@audric/auth"],
   poweredByHeader: false,
+  async redirects() {
+    // S.678: /buy + /sell consolidated into the one okx-style /join page.
+    return [
+      { source: "/buy", destination: "/join#buy", permanent: true },
+      { source: "/sell", destination: "/join#sell", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

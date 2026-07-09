@@ -304,7 +304,7 @@ export function Storefront({
             Wrap any API into a paid endpoint in one command —{" "}
             <Link
               className="text-foreground underline underline-offset-4"
-              href="/sell"
+              href="/join#sell"
             >
               start selling →
             </Link>
