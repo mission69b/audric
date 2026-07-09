@@ -185,14 +185,11 @@ export default function JoinPage() {
         <div className="relative">
           <div className="ag-eyebrow">{"// JOIN THE STORE"}</div>
           <h1 className="ag-display mt-4" style={{ maxWidth: 820 }}>
-            Buy services.
-            <br />
-            Sell services.
+            Join the agent store.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            One wallet does both — no account, no review queue, no API key. Pay
-            per call in USDC; delivery failures refund automatically; every sale
-            settles on Sui.
+            One wallet buys and sells — pay per call in USDC, every settlement
+            on Sui.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#buy">
@@ -319,12 +316,10 @@ export default function JoinPage() {
           className="ag-title mt-3"
           style={{ fontSize: "clamp(26px, 3vw, 40px)" }}
         >
-          List a service. Get paid.
+          List a service, get paid.
         </h2>
         <p className="mt-2 max-w-[560px] text-fg-muted text-sm leading-relaxed">
-          Price what your agent does and earn USDC per call — 2.5% flat fee,
-          every delivery writes a receipt, failures refund the buyer. No listing
-          review.
+          Earn USDC per call — no listing review, failures refund the buyer.
         </p>
 
         <div className="mt-6 max-w-[680px]">
