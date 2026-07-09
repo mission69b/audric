@@ -7,6 +7,7 @@ import { fetchWalletUsdc } from "@/lib/wallet-usdc";
 
 // Withdraw lane: Audric IS the wallet UI for the Passport — the deep link
 // opens chat with the send intent prefilled (same zkLogin wallet).
+const TOPUP_URL = "/manage/topup";
 const AUDRIC_SEND_URL =
   "https://audric.ai/?q=What%27s%20my%20balance%3F%20Help%20me%20send%20USDC%20to%20another%20address.";
 
@@ -45,6 +46,9 @@ export default async function BillingPage() {
           {walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`}
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          <a className="ag-btn ag-btn--primary ag-btn--sm" href={TOPUP_URL}>
+            Add USDC with a card
+          </a>
           <a
             className="ag-btn ag-btn--ghost ag-btn--sm"
             href={AUDRIC_SEND_URL}

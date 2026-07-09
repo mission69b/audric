@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AgentAvatar } from "@/components/agent-avatar";
+import { FundAgent } from "@/components/fund-agent";
 
 // My-agents row (t2000-design/agents ManageConsole §AgentsPanel): monogram
 // tile + name + receipt-backed rep line + Live badge + View / Manage.
@@ -79,6 +80,7 @@ export function AgentManageCard({
           <span className="ag-dot" style={{ width: 5, height: 5 }} /> Live
         </span>
       )}
+      <FundAgent agentAddress={agent.address} />
       <Link
         className="ag-btn ag-btn--ghost ag-btn--sm"
         href={`/${agent.address}`}
