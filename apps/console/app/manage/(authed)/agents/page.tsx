@@ -6,6 +6,7 @@ import {
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
 import { AgentManageCard } from "@/components/agent-manage-card";
+import { ArchiveAgentButton } from "@/components/archive-agent-button";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
 import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
@@ -60,7 +61,10 @@ function PendingRow({ agent }: { agent: AgentProfile }) {
           {short(agent.address)}
         </div>
       </div>
-      <ConfirmOwnershipButton agent={agent.address} />
+      <div className="flex shrink-0 items-center gap-2">
+        <ArchiveAgentButton agent={agent.address} label="Dismiss" />
+        <ConfirmOwnershipButton agent={agent.address} />
+      </div>
     </div>
   );
 }
@@ -81,7 +85,7 @@ export default async function MyAgentsPage() {
   // The self-agent (§II.15a stage 3): the agent you ARE, not one you own.
   // listAgentsForOwner matches ownership LINKS only, so the Passport's own
   // registration is fetched separately.
-  const [{ owned, pending }, selfAgent] = await Promise.all([
+  const [{ owned, pending, archived }, selfAgent] = await Promise.all([
     listAgentsForOwner(session.user.id),
     getAgentProfile(session.user.id),
   ]);
@@ -148,9 +152,47 @@ export default async function MyAgentsPage() {
       ) : (
         <div className="grid gap-3.5">
           {owned.map((a, i) => (
-            <AgentManageCard agent={a} earnings={earnings[i]} key={a.address} />
+            <AgentManageCard
+              agent={a}
+              earnings={earnings[i]}
+              key={a.address}
+              removable
+            />
           ))}
         </div>
+      )}
+
+      {archived.length > 0 && (
+        <>
+          <GroupLabel>Removed — restore anytime</GroupLabel>
+          <div className="ag-card overflow-hidden">
+            {archived.map((a) => (
+              <div
+                className="flex items-center justify-between gap-4 px-5 py-3 first:border-t-0"
+                key={a.address}
+                style={{ borderTop: "1px solid var(--ag-border)" }}
+              >
+                <div className="min-w-0">
+                  <span className="text-fg-muted text-sm">
+                    {a.displayName || a.name}
+                  </span>
+                  <span className="ml-2 font-mono text-fg-subtle text-xs">
+                    {short(a.address)}
+                  </span>
+                </div>
+                <ArchiveAgentButton
+                  agent={a.address}
+                  archived
+                  label="Restore"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 mb-0 text-fg-subtle text-xs">
+            Removing only hides an agent from your console — its on-chain record
+            and receipts persist (the registry has no delete).
+          </p>
+        </>
       )}
     </>
   );

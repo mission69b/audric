@@ -1,12 +1,23 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, inArray, isNull, sum } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sum,
+} from "drizzle-orm";
 import { db } from "./db";
 import {
   type AgentProfile,
   type AgentService,
-  agentProfile,
   type ApiKey,
+  agentProfile,
   apiKey,
   apiUsageEvent,
   creditLedger,
@@ -19,7 +30,9 @@ import {
  *  minimum. Sub-floor listings are unbuyable — every settle 400s — so read
  *  paths treat them as not purchasable (S.677: how junk like a $0.001
  *  listing self-delists). */
-export function meetsSettleFloor(priceUsdc: string | null | undefined): boolean {
+export function meetsSettleFloor(
+  priceUsdc: string | null | undefined
+): boolean {
   const price = Number(priceUsdc);
   if (!Number.isFinite(price) || price <= 0) {
     return false;
@@ -121,7 +134,7 @@ export async function upsertAgentProfile(opts: {
   // LAST UPDATED tracks on-chain state changes (chain `updated_at_ms`); fall
   // back to wall-clock for the bare write-through that has no chain timestamp.
   const updatedAt =
-    opts.chainUpdatedAtMs != null ? new Date(opts.chainUpdatedAtMs) : now;
+    opts.chainUpdatedAtMs == null ? now : new Date(opts.chainUpdatedAtMs);
   await db
     .insert(agentProfile)
     .values({
@@ -184,7 +197,7 @@ export function validateAgentService(s: AgentService): void {
   // SKU lists fine but EVERY buy 400s (S.670 e2e finding).
   if (!meetsSettleFloor(s.priceUsdc)) {
     throw new Error(
-      `service "${s.slug}": price too low to settle — net after the 2.5% fee must be ≥ $0.01 (list at $0.011 or higher)`,
+      `service "${s.slug}": price too low to settle — net after the 2.5% fee must be ≥ $0.01 (list at $0.011 or higher)`
     );
   }
   if (s.endpoint) {
@@ -195,7 +208,9 @@ export function validateAgentService(s: AgentService): void {
       ok = false;
     }
     if (!ok || s.endpoint.length > 512) {
-      throw new Error(`service "${s.slug}": endpoint must be https (≤512 chars)`);
+      throw new Error(
+        `service "${s.slug}": endpoint must be https (≤512 chars)`
+      );
     }
   }
   if (s.input && s.input.length > 300) {
@@ -233,7 +248,8 @@ export async function getAgentService(
 ): Promise<AgentService | null> {
   const profile = await getAgentProfile(address);
   return (
-    profile?.services?.find((s) => s.slug === slug && s.active !== false) ?? null
+    profile?.services?.find((s) => s.slug === slug && s.active !== false) ??
+    null
   );
 }
 
@@ -337,8 +353,10 @@ export async function setAgentServiceFields(
         mcpEndpoint: fields.mcpEndpoint ?? null,
         paymentMethods: fields.paymentMethods ?? null,
         // Off-chain — preserve unless explicitly provided.
-        ...(fields.priceUsdc !== undefined ? { priceUsdc: fields.priceUsdc } : {}),
-        ...(fields.category !== undefined ? { category: fields.category } : {}),
+        ...(fields.priceUsdc === undefined
+          ? {}
+          : { priceUsdc: fields.priceUsdc }),
+        ...(fields.category === undefined ? {} : { category: fields.category }),
         updatedAt: now,
       },
     });
@@ -365,10 +383,10 @@ export async function setAgentOwnership(
     .onConflictDoUpdate({
       target: agentProfile.address,
       set: {
-        ...(fields.owner !== undefined ? { owner: fields.owner } : {}),
-        ...(fields.pendingOwner !== undefined
-          ? { pendingOwner: fields.pendingOwner }
-          : {}),
+        ...(fields.owner === undefined ? {} : { owner: fields.owner }),
+        ...(fields.pendingOwner === undefined
+          ? {}
+          : { pendingOwner: fields.pendingOwner }),
         updatedAt: now,
       },
     });
@@ -379,20 +397,56 @@ export async function setAgentOwnership(
 export async function listAgentsForOwner(owner: string): Promise<{
   owned: AgentProfile[];
   pending: AgentProfile[];
+  archived: AgentProfile[];
 }> {
-  const [owned, pending] = await Promise.all([
+  const [owned, pending, archived] = await Promise.all([
     db
       .select()
       .from(agentProfile)
-      .where(eq(agentProfile.owner, owner))
+      .where(
+        and(eq(agentProfile.owner, owner), isNull(agentProfile.archivedAt))
+      )
       .orderBy(desc(agentProfile.createdAt)),
     db
       .select()
       .from(agentProfile)
-      .where(eq(agentProfile.pendingOwner, owner))
+      .where(
+        and(
+          eq(agentProfile.pendingOwner, owner),
+          isNull(agentProfile.archivedAt)
+        )
+      )
+      .orderBy(desc(agentProfile.createdAt)),
+    // Removed-from-console rows (owned or dismissed proposals) — powers the
+    // "Archived — restore" footer.
+    db
+      .select()
+      .from(agentProfile)
+      .where(
+        and(
+          isNotNull(agentProfile.archivedAt),
+          or(
+            eq(agentProfile.owner, owner),
+            eq(agentProfile.pendingOwner, owner)
+          )
+        )
+      )
       .orderBy(desc(agentProfile.createdAt)),
   ]);
-  return { owned, pending };
+  return { owned, pending, archived };
+}
+
+/** Owner-side archive toggle (S.690): hide an agent from (or restore it to)
+ *  the owner's console surfaces. Authorization is the CALLER's job (owner or
+ *  proposed-owner session). */
+export async function setAgentArchived(
+  address: string,
+  archived: boolean
+): Promise<void> {
+  await db
+    .update(agentProfile)
+    .set({ archivedAt: archived ? new Date() : null, updatedAt: new Date() })
+    .where(eq(agentProfile.address, address));
 }
 
 export async function getAgentProfile(

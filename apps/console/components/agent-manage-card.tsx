@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AgentAvatar } from "@/components/agent-avatar";
+import { ArchiveAgentButton } from "@/components/archive-agent-button";
 import { FundAgent } from "@/components/fund-agent";
 
 // My-agents row (t2000-design/agents ManageConsole §AgentsPanel): monogram
@@ -30,12 +31,15 @@ export function AgentManageCard({
   agent,
   earnings,
   fundable = true,
+  removable = false,
 }: {
   agent: Agent;
   earnings: Earnings;
   /** False for the SELF row — funding your own Passport from itself is a
    *  no-op self-send (founder catch, first live test). */
   fundable?: boolean;
+  /** Owned (non-self) rows get "Remove" — off-chain archive (S.690). */
+  removable?: boolean;
 }) {
   return (
     <div className="ag-card flex flex-wrap items-center gap-4 px-5 py-[18px]">
@@ -97,6 +101,7 @@ export function AgentManageCard({
       >
         Manage
       </Link>
+      {removable && <ArchiveAgentButton agent={agent.address} label="Remove" />}
     </div>
   );
 }

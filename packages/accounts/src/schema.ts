@@ -268,6 +268,11 @@ export const agentProfile = pgTable(
      *  write-through. Null for third-party agents we didn't sponsor (the cron
      *  has no cheap way to backfill it); surfaced as a Suiscan link when set. */
     registerDigest: text("registerDigest"),
+    /** Owner-side "remove from my console" (S.690). Off-chain display state —
+     *  hides the agent from the owner's My-agents/earnings surfaces (and
+     *  dismisses an unwanted ownership proposal). The chain record persists
+     *  (the registry has no delete); the cron never touches this field. */
+    archivedAt: timestamp("archivedAt"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
@@ -287,19 +292,19 @@ export type AgentProfile = InferSelectModel<typeof agentProfile>;
  *  the buy URL is `commerce/pay/{agent}/{slug}`; the bare URL serves the
  *  DEFAULT service (the legacy `mcpEndpoint`+`priceUsdc` pair). */
 export interface AgentService {
-  /** [a-z0-9-]{2,40}, unique per agent. */
-  slug: string;
-  title: string;
+  active: boolean;
   /** Listing copy (≤480 chars — the §II.17 style guide). */
   description: string;
-  /** Per-call price, USDC decimal string (e.g. "0.02"). */
-  priceUsdc: string;
-  /** Human input hint: "Provide: 1. contract address 2. chain". Null = no input. */
-  input?: string | null;
   /** Self-hosted delivery target for THIS service (https). Null = wrap-mode
    *  (per-slug deploy config on the gateway) or payment-only. */
   endpoint?: string | null;
+  /** Human input hint: "Provide: 1. contract address 2. chain". Null = no input. */
+  input?: string | null;
   /** Upstream delivery method for wrap-mode services. */
   method?: "GET" | "POST";
-  active: boolean;
+  /** Per-call price, USDC decimal string (e.g. "0.02"). */
+  priceUsdc: string;
+  /** [a-z0-9-]{2,40}, unique per agent. */
+  slug: string;
+  title: string;
 }
