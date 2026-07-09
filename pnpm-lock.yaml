@@ -24,49 +24,6 @@ importers:
         specifier: ^7.0.11
         version: 7.7.0
 
-  apps/agent-id:
-    dependencies:
-      '@vercel/analytics':
-        specifier: ^1.6.1
-        version: 1.6.1(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))(react@19.0.1)
-      geist:
-        specifier: ^1.7.0
-        version: 1.7.2(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))
-      next:
-        specifier: 16.2.0
-        version: 16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)
-      react:
-        specifier: 19.0.1
-        version: 19.0.1
-      react-dom:
-        specifier: 19.0.1
-        version: 19.0.1(react@19.0.1)
-    devDependencies:
-      '@biomejs/biome':
-        specifier: 2.5.0
-        version: 2.5.0
-      '@tailwindcss/postcss':
-        specifier: ^4
-        version: 4.2.2
-      '@types/node':
-        specifier: ^22.8.6
-        version: 22.19.15
-      '@types/react':
-        specifier: ^19
-        version: 19.2.14
-      '@types/react-dom':
-        specifier: ^19
-        version: 19.2.3(@types/react@19.2.14)
-      tailwindcss:
-        specifier: ^4
-        version: 4.2.2
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      ultracite:
-        specifier: ^7.0.11
-        version: 7.7.0
-
   apps/console:
     dependencies:
       '@audric/accounts':
@@ -75,15 +32,15 @@ importers:
       '@audric/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@audric/onramp':
+        specifier: workspace:*
+        version: link:../../packages/onramp
       '@mysten/enoki':
         specifier: ^1.1.0
         version: 1.1.0(@mysten/sui@2.17.0(typescript@5.9.3))(@types/react@19.2.14)(react@19.0.1)
       '@mysten/sui':
         specifier: ^2.17.0
         version: 2.17.0(typescript@5.9.3)
-      '@stripe/crypto':
-        specifier: ^1.1.1
-        version: 1.1.1(@stripe/stripe-js@9.8.0)
       '@t2000/sdk':
         specifier: ^5.26.0
         version: 5.26.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
@@ -102,9 +59,6 @@ importers:
       geist:
         specifier: ^1.7.0
         version: 1.7.2(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))
-      jose:
-        specifier: ^6.2.2
-        version: 6.2.2
       lucide-react:
         specifier: ^0.469.0
         version: 0.469.0(react@19.0.1)
@@ -479,6 +433,9 @@ importers:
       '@audric/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@audric/onramp':
+        specifier: workspace:*
+        version: link:../../packages/onramp
       '@calcom/embed-react':
         specifier: ^1.5.3
         version: 1.5.3(react-dom@19.0.1(react@19.0.1))(react@19.0.1)
@@ -802,6 +759,28 @@ importers:
       next:
         specifier: 16.2.0
         version: 16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)
+
+  packages/onramp:
+    dependencies:
+      '@stripe/crypto':
+        specifier: ^1.1.1
+        version: 1.1.1(@stripe/stripe-js@9.8.0)
+      jose:
+        specifier: ^6.2.2
+        version: 6.2.2
+      next:
+        specifier: '>=16'
+        version: 16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)
+      react:
+        specifier: '>=19'
+        version: 19.0.1
+    devDependencies:
+      '@types/react':
+        specifier: ^19
+        version: 19.2.14
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
 
 packages:
 

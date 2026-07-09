@@ -22,7 +22,7 @@ const sharedRedirects: {
 const nextConfig: NextConfig = {
   // Workspace packages consumed as TS source (the shared identity/credit/key
   // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
-  transpilePackages: ["@audric/accounts", "@audric/auth"],
+  transpilePackages: ["@audric/accounts", "@audric/auth", "@audric/onramp"],
   // @t2000/sdk `verifyReceipt` dynamically imports @phala/dcap-qvl (CJS + WASM
   // for client-side DCAP). Keep it external so Next doesn't try to bundle the
   // WASM during page-data collection (the verify route only ever runs it server-

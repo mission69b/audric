@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Shared across console + audric web-v3 (S.684) — styling is app-neutral
+// Tailwind only (no ag-* / shadcn dependencies); both apps' tokens map the
+// semantic classes (border, muted-foreground, …) to their own themes.
+
 // Stripe fiat→USDC onramp — client flow (SPEC_ONRAMP, S.681). One state
 // machine: email → Link auth (or register) → KYC (only if needed) → wallet
 // register (the Passport, prefilled) → payment method → amount → checkout.
@@ -314,8 +318,7 @@ export function OnrampFlow({
   };
 
   const input =
-    "w-full rounded-lg border bg-transparent px-3 py-2 text-foreground text-sm outline-none";
-  const inputStyle = { borderColor: "var(--ag-border)" };
+    "w-full rounded-lg border border-border bg-transparent px-3 py-2 text-foreground text-sm outline-none";
 
   return (
     <div className="max-w-[480px]">
@@ -336,7 +339,10 @@ export function OnrampFlow({
 
       {step === "email" && (
         <div className="flex flex-col gap-3">
-          <label className="text-fg-muted text-sm" htmlFor="onramp-email">
+          <label
+            className="text-muted-foreground text-sm"
+            htmlFor="onramp-email"
+          >
             Email — Stripe Link handles identity and payment
           </label>
           <input
@@ -344,12 +350,11 @@ export function OnrampFlow({
             id="onramp-email"
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            style={inputStyle}
             type="email"
             value={email}
           />
           <button
-            className="ag-btn ag-btn--primary"
+            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
             disabled={busy || !sdkReady || !email.includes("@")}
             onClick={onEmailSubmit}
             type="button"
@@ -365,26 +370,24 @@ export function OnrampFlow({
 
       {step === "register" && (
         <div className="flex flex-col gap-3">
-          <p className="m-0 text-fg-muted text-sm">
+          <p className="m-0 text-muted-foreground text-sm">
             No Link account for that email yet — create one:
           </p>
           <input
             className={input}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Full name"
-            style={inputStyle}
             value={fullName}
           />
           <input
             className={input}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Phone (+12125551234)"
-            style={inputStyle}
             type="tel"
             value={phone}
           />
           <button
-            className="ag-btn ag-btn--primary"
+            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
             disabled={busy || phone.length < 8}
             onClick={onRegister}
             type="button"
@@ -395,7 +398,7 @@ export function OnrampFlow({
       )}
 
       {step === "authenticating" && (
-        <p className="m-0 text-fg-muted text-sm">
+        <p className="m-0 text-muted-foreground text-sm">
           Complete the Link sign-in below.
         </p>
       )}
@@ -404,12 +407,12 @@ export function OnrampFlow({
 
       {step === "kyc" && (
         <div className="flex flex-col gap-3">
-          <p className="m-0 text-fg-muted text-sm">
+          <p className="m-0 text-muted-foreground text-sm">
             One-time identity verification (a document + selfie, handled by
             Stripe — required by regulation for card→crypto purchases).
           </p>
           <button
-            className="ag-btn ag-btn--primary"
+            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
             disabled={busy}
             onClick={onKyc}
             type="button"
@@ -421,12 +424,12 @@ export function OnrampFlow({
 
       {step === "payment" && (
         <div className="flex flex-col gap-3">
-          <p className="m-0 text-fg-muted text-sm">
+          <p className="m-0 text-muted-foreground text-sm">
             Add a card (Apple Pay / Google Pay supported).
           </p>
           {!formMounted && (
             <button
-              className="ag-btn ag-btn--primary"
+              className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
               disabled={busy}
               onClick={onCollectPayment}
               type="button"
@@ -439,14 +442,17 @@ export function OnrampFlow({
       {/* Stripe's Payment Element mounts here (card fields + submit). */}
       <div className="mt-3" ref={paymentContainerRef} />
       {step === "payment" && formMounted && (
-        <p className="mt-2 mb-0 text-fg-subtle text-xs">
+        <p className="mt-2 mb-0 text-muted-foreground/70 text-xs">
           Card details go to Stripe directly — t2000 never sees them.
         </p>
       )}
 
       {step === "amount" && (
         <div className="flex flex-col gap-3">
-          <label className="text-fg-muted text-sm" htmlFor="onramp-amount">
+          <label
+            className="text-muted-foreground text-sm"
+            htmlFor="onramp-amount"
+          >
             Amount (USD) — delivered as USDC to your Passport
           </label>
           <input
@@ -454,13 +460,12 @@ export function OnrampFlow({
             id="onramp-amount"
             inputMode="decimal"
             onChange={(e) => setAmount(e.target.value)}
-            style={inputStyle}
             value={amount}
           />
           <div className="flex gap-2">
             {["10", "20", "50", "100"].map((v) => (
               <button
-                className="ag-btn ag-btn--ghost"
+                className="rounded-lg border border-border px-3 py-2 text-foreground text-sm transition-colors hover:bg-muted/40"
                 key={v}
                 onClick={() => setAmount(v)}
                 type="button"
@@ -470,14 +475,14 @@ export function OnrampFlow({
             ))}
           </div>
           <button
-            className="ag-btn ag-btn--primary"
+            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
             disabled={busy || !(Number(amount) >= 2)}
             onClick={onBuy}
             type="button"
           >
             {busy ? "Working…" : `Buy $${amount} of USDC`}
           </button>
-          <p className="m-0 text-fg-subtle text-xs">
+          <p className="m-0 text-muted-foreground/70 text-xs">
             Stripe is the merchant of record — card fees and any 3DS check
             happen in their flow. Funds land at{" "}
             <span className="font-mono">{`${address.slice(0, 8)}…${address.slice(-6)}`}</span>
@@ -487,7 +492,7 @@ export function OnrampFlow({
       )}
 
       {step === "processing" && (
-        <p className="m-0 text-fg-muted text-sm">
+        <p className="m-0 text-muted-foreground text-sm">
           Processing — don't close this tab…
         </p>
       )}
@@ -498,7 +503,10 @@ export function OnrampFlow({
             Done — USDC is on its way to your Passport wallet. It appears in
             your balance within a couple of minutes.
           </p>
-          <a className="ag-btn ag-btn--primary" href="/manage/dashboard">
+          <a
+            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            href="/manage/dashboard"
+          >
             Back to the dashboard
           </a>
         </div>

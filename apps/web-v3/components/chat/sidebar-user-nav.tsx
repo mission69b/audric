@@ -185,6 +185,13 @@ export function SidebarUserNav() {
                 {paidTier ? "Manage plan" : "Upgrade plan"}
               </DropdownMenuItem>
             )}
+            <DropdownMenuItem
+              className="cursor-pointer text-[13px]"
+              data-testid="user-nav-item-buy-usdc"
+              onSelect={() => router.push("/settings/billing#buy-usdc")}
+            >
+              Buy USDC with a card
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer text-[13px]"

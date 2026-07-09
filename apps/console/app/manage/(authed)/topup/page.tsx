@@ -1,9 +1,9 @@
 import { getCurrentUser } from "@audric/auth/server";
+import { OnrampFlow } from "@audric/onramp/flow";
+import { onrampConfigured } from "@audric/onramp/server";
 import { redirect } from "next/navigation";
-import { OnrampFlow } from "@/components/onramp-flow";
 import { PanelHead } from "@/components/panel-head";
 import { env } from "@/lib/env";
-import { onrampConfigured } from "@/lib/onramp";
 import { fetchWalletUsdc } from "@/lib/wallet-usdc";
 
 // /manage/topup — add USDC with a card (SPEC_ONRAMP, S.681). Stripe is the
@@ -18,7 +18,7 @@ export default async function TopupPage() {
     redirect("/manage");
   }
   const configured =
-    onrampConfigured() && Boolean(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+    onrampConfigured(env) && Boolean(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
   const walletUsdc = await fetchWalletUsdc(session.user.id);
 
   return (

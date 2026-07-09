@@ -39,6 +39,7 @@
     "@ai-sdk/react": "4.0.0",
     "@audric/accounts": "workspace:*",
     "@audric/auth": "workspace:*",
+    "@audric/onramp": "workspace:*",
     "@calcom/embed-react": "^1.5.3",
     "@codemirror/lang-python": "^6.1.6",
     "@codemirror/state": "^6.5.0",

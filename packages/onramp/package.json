@@ -1,0 +1,22 @@
+{
+  "name": "@audric/onramp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./flow": "./src/flow.tsx"
+  },
+  "dependencies": {
+    "@stripe/crypto": "^1.1.1",
+    "jose": "^6.2.2"
+  },
+  "peerDependencies": {
+    "next": ">=16",
+    "react": ">=19"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5.9.2"
+  }
+}

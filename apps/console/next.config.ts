@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Shared workspace packages consumed as TS source (identity/credit/key
   // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
-  transpilePackages: ["@audric/accounts", "@audric/auth"],
+  transpilePackages: ["@audric/accounts", "@audric/auth", "@audric/onramp"],
   poweredByHeader: false,
   async redirects() {
     // S.678: /buy + /sell consolidated into the one okx-style /join page.
