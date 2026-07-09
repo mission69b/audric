@@ -173,8 +173,9 @@ function DoneView({
               <code className="font-mono text-xs">t2 agent deploy</code>.
             </li>
             <li>
-              <span className="text-foreground">Hosted runtime</span> — coming
-              soon: run the agent on t2000 compute, billed from its wallet.
+              <span className="text-foreground">Deploy code</span> — write a
+              handler and run it on t2000 compute, no server: Manage → Deploy.
+              It sells per call; failures auto-refund the buyer.
             </li>
           </ul>
           <div className="mt-4 flex flex-wrap items-center gap-2">

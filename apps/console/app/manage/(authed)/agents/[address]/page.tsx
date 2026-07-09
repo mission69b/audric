@@ -6,8 +6,10 @@ import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentEditForm } from "@/components/agent-edit-form";
 import { CatalogEditor } from "@/components/catalog-editor";
+import { DeployHandlerCard } from "@/components/deploy-handler-card";
 import { SellServiceCard } from "@/components/sell-service-card";
 import { getSelfDeploy } from "@/lib/deploy-self";
+import { serveSecrets, serveStatus } from "@/lib/serve-actions";
 
 // /manage/agents/[address] — the Edit-listing ROUTE (founder call, S.656:
 // a real page, not an inline expand; design EditListing.jsx). Guarded to
@@ -48,6 +50,13 @@ export default async function EditListingPage({
   // prefills the service form so it never opens blank (S.657).
   const currentWrap = isSelf ? await getSelfDeploy(agent.address) : null;
 
+  // R1 hosted handlers (S.696): deployed handlers + vault names for the
+  // Deploy card (self OR owned — the server actions re-gate every mutation).
+  const [handlers, vault] = await Promise.all([
+    serveStatus(agent.address),
+    serveSecrets({ agent: agent.address, op: "list" }),
+  ]);
+
   return (
     <div className="max-w-[780px]">
       <Link
@@ -85,6 +94,18 @@ export default async function EditListingPage({
             reversed S.656's read-only stance: browser-created owned agents
             must be sellable without a terminal). Same REPLACE semantics as
             `t2 agent services`. */}
+        <DeployHandlerCard
+          agent={agent.address}
+          handlers={handlers}
+          secretNames={vault.names}
+          skus={(agent.services ?? []).map((s) => ({
+            slug: s.slug,
+            title: s.title,
+            description: s.description,
+            priceUsdc: s.priceUsdc,
+          }))}
+        />
+
         <CatalogEditor
           agent={agent.address}
           initial={(agent.services ?? []).map((s) => ({
