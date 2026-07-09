@@ -1,8 +1,7 @@
 import Link from "next/link";
+import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { ArchiveAgentButton } from "@/components/archive-agent-button";
 import { FundAgent } from "@/components/fund-agent";
-import { UnlinkAgentButton } from "@/components/unlink-agent-button";
 
 // My-agents row (t2000-design/agents ManageConsole §AgentsPanel): monogram
 // tile + name + receipt-backed rep line + Live badge + View / Manage.
@@ -102,8 +101,22 @@ export function AgentManageCard({
       >
         Manage
       </Link>
-      {removable && <ArchiveAgentButton agent={agent.address} label="Remove" />}
-      {removable && <UnlinkAgentButton agent={agent.address} />}
+      {removable && (
+        <AgentActionButton
+          action="hide"
+          active={agent.active}
+          agent={agent.address}
+          name={agent.displayName || agent.name}
+        />
+      )}
+      {removable && (
+        <AgentActionButton
+          action="unlink"
+          active={agent.active}
+          agent={agent.address}
+          name={agent.displayName || agent.name}
+        />
+      )}
     </div>
   );
 }

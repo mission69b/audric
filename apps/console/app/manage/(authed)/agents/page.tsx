@@ -5,13 +5,15 @@ import {
 } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { redirect } from "next/navigation";
+import {
+  AgentActionButton,
+  RestoreButton,
+} from "@/components/agent-action-dialog";
 import { AgentManageCard } from "@/components/agent-manage-card";
-import { ArchiveAgentButton } from "@/components/archive-agent-button";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
 import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
 import { Badge } from "@/components/ui/badge";
-import { UnlinkAgentButton } from "@/components/unlink-agent-button";
 
 const GATEWAY = "https://mpp.t2000.ai";
 
@@ -63,7 +65,11 @@ function PendingRow({ agent }: { agent: AgentProfile }) {
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <ArchiveAgentButton agent={agent.address} label="Dismiss" />
+        <AgentActionButton
+          action="dismiss"
+          agent={agent.address}
+          name={agent.displayName || agent.name}
+        />
         <ConfirmOwnershipButton agent={agent.address} />
       </div>
     </div>
@@ -165,7 +171,7 @@ export default async function MyAgentsPage() {
 
       {archived.length > 0 && (
         <>
-          <GroupLabel>Removed — restore anytime</GroupLabel>
+          <GroupLabel>Hidden — restore anytime</GroupLabel>
           <div className="ag-card overflow-hidden">
             {archived.map((a) => (
               <div
@@ -183,22 +189,23 @@ export default async function MyAgentsPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {a.owner === session.user.id && (
-                    <UnlinkAgentButton agent={a.address} />
+                    <AgentActionButton
+                      action="unlink"
+                      active={a.active}
+                      agent={a.address}
+                      name={a.displayName || a.name}
+                    />
                   )}
-                  <ArchiveAgentButton
-                    agent={a.address}
-                    archived
-                    label="Restore"
-                  />
+                  <RestoreButton agent={a.address} />
                 </div>
               </div>
             ))}
           </div>
           <p className="mt-2 mb-0 text-fg-subtle text-xs">
-            Remove hides an agent from your console — its on-chain record and
-            receipts persist (the registry has no delete). Unlink goes further:
-            it publicly renounces your on-chain ownership, and the agent can
-            only come back by proposing the link again.
+            Hide only affects your console — the on-chain record and receipts
+            persist (the registry has no delete). Unlink goes further: it
+            publicly renounces your on-chain ownership, and the agent can only
+            come back by proposing the link again.
           </p>
         </>
       )}
