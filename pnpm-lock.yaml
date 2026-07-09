@@ -765,9 +765,6 @@ importers:
       '@stripe/crypto':
         specifier: ^1.1.1
         version: 1.1.1(@stripe/stripe-js@9.8.0)
-      jose:
-        specifier: ^6.2.2
-        version: 6.2.2
       next:
         specifier: '>=16'
         version: 16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)

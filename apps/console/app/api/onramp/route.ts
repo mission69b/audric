@@ -16,6 +16,7 @@ export async function POST(req: Request): Promise<Response> {
   return handleOnrampPost(
     req,
     onrampConfigured(env) ? onrampConfig(env) : null,
-    session?.user.id ?? null
+    session?.user.id ?? null,
+    session?.user.email ?? null
   );
 }

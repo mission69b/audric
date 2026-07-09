@@ -42,11 +42,6 @@ const serverSchema = z.object({
    * this server attest a session's wallet so zkLogin posters manage board
    * tasks without a manageKey. Unset → the /manage/tasks surface is off. */
   BOARD_POSTER_PROXY_KEY: optionalString,
-  /** Stripe fiat→USDC onramp (SPEC_ONRAMP) — Link OAuth credentials issued by
-   * Stripe (private preview). Unset → /manage/topup renders the unavailable
-   * state; no boot failure. */
-  STRIPE_ONRAMP_CLIENT_ID: optionalString,
-  STRIPE_ONRAMP_CLIENT_SECRET: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -70,8 +65,6 @@ const runtimeEnv = {
   POSTGRES_URL: process.env.POSTGRES_URL,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   BOARD_POSTER_PROXY_KEY: process.env.BOARD_POSTER_PROXY_KEY,
-  STRIPE_ONRAMP_CLIENT_ID: process.env.STRIPE_ONRAMP_CLIENT_ID,
-  STRIPE_ONRAMP_CLIENT_SECRET: process.env.STRIPE_ONRAMP_CLIENT_SECRET,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

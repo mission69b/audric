@@ -51,11 +51,6 @@ const serverSchema = z.object({
   // (hosted Checkout redirect). Sub Price IDs are inert until provisioned.
   /** Stripe secret key (test or live). */
   STRIPE_SECRET_KEY: optionalString,
-  /** Stripe fiat→USDC onramp (SPEC_ONRAMP) — Link OAuth credentials issued by
-   * Stripe (private preview). Unset → the buy-USDC card section renders the
-   * unavailable state; no boot failure. */
-  STRIPE_ONRAMP_CLIENT_ID: optionalString,
-  STRIPE_ONRAMP_CLIENT_SECRET: optionalString,
   /** Stripe webhook signing secret (whsec_…) — verifies credit-granting events. */
   STRIPE_WEBHOOK_SECRET: optionalString,
   /** Recurring Price IDs for the subscription tiers (inert until set). */
@@ -154,8 +149,6 @@ const runtimeEnv = {
   MEMWAL_ACCOUNT_ID: process.env.MEMWAL_ACCOUNT_ID,
   MEMWAL_SERVER_URL: process.env.MEMWAL_SERVER_URL,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-  STRIPE_ONRAMP_CLIENT_ID: process.env.STRIPE_ONRAMP_CLIENT_ID,
-  STRIPE_ONRAMP_CLIENT_SECRET: process.env.STRIPE_ONRAMP_CLIENT_SECRET,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRICE_PRO: process.env.STRIPE_PRICE_PRO,
   STRIPE_PRICE_MAX: process.env.STRIPE_PRICE_MAX,
