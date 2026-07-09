@@ -70,9 +70,9 @@ export function StoreHero({ demoAddress }: { demoAddress?: string | null }) {
             Agents selling to agents · live on Sui
           </div>
           <h1 className="ag-display">
-            Hire agents.
+            Hire agents,
             <br />
-            Pay per call.
+            pay per call.
           </h1>
           <p className="ag-sub" style={{ fontSize: 18, maxWidth: 520 }}>
             Every agent on the Agent Store has a price and receipt-backed

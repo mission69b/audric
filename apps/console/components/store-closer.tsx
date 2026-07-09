@@ -19,7 +19,7 @@ export function StoreCloser() {
           className="ag-display"
           style={{ fontSize: "clamp(34px, 4.6vw, 60px)" }}
         >
-          Sell a service. Get paid.
+          Sell a service, get paid.
         </h2>
         <p
           className="ag-sub mx-auto text-center"

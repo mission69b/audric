@@ -83,6 +83,32 @@ function PromptBlock({ text, command }: { text: string; command?: boolean }) {
   );
 }
 
+function BrowserPath({ steps }: { steps: string[] }) {
+  return (
+    <div className="ag-card mt-8 max-w-[640px] p-5">
+      <div className="ag-verified inline-flex px-2.5 py-0.5 uppercase">
+        No terminal
+      </div>
+      <h3 className="mt-3 mb-0 font-semibold text-[17px] text-foreground tracking-[-0.02em]">
+        The browser path
+      </h3>
+      <ol className="mt-2 mb-4 flex list-none flex-col gap-1.5 p-0 text-muted-foreground text-sm">
+        {steps.map((step, i) => (
+          <li className="flex gap-2.5" key={step}>
+            <span className="font-mono text-fg-subtle text-xs leading-6">
+              {i + 1}
+            </span>
+            {step}
+          </li>
+        ))}
+      </ol>
+      <Link className="ag-btn ag-btn--ghost" href="/manage">
+        Sign in with Google →
+      </Link>
+    </div>
+  );
+}
+
 function StepRow({
   n,
   title,
@@ -191,12 +217,11 @@ export default function JoinPage() {
             className="ag-title mt-3"
             style={{ fontSize: "clamp(26px, 3vw, 40px)" }}
           >
-            From nothing to your first buy.
+            Your first buy.
           </h2>
           <p className="mt-2 max-w-[560px] text-fg-muted text-sm leading-relaxed">
-            Already have Claude Code, Cursor, Codex, or Hermes? Start at step 2
-            — every prompt below is written for you to read first, then paste
-            into your agent.
+            Already have Claude Code, Cursor, Codex, or Hermes? Start at step 2.
+            Read each prompt, then paste it into your agent.
           </p>
 
           <Timeline>
@@ -266,6 +291,14 @@ export default function JoinPage() {
               </p>
             </StepRow>
           </Timeline>
+
+          <BrowserPath
+            steps={[
+              "Sign in with Google — your Passport wallet is created on the spot.",
+              "Fund it from the dashboard (deposit address + QR).",
+              "Tap Try it on any listing — escrowed, response inline.",
+            ]}
+          />
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link className="ag-btn ag-btn--primary" href="/browse">
@@ -409,10 +442,15 @@ export default function JoinPage() {
           </StepRow>
         </Timeline>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          <Link className="ag-btn ag-btn--ghost" href="/manage">
-            No terminal? Sign in with Google →
-          </Link>
+        <BrowserPath
+          steps={[
+            "Sign in with Google, then tap Create your Agent ID — your Passport is the agent.",
+            "Set the service in My agents: endpoint, price, category — or wrap an API you hold a key for.",
+            "Earnings and receipts land on the same page.",
+          ]}
+        />
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <a
             className="ag-btn ag-btn--ghost"
             href="https://developers.t2000.ai/commerce/sell"
@@ -430,11 +468,11 @@ export default function JoinPage() {
           className="ag-display"
           style={{ fontSize: "clamp(30px, 4vw, 52px)" }}
         >
-          One wallet. Both sides.
+          One wallet does both.
         </h2>
         <p className="mx-auto mt-3 max-w-[480px] text-muted-foreground text-sm leading-relaxed">
-          The wallet that buys is the wallet that earns. Pricing, escrow,
-          settlement, refunds, and receipts are handled for you.
+          The wallet that buys is the wallet that earns — escrow, settlement,
+          refunds, and receipts are handled for you.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link className="ag-btn ag-btn--primary ag-btn--lg" href="/browse">
