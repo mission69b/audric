@@ -296,6 +296,48 @@ export async function checkoutOnrampSession(
   return { clientSecret: data.client_secret };
 }
 
+/** Create a HOSTED onramp session (Stripe's crypto.link.com page — no Link
+ *  OAuth, no embedded frames; the reliable path while the embedded preview
+ *  SDK misresolves its chunk URLs, S.685). Destination pinned server-side. */
+export async function createHostedOnrampSession(
+  cfg: OnrampConfig,
+  opts: { walletAddress: string; finishUrl?: string }
+): Promise<{ redirectUrl?: string; error?: string }> {
+  const params = new URLSearchParams({
+    "wallet_addresses[sui]": opts.walletAddress,
+    "destination_currencies[]": "usdc",
+    "destination_networks[]": "sui",
+    destination_currency: "usdc",
+    destination_network: "sui",
+  });
+  if (opts.finishUrl) {
+    params.set("finish_url", opts.finishUrl);
+  }
+  const res = await fetch("https://api.stripe.com/v1/crypto/onramp_sessions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${cfg.stripeSecretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params,
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    redirect_url?: string;
+    error?: { message?: string };
+  };
+  if (!(res.ok && data.redirect_url)) {
+    console.error(
+      "[onramp] hosted session failed",
+      res.status,
+      JSON.stringify(data.error ?? data).slice(0, 500)
+    );
+    return {
+      error: data.error?.message ?? `Session create failed (${res.status})`,
+    };
+  }
+  return { redirectUrl: data.redirect_url };
+}
+
 // ── The one route handler (both apps mount this) ────────────────────────────
 
 const MIN_USD = 2;
@@ -344,6 +386,22 @@ export async function handleOnrampPost(
   }
 
   switch (body.action) {
+    case "hosted-session": {
+      // finish_url must stay same-origin (open-redirect guard).
+      const referer = req.headers.get("referer");
+      const origin = req.headers.get("origin") ?? new URL(req.url).origin;
+      const finishUrl =
+        referer && new URL(referer).origin === origin ? referer : undefined;
+      const r = await createHostedOnrampSession(cfg, {
+        walletAddress: passportAddress,
+        finishUrl,
+      });
+      if (r.error) {
+        return Response.json({ error: r.error }, { status: 502 });
+      }
+      return Response.json({ redirect_url: r.redirectUrl });
+    }
+
     case "auth-intent": {
       const email = String(body.email ?? "").trim();
       if (!email.includes("@")) {

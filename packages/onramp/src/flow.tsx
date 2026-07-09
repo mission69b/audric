@@ -44,6 +44,7 @@ type OnrampCoordinator = {
 };
 
 type Step =
+  | "start"
   | "email"
   | "authenticating"
   | "register"
@@ -78,7 +79,7 @@ export function OnrampFlow({
   sessionEmail: string | null;
   publishableKey: string;
 }) {
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<Step>("start");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState(sessionEmail ?? "");
@@ -189,6 +190,21 @@ export function OnrampFlow({
     },
     [afterAuth, fail]
   );
+
+  const onHosted = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const r = await api({ action: "hosted-session" });
+      const url = String(r.redirect_url ?? "");
+      if (!url.startsWith("https://")) {
+        throw new Error("Couldn't open Stripe's page — try again.");
+      }
+      window.location.assign(url);
+    } catch (e) {
+      fail(e);
+    }
+  };
 
   const onEmailSubmit = async () => {
     setError(null);
@@ -357,6 +373,32 @@ export function OnrampFlow({
               Retry
             </button>
           )}
+        </div>
+      )}
+
+      {step === "start" && (
+        <div className="flex flex-col gap-3">
+          <button
+            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            disabled={busy}
+            onClick={onHosted}
+            type="button"
+          >
+            {busy ? "Opening…" : "Buy USDC — continue on Stripe ↗"}
+          </button>
+          <p className="m-0 text-muted-foreground/70 text-xs">
+            Opens Stripe's secure page (Link sign-in, card or Apple/Google Pay).
+            USDC is delivered to your Passport:{" "}
+            <span className="font-mono">{`${address.slice(0, 8)}…${address.slice(-6)}`}</span>
+            . You'll be brought back here after.
+          </p>
+          <button
+            className="self-start text-muted-foreground/70 text-xs underline underline-offset-2 hover:text-foreground"
+            onClick={() => setStep("email")}
+            type="button"
+          >
+            Use the embedded flow instead (beta)
+          </button>
         </div>
       )}
 
