@@ -43,7 +43,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Agent not found." }, { status: 404 });
   }
   const isOwner = profile.owner === session.user.id;
-  const isProposed = profile.pendingOwner === session.user.id;
+  // A PROPOSED owner may dismiss only while no OTHER confirmed owner exists —
+  // `archivedAt` is one flag on the row, so letting a proposee archive an
+  // agent that someone else owns would hide it from the real owner's console
+  // (cross-user griefing via a complicit agent's proposal; S.691 hardening).
+  const isProposed =
+    profile.pendingOwner === session.user.id &&
+    (!profile.owner || profile.owner === session.user.id);
   if (!(isOwner || isProposed)) {
     return NextResponse.json(
       { error: "You don't own this agent." },
