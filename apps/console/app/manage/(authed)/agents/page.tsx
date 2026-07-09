@@ -93,6 +93,14 @@ export default async function MyAgentsPage() {
   return (
     <>
       <PanelHead
+        action={
+          <a
+            className="inline-flex h-8 items-center gap-1 rounded-lg bg-primary px-3 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/80"
+            href="/manage/create"
+          >
+            Create agent
+          </a>
+        }
         sub="Listings you operate. Each earns to your USDC balance — Manage opens the listing editor."
         title="My agents"
       />
@@ -124,7 +132,14 @@ export default async function MyAgentsPage() {
       <GroupLabel>Agents you own</GroupLabel>
       {owned.length === 0 ? (
         <p className="m-0 text-fg-muted text-sm">
-          You don&apos;t own any agents yet. An agent links to you with{" "}
+          You don&apos;t own any agents yet.{" "}
+          <a
+            className="text-foreground underline underline-offset-4"
+            href="/manage/create"
+          >
+            Create one
+          </a>{" "}
+          — or an existing agent links to you with{" "}
           <code className="font-mono text-foreground text-xs">
             t2 agent link &lt;your-address&gt;
           </code>

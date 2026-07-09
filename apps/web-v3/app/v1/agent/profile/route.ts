@@ -1,4 +1,4 @@
-import { setAgentProfileFields } from "@audric/accounts";
+import { AGENT_CATEGORIES, setAgentProfileFields } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import {
   agentProfileChallengeMessage,
@@ -8,10 +8,13 @@ import { consumeNonce } from "@/lib/agent/nonce";
 import { openAiError } from "@/lib/api/keys";
 import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
-// POST /v1/agent/profile { address, nonce, signature, displayName?, imageUrl?, description? }
+// POST /v1/agent/profile { address, nonce, signature, displayName?, imageUrl?,
+// description?, website?, twitter?, github?, category? }
 // Agent ID gate 8c — the agent sets its DB-backed display profile (turnkey, no
 // self-host, no gas). Proves address ownership via a single-use signed
 // challenge. Owner-editing + Walrus-sovereign = the paid upgrade (later).
+// `category` added for `t2 agent create` (S.689) — same allow-list the
+// service-declare route enforces.
 //
 // Field semantics: omit a field to leave it; pass "" to clear it.
 const MAX = { name: 60, image: 400, description: 500, link: 200 };
@@ -48,6 +51,7 @@ export async function POST(request: Request) {
   let website: string | null | undefined;
   let twitter: string | null | undefined;
   let github: string | null | undefined;
+  let category: string | null | undefined;
   try {
     const body = await request.json();
     address = normalizeSuiAddress(String(body?.address ?? "").trim());
@@ -59,6 +63,10 @@ export async function POST(request: Request) {
     website = clip(body?.website, MAX.link);
     twitter = clip(body?.twitter, MAX.link);
     github = clip(body?.github, MAX.link);
+    category = clip(body?.category, MAX.name)?.toLowerCase() ?? null;
+    if (body?.category === undefined) {
+      category = undefined;
+    }
   } catch {
     return openAiError(
       400,
@@ -100,6 +108,17 @@ export async function POST(request: Request) {
       "invalid_link"
     );
   }
+  if (
+    typeof category === "string" &&
+    !(AGENT_CATEGORIES as readonly string[]).includes(category)
+  ) {
+    return openAiError(
+      400,
+      `category must be one of: ${AGENT_CATEGORIES.join(", ")}.`,
+      "invalid_request_error",
+      "invalid_category"
+    );
+  }
 
   const consumed = await consumeNonce(nonce, address);
   if (!consumed) {
@@ -131,6 +150,7 @@ export async function POST(request: Request) {
     website,
     twitter,
     github,
+    category,
   });
   return Response.json({ ok: true });
 }
