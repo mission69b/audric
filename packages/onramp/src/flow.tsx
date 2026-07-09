@@ -44,7 +44,6 @@ type OnrampCoordinator = {
 };
 
 type Step =
-  | "start"
   | "email"
   | "authenticating"
   | "register"
@@ -79,7 +78,7 @@ export function OnrampFlow({
   sessionEmail: string | null;
   publishableKey: string;
 }) {
-  const [step, setStep] = useState<Step>("start");
+  const [step, setStep] = useState<Step>("email");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState(sessionEmail ?? "");
@@ -373,31 +372,14 @@ export function OnrampFlow({
               Retry
             </button>
           )}
-        </div>
-      )}
-
-      {step === "start" && (
-        <div className="flex flex-col gap-3">
+          {/* Fallback that can't share the failure mode: Stripe's own page. */}
           <button
-            className="rounded-lg bg-foreground px-4 py-2 font-medium text-background text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="mt-2 block underline underline-offset-2"
             disabled={busy}
             onClick={onHosted}
             type="button"
           >
-            {busy ? "Opening…" : "Buy USDC — continue on Stripe ↗"}
-          </button>
-          <p className="m-0 text-muted-foreground/70 text-xs">
-            Opens Stripe's secure page (Link sign-in, card or Apple/Google Pay).
-            USDC is delivered to your Passport:{" "}
-            <span className="font-mono">{`${address.slice(0, 8)}…${address.slice(-6)}`}</span>
-            . You'll be brought back here after.
-          </p>
-          <button
-            className="self-start text-muted-foreground/70 text-xs underline underline-offset-2 hover:text-foreground"
-            onClick={() => setStep("email")}
-            type="button"
-          >
-            Use the embedded flow instead (beta)
+            Or buy on Stripe's page instead ↗
           </button>
         </div>
       )}
@@ -429,6 +411,14 @@ export function OnrampFlow({
               : sdkReady
                 ? "Continue"
                 : "Loading payment SDK…"}
+          </button>
+          <button
+            className="self-start text-muted-foreground/70 text-xs underline underline-offset-2 hover:text-foreground"
+            disabled={busy}
+            onClick={onHosted}
+            type="button"
+          >
+            Prefer Stripe's page? Buy there instead ↗
           </button>
         </div>
       )}
