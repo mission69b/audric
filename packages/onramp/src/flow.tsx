@@ -90,6 +90,7 @@ export function OnrampFlow({
   const [formMounted, setFormMounted] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkTry, setSdkTry] = useState(0);
+  const [stage, setStage] = useState<string | null>(null);
   const onrampRef = useRef<OnrampCoordinator | null>(null);
   const authContainerRef = useRef<HTMLDivElement>(null);
   const paymentContainerRef = useRef<HTMLDivElement>(null);
@@ -291,6 +292,7 @@ export function OnrampFlow({
       if (!(onramp && customerId && paymentToken)) {
         throw new Error("Missing payment setup — start over.");
       }
+      setStage("Creating your order…");
       const created = await api({
         action: "session",
         cryptoCustomerId: customerId,
@@ -298,19 +300,40 @@ export function OnrampFlow({
         sourceAmountUsd: Number(amount),
       });
       setStep("processing");
-      const result = await onramp.performCheckout(
-        String(created.id),
-        async (sessionId: string) => {
-          const r = await api({ action: "checkout", sessionId });
-          return String(r.client_secret);
-        }
-      );
+      setStage("Contacting Stripe…");
+      // Watchdog: the SDK's frame messenger can hang silently (a blocked
+      // controller/3DS frame) — turn 2 minutes of nothing into an error.
+      const watchdog = new Promise<never>((_, reject) => {
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "Checkout stalled (a Stripe frame may be blocked by the browser). Check your card statement before retrying — if no charge appears, try again or use a different browser."
+              )
+            ),
+          120_000
+        );
+      });
+      const result = await Promise.race([
+        onramp.performCheckout(
+          String(created.id),
+          async (sessionId: string) => {
+            setStage(
+              "Confirming payment — your bank may show a 3-D Secure prompt…"
+            );
+            const r = await api({ action: "checkout", sessionId });
+            return String(r.client_secret);
+          }
+        ),
+        watchdog,
+      ]);
       if (result.successful) {
         setStep("done");
       } else {
         throw new Error("Checkout did not complete — you were not charged.");
       }
       setBusy(false);
+      setStage(null);
     } catch (e) {
       setStep("amount");
       fail(e);
@@ -493,7 +516,7 @@ export function OnrampFlow({
 
       {step === "processing" && (
         <p className="m-0 text-muted-foreground text-sm">
-          Processing — don't close this tab…
+          {stage ?? "Processing"} — don't close this tab…
         </p>
       )}
 

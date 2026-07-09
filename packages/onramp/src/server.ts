@@ -234,10 +234,16 @@ export async function createOnrampSession(
     error?: { message?: string };
   };
   if (!(res.ok && data.id)) {
+    console.error(
+      "[onramp] session create failed",
+      res.status,
+      JSON.stringify(data.error ?? data).slice(0, 500)
+    );
     return {
       error: data.error?.message ?? `Session create failed (${res.status})`,
     };
   }
+  console.log("[onramp] session created", data.id);
   return { id: data.id };
 }
 
@@ -277,10 +283,16 @@ export async function checkoutOnrampSession(
     error?: { message?: string };
   };
   if (!(res.ok && data.client_secret)) {
+    console.error(
+      "[onramp] checkout leg failed",
+      res.status,
+      JSON.stringify(data.error ?? data).slice(0, 500)
+    );
     return {
       error: data.error?.message ?? `Checkout failed (${res.status})`,
     };
   }
+  console.log("[onramp] checkout client_secret issued for", opts.sessionId);
   return { clientSecret: data.client_secret };
 }
 
