@@ -11,6 +11,7 @@ import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
 import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
 import { Badge } from "@/components/ui/badge";
+import { UnlinkAgentButton } from "@/components/unlink-agent-button";
 
 const GATEWAY = "https://mpp.t2000.ai";
 
@@ -180,17 +181,24 @@ export default async function MyAgentsPage() {
                     {short(a.address)}
                   </span>
                 </div>
-                <ArchiveAgentButton
-                  agent={a.address}
-                  archived
-                  label="Restore"
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  {a.owner === session.user.id && (
+                    <UnlinkAgentButton agent={a.address} />
+                  )}
+                  <ArchiveAgentButton
+                    agent={a.address}
+                    archived
+                    label="Restore"
+                  />
+                </div>
               </div>
             ))}
           </div>
           <p className="mt-2 mb-0 text-fg-subtle text-xs">
-            Removing only hides an agent from your console — its on-chain record
-            and receipts persist (the registry has no delete).
+            Remove hides an agent from your console — its on-chain record and
+            receipts persist (the registry has no delete). Unlink goes further:
+            it publicly renounces your on-chain ownership, and the agent can
+            only come back by proposing the link again.
           </p>
         </>
       )}

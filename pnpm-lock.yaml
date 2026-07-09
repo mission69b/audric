@@ -494,8 +494,8 @@ importers:
         specifier: ^9.8.0
         version: 9.8.0
       '@t2000/id':
-        specifier: 5.7.0
-        version: 5.7.0(typescript@5.9.3)
+        specifier: 5.30.0
+        version: 5.30.0(typescript@5.9.3)
       '@t2000/sdk':
         specifier: ^5.26.0
         version: 5.26.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
@@ -3409,8 +3409,8 @@ packages:
   '@t2000/engine@4.4.0':
     resolution: {integrity: sha512-NQ0vgNq+UswfiHJ7wsivnfKQNneUncjH+YbC9lof4pTrvEmoYwpNGzq0Wvfr/r4MapMninG9Z3Z5BQK74xTQcA==}
 
-  '@t2000/id@5.7.0':
-    resolution: {integrity: sha512-z+4pG7UvUnCIEyNGGqsdk8oHdezx8F9jCMLVBYVlePFaS5Ftam4DTk3nXsDa3FVvt5J0Ik3pAr3q3WYrv1V68w==}
+  '@t2000/id@5.30.0':
+    resolution: {integrity: sha512-xmUreG7gdXNNdNJSMeRiTRfCbwDg8cm1n9N1fsj8yYBz94/JoJOWDXgSy3J5NK9pcZAuouBv3mD/tWRQi+v/tA==}
 
   '@t2000/sdk@4.4.0':
     resolution: {integrity: sha512-9GBE0SmELDqOGV/PZpNApS0iT3crVJdjq4o4UBAYmd+cCGdpXK6l0fPlrl7pkqVbvn8g0daE4STQE4Z9aq53Wg==}
@@ -9543,7 +9543,7 @@ snapshots:
       - typescript
       - viem
 
-  '@t2000/id@5.7.0(typescript@5.9.3)':
+  '@t2000/id@5.30.0(typescript@5.9.3)':
     dependencies:
       '@mysten/sui': 2.17.0(typescript@5.9.3)
     transitivePeerDependencies:

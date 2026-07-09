@@ -70,6 +70,12 @@ export async function POST(request: Request) {
         owner: meta.owner as string,
         pendingOwner: null,
       }).catch(() => undefined);
+    } else if (meta?.kind === "owner-renounce") {
+      // Back to autonomous — pendingOwner untouched (an in-flight proposal
+      // to someone else survives, matching the on-chain semantics).
+      await setAgentOwnership(meta.agent as string, {
+        owner: null,
+      }).catch(() => undefined);
     }
     return Response.json({ ok: true, digest: res.digest });
   }

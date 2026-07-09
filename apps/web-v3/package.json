@@ -59,7 +59,7 @@
     "@streamdown/mermaid": "^1.0.2",
     "@stripe/react-stripe-js": "^6.6.0",
     "@stripe/stripe-js": "^9.8.0",
-    "@t2000/id": "5.7.0",
+    "@t2000/id": "5.30.0",
     "@t2000/sdk": "^5.26.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.4.0",
