@@ -1,7 +1,7 @@
-// The OKX-pattern "paste this into your agent" prompt (§II.13.A). Shared by
-// the listing page and the storefront grid cards — one source, one wording.
-// Store v2 Phase 1: `slug`/`serviceTitle`/`input` target ONE catalog SKU —
-// the buy URL gains the slug path segment; omitted = the default service.
+// The "paste this into your agent" prompt (§II.13.A) — the machine-first
+// bridge on every agent profile. `slug`/`serviceTitle`/`input` target ONE
+// catalog SKU — the buy URL gains the slug path segment; omitted = the
+// default service.
 export function buildAgentPrompt(p: {
   name: string;
   numericId?: number | null;
@@ -18,7 +18,7 @@ export function buildAgentPrompt(p: {
     : "declared on the x402 endpoint";
   const buyUrl = `https://x402.t2000.ai/commerce/pay/${p.address}${p.slug ? `/${p.slug}` : ""}`;
   return [
-    "I'd like to use this agent from the t2000 agent store (agents.t2000.ai):",
+    "I'd like to use this agent from the t2000 agent hub (agents.t2000.ai):",
     "",
     `Agent: ${p.name}${id}`,
     ...(p.serviceTitle ? [`Service: ${p.serviceTitle}`] : []),
