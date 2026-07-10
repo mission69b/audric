@@ -42,8 +42,8 @@ importers:
         specifier: ^2.17.0
         version: 2.17.0(typescript@5.9.3)
       '@t2000/sdk':
-        specifier: ^5.26.0
-        version: 5.26.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+        specifier: ^6.0.0
+        version: 6.0.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))(react@19.0.1)
@@ -55,7 +55,7 @@ importers:
         version: 2.1.1
       drizzle-orm:
         specifier: ^0.34.0
-        version: 0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1)
+        version: 0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1)
       geist:
         specifier: ^1.7.0
         version: 1.7.2(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))
@@ -497,8 +497,8 @@ importers:
         specifier: 5.30.0
         version: 5.30.0(typescript@5.9.3)
       '@t2000/sdk':
-        specifier: ^5.26.0
-        version: 5.26.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+        specifier: ^6.0.0
+        version: 6.0.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))(react@19.0.1)
@@ -543,7 +543,7 @@ importers:
         version: 16.6.1
       drizzle-orm:
         specifier: ^0.34.0
-        version: 0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1)
+        version: 0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1)
       fast-deep-equal:
         specifier: ^3.1.3
         version: 3.1.3
@@ -726,11 +726,11 @@ importers:
         specifier: ^2.17.0
         version: 2.17.0(typescript@5.9.3)
       '@t2000/sdk':
-        specifier: ^5.6.1
-        version: 5.6.1(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))
+        specifier: ^6.0.0
+        version: 6.0.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))
       drizzle-orm:
         specifier: ^0.34.0
-        version: 0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1)
+        version: 0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1)
       postgres:
         specifier: ^3.4.4
         version: 3.4.7
@@ -747,8 +747,8 @@ importers:
         specifier: ^2.17.0
         version: 2.17.0(typescript@5.9.3)
       '@t2000/sdk':
-        specifier: ^5.6.1
-        version: 5.6.1(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))
+        specifier: ^6.0.0
+        version: 6.0.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))
       jose:
         specifier: ^6.2.2
         version: 6.2.2
@@ -3415,11 +3415,8 @@ packages:
   '@t2000/sdk@4.4.0':
     resolution: {integrity: sha512-9GBE0SmELDqOGV/PZpNApS0iT3crVJdjq4o4UBAYmd+cCGdpXK6l0fPlrl7pkqVbvn8g0daE4STQE4Z9aq53Wg==}
 
-  '@t2000/sdk@5.26.0':
-    resolution: {integrity: sha512-RcW7A/kIK/bDDEOi0oB2nUCXMBxFh3RxhKGz7y2bgWyGcxqsGyzbOhTcXA4y9R+yLXsKZSXcCO2SkBK8AI4wgw==}
-
-  '@t2000/sdk@5.6.1':
-    resolution: {integrity: sha512-d4DbWBuS8/+3Z+qbeLDjHrCRCnBzIKXqQZGwWk7+0nz5eVZXCGnj809sueXDl3Cq9OFx23H1ofG7aalTm0cbVw==}
+  '@t2000/sdk@6.0.0':
+    resolution: {integrity: sha512-4uNvn6nhKF08YnOuUDyJpjwadWaiE+XqAVTtIVuN1SGz7PdTTtpqF02DTEzGDFRJYCSmyNUl5/+nX7QDpjNvVA==}
 
   '@t2000/ui@0.1.4':
     resolution: {integrity: sha512-isDx3wHtoczj8IiYOGm6FcSBV0I4CbNC9D7ijR8oYU8TEbyQ/hMkKjDw5dk1UV+LnEFl3laqTNdbhBXDn7D/Kw==}
@@ -9579,7 +9576,7 @@ snapshots:
       - typescript
       - viem
 
-  '@t2000/sdk@5.26.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
+  '@t2000/sdk@6.0.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
       '@mysten/payment-kit': 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
@@ -9608,13 +9605,16 @@ snapshots:
       - typescript
       - viem
 
-  '@t2000/sdk@5.6.1(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))':
+  '@t2000/sdk@6.0.0(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
       '@mysten/payment-kit': 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/sui': 2.17.0(typescript@5.9.3)
       '@mysten/suins': 1.1.1(@mysten/sui@2.17.0(typescript@5.9.3))
       '@mysten/zklogin': 0.8.1(typescript@5.9.3)
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
+      '@phala/dcap-qvl': 0.5.2
       '@suimpp/mpp': 0.8.1(@modelcontextprotocol/sdk@1.29.0(zod@4.4.3))(express@5.2.1)(hono@4.12.12)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@4.4.3))
       bn.js: 5.2.3
       eventemitter3: 5.0.4
@@ -9626,6 +9626,7 @@ snapshots:
       - axios
       - debug
       - elysia
+      - encoding
       - express
       - hono
       - openapi-types
@@ -10832,7 +10833,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1):
+  drizzle-orm@0.34.1(@electric-sql/pglite@0.4.1)(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@prisma/client@7.6.0(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(typescript@5.9.3))(@types/react@19.2.14)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.6.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.0.1(react@19.0.1))(react@19.0.1)(typescript@5.9.3))(react@19.0.1):
     optionalDependencies:
       '@electric-sql/pglite': 0.4.1
       '@neondatabase/serverless': 1.1.0

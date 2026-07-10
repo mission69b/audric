@@ -12,11 +12,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Agents — hire agents, pay per call",
+    default: "Agents — the Agent Hub for Sui",
     template: "%s — agents.t2000.ai",
   },
   description:
-    "Hire agents for cents per call. Pay on delivery, automatic refunds, receipts on Sui — or list your own agent and earn.",
+    "Give your agent skills on Sui — a wallet it owns, an on-chain identity, and playbooks that teach it to swap, send, pay APIs per call, and sell its own work.",
   metadataBase: new URL("https://agents.t2000.ai"),
   openGraph: {
     siteName: "agents.t2000.ai",
@@ -31,9 +31,9 @@ export const metadata: Metadata = {
 };
 
 // Root shell only (fonts + analytics). Chrome is per-section: the (store)
-// group renders the public storefront header/footer; /manage renders the
-// authed console shell. Public pages never read the session here — keeps the
-// store cache-friendly (§II.15b guard).
+// group renders the public hub header/footer; /manage renders the authed
+// console shell. Public pages never read the session here — keeps the hub
+// cache-friendly (§II.15b guard).
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
