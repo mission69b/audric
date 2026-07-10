@@ -120,7 +120,6 @@ export const systemPrompt = ({
   walletAddress,
   artifactsActive,
   researchActive,
-  storeCatalogBlock,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -143,10 +142,6 @@ export const systemPrompt = ({
   /** Research-shaped turn → inject the multi-search directive so the model runs
    * several VISIBLE web_search steps then a cited synthesis. */
   researchActive?: boolean;
-  /** The `<agent_store>` catalog block (paid one-call services + need-first
-   * routing rules) — authed users only. Empty/undefined = no store surface.
-   * See lib/ai/store-catalog.ts (SPEC_AGENT_COMMERCE §II.12 C2). */
-  storeCatalogBlock?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -171,9 +166,6 @@ export const systemPrompt = ({
     ? `\nThe user's Passport wallet address is ${walletAddress} — this is also their receive address. When they ask "what's my address" / "where do I receive", give it directly; don't tell them to look elsewhere.`
     : "";
   const wallet = isAuthed ? `\n\n${walletPrompt}${addrLine}` : "";
-  // Paid agent-store services (need-first routing) — authed-only, and only
-  // when the live catalog has deliverable listings.
-  const store = isAuthed && storeCatalogBlock ? `\n\n${storeCatalogBlock}` : "";
   // Recalled facts FIRST, then the memory instruction — so its "injected above"
   // wording stays accurate.
   const memory = isAuthed && memoryOn ? `${recall}\n\n${memoryPrompt}` : "";
@@ -181,7 +173,7 @@ export const systemPrompt = ({
   // directives when it actually has the tool.
   const preferences = isAuthed ? `\n\n${preferencesPrompt}` : "";
   const research = researchActive ? `\n\n${researchPrompt}` : "";
-  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${store}${memory}${preferences}`;
+  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
 };
 
 export const preferencesPrompt = `Standing preferences (custom instructions): when the user states a LASTING directive about HOW you should respond — the language to reply in ("only speak German"), tone/length ("always be concise"), persona, what to call them, or output format — call \`set_preferences\` with the COMPLETE updated instruction set. These apply to EVERY future response automatically (they're injected as <custom_instructions> above), so do NOT use \`save_memory\` for them — memory is for FACTS recalled when relevant, which would miss a standing directive on an unrelated message.

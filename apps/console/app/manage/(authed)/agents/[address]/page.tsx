@@ -5,16 +5,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentEditForm } from "@/components/agent-edit-form";
-import { CatalogEditor } from "@/components/catalog-editor";
 import { SellServiceCard } from "@/components/sell-service-card";
-import { getSelfDeploy } from "@/lib/deploy-self";
 
-// /manage/agents/[address] — the Edit-listing ROUTE (founder call, S.656:
-// a real page, not an inline expand; design EditListing.jsx). Guarded to
-// the signed-in owner: the Passport itself (self-agent) or a confirmed
-// owned agent.
+// /manage/agents/[address] — the Edit-agent ROUTE (founder call, S.656:
+// a real page, not an inline expand). Guarded to the signed-in owner: the
+// Passport itself (self-agent) or a confirmed owned agent.
 
-export const metadata: Metadata = { title: "Edit listing" };
+export const metadata: Metadata = { title: "Edit agent" };
 
 function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -44,10 +41,6 @@ export default async function EditListingPage({
     notFound();
   }
 
-  // The live wrap's non-secret config (upstream, method, header names) —
-  // prefills the service form so it never opens blank (S.657).
-  const currentWrap = isSelf ? await getSelfDeploy(agent.address) : null;
-
   return (
     <div className="max-w-[780px]">
       <Link
@@ -57,7 +50,7 @@ export default async function EditListingPage({
         ← Back
       </Link>
       <h1 className="m-0 font-semibold text-[28px] text-foreground tracking-[-0.03em]">
-        Edit listing
+        Edit agent
       </h1>
       <div className="mt-1.5 font-mono text-[12.5px] text-fg-subtle">
         {agent.displayName || agent.name}
@@ -81,32 +74,12 @@ export default async function EditListingPage({
           }}
         />
 
-        {/* The service CATALOG — owner-editable since S.693 (founder GO
-            reversed S.656's read-only stance: browser-created owned agents
-            must be sellable without a terminal). Same REPLACE semantics as
-            `t2 agent services`. */}
-        <CatalogEditor
-          agent={agent.address}
-          initial={(agent.services ?? []).map((s) => ({
-            slug: s.slug,
-            title: s.title,
-            description: s.description,
-            priceUsdc: s.priceUsdc,
-            input: s.input ?? "",
-            endpoint: s.endpoint ?? "",
-            method: s.method === "GET" ? "GET" : "POST",
-            active: s.active !== false,
-          }))}
-        />
-
-        {/* The service block (design §ServiceDeployBlock) — Passport
-            self-agents deploy from the browser; owned agents set their
-            endpoint themselves from the CLI. */}
+        {/* The paid-service block — Passport self-agents declare from the
+            browser; owned agents set their endpoint themselves from the CLI. */}
         {isSelf ? (
           <SellServiceCard
             address={agent.address}
             category={agent.category}
-            currentWrap={currentWrap}
             mcpEndpoint={agent.mcpEndpoint}
             priceUsdc={agent.priceUsdc}
           />
@@ -117,7 +90,7 @@ export default async function EditListingPage({
               <span className="break-all text-fg-muted">
                 {agent.mcpEndpoint}
               </span>{" "}
-              — set on-chain by the agent itself (t2 agent service / deploy).
+              — set on-chain by the agent itself (t2 agent service).
             </p>
           )
         )}
@@ -127,7 +100,7 @@ export default async function EditListingPage({
         {isSelf && <ActiveToggle active={agent.active} />}
 
         <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-          Listing fields are off-chain; the endpoint &amp; price are set
+          Profile fields are off-chain; the endpoint &amp; price are set
           on-chain. Changes show on the public profile after the page
           revalidates (~30s). View it live at{" "}
           <Link className="text-fg-muted" href={`/${agent.address}`}>

@@ -39,14 +39,6 @@ type Profile = {
   paymentMethods?: string[];
   priceUsdc?: string;
   category?: string;
-  services?: {
-    slug: string;
-    title: string;
-    description: string;
-    priceUsdc: string;
-    input?: string | null;
-    active?: boolean;
-  }[];
   links?: { website?: string; twitter?: string; github?: string };
   reputation?: {
     sales: number;
@@ -218,43 +210,26 @@ export default async function AgentProfilePage({
     .catch(() => null);
   // A purchasable service needs a DELIVERY endpoint; sub-floor prices are
   // unbuyable (every settle 400s) and self-delist (S.677).
-  const catalog = (profile.services ?? []).filter(
-    (s) => s.active !== false && meetsSettleFloor(s.priceUsdc)
-  );
   const defaultPriceOk = meetsSettleFloor(profile.priceUsdc);
-  const hasDefaultListing = Boolean(
-    profile.mcpEndpoint && profile.priceUsdc && defaultPriceOk
-  );
-  const sells =
-    catalog.length > 0 || Boolean(profile.mcpEndpoint && defaultPriceOk);
+  const sells = Boolean(profile.mcpEndpoint && defaultPriceOk);
   const priceOnly = Boolean(
     !profile.mcpEndpoint && profile.priceUsdc && defaultPriceOk
   );
   const rep = profile.reputation;
   const buyUrl = `${RAIL_BASE}/commerce/pay/${profile.address}`;
 
-  const serviceRows =
-    catalog.length > 0
-      ? catalog.map((svc) => ({
-          slug: svc.slug as string | null,
-          title: svc.title,
-          rowDescription: svc.description.split("\n")[0] ?? null,
-          priceUsdc: svc.priceUsdc as string | null,
-          input: svc.input ?? null,
-          rowBuyUrl: `${buyUrl}/${svc.slug}`,
-        }))
-      : hasDefaultListing || profile.mcpEndpoint
-        ? [
-            {
-              slug: null as string | null,
-              title: profile.name,
-              rowDescription: profile.description?.split("\n")[0] ?? null,
-              priceUsdc: (profile.priceUsdc ?? null) as string | null,
-              input: null as string | null,
-              rowBuyUrl: buyUrl,
-            },
-          ]
-        : [];
+  const serviceRows = sells
+    ? [
+        {
+          slug: null as string | null,
+          title: profile.name,
+          rowDescription: profile.description?.split("\n")[0] ?? null,
+          priceUsdc: (profile.priceUsdc ?? null) as string | null,
+          input: null as string | null,
+          rowBuyUrl: buyUrl,
+        },
+      ]
+    : [];
 
   return (
     <>
@@ -389,10 +364,10 @@ export default async function AgentProfilePage({
         </div>
       )}
 
-      {/* Services — machine-first: the paste-prompt + the commands. */}
+      {/* Service — machine-first: the paste-prompt + the commands. */}
       {sells && serviceRows.length > 0 && (
         <>
-          <div className="ag-eyebrow mt-8">{"// SERVICES"}</div>
+          <div className="ag-eyebrow mt-8">{"// SERVICE"}</div>
           <div className="mt-4 grid gap-4">
             {serviceRows.map((row) => {
               const agentPrompt = buildAgentPrompt({
@@ -401,21 +376,14 @@ export default async function AgentProfilePage({
                 address: profile.address,
                 priceUsdc: row.priceUsdc,
                 description: row.rowDescription,
-                slug: row.slug,
-                serviceTitle: row.slug ? row.title : null,
                 input: row.input,
               });
-              const cliCmd = `t2 agent pay ${profile.address}${row.slug ? ` --service ${row.slug}` : ""}`;
+              const cliCmd = `t2 agent pay ${profile.address}`;
               return (
                 <div className="ag-card p-5" key={row.slug ?? "default"}>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div className="font-semibold text-[16px] text-foreground tracking-[-0.016em]">
                       {row.title}
-                      {row.slug && (
-                        <span className="ml-2 font-mono text-[11px] text-fg-subtle">
-                          /{row.slug}
-                        </span>
-                      )}
                     </div>
                     {row.priceUsdc && (
                       <div className="font-mono text-[14px] text-foreground">

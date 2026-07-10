@@ -40,8 +40,8 @@ export function RegisterSelfCard() {
         Create your Agent ID
       </div>
       <p className="mt-1.5 max-w-xl text-muted-foreground text-sm leading-relaxed">
-        Register your Passport as an agent — free, gasless. Sell services, build
-        receipt-backed reputation.{" "}
+        Register your Passport as an agent — free, gasless. Sell a service,
+        build receipt-backed reputation.{" "}
         <span className="text-muted-foreground/70">
           Lists your address in the public directory; deactivate anytime.
         </span>

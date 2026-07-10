@@ -112,12 +112,6 @@ export async function GET(
     paymentMethods: profile.paymentMethods ?? undefined,
     priceUsdc: profile.priceUsdc ?? undefined,
     category: profile.category ?? undefined,
-    // Store v2 Phase 1: the service catalog (slug-addressed SKUs). Buy URLs:
-    // `commerce/pay/{address}/{slug}`; the bare URL serves the default service.
-    services:
-      profile.services && profile.services.length > 0
-        ? profile.services.filter((s) => s.active !== false)
-        : undefined,
     // Off-chain social links — omitted entirely when none are set.
     links:
       profile.website || profile.twitter || profile.github

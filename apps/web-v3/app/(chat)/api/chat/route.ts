@@ -31,10 +31,6 @@ import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { scanChatImages } from "@/lib/ai/scan-chat-images";
 import {
-  getStoreCatalog,
-  storeCatalogPromptBlock,
-} from "@/lib/ai/store-catalog";
-import {
   ensureGeminiThoughtSignatures,
   isGemini3,
 } from "@/lib/ai/thought-signatures";
@@ -417,25 +413,15 @@ export async function POST(request: Request) {
         parts?: TextPart[];
       }>
     );
-    // Cheap textual pre-check before paying the catalog fetch: service-shaped
-    // ask, a possible pending offer ($ in the previous assistant message), or
-    // a continuation. The catalog is in-process cached (5 min) so the fetch
-    // this gates is only the cold-start cost.
-    const mightInvokeStore =
+    // agent_pay gate: only signed-in, non-confidential turns with explicit
+    // pay-an-agent intent (or a continuation of a pending offer) expose the
+    // tool — the user supplies the seller; there is no injected catalog.
+    const agentPayIntent =
       Boolean(dbUser) &&
       !confidential &&
-      (hasAgentPayIntent({
-        text: routeText,
-        isContinuation: isToolApprovalFlow,
-      }) ||
-        /\$\s?\d/.test(priorAssistantText));
-    const storeCatalog = mightInvokeStore ? await getStoreCatalog() : [];
-    const agentPayIntent =
-      storeCatalog.length > 0 &&
       hasAgentPayIntent({
         text: routeText,
         lastAssistantText: priorAssistantText,
-        catalogNames: storeCatalog.map((s) => s.name),
         isContinuation: isToolApprovalFlow,
       });
 
@@ -892,11 +878,6 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
             artifactsActive,
             researchActive,
-            // PULL-ONLY: the store block rides only store-invoked turns —
-            // same gate as the tool, so prompt and toolset always agree.
-            storeCatalogBlock: agentPayIntent
-              ? storeCatalogPromptBlock(storeCatalog)
-              : undefined,
           }),
           messages: modelMessages,
           // Step budget: research turns get a high budget for several visible

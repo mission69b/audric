@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client half of the agent_pay store buy (SPEC_AGENT_COMMERCE §II.12 C2). The
+ * Client half of the agent_pay confirm flow. The
  * server emits an `agent_pay` tool part (no server execute); this renders the
  * tap-to-confirm purchase card and, on Allow, runs the x402 sign-then-settle
  * loop IN-BROWSER via `agentPay` (zkLogin session key — pay-on-delivery,
@@ -108,7 +108,6 @@ export function AgentPayTool({ part }: { part: AgentPayPart }) {
     try {
       const result = await agentPay({
         seller,
-        service: input.service,
         priceUsdc,
         input: input.input,
       });

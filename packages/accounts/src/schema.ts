@@ -255,15 +255,9 @@ export const agentProfile = pgTable(
     // decimal string, e.g. "0.02"). The gateway reads this to price the x402
     // 402. Off-chain because the on-chain AgentRecord struct is fixed (Move).
     priceUsdc: text("priceUsdc"),
-    // Off-chain storefront category (curated enum — see AGENT_CATEGORIES).
-    // Powers the agents.t2000.ai category chips; validated server-side.
+    // Off-chain directory category (curated enum — see AGENT_CATEGORIES).
+    // Validated server-side.
     category: text("category"),
-    // Store v2 Phase 1 (SPEC_STORE_V2 §5): the agent's service CATALOG — one
-    // agent, many named services (slug-addressed SKUs). Directory-level by
-    // design: the on-chain record keeps ONE canonical pointer (the default
-    // buy URL); the catalog lives here. `mcpEndpoint`/`priceUsdc` above remain
-    // the DEFAULT service (bare buy-URL compatibility).
-    services: json("services").$type<AgentService[]>(),
     /** The register transaction digest (CREATED TX) — captured at submit-time
      *  write-through. Null for third-party agents we didn't sponsor (the cron
      *  has no cheap way to backfill it); surfaced as a Suiscan link when set. */
@@ -287,24 +281,3 @@ export const agentProfile = pgTable(
 );
 
 export type AgentProfile = InferSelectModel<typeof agentProfile>;
-
-/** One service (SKU) in an agent's catalog (SPEC_STORE_V2 §5). Slug-addressed:
- *  the buy URL is `commerce/pay/{agent}/{slug}`; the bare URL serves the
- *  DEFAULT service (the legacy `mcpEndpoint`+`priceUsdc` pair). */
-export interface AgentService {
-  active: boolean;
-  /** Listing copy (≤480 chars — the §II.17 style guide). */
-  description: string;
-  /** Self-hosted delivery target for THIS service (https). Null = wrap-mode
-   *  (per-slug deploy config on the gateway) or payment-only. */
-  endpoint?: string | null;
-  /** Human input hint: "Provide: 1. contract address 2. chain". Null = no input. */
-  input?: string | null;
-  /** Upstream delivery method for wrap-mode services. */
-  method?: "GET" | "POST";
-  /** Per-call price, USDC decimal string (e.g. "0.02"). */
-  priceUsdc: string;
-  /** [a-z0-9-]{2,40}, unique per agent. */
-  slug: string;
-  title: string;
-}

@@ -82,14 +82,12 @@ const CASES: Case[] = [
 
 // ── agent_pay gate cases (§II.12 C2) ────────────────────────────────────────
 const OFFER =
-  "Funding Radar can give you a live funding-rate carry report — $0.05, pay-on-delivery, auto-refunds if it fails. Want it?";
-const CATALOG = ["Funding Radar", "Card Forge", "Stable Yields", "Coin Quotes"];
+  "The Funding Radar agent can sell you a live funding-rate carry report — $0.05, pay-on-delivery, auto-refunds if it fails. Want it?";
 
 type PayCase = {
   label: string;
   text: string;
   lastAssistantText?: string;
-  catalogNames?: string[];
   isContinuation?: boolean;
   expect: boolean; // expected: is agent_pay exposed?
 };
@@ -99,40 +97,34 @@ const PAY_CASES: PayCase[] = [
   {
     label: "plain chat (no store shape)",
     text: "what's the meaning of life?",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
     label: "image gen turn",
     text: "generate 5 more images like this style",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
     label: "crypto price lookup (free tool covers it)",
     text: "what's the price of SUI right now?",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
     label: "bare yes with NO prior offer",
     text: "yes",
     lastAssistantText: "The weather in Sydney is sunny today.",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
     label: "bare yes, offer text without a price",
     text: "yes",
     lastAssistantText: "Funding Radar could help with that question.",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
-    label: "affirmative but empty catalog (nothing to buy)",
+    label: "bare yes after a priced but non-service message",
     text: "yes",
-    lastAssistantText: OFFER,
-    catalogNames: [],
+    lastAssistantText: "That laptop costs $999 at most retailers.",
     expect: false,
   },
   // Send intents must NOT open agent_pay (S.611: a hostile listing named like
@@ -140,66 +132,56 @@ const PAY_CASES: PayCase[] = [
   {
     label: "explicit send stays send-only",
     text: "send 5 USDC to alice.sui",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
     label: "bare pay-a-person stays send-only",
     text: "pay john@audric 1 usdc",
-    catalogNames: CATALOG,
     expect: false,
   },
   {
     label: "transfer stays send-only",
     text: "transfer 10 USDsui to bob.sui",
-    catalogNames: CATALOG,
     expect: false,
   },
   // --- MUST gate OPEN ---
   {
     label: "explicit buy-a-report phrasing",
     text: "buy the funding radar report",
-    catalogNames: CATALOG,
     expect: true,
   },
   {
     label: "pay-the-agent phrasing (service noun present)",
     text: "pay the Funding Radar agent for a report",
-    catalogNames: CATALOG,
     expect: true,
   },
   {
     label: "use-the-agent phrasing",
     text: "use the Card Forge agent to make my card",
-    catalogNames: CATALOG,
     expect: true,
   },
   {
     label: "offer-pending: bare yes after a priced offer",
     text: "yes",
     lastAssistantText: OFFER,
-    catalogNames: CATALOG,
     expect: true,
   },
   {
     label: "offer-pending: the founder's live-smoke phrasing",
     text: "Do the paid Funding Radar",
     lastAssistantText: OFFER,
-    catalogNames: CATALOG,
     expect: true,
   },
   {
     label: "offer-pending: any wording keeps the tool available",
     text: "hmm ok the cross-venue one then",
     lastAssistantText: OFFER,
-    catalogNames: CATALOG,
     expect: true,
   },
   {
     label: "offer-pending: even a decline turn (model just won't call)",
     text: "no thanks, free is fine",
     lastAssistantText: OFFER,
-    catalogNames: CATALOG,
     expect: true,
   },
   {
@@ -233,7 +215,6 @@ for (const c of PAY_CASES) {
   const got = hasAgentPayIntent({
     text: c.text,
     lastAssistantText: c.lastAssistantText,
-    catalogNames: c.catalogNames,
     isContinuation: c.isContinuation,
   });
   const ok = got === c.expect;

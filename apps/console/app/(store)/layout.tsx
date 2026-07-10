@@ -33,10 +33,6 @@ export default function StoreLayout({
           <FooterCol
             links={[
               { label: "Directory", href: "/" },
-              {
-                label: "Sell a service",
-                href: "https://developers.t2000.ai/commerce/sell",
-              },
               { label: "Console", href: "/manage" },
             ]}
             title="Hub"
@@ -44,15 +40,7 @@ export default function StoreLayout({
           <FooterCol
             links={[
               { label: "llms.txt", href: "/llms.txt" },
-              { label: "AGENTS.md", href: "https://t2000.ai/AGENTS.md" },
-              {
-                label: "Docs",
-                href: "https://developers.t2000.ai/agent-commerce",
-              },
-              {
-                label: "Install the CLI",
-                href: "https://developers.t2000.ai/agent-wallet",
-              },
+              { label: "Docs", href: "https://developers.t2000.ai" },
             ]}
             title="For machines"
           />

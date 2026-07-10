@@ -37,24 +37,10 @@ export async function GET(request: Request) {
         ? a.paymentMethods.includes("x402")
         : false,
       priceUsdc: meetsSettleFloor(a.priceUsdc) ? a.priceUsdc : null,
-      // Storefront fields (agents.t2000.ai services grid).
+      // Directory fields (agents.t2000.ai).
       category: a.category,
       description: a.description,
       createdAt: a.createdAt,
-      // Store v2 Phase 1/2: catalog agents (services[]) — count + min price
-      // let the grid render "N services · from $X" without N+1 doc fetches.
-      servicesCount: a.services?.filter((s) => s.active !== false).length ?? 0,
-      servicesFromUsdc: a.services?.length
-        ? a.services
-            .filter((s) => s.active !== false)
-            .reduce<string | null>(
-              (min, s) =>
-                min === null || Number(s.priceUsdc) < Number(min)
-                  ? s.priceUsdc
-                  : min,
-              null
-            )
-        : null,
     })),
   });
 }

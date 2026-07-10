@@ -1,30 +1,27 @@
 /**
- * Client-side agent-store buy executor (SPEC_AGENT_COMMERCE §II.12 C2).
+ * Client-side agent-pay executor — pays another agent on the t2000 rail.
  *
  * Runs in the browser on the zkLogin Passport session key — the same trust
  * model as sends (lib/wallet/send.ts): the server NEVER moves money; the
  * user's tap on the agent_pay confirm card triggers this.
  *
- * Payment rail: x402 sign-then-settle via the SDK's `payWithMpp` (the exact
- * client the Agent Platform's Try-it checkout shipped with, S.606) — the
+ * Payment rail: x402 sign-then-settle via the SDK's `payWithMpp` — the
  * GATEWAY submits the signed tx, so a failed delivery auto-refunds and a
  * failed settle never charges. Money source: on-chain wallet USDC (never
  * Audric credit — §II.15b.5 two-pots).
  *
- * Guards (fail-closed, mirrored from the spec):
+ * Guards (fail-closed):
  * - Host allowlist: the buy URL is CONSTRUCTED here from the seller address —
  *   only x402.t2000.ai commerce paths are ever paid; the model never supplies
  *   a URL.
- * - $5/call cap (marketplace services are cents; bounds a hostile listing).
+ * - The user supplies the seller + taps the confirm card (same human gate as
+ *   send_transfer).
+ * - $5/call cap (rail services are cents; bounds a hostile listing).
  */
 
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { payWithMpp } from "@t2000/sdk/browser";
-import {
-  isFirstPartySeller,
-  meetsReceiptBar,
-} from "@/lib/agent-store-allowlist";
 import { env } from "@/lib/env";
 import { isSessionExpired, loadSession, toZkLoginSigner } from "@/lib/zklogin";
 
@@ -55,8 +52,6 @@ function grpcClient(): SuiGrpcClient {
 export async function agentPay(opts: {
   seller: string;
   priceUsdc: number;
-  /** Store v2: catalog SKU slug — pays commerce/pay/{seller}/{slug}. */
-  service?: string;
   /** Optional JSON service input, forwarded to the seller on delivery. */
   input?: string;
 }): Promise<AgentPayOutcome> {
@@ -68,10 +63,6 @@ export async function agentPay(opts: {
     throw new Error("Your session expired — sign in again.");
   }
 
-  // Model-supplied slug goes into the URL path — validate the shape first.
-  if (opts.service && !/^[a-z0-9][a-z0-9-]{1,39}$/.test(opts.service)) {
-    throw new Error("Invalid service slug.");
-  }
   let seller: string;
   try {
     seller = normalizeSuiAddress(opts.seller.trim());
@@ -80,43 +71,6 @@ export async function agentPay(opts: {
   }
   if (!isValidSuiAddress(seller)) {
     throw new Error("Invalid seller address.");
-  }
-  // SIGNER-SIDE trust check (S.611 curated → S.624 receipt-gated): even if a
-  // poisoned document / web page tricks the model into calling agent_pay with
-  // a foreign address, the executor refuses anything that isn't first-party
-  // or receipt-proven — the same two lanes the catalog is built from, so
-  // injection upstream cannot widen the payable set. The third-party lane
-  // checks LIVE reputation and fails closed on any fetch error.
-  if (!isFirstPartySeller(seller)) {
-    let proven = false;
-    let checked = false;
-    try {
-      // SAME-ORIGIN fetch (S.639 fix): this app serves /v1 itself, so the
-      // browser needs no CORS. The absolute api.t2000.ai URL was cross-origin
-      // from audric.ai and the browser blocked it — every qualified seller
-      // failed closed as "not proven".
-      const res = await fetch(`/v1/agents/${seller}`);
-      if (res.ok) {
-        const profile = (await res.json()) as {
-          reputation?: {
-            sales?: number;
-            buyers?: number;
-            deliveredRate?: number;
-          };
-        };
-        checked = true;
-        proven = meetsReceiptBar(profile.reputation ?? {});
-      }
-    } catch {
-      proven = false;
-    }
-    if (!proven) {
-      throw new Error(
-        checked
-          ? "This seller hasn't earned Audric's receipt bar yet (3+ delivered sales to 2+ buyers) — not paying. Browse agents.t2000.ai to buy from new listings directly."
-          : "Couldn't verify the seller's reputation right now — not paying (fail-closed). Try again in a moment."
-      );
-    }
   }
   if (
     !Number.isFinite(opts.priceUsdc) ||
@@ -134,7 +88,7 @@ export async function agentPay(opts: {
     options: {
       // Allowlist by construction: the seller address is path-encoded into the
       // rail's commerce endpoint — no model- or listing-supplied URL is paid.
-      url: `${RAIL_BASE}/commerce/pay/${seller}${opts.service ? `/${opts.service}` : ""}`,
+      url: `${RAIL_BASE}/commerce/pay/${seller}`,
       method: "POST",
       body: opts.input,
       headers: opts.input ? { "content-type": "application/json" } : undefined,

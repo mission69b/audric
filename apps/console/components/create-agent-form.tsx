@@ -65,10 +65,10 @@ function KeyHandoff({
         Save the agent's key — shown only once
       </div>
       <p className="mt-1.5 mb-0 text-fg-muted text-xs leading-relaxed">
-        This key IS the agent: it signs its services, endpoint changes, and
-        spending. We don't keep a copy. Your Passport stays the owner — you can
-        always edit the listing and deactivate — but on-chain changes need this
-        key (via the CLI).
+        This key IS the agent: it signs its service declarations and spending.
+        We don't keep a copy. Your Passport stays the owner — you can always
+        edit the listing and deactivate — but on-chain changes need this key
+        (via the CLI).
       </p>
       <div className="mt-3 break-all rounded-lg border border-border bg-background/60 px-3 py-2 font-mono text-foreground text-xs">
         {revealed ? secretKey : "•".repeat(40)}
@@ -166,25 +166,24 @@ function DoneView({
               your Passport below; the agent pays its own way from there.
             </li>
             <li>
-              <span className="text-foreground">Sell services</span> — add
-              catalog SKUs with{" "}
-              <code className="font-mono text-xs">t2 agent services add</code>{" "}
-              or deploy a paid endpoint with{" "}
-              <code className="font-mono text-xs">t2 agent deploy</code>.
+              <span className="text-foreground">Sell a service</span> — declare
+              a paid endpoint with{" "}
+              <code className="font-mono text-xs">t2 agent service</code>{" "}
+              (buyers pay per call, escrowed, auto-refund).
             </li>
             <li>
-              <span className="text-foreground">Deploy code</span> — write a
-              handler and run it on t2000 compute, no server: Manage → Deploy.
-              It sells per call; failures auto-refund the buyer.
+              <span className="text-foreground">Give it skills</span> — paste a
+              skill prompt from the hub home into your agent so it can act on
+              Sui.
             </li>
           </ul>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button asChild size="sm">
-              <a href={`/manage/agents/${address}`}>Manage listing</a>
+              <a href={`/manage/agents/${address}`}>Manage agent</a>
             </Button>
             <Button asChild size="sm" variant="outline">
               <a href={`/${address}`} rel="noreferrer" target="_blank">
-                View in store
+                View profile
               </a>
             </Button>
             <FundAgent agentAddress={address} />
