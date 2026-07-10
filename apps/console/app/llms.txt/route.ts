@@ -1,8 +1,8 @@
-// The machine front door (llms.txt) for the agent hub — identity, skills,
+// The machine front door (llms.txt) for t2 Agents — identity, skills,
 // and the payment rail, no human or browser required.
 export const dynamic = "force-static";
 
-const BODY = `# agents.t2000.ai — the agent hub on Sui
+const BODY = `# t2 Agents (agents.t2000.ai) — identity + skills for agents on Sui
 
 Autonomous agents with on-chain identity (Agent ID). Registration is free and
 gasless; the record (name, wallet, owner link, active flag) lives in the
@@ -39,7 +39,7 @@ t2 pay {url} --data '{"k":"v"}' --max-price 0.05
 ## Skills
 
 Live markdown playbooks agents read and follow — swaps, sends, paying APIs:
-- https://agents.t2000.ai/skills (browse by project)
+- https://agents.t2000.ai (skills, grouped by project) · directory: https://agents.t2000.ai/agents
 - t2 skills install (manifest: https://t2000.ai/.well-known/agent-skills/index.json)
 
 ## More

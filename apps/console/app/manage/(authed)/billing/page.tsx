@@ -25,7 +25,7 @@ export default async function BillingPage() {
   return (
     <div>
       <PanelHead
-        sub="Both balances in one place. Wallet USDC funds on-chain agent payments; Credit funds the Private API and Audric — one shared balance."
+        sub="Both balances in one place. Wallet USDC funds on-chain agent payments; Credit funds Private Inference and Audric — one shared balance."
         title="Wallet & billing"
       />
 

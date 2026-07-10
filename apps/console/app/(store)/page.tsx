@@ -1,61 +1,39 @@
-import { getUsernamesByIds } from "@audric/accounts";
-import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
-import { AgentAvatar } from "@/components/agent-avatar";
 import { CopyButton } from "@/components/copy-button";
 import { ProjectIcon } from "@/components/project-icon";
 import { fetchRetry } from "@/lib/fetch-retry";
 import { PROJECTS_FEED } from "@/lib/skills-feed";
 
-// agents.t2000.ai — the Agent Hub (SPEC_HUB_V1). Two shelves:
-//   1. SKILLS — live markdown playbooks an agent reads to act on Sui,
-//      grouped by PROJECT (one card per protocol; one-paste per skill).
-//   2. DIRECTORY — every registered Agent ID (identity-only), reading the
-//      public /v1/agents JSON.
+// agents.t2000.ai — t2 Agents (SPEC_HUB_V1). Skills-first home: the one-paste
+// hero + the skills shelf. The directory lives at /agents (S.703).
 const API_BASE = "https://api.t2000.ai/v1";
 
 const SETUP_PROMPT =
   "Read https://t2000.ai/skills/t2000-setup and follow the instructions to set up my agent's wallet and on-chain Agent ID.";
 
-type AgentRow = {
-  address: string;
-  numericId?: number | null;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  imageUrl?: string | null;
-};
-
-async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
+async function fetchAgentCount(): Promise<number> {
   try {
-    const res = await fetchRetry(`${API_BASE}/agents?limit=100&offset=0`, {
+    const res = await fetchRetry(`${API_BASE}/agents?limit=1`, {
       next: { revalidate: 60 },
     });
     if (res.ok) {
-      const data = (await res.json()) as {
-        total?: number;
-        agents?: AgentRow[];
-      };
-      return { total: data.total ?? 0, agents: data.agents ?? [] };
+      const data = (await res.json()) as { total?: number };
+      return data.total ?? 0;
     }
   } catch {
-    // directory unavailable — render the skills shelf alone
+    // directory unavailable — the teaser renders without a count
   }
-  return { total: 0, agents: [] };
+  return 0;
 }
 
 export default async function HubPage() {
-  const { total, agents } = await fetchAgents();
-  const handles = await getUsernamesByIds(agents.map((a) => a.address)).catch(
-    () => new Map<string, string>()
-  );
-  const rows = agents;
+  const total = await fetchAgentCount();
 
   return (
     <>
       {/* Hero — the enabler one-liner. */}
       <section className="pt-6 pb-10">
-        <div className="ag-eyebrow">{"// THE AGENT HUB FOR SUI"}</div>
+        <div className="ag-eyebrow">{"// T2 AGENTS"}</div>
         <h1
           className="ag-title mt-3 max-w-[720px]"
           style={{ fontSize: "clamp(34px, 5vw, 56px)" }}
@@ -64,8 +42,7 @@ export default async function HubPage() {
         </h1>
         <p className="mt-4 max-w-[560px] text-[15px] text-muted-foreground leading-relaxed">
           A wallet it owns, an on-chain identity, and skills that teach it to
-          act — swap, send, pay APIs per call. Each skill is a markdown playbook
-          your agent reads and follows. Onboarding is one paste.
+          act — swap, send, pay APIs per call. Onboarding is one paste.
         </p>
         <div
           className="mt-6 flex max-w-[680px] items-center justify-between gap-3 rounded-xl border p-4"
@@ -78,7 +55,16 @@ export default async function HubPage() {
         </div>
         <p className="mt-2 text-fg-subtle text-xs">
           Paste into Claude Code, Cursor, Codex — any agent that can run
-          commands. Config-only; it never moves funds.
+          commands. Config-only; it never moves funds. Per-client setup:{" "}
+          <a
+            className="underline underline-offset-4 transition-colors hover:text-foreground"
+            href="https://developers.t2000.ai/use-from-your-agent"
+            rel="noreferrer"
+            target="_blank"
+          >
+            Audric · Claude Code · Cursor · Codex
+          </a>
+          .
         </p>
       </section>
 
@@ -163,72 +149,26 @@ export default async function HubPage() {
         </div>
       </section>
 
-      {/* Directory. */}
-      <section className="mt-10 border-border/50 border-t pt-10">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+      {/* Directory teaser — the list lives at /agents. */}
+      <section className="mt-10 border-border/50 border-t pt-10 pb-4">
+        <Link
+          className="ag-card group flex flex-wrap items-center justify-between gap-4 p-6 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
+          href="/agents"
+        >
           <div>
             <div className="ag-eyebrow">{"// DIRECTORY"}</div>
-            <h2
-              className="ag-title mt-2"
-              style={{ fontSize: "clamp(24px, 3vw, 34px)" }}
-            >
-              {total > 0 ? `${total} registered agents.` : "Registered agents."}
-            </h2>
-          </div>
-          <p className="m-0 max-w-[380px] text-fg-subtle text-xs leading-relaxed">
-            Every agent with an on-chain Agent ID — name, wallet, owner link,
-            live status. Register free:{" "}
-            <span className="font-mono">t2 init</span> — or{" "}
-            <Link
-              className="underline underline-offset-4"
-              href="/manage/create"
-            >
-              create one in the console
-            </Link>
-            .
-          </p>
-        </div>
-        <div className="ag-card mt-5 divide-y divide-border/50 overflow-hidden">
-          {rows.slice(0, 40).map((a) => {
-            const handle = handles.get(a.address);
-            return (
-              <Link
-                className="flex items-center gap-4 px-4 py-3.5 no-underline transition-colors hover:bg-[color:var(--ag-overlay)]"
-                href={`/${a.numericId ?? a.address}`}
-                key={a.address}
-              >
-                <AgentAvatar
-                  address={a.address}
-                  imageUrl={a.imageUrl ?? undefined}
-                  name={a.name}
-                  size={34}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-[14px] text-foreground">
-                      {a.name}
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] text-fg-subtle">
-                      {handle ? `${displayHandle(handle)} · ` : ""}#
-                      {a.numericId ?? "—"}
-                    </span>
-                  </div>
-                  {a.description && (
-                    <div className="mt-0.5 truncate text-[12.5px] text-fg-muted">
-                      {a.description.split("\n")[0]}
-                    </div>
-                  )}
-                </div>
-                <span className="shrink-0 text-fg-subtle">→</span>
-              </Link>
-            );
-          })}
-          {rows.length === 0 && (
-            <div className="px-4 py-8 text-center text-fg-subtle text-sm">
-              Directory temporarily unavailable.
+            <div className="mt-2 font-semibold text-[19px] text-foreground tracking-[-0.02em]">
+              {total > 0 ? `${total} registered agents` : "The agent directory"}
             </div>
-          )}
-        </div>
+            <p className="m-0 mt-1 max-w-[480px] text-[12.5px] text-muted-foreground leading-relaxed">
+              Every agent with an on-chain Agent ID. Register free:{" "}
+              <span className="font-mono">t2 init</span>.
+            </p>
+          </div>
+          <span className="text-fg-subtle transition-transform group-hover:translate-x-0.5">
+            Browse →
+          </span>
+        </Link>
       </section>
     </>
   );

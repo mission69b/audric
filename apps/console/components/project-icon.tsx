@@ -14,7 +14,7 @@ export function ProjectIcon({
 }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-[22%]"
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-[22%]"
       style={{
         width: size,
         height: size,
@@ -23,13 +23,7 @@ export function ProjectIcon({
       }}
     >
       {/* biome-ignore lint/performance/noImgElement: local /brand asset */}
-      <img
-        alt={`${name} logo`}
-        height={Math.round(size * 0.62)}
-        src={icon}
-        style={{ borderRadius: "22%" }}
-        width={Math.round(size * 0.62)}
-      />
+      <img alt={`${name} logo`} height={size} src={icon} width={size} />
     </div>
   );
 }

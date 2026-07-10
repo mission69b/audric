@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Settings → Developer API. Key/usage/billing management for the Private API
+ * Settings → Developer API. Key/usage/billing management for Private Inference
  * lives in the t2000 Console (agents.t2000.ai/manage) — the same Passport
  * account + credit. This is a slim pointer so Audric stays consumer-focused
  * and devs discover the console. (v2 — SPEC_T2000_API_V2.)
@@ -16,7 +16,7 @@ export function ApiKeysSection() {
         Developer API
       </h2>
       <p className="text-muted-foreground text-xs">
-        Build on the t2000 Private API — every model behind{" "}
+        Build on t2000 Private Inference — every model behind{" "}
         <strong>one key</strong>, private by default, pay-as-you-go from your
         credit. Create keys, watch usage, and manage billing in the t2000
         Console — same account, same balance.

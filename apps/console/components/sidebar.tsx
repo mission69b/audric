@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 // Console sidebar (t2000-design/agents ManageConsole §Sidebar): identity
 // block (monogram tile + @handle + copy-address), grouped nav, then the
-// two-balance money block — USDC → marketplace · Credit → Private API —
+// two-balance money block — USDC → agent payments · Credit → Private Inference —
 // stated once, and Docs ↗. Sign-out lives in the top nav's wallet chip.
 const NAV_GROUPS: {
   label: string;
@@ -32,7 +32,7 @@ const NAV_GROUPS: {
     ],
   },
   {
-    label: "Private API",
+    label: "Private Inference",
     items: [
       { href: "/manage/keys", label: "API keys", icon: KeyRound },
       { href: "/manage/usage", label: "Usage", icon: BarChart3 },
@@ -61,7 +61,7 @@ export function Sidebar({
   onNavigate,
 }: {
   address: string;
-  /** Platform credit (Private API), formatted "12.34". */
+  /** Platform credit (Private Inference), formatted "12.34". */
   balance: string;
   /** On-chain Passport USDC — null when the RPC read failed. */
   walletUsdc: number | null;
@@ -183,7 +183,7 @@ export function Sidebar({
             [
               "Credit",
               `$${balance}`,
-              "Private API + Audric",
+              "Private Inference + Audric",
               "var(--ag-accent)",
             ],
           ] as const

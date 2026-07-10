@@ -191,7 +191,7 @@ export default async function AgentProfilePage({
         className="text-muted-foreground text-sm transition-colors hover:text-foreground"
         href="/"
       >
-        ← Hub
+        ← t2 Agents
       </Link>
 
       {/* Header — monogram tile + display name + status. */}

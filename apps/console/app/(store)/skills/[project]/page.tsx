@@ -46,7 +46,7 @@ export default async function ProjectSkillsPage({
         className="text-muted-foreground text-sm transition-colors hover:text-foreground"
         href="/"
       >
-        ← Hub
+        ← t2 Agents
       </Link>
 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">

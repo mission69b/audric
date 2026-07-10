@@ -12,7 +12,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Agents — the Agent Hub for Sui",
+    default: "t2 Agents — identity + skills for agents on Sui",
     template: "%s — agents.t2000.ai",
   },
   description:

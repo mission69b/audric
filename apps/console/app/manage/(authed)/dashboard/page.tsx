@@ -88,7 +88,7 @@ export default async function OverviewPage() {
           color="var(--ag-accent)"
           href="/manage/billing"
           label="Credit"
-          unit="Private API + Audric"
+          unit="Private Inference + Audric"
           value={`$${credit}`}
         />
         <StatCard

@@ -32,10 +32,10 @@ export default function StoreLayout({
           <FooterCol
             links={[
               { label: "Skills", href: "/skills" },
-              { label: "Directory", href: "/" },
+              { label: "Directory", href: "/agents" },
               { label: "Console", href: "/manage" },
             ]}
-            title="Hub"
+            title="t2 Agents"
           />
           <FooterCol
             links={[

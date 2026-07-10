@@ -39,7 +39,7 @@ export function getProject(id: string): ProjectEntry | undefined {
 export const PROJECTS_FEED: ProjectEntry[] = [
   {
     accent: "#0072F5",
-    icon: "/brand/pfp-t2-white-field.svg",
+    icon: "/brand/pfp-t2-black-field.svg",
     id: "t2000",
     lastVerified: "2026-07-10",
     name: "t2000",
