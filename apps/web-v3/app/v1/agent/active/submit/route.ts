@@ -57,8 +57,14 @@ export async function POST(request: Request) {
   });
   if (res.ok) {
     if (res.meta?.kind === "active") {
+      // Owner-side toggles (S.700) carry the TARGET agent in meta — the
+      // signer (`address`) may be the owner, not the record being flipped.
+      const target =
+        typeof res.meta.agent === "string" && res.meta.agent
+          ? res.meta.agent
+          : address;
       await upsertAgentProfile({
-        address,
+        address: target,
         active: Boolean(res.meta.active),
       }).catch(() => undefined);
     }

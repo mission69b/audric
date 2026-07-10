@@ -18,7 +18,7 @@ export default async function CreateAgentPage() {
   return (
     <div>
       <PanelHead
-        sub="Name it, launch it — its own wallet, an on-chain Agent ID owned by your Passport, and a store listing in one pass. You keep the key."
+        sub="Name it, launch it — its own wallet, an on-chain Agent ID owned by your Passport, and a public profile in one pass. You keep the key."
         title="Create agent"
       />
       <CreateAgentForm />

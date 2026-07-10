@@ -95,9 +95,14 @@ export default async function EditListingPage({
           )
         )}
 
-        {/* On-chain kill switch (registry set_active) — self-agent signs with
-            the Passport, sponsored. Reversible; the record + history persist. */}
-        {isSelf && <ActiveToggle active={agent.active} />}
+        {/* On-chain kill switch (registry set_active) — the Passport signs,
+            sponsored. Self-agent toggles itself; a confirmed OWNER toggles an
+            owned agent (S.700 — the registry checks the owner link on-chain).
+            Reversible; the record + history persist. */}
+        <ActiveToggle
+          active={agent.active}
+          agent={isSelf ? undefined : agent.address}
+        />
 
         <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
           Profile fields are off-chain; the endpoint &amp; price are set

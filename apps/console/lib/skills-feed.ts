@@ -12,10 +12,14 @@ export interface SkillEntry {
   /** Live markdown an agent can read + follow. */
   skillUrl: string;
   slug: string;
+  tags: string[];
 }
 
 export interface ProjectEntry {
   id: string;
+  /** When the skills were last read + smoke-tested against what the URL
+   *  serves (ISO date). Surfaced Portal-style on /skills/[project]. */
+  lastVerified: string;
   name: string;
   skills: SkillEntry[];
   tagline: string;
@@ -23,9 +27,15 @@ export interface ProjectEntry {
   url: string;
 }
 
+/** Look a project up by its /skills/[project] segment. */
+export function getProject(id: string): ProjectEntry | undefined {
+  return PROJECTS_FEED.find((p) => p.id === id);
+}
+
 export const PROJECTS_FEED: ProjectEntry[] = [
   {
     id: "t2000",
+    lastVerified: "2026-07-10",
     name: "t2000",
     tagline:
       "The agent wallet + identity rail — gasless USDC, x402 paid APIs, on-chain Agent ID.",
@@ -33,6 +43,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
     skills: [
       {
         slug: "t2000-setup",
+        tags: ["wallet", "identity", "setup"],
         name: "Wallet setup",
         description:
           "Bootstrap the Agent Wallet: local keypair, free on-chain Agent ID, spending limits, MCP wiring. The entry point every other skill assumes.",
@@ -40,6 +51,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-send",
+        tags: ["payments", "gasless", "suins"],
         name: "Send stablecoins",
         description:
           "Send USDC / USDsui / SUI to any address, SuiNS name, or @handle — stablecoin sends are gasless.",
@@ -47,6 +59,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-receive",
+        tags: ["payments", "receive"],
         name: "Request payments",
         description:
           "Share the wallet address, render a QR, or emit a sui:pay URI so humans and agents can pay this wallet.",
@@ -54,6 +67,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-check-balance",
+        tags: ["wallet", "reads"],
         name: "Read balances",
         description:
           "Inspect USDC / USDsui / SUI holdings and USD totals before any write.",
@@ -61,6 +75,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-services",
+        tags: ["x402", "discovery"],
         name: "Discover paid APIs",
         description:
           "Browse the x402 service catalog (AI models, search, data, mail, TTS, code exec) with live prices — free.",
@@ -68,6 +83,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-pay",
+        tags: ["x402", "payments", "apis"],
         name: "Pay APIs per call",
         description:
           "Pay any x402-protected API in USDC — handles the 402 challenge → pay → retry loop automatically.",
@@ -75,6 +91,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-hire",
+        tags: ["commerce", "x402", "escrow"],
         name: "Pay other agents",
         description:
           "Buy services from registered agents — escrowed, pay-on-delivery, auto-refund — and sell your own per call.",
@@ -82,6 +99,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-verify",
+        tags: ["confidential", "verify", "receipts"],
         name: "Verify confidential AI",
         description:
           "Trustlessly verify a confidential (GPU-TEE) inference receipt against its on-chain Sui anchor.",
@@ -89,6 +107,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
       {
         slug: "t2000-mcp",
+        tags: ["mcp", "setup"],
         name: "Wire up MCP",
         description:
           "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client — 15 tools + one prompt per skill.",
@@ -98,12 +117,14 @@ export const PROJECTS_FEED: ProjectEntry[] = [
   },
   {
     id: "cetus",
+    lastVerified: "2026-07-10",
     name: "Cetus",
     tagline: "Sui's liquidity hub — best-route swaps across 20+ DEXs.",
     url: "https://www.cetus.zone",
     skills: [
       {
         slug: "t2000-swap",
+        tags: ["defi", "swap", "cetus"],
         name: "Swap any Sui token",
         description:
           "Best-route swaps through the Cetus Aggregator — quotes, slippage control, and the swap-needs-SUI-for-gas gotcha.",

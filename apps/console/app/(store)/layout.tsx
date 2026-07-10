@@ -32,6 +32,7 @@ export default function StoreLayout({
           </div>
           <FooterCol
             links={[
+              { label: "Skills", href: "/skills" },
               { label: "Directory", href: "/" },
               { label: "Console", href: "/manage" },
             ]}

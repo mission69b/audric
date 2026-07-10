@@ -71,7 +71,7 @@ export default async function OverviewPage() {
   return (
     <>
       <PanelHead
-        sub="Your money, your listings, and what needs attention."
+        sub="Your money, your agents, and what needs attention."
         title="Overview"
       />
 
@@ -99,7 +99,7 @@ export default async function OverviewPage() {
         />
         <StatCard
           href="/manage/agents"
-          label="Active listings"
+          label="Active agents"
           unit="live"
           value={String(earnings.activeListings)}
         />

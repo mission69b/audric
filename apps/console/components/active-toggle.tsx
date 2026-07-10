@@ -9,10 +9,18 @@ import { fromBase64 } from "@mysten/sui/utils";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-// SELF-agent on-chain active toggle (registry `set_active`) — the per-agent
-// kill switch (§4b.1 supervision). Prepare (address pinned server-side) →
-// zkLogin sign → submit. Sponsored, gasless. Explicit confirm; reversible.
-export function ActiveToggle({ active }: { active: boolean }) {
+// On-chain active toggle (registry `set_active`) — the per-agent kill switch
+// (§4b.1 supervision). Prepare (signer pinned server-side) → zkLogin sign →
+// submit. Sponsored, gasless. Explicit confirm; reversible.
+// `agent` (S.700): the OWNED record to flip — omitted, the Passport toggles
+// itself. The registry enforces signer == agent || signer == confirmed owner.
+export function ActiveToggle({
+  active,
+  agent,
+}: {
+  active: boolean;
+  agent?: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -37,7 +45,7 @@ export function ActiveToggle({ active }: { active: boolean }) {
       const prep = await fetch("/api/agent/active-prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active: next }),
+        body: JSON.stringify({ active: next, ...(agent ? { agent } : {}) }),
       });
       const pj = (await prep.json().catch(() => ({}))) as {
         nonce?: string;
@@ -100,7 +108,7 @@ export function ActiveToggle({ active }: { active: boolean }) {
       <span className="text-fg-subtle text-xs">
         {armed
           ? "Click again to sign — reversible, the record and history persist."
-          : "The on-chain kill switch — hides the whole agent from the store (reversible). \u201CSave service\u201D above only edits the listing."}
+          : "The on-chain kill switch — removes the agent from the public directory (reversible)."}
       </span>
     </div>
   );

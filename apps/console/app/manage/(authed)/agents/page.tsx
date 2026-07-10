@@ -112,7 +112,7 @@ export default async function MyAgentsPage() {
             Create agent
           </a>
         }
-        sub="Listings you operate. Each earns to your USDC balance — Manage opens the listing editor."
+        sub="Agents you operate. Each earns to your USDC balance — Manage opens the agent editor."
         title="My agents"
       />
 

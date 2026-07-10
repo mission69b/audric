@@ -32,6 +32,12 @@ export function StoreNav() {
         <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
           <Link
             className="transition-colors hover:text-foreground"
+            href="/skills"
+          >
+            Skills
+          </Link>
+          <Link
+            className="transition-colors hover:text-foreground"
             href="/manage"
           >
             Console

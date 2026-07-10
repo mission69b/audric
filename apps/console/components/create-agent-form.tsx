@@ -324,8 +324,8 @@ export function CreateAgentForm() {
         </div>
         <p className="mt-1 mb-0 text-fg-muted text-sm">
           Its own Sui wallet (gasless USDC) · an on-chain Agent ID owned by your
-          Passport · a public store listing. Services, funding, and hosted
-          runtime (soon) are set up anytime.
+          Passport · a public profile in the directory. Funding, skills, and a
+          paid service are set up anytime.
         </p>
       </div>
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { CopyButton } from "@/components/copy-button";
 import { fetchRetry } from "@/lib/fetch-retry";
-import { PROJECTS_FEED, skillPrompt } from "@/lib/skills-feed";
+import { PROJECTS_FEED } from "@/lib/skills-feed";
 
 // agents.t2000.ai — the Agent Hub (SPEC_HUB_V1). Two shelves:
 //   1. SKILLS — live markdown playbooks an agent reads to act on Sui,
@@ -134,56 +134,26 @@ export default async function HubPage() {
             into your agent — it reads the skill and follows it.
           </p>
         </div>
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {PROJECTS_FEED.map((project) => (
-            <div className="ag-card flex flex-col p-5" key={project.id}>
+            <Link
+              className="ag-card flex flex-col gap-2 p-5 no-underline transition-colors hover:border-foreground/30"
+              href={`/skills/${project.id}`}
+              key={project.id}
+            >
               <div className="flex items-baseline justify-between gap-3">
-                <div>
-                  <div className="font-semibold text-[18px] text-foreground tracking-[-0.02em]">
-                    {project.name}
-                  </div>
-                  <p className="mt-1 mb-0 text-[12.5px] text-muted-foreground leading-relaxed">
-                    {project.tagline}
-                  </p>
-                </div>
-                <a
-                  className="shrink-0 font-mono text-[11px] text-fg-subtle underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-                  href={project.url}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  site ↗
-                </a>
+                <span className="font-semibold text-[17px] text-foreground tracking-[-0.02em]">
+                  {project.name}
+                </span>
+                <span className="font-mono text-[11px] text-fg-subtle">
+                  {project.skills.length} skill
+                  {project.skills.length === 1 ? "" : "s"} →
+                </span>
               </div>
-              <div className="mt-4 divide-y divide-border/50 overflow-hidden rounded-xl border border-border/50">
-                {project.skills.map((s) => (
-                  <div
-                    className="flex items-center gap-3 px-3.5 py-2.5"
-                    key={s.slug}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-medium text-[13.5px] text-foreground">
-                          {s.name}
-                        </span>
-                        <a
-                          className="font-mono text-[10.5px] text-fg-subtle underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-                          href={s.skillUrl}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          read ↗
-                        </a>
-                      </div>
-                      <div className="mt-0.5 truncate text-[12px] text-fg-muted">
-                        {s.description}
-                      </div>
-                    </div>
-                    <CopyButton text={skillPrompt(s)} />
-                  </div>
-                ))}
-              </div>
-            </div>
+              <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
+                {project.tagline}
+              </p>
+            </Link>
           ))}
           {/* The enabler loop — third parties PR their dapp's skill. */}
           <a
@@ -200,9 +170,17 @@ export default async function HubPage() {
             </div>
             <p className="m-0 text-[13px] text-muted-foreground leading-relaxed">
               SKILL.md playbooks that teach agents to use your dapp. PR them to
-              the skills repo — merged projects ship on this page.
+              the skills repo — merged projects get their own page.
             </p>
           </a>
+        </div>
+        <div className="mt-4">
+          <Link
+            className="font-mono text-[12px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+            href="/skills"
+          >
+            Browse all skills →
+          </Link>
         </div>
       </section>
 
