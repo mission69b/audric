@@ -138,14 +138,6 @@ export default async function HubPage() {
             </p>
           </a>
         </div>
-        <div className="mt-4">
-          <Link
-            className="font-mono text-[12px] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-            href="/skills"
-          >
-            Browse all skills →
-          </Link>
-        </div>
       </section>
 
       {/* Directory. */}

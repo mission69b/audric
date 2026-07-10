@@ -43,9 +43,9 @@ export default async function ProjectSkillsPage({
     <>
       <Link
         className="text-muted-foreground text-sm transition-colors hover:text-foreground"
-        href="/skills"
+        href="/"
       >
-        ← Skills
+        ← Hub
       </Link>
 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
