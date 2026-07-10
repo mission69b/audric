@@ -16,6 +16,10 @@ export interface SkillEntry {
 }
 
 export interface ProjectEntry {
+  /** Brand accent for the icon tile ring / fallback monogram. */
+  accent: string;
+  /** Brand mark under public/brand (square, renders in a 40px tile). */
+  icon: string;
   id: string;
   /** When the skills were last read + smoke-tested against what the URL
    *  serves (ISO date). Surfaced Portal-style on /skills/[project]. */
@@ -34,11 +38,13 @@ export function getProject(id: string): ProjectEntry | undefined {
 
 export const PROJECTS_FEED: ProjectEntry[] = [
   {
+    accent: "#0072F5",
+    icon: "/brand/pfp-t2-white-field.svg",
     id: "t2000",
     lastVerified: "2026-07-10",
     name: "t2000",
     tagline:
-      "The agent wallet + identity rail — gasless USDC, x402 paid APIs, on-chain Agent ID.",
+      "The agent wallet + identity stack — gasless USDC, x402 paid APIs, on-chain Agent ID.",
     url: "https://t2000.ai",
     skills: [
       {
@@ -108,6 +114,8 @@ export const PROJECTS_FEED: ProjectEntry[] = [
     ],
   },
   {
+    accent: "#4de5c8",
+    icon: "/brand/cetus.png",
     id: "cetus",
     lastVerified: "2026-07-10",
     name: "Cetus",

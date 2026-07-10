@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CopyButton } from "@/components/copy-button";
+import { ProjectIcon } from "@/components/project-icon";
 import { formatDate } from "@/lib/format";
 import { getProject, PROJECTS_FEED, skillPrompt } from "@/lib/skills-feed";
 
@@ -49,24 +50,32 @@ export default async function ProjectSkillsPage({
       </Link>
 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1
-            className="ag-title"
-            style={{ fontSize: "clamp(30px, 4vw, 46px)" }}
-          >
-            {project.name}
-          </h1>
-          <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
-            <a
-              className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-              href={project.url}
-              rel="noreferrer"
-              target="_blank"
+        <div className="flex items-center gap-4">
+          <ProjectIcon
+            accent={project.accent}
+            icon={project.icon}
+            name={project.name}
+            size={64}
+          />
+          <div>
+            <h1
+              className="ag-title"
+              style={{ fontSize: "clamp(30px, 4vw, 46px)" }}
             >
-              {project.url.replace("https://", "")}
-            </a>{" "}
-            · {project.skills.length} skill
-            {project.skills.length === 1 ? "" : "s"} indexed
+              {project.name}
+            </h1>
+            <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
+              <a
+                className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+                href={project.url}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {project.url.replace("https://", "")}
+              </a>{" "}
+              · {project.skills.length} skill
+              {project.skills.length === 1 ? "" : "s"} indexed
+            </div>
           </div>
         </div>
         <p className="m-0 max-w-[340px] text-fg-subtle text-xs leading-relaxed">

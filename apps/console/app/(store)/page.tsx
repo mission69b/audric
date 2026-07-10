@@ -3,6 +3,7 @@ import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { CopyButton } from "@/components/copy-button";
+import { ProjectIcon } from "@/components/project-icon";
 import { fetchRetry } from "@/lib/fetch-retry";
 import { PROJECTS_FEED } from "@/lib/skills-feed";
 
@@ -101,22 +102,44 @@ export default async function HubPage() {
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {PROJECTS_FEED.map((project) => (
             <Link
-              className="ag-card flex flex-col gap-2 p-5 no-underline transition-colors hover:border-foreground/30"
+              className="ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
               href={`/skills/${project.id}`}
               key={project.id}
             >
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-semibold text-[17px] text-foreground tracking-[-0.02em]">
-                  {project.name}
-                </span>
-                <span className="font-mono text-[11px] text-fg-subtle">
-                  {project.skills.length} skill
-                  {project.skills.length === 1 ? "" : "s"} →
+              <div className="flex items-center gap-3.5">
+                <ProjectIcon
+                  accent={project.accent}
+                  icon={project.icon}
+                  name={project.name}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-[17px] text-foreground tracking-[-0.02em]">
+                    {project.name}
+                  </div>
+                  <div className="mt-0.5 font-mono text-[11px] text-fg-subtle">
+                    {project.skills.length} skill
+                    {project.skills.length === 1 ? "" : "s"}
+                  </div>
+                </div>
+                <span className="text-fg-subtle transition-transform group-hover:translate-x-0.5">
+                  →
                 </span>
               </div>
               <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
                 {project.tagline}
               </p>
+              <div className="mt-auto flex flex-wrap gap-1.5">
+                {[...new Set(project.skills.flatMap((s) => s.tags))]
+                  .slice(0, 4)
+                  .map((tag) => (
+                    <span
+                      className="rounded-full border border-border/50 px-2 py-0.5 font-mono text-[10px] text-fg-subtle"
+                      key={tag}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+              </div>
             </Link>
           ))}
           {/* The enabler loop — third parties PR their dapp's skill. */}
