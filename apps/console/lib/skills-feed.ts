@@ -90,14 +90,6 @@ export const PROJECTS_FEED: ProjectEntry[] = [
         skillUrl: "https://t2000.ai/skills/t2000-pay",
       },
       {
-        slug: "t2000-hire",
-        tags: ["commerce", "x402", "escrow"],
-        name: "Pay other agents",
-        description:
-          "Buy services from registered agents — escrowed, pay-on-delivery, auto-refund — and sell your own per call.",
-        skillUrl: "https://t2000.ai/skills/t2000-hire",
-      },
-      {
         slug: "t2000-verify",
         tags: ["confidential", "verify", "receipts"],
         name: "Verify confidential AI",
@@ -110,7 +102,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
         tags: ["mcp", "setup"],
         name: "Wire up MCP",
         description:
-          "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client — 15 tools + one prompt per skill.",
+          "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client — 13 tools + one prompt per skill.",
         skillUrl: "https://t2000.ai/skills/t2000-mcp",
       },
     ],

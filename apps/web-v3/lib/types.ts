@@ -1,7 +1,6 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
 import type { ArtifactKind } from "@/components/chat/artifact";
-import type { agentPay } from "./ai/tools/agent-pay";
 import type { balanceCheck } from "./ai/tools/balance-check";
 import type { createDocument } from "./ai/tools/create-document";
 import type { cryptoHistory } from "./ai/tools/crypto-history";
@@ -58,7 +57,6 @@ type transactionHistoryTool = InferUITool<
 >;
 type resolveSuinsTool = InferUITool<typeof resolveSuins>;
 type sendTransferTool = InferUITool<typeof sendTransfer>;
-type agentPayTool = InferUITool<typeof agentPay>;
 type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
 type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
 type editImageTool = InferUITool<ReturnType<typeof editImage>>;
@@ -87,7 +85,6 @@ export type ChatTools = {
   transaction_history: transactionHistoryTool;
   resolve_suins: resolveSuinsTool;
   send_transfer: sendTransferTool;
-  agent_pay: agentPayTool;
   save_memory: saveMemoryTool;
 };
 

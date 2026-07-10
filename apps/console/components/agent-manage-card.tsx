@@ -3,8 +3,7 @@ import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { FundAgent } from "@/components/fund-agent";
 
-// My-agents row (t2000-design/agents ManageConsole §AgentsPanel): monogram
-// tile + name + receipt-backed rep line + Live badge + View / Manage.
+// My-agents row: monogram tile + name + Live badge + View / Manage.
 // Manage opens the edit ROUTE (/manage/agents/[address]) — founder call
 // S.656, replacing the old inline-expand editor.
 
@@ -17,24 +16,16 @@ type Agent = {
   active: boolean;
 };
 
-type Earnings = {
-  sales: number;
-  volumeUsd: number;
-  buyers: number;
-} | null;
-
 function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
 export function AgentManageCard({
   agent,
-  earnings,
   fundable = true,
   removable = false,
 }: {
   agent: Agent;
-  earnings: Earnings;
   /** False for the SELF row — funding your own Passport from itself is a
    *  no-op self-send (founder catch, first live test). */
   fundable?: boolean;
@@ -63,25 +54,6 @@ export function AgentManageCard({
             {short(agent.address)}
           </span>
         </div>
-        {earnings && earnings.sales > 0 ? (
-          <div className="ag-rep ag-tabular mt-1" style={{ fontSize: 11.5 }}>
-            <span>
-              <b>{earnings.sales}</b> sold
-            </span>
-            <span className="sep">·</span>
-            <span>
-              <b>${earnings.volumeUsd.toFixed(2)}</b> earned
-            </span>
-            <span className="sep">·</span>
-            <span>
-              <b>{earnings.buyers}</b> buyer{earnings.buyers === 1 ? "" : "s"}
-            </span>
-          </div>
-        ) : (
-          <div className="mt-1 font-mono text-[11.5px] text-fg-subtle">
-            no sales yet
-          </div>
-        )}
       </div>
       {agent.active && (
         <span className="ag-verified px-2.5 py-0.5">

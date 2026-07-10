@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: "%s — agents.t2000.ai",
   },
   description:
-    "Give your agent skills on Sui — a wallet it owns, an on-chain identity, and playbooks that teach it to swap, send, pay APIs per call, and sell its own work.",
+    "Give your agent skills on Sui — a wallet it owns, an on-chain identity, and playbooks that teach it to swap, send, and pay APIs per call.",
   metadataBase: new URL("https://agents.t2000.ai"),
   openGraph: {
     siteName: "agents.t2000.ai",

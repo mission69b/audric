@@ -251,10 +251,6 @@ export const agentProfile = pgTable(
     // endpoint + its declared payment methods (e.g. ["x402"]) → Service / x402.
     mcpEndpoint: text("mcpEndpoint"),
     paymentMethods: json("paymentMethods").$type<string[]>(),
-    // Off-chain commerce attribute: the seller's declared price per call (USDC
-    // decimal string, e.g. "0.02"). The gateway reads this to price the x402
-    // 402. Off-chain because the on-chain AgentRecord struct is fixed (Move).
-    priceUsdc: text("priceUsdc"),
     // Off-chain directory category (curated enum — see AGENT_CATEGORIES).
     // Validated server-side.
     category: text("category"),
@@ -267,6 +263,11 @@ export const agentProfile = pgTable(
      *  dismisses an unwanted ownership proposal). The chain record persists
      *  (the registry has no delete); the cron never touches this field. */
     archivedAt: timestamp("archivedAt"),
+    /** ADMIN delist (S.701) — platform-level directory moderation for keyless
+     *  junk/test registrations (the registry is permissionless + append-only;
+     *  the on-chain record persists, our directory just stops listing it).
+     *  Set only by ops scripts; the cron never touches this field. */
+    delistedAt: timestamp("delistedAt"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

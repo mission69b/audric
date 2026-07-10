@@ -127,6 +127,20 @@
       "when": 1783649654736,
       "tag": "0017_drop_agent_services",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1783661556397,
+      "tag": "0018_agent_delisted",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1783665625549,
+      "tag": "0019_drop_price_usdc",
+      "breakpoints": true
     }
   ]
 }

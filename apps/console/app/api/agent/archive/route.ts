@@ -4,7 +4,7 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { type NextRequest, NextResponse } from "next/server";
 
 // POST /api/agent/archive — owner-side "remove from my console" (S.690).
-// Off-chain display state only: hides the agent from My agents / earnings
+// Off-chain display state only: hides the agent from My agents
 // (or dismisses an unwanted ownership proposal). The on-chain record persists
 // — the registry has no delete — and restore is one tap. Allowed for the
 // agent's confirmed owner OR its proposed owner (dismissing a proposal);

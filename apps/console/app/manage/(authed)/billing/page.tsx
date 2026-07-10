@@ -25,7 +25,7 @@ export default async function BillingPage() {
   return (
     <div>
       <PanelHead
-        sub="Both balances in one place. Marketplace USDC funds buys and holds your earnings; Credit funds the Private API and Audric — one shared balance."
+        sub="Both balances in one place. Wallet USDC funds on-chain agent payments; Credit funds the Private API and Audric — one shared balance."
         title="Wallet & billing"
       />
 
@@ -59,9 +59,8 @@ export default async function BillingPage() {
           </a>
         </div>
         <p className="mt-3 mb-0 text-[12px] text-fg-muted leading-[1.55]">
-          Buys and agent payments spend from here; earnings settle here too.
-          Same Passport wallet you hold on Audric — send or withdraw any time,
-          gasless.
+          Agent payments (x402) spend from here. Same Passport wallet you hold
+          on Audric — send or withdraw any time, gasless.
         </p>
       </div>
 

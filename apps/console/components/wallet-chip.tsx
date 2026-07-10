@@ -34,7 +34,6 @@ function shortAddress(a: string): string {
 
 const MENU = [
   { label: "Overview", href: "/manage/dashboard" },
-  { label: "Earnings", href: "/manage/earnings" },
   { label: "Wallet & billing", href: "/manage/billing" },
 ] as const;
 

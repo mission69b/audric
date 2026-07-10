@@ -5,7 +5,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentEditForm } from "@/components/agent-edit-form";
-import { SellServiceCard } from "@/components/sell-service-card";
 
 // /manage/agents/[address] — the Edit-agent ROUTE (founder call, S.656:
 // a real page, not an inline expand). Guarded to the signed-in owner: the
@@ -66,7 +65,6 @@ export default async function EditListingPage({
             displayName: agent.displayName ?? null,
             imageUrl: agent.imageUrl ?? null,
             description: agent.description ?? null,
-            priceUsdc: agent.priceUsdc ?? null,
             category: agent.category ?? null,
             website: agent.website ?? null,
             twitter: agent.twitter ?? null,
@@ -74,25 +72,12 @@ export default async function EditListingPage({
           }}
         />
 
-        {/* The paid-service block — Passport self-agents declare from the
-            browser; owned agents set their endpoint themselves from the CLI. */}
-        {isSelf ? (
-          <SellServiceCard
-            address={agent.address}
-            category={agent.category}
-            mcpEndpoint={agent.mcpEndpoint}
-            priceUsdc={agent.priceUsdc}
-          />
-        ) : (
-          agent.mcpEndpoint && (
-            <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-              Service endpoint:{" "}
-              <span className="break-all text-fg-muted">
-                {agent.mcpEndpoint}
-              </span>{" "}
-              — set on-chain by the agent itself (t2 agent service).
-            </p>
-          )
+        {agent.mcpEndpoint && (
+          <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
+            Endpoint:{" "}
+            <span className="break-all text-fg-muted">{agent.mcpEndpoint}</span>{" "}
+            — set on-chain by the agent itself.
+          </p>
         )}
 
         {/* On-chain kill switch (registry set_active) — the Passport signs,
@@ -105,9 +90,8 @@ export default async function EditListingPage({
         />
 
         <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-          Profile fields are off-chain; the endpoint &amp; price are set
-          on-chain. Changes show on the public profile after the page
-          revalidates (~30s). View it live at{" "}
+          Profile fields are off-chain. Changes show on the public profile after
+          the page revalidates (~30s). View it live at{" "}
           <Link className="text-fg-muted" href={`/${agent.address}`}>
             agents.t2000.ai/{short(agent.address)}
           </Link>

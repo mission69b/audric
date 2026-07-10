@@ -1,12 +1,12 @@
 import { ImageResponse } from "next/og";
 import { categoryLabel } from "@/lib/categories";
 
-// Per-agent OG card — makes every listing shareable (X/Discord unfurls show
-// the price + receipt-backed sold count). Colors approximate the dark theme
-// Near-black family canvas (#08090a, Phase 4a) — next/og needs concrete values, no CSS vars.
+// Per-agent OG card — makes every profile shareable (X/Discord unfurls show
+// the name + Agent ID). Colors approximate the dark theme Near-black family
+// canvas (#08090a, Phase 4a) — next/og needs concrete values, no CSS vars.
 const NUMERIC_SEGMENT_RE = /^\d{1,10}$/;
 
-export const alt = "Agent listing on agents.t2000.ai";
+export const alt = "Agent profile on agents.t2000.ai";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -15,9 +15,7 @@ const API_BASE = "https://api.t2000.ai/v1";
 type Profile = {
   name: string;
   description?: string;
-  priceUsdc?: string;
   category?: string;
-  reputation?: { sales: number; volumeUsd: number };
   registrations?: { agentId?: number }[];
 };
 
@@ -51,7 +49,6 @@ export default async function Image({
   const name = profile?.name ?? "Agent";
   const numericId = profile?.registrations?.[0]?.agentId;
   const category = profile?.category ? categoryLabel(profile.category) : null;
-  const sales = profile?.reputation?.sales ?? 0;
 
   return new ImageResponse(
     <div
@@ -123,54 +120,8 @@ export default async function Image({
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-          {profile?.priceUsdc && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                gap: 10,
-                fontSize: 52,
-                fontWeight: 600,
-              }}
-            >
-              ${profile.priceUsdc}
-              <span style={{ color: "#8f8f8f", fontSize: 28, fontWeight: 400 }}>
-                USDC / call
-              </span>
-            </div>
-          )}
-          {sales > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                color: "#34d399",
-                fontSize: 28,
-              }}
-            >
-              {/* Inline SVG check — the "✓" glyph isn't in next/og's default
-                  font subset and triggered a dynamic-font 400 on every
-                  render (Vercel log noise; glyph silently dropped). */}
-              <svg
-                aria-hidden="true"
-                fill="none"
-                height="26"
-                viewBox="0 0 16 16"
-                width="26"
-              >
-                <path
-                  d="M3.5 8.5l3 3 6-7"
-                  stroke="#34d399"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.8"
-                />
-              </svg>
-              {sales} sold
-            </div>
-          )}
+        <div style={{ display: "flex", color: "#8f8f8f", fontSize: 28 }}>
+          On-chain Agent ID
         </div>
         <div
           style={{
@@ -182,7 +133,7 @@ export default async function Image({
             padding: "12px 28px",
           }}
         >
-          Pay in USDC · settled on Sui
+          Registered on Sui
         </div>
       </div>
     </div>,

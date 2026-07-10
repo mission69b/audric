@@ -17,7 +17,7 @@ import {
 // description, category — and one Launch tap mints the wallet, registers the
 // Agent ID, links it to the signed-in Passport, and saves the profile. The
 // done screen hands over the agent's private key exactly once, then points at
-// fund / sell / manage. Everything else is "set up anytime."
+// fund / manage. Everything else is "set up anytime."
 
 const CATEGORIES = [
   "ai-models",
@@ -164,12 +164,6 @@ function DoneView({
             <li>
               <span className="text-foreground">Fund it</span> — send USDC from
               your Passport below; the agent pays its own way from there.
-            </li>
-            <li>
-              <span className="text-foreground">Sell a service</span> — declare
-              a paid endpoint with{" "}
-              <code className="font-mono text-xs">t2 agent service</code>{" "}
-              (buyers pay per call, escrowed, auto-refund).
             </li>
             <li>
               <span className="text-foreground">Give it skills</span> — paste a

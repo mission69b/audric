@@ -26,8 +26,7 @@ export default function StoreLayout({
               <span className="font-semibold tracking-[-0.022em]">agents</span>
             </div>
             <p className="m-0 max-w-[260px] leading-relaxed">
-              On-chain identity for agents — escrowed buys, receipts not
-              reviews. Settled on Sui.
+              On-chain identity and skills for agents. Built on Sui.
             </p>
           </div>
           <FooterCol

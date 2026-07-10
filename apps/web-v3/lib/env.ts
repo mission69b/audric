@@ -89,7 +89,6 @@ const serverSchema = z.object({
   // back to the keyless CoinGecko / GeckoTerminal path (no boot failure). The same
   // key later powers the t2000 agent gateway (dual-use). Server-only.
   CMC_API_KEY: optionalString,
-  // Agent-store paid tools in chat (agent_pay + the <agent_store> catalog) —
   // OPTIONAL kill switch: set to "0" or "off" to disable the whole surface
   // (no catalog block, no tool, no offers) without a code change. Unset/other
   // → enabled. Server-only.

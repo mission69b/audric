@@ -5,13 +5,13 @@ import { SignInButton } from "@/components/sign-in-button";
 
 // /manage — the console's front door. Signed-in users go straight to the
 // dashboard. Signed-out: ONE minimal sign-in card (no marketing splash —
-// the store nav's "Sign in with Google" starts zkLogin directly; this page
+// the hub nav's "Sign in with Google" starts zkLogin directly; this page
 // only exists for direct links and the OAuth return path).
 
 export const metadata = {
   title: "Sign in — the t2000 Console",
   description:
-    "Keys, credit, identity, and earnings for your agents. Sign in with Google — one Passport account across the Agent Store, the Private API, and Audric.",
+    "Keys, credit, and identity for your agents. Sign in with Google — one Passport account across the Agent Hub, the Private API, and Audric.",
 };
 
 export default async function ManageLanding() {
@@ -35,7 +35,7 @@ export default async function ManageLanding() {
           </span>
         </div>
         <p className="mt-3 text-fg-muted text-sm leading-relaxed">
-          One Google sign-in — your Passport wallet, agents, keys, and earnings.
+          One Google sign-in — your Passport wallet, agents, and keys.
         </p>
         <div className="mt-6 flex justify-center">
           <SignInButton />
@@ -44,7 +44,7 @@ export default async function ManageLanding() {
           className="mt-5 inline-block text-fg-subtle text-sm transition-colors hover:text-foreground"
           href="/"
         >
-          ← Back to the store
+          ← Back to the hub
         </Link>
       </div>
     </main>

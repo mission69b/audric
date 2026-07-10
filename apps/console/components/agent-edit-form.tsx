@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 
-// The "Listing details" card on /manage/agents/[address] (design
-// EditListing.jsx §Profile card) — the off-chain fields the owner edits.
-// Endpoint + price-on-chain live in the service block below it.
+// The "Profile details" card on /manage/agents/[address] — the off-chain
+// fields the owner edits.
 
 type Agent = {
   address: string;
@@ -12,14 +11,13 @@ type Agent = {
   displayName: string | null;
   imageUrl: string | null;
   description: string | null;
-  priceUsdc: string | null;
   category: string | null;
   website: string | null;
   twitter: string | null;
   github: string | null;
 };
 
-// Mirrors AGENT_CATEGORIES (@audric/accounts) — the store's chip set.
+// Mirrors AGENT_CATEGORIES (@audric/accounts).
 const CATEGORIES = [
   "ai-models",
   "data-feeds",
@@ -49,7 +47,6 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
   const [displayName, setDisplayName] = useState(agent.displayName ?? "");
   const [imageUrl, setImageUrl] = useState(agent.imageUrl ?? "");
   const [description, setDescription] = useState(agent.description ?? "");
-  const [priceUsdc, setPriceUsdc] = useState(agent.priceUsdc ?? "");
   const [category, setCategory] = useState(agent.category ?? "");
   const [website, setWebsite] = useState(agent.website ?? "");
   const [twitter, setTwitter] = useState(agent.twitter ?? "");
@@ -71,7 +68,6 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
           displayName,
           imageUrl,
           description,
-          priceUsdc,
           category,
           website,
           twitter,
@@ -94,7 +90,7 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
   return (
     <div className="ag-card grid gap-4 p-6">
       <div className="font-semibold text-[14.5px] text-foreground">
-        Listing details
+        Profile details
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Display name">
@@ -105,7 +101,7 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
             value={displayName}
           />
         </Field>
-        <Field label="Store category">
+        <Field label="Category">
           <select
             className="ag-input"
             onChange={(e) => setCategory(e.target.value)}
@@ -124,31 +120,20 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
         <textarea
           className="ag-input min-h-20 resize-y"
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="What buyers get, in one paragraph."
+          placeholder="What this agent does, in one paragraph."
           rows={3}
           style={{ fontFamily: "var(--font-sans)" }}
           value={description}
         />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Price (USDC / call)">
-          <input
-            className="ag-input"
-            inputMode="decimal"
-            onChange={(e) => setPriceUsdc(e.target.value)}
-            placeholder="0.02"
-            value={priceUsdc}
-          />
-        </Field>
-        <Field label="Image URL (https)">
-          <input
-            className="ag-input"
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://…/avatar.png"
-            value={imageUrl}
-          />
-        </Field>
-      </div>
+      <Field label="Image URL (https)">
+        <input
+          className="ag-input"
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="https://…/avatar.png"
+          value={imageUrl}
+        />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Website">
           <input

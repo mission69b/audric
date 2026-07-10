@@ -1,25 +1,17 @@
-import { getAgentProfile, getCreditBalanceMicros } from "@audric/accounts";
+import {
+  getAgentProfile,
+  getCreditBalanceMicros,
+  listAgentsForOwner,
+} from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
-import { fetchMyEarnings } from "@/lib/earnings";
 import { fetchWalletUsdc } from "@/lib/wallet-usdc";
 
-// Overview (t2000-design/agents ManageConsole §OverviewPanel): four stat
-// cards → their panels, the two-balance money rule stated once, then the
-// recent-settlements feed. Every number is live (RPC / accounts / receipts).
-
-const SUISCAN = "https://suiscan.xyz/mainnet";
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
+// Overview — three live stat cards (RPC / accounts) + the two-balance money
+// rule stated once. Commerce-era earnings/sales feeds removed (S.701).
 
 function StatCard({
   label,
@@ -60,18 +52,19 @@ export default async function OverviewPage() {
   if (!session) {
     redirect("/manage");
   }
-  const [balanceMicros, selfAgent, walletUsdc, earnings] = await Promise.all([
+  const [balanceMicros, selfAgent, walletUsdc, ownership] = await Promise.all([
     getCreditBalanceMicros(session.user.id),
     getAgentProfile(session.user.id),
     fetchWalletUsdc(session.user.id),
-    fetchMyEarnings(session.user.id),
+    listAgentsForOwner(session.user.id),
   ]);
   const credit = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
+  const agentCount = ownership.owned.length + (selfAgent ? 1 : 0);
 
   return (
     <>
       <PanelHead
-        sub="Your money, your agents, and what needs attention."
+        sub="Your money and your agents, at a glance."
         title="Overview"
       />
 
@@ -83,25 +76,13 @@ export default async function OverviewPage() {
         </div>
       )}
 
-      <div className="mb-3.5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+      <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <StatCard
           color="var(--ag-verify)"
           href="/manage/billing"
           label="USDC balance"
-          unit="marketplace"
+          unit="wallet"
           value={walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`}
-        />
-        <StatCard
-          href="/manage/earnings"
-          label="Earned"
-          unit={`${earnings.totalBuyers} buyer${earnings.totalBuyers === 1 ? "" : "s"}`}
-          value={`$${earnings.totalEarned.toFixed(2)}`}
-        />
-        <StatCard
-          href="/manage/agents"
-          label="Active agents"
-          unit="live"
-          value={String(earnings.activeListings)}
         />
         <StatCard
           color="var(--ag-accent)"
@@ -110,17 +91,23 @@ export default async function OverviewPage() {
           unit="Private API + Audric"
           value={`$${credit}`}
         />
+        <StatCard
+          href="/manage/agents"
+          label="My agents"
+          unit="registered"
+          value={String(agentCount)}
+        />
       </div>
 
-      {/* The money rule, stated once (design). */}
-      <div className="ag-card mb-3.5 flex flex-wrap items-center gap-x-[22px] gap-y-2 px-[18px] py-[13px]">
+      {/* The money rule, stated once. */}
+      <div className="ag-card flex flex-wrap items-center gap-x-[22px] gap-y-2 px-[18px] py-[13px]">
         <span className="inline-flex items-center gap-2 text-[12.5px] text-fg-muted">
           <span
             className="size-[7px] rounded-full"
             style={{ background: "var(--ag-verify)" }}
           />
-          <b className="text-foreground">USDC</b> → buy services, agent
-          payments, and your earnings.
+          <b className="text-foreground">USDC</b> → on-chain agent payments
+          (x402, pay-per-call APIs).
         </span>
         <span className="inline-flex items-center gap-2 text-[12.5px] text-fg-muted">
           <span
@@ -130,92 +117,6 @@ export default async function OverviewPage() {
           <b className="text-foreground">Credit</b> → model calls on the Private
           API and in Audric chat — one shared balance.
         </span>
-      </div>
-
-      {/* Recent sales — settlement receipts only (wallet transfers like
-          Fund sends live on-chain — the Fund ✓ tx link / Suiscan). */}
-      <div className="ag-card overflow-hidden p-0">
-        <div
-          className="flex items-center justify-between border-b px-5 py-3.5"
-          style={{ borderColor: "var(--ag-border)" }}
-        >
-          <span className="font-semibold text-[14px] text-foreground">
-            Recent sales
-          </span>
-          <Link
-            className="font-mono text-[12px] text-fg-subtle no-underline transition-colors hover:text-foreground"
-            href="/manage/earnings"
-          >
-            View all ›
-          </Link>
-        </div>
-        {earnings.recent.length === 0 ? (
-          <p className="m-0 px-5 py-4 text-fg-muted text-sm">
-            No settlements yet — list a service from{" "}
-            <Link className="text-foreground" href="/manage/agents">
-              My agents
-            </Link>{" "}
-            to start earning.
-          </p>
-        ) : (
-          earnings.recent.slice(0, 6).map((s, i) => {
-            const inner = (
-              <>
-                <span
-                  className="shrink-0"
-                  style={{
-                    color: s.delivered
-                      ? "var(--ag-verify)"
-                      : "var(--fg-subtle)",
-                  }}
-                >
-                  {s.delivered ? "✓" : "↩"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] text-foreground">
-                    {s.agent}{" "}
-                    <span className="text-fg-subtle">
-                      {s.delivered ? "delivered to" : "auto-refunded"}{" "}
-                      <span className="font-mono text-xs">{s.buyer}</span>
-                    </span>
-                  </div>
-                </div>
-                <span
-                  className="font-mono text-[13px] tabular-nums"
-                  style={{
-                    color: s.delivered ? "var(--ag-verify)" : "var(--fg)",
-                  }}
-                >
-                  {s.delivered ? "+" : ""}${s.amountUsd.toFixed(2)}
-                </span>
-                <span className="w-16 shrink-0 text-right font-mono text-[11.5px] text-fg-subtle">
-                  {fmtDate(s.at)}
-                </span>
-              </>
-            );
-            const key = `${s.at}-${s.buyer}-${s.agent}`;
-            const rowCls = "flex items-center gap-3.5 px-5 py-[13px]";
-            const rowStyle = i
-              ? { borderTop: "1px solid var(--ag-border)" }
-              : undefined;
-            return s.tx ? (
-              <a
-                className={`${rowCls} no-underline transition-colors hover:bg-[color:var(--ag-overlay)]`}
-                href={`${SUISCAN}/tx/${s.tx}`}
-                key={key}
-                rel="noreferrer"
-                style={rowStyle}
-                target="_blank"
-              >
-                {inner}
-              </a>
-            ) : (
-              <div className={rowCls} key={key} style={rowStyle}>
-                {inner}
-              </div>
-            );
-          })
-        )}
       </div>
     </>
   );

@@ -35,7 +35,7 @@ const COPY: Record<
     title: (n) => `Unlink ${n}?`,
     body: "Your Passport publicly renounces ownership on-chain (one sponsored, gasless signature). The agent returns to autonomous and leaves your console. Re-linking requires the AGENT to propose again — if its key is lost, unlinking is permanent.",
     liveWarning:
-      "This agent is LIVE — it keeps selling autonomously after you unlink (earnings stay in its own wallet, as always).",
+      "This agent is LIVE — it keeps operating autonomously after you unlink (its wallet stays its own, as always).",
     confirm: "Unlink — I understand",
   },
 };

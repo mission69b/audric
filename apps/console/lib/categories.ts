@@ -1,4 +1,4 @@
-// Storefront category display names — shared by the client grid, the server
+// Directory category display names — shared by the client grid, the server
 // listing page, and the OG image (must NOT be a "use client" module: server
 // components call categoryLabel() during render).
 const CATEGORY_LABELS: Record<string, string> = {

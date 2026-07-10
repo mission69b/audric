@@ -24,22 +24,6 @@ import {
   user,
 } from "./schema";
 
-/** The settle floor (mirrors the gateway's splitAmount): a listing price
- *  whose net after the 2.5% facilitator fee clears the $0.01 gasless-transfer
- *  minimum. Sub-floor listings are unbuyable — every settle 400s — so read
- *  paths treat them as not purchasable (S.677: how junk like a $0.001
- *  listing self-delists). */
-export function meetsSettleFloor(
-  priceUsdc: string | null | undefined
-): boolean {
-  const price = Number(priceUsdc);
-  if (!Number.isFinite(price) || price <= 0) {
-    return false;
-  }
-  const grossMicros = Math.floor(price * 1_000_000);
-  return grossMicros - Math.floor((grossMicros * 250) / 10_000) >= 10_000;
-}
-
 // ── Identity ─────────────────────────────────────────────────────────────────
 
 export async function getUserById(id: string): Promise<User | undefined> {
@@ -104,12 +88,8 @@ export async function upsertAgentProfile(opts: {
   metadataUri?: string | null;
   mcpEndpoint?: string | null;
   paymentMethods?: string[] | null;
-  /** Off-chain commerce price (USDC decimal string). NOT on-chain, so the cron
-   *  has no authority over it — always preserve-on-undefined (never cleared by a
-   *  reconcile), set only when the service write-through provides it. */
-  priceUsdc?: string | null;
-  /** Off-chain storefront category (curated enum). Same off-chain rules as
-   *  priceUsdc — preserve-on-undefined, cron never clears it. */
+  /** Off-chain directory category (curated enum) — preserve-on-undefined,
+   *  the cron never clears it. */
   category?: string | null;
   /** The register tx digest (CREATED TX). Only the register write-through has
    *  it — always preserve-on-undefined (the cron + third-party path never
@@ -146,7 +126,6 @@ export async function upsertAgentProfile(opts: {
       metadataUri: opts.metadataUri ?? null,
       mcpEndpoint: opts.mcpEndpoint ?? null,
       paymentMethods: opts.paymentMethods ?? null,
-      priceUsdc: opts.priceUsdc ?? null,
       category: opts.category ?? null,
       registerDigest: opts.registerDigest ?? null,
       updatedAt,
@@ -162,7 +141,6 @@ export async function upsertAgentProfile(opts: {
         mcpEndpoint: pick(opts.mcpEndpoint),
         paymentMethods: pick(opts.paymentMethods),
         // Off-chain: always preserve-on-undefined (cron never clears them).
-        priceUsdc: opts.priceUsdc ?? undefined,
         category: opts.category ?? undefined,
         // CREATED TX never changes; preserve unless this writer supplies it.
         registerDigest: opts.registerDigest ?? undefined,
@@ -193,10 +171,7 @@ export async function setAgentProfileFields(
     displayName?: string | null;
     imageUrl?: string | null;
     description?: string | null;
-    // Off-chain commerce price — owner-editable from the console alongside the
-    // display fields (the on-chain endpoint stays agent-keypair-only).
-    priceUsdc?: string | null;
-    // Off-chain storefront category (curated enum; caller validates).
+    // Off-chain directory category (curated enum; caller validates).
     category?: string | null;
     // Off-chain social links (full https URLs).
     website?: string | null;
@@ -215,7 +190,6 @@ export async function setAgentProfileFields(
       displayName: fields.displayName ?? null,
       imageUrl: fields.imageUrl ?? null,
       description: fields.description ?? null,
-      priceUsdc: fields.priceUsdc ?? null,
       category: fields.category ?? null,
       website: fields.website ?? null,
       twitter: fields.twitter ?? null,
@@ -228,53 +202,10 @@ export async function setAgentProfileFields(
         displayName: fields.displayName,
         imageUrl: fields.imageUrl,
         description: fields.description,
-        priceUsdc: fields.priceUsdc,
         category: fields.category,
         website: fields.website,
         twitter: fields.twitter,
         github: fields.github,
-        updatedAt: now,
-      },
-    });
-}
-
-/** Write the service fields right after an on-chain `update` (instant, no cron
- *  lag). `mcpEndpoint` + `paymentMethods` are the new on-chain truth → written
- *  EXACTLY (null/[] clears them — fixes "can't clear an endpoint"). `priceUsdc`
- *  + `category` are off-chain → written only when provided (undefined =
- *  preserve). */
-export async function setAgentServiceFields(
-  address: string,
-  fields: {
-    mcpEndpoint?: string | null;
-    paymentMethods?: string[] | null;
-    priceUsdc?: string;
-    category?: string;
-  }
-): Promise<void> {
-  const now = new Date();
-  await db
-    .insert(agentProfile)
-    .values({
-      address,
-      name: defaultAgentName(address),
-      mcpEndpoint: fields.mcpEndpoint ?? null,
-      paymentMethods: fields.paymentMethods ?? null,
-      priceUsdc: fields.priceUsdc ?? null,
-      category: fields.category ?? null,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: agentProfile.address,
-      set: {
-        // On-chain truth — always written (null/[] clears).
-        mcpEndpoint: fields.mcpEndpoint ?? null,
-        paymentMethods: fields.paymentMethods ?? null,
-        // Off-chain — preserve unless explicitly provided.
-        ...(fields.priceUsdc === undefined
-          ? {}
-          : { priceUsdc: fields.priceUsdc }),
-        ...(fields.category === undefined ? {} : { category: fields.category }),
         updatedAt: now,
       },
     });
@@ -390,7 +321,12 @@ export async function listAgentProfiles(opts?: {
   const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
   const offset = Math.max(opts?.offset ?? 0, 0);
   const activeOnly = opts?.activeOnly !== false;
-  const where = activeOnly ? eq(agentProfile.active, true) : undefined;
+  // Admin-delisted rows (S.701) never list — the registry is permissionless
+  // and append-only, so directory moderation is the only lever for keyless
+  // junk registrations. Direct address URLs still resolve them.
+  const where = activeOnly
+    ? and(eq(agentProfile.active, true), isNull(agentProfile.delistedAt))
+    : isNull(agentProfile.delistedAt);
   const [rows, [totalRow]] = await Promise.all([
     db
       .select()

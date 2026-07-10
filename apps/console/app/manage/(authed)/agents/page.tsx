@@ -15,24 +15,6 @@ import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
 import { Badge } from "@/components/ui/badge";
 
-const GATEWAY = "https://mpp.t2000.ai";
-
-type Earnings = { sales: number; volumeUsd: number; buyers: number } | null;
-
-async function fetchEarnings(address: string): Promise<Earnings> {
-  try {
-    const res = await fetch(`${GATEWAY}/commerce/stats/${address}`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) {
-      return null;
-    }
-    return (await res.json()) as Earnings;
-  } catch {
-    return null;
-  }
-}
-
 function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
@@ -96,10 +78,6 @@ export default async function MyAgentsPage() {
     listAgentsForOwner(session.user.id),
     getAgentProfile(session.user.id),
   ]);
-  const [selfEarnings, ...earnings] = await Promise.all([
-    selfAgent ? fetchEarnings(selfAgent.address) : Promise.resolve(null),
-    ...owned.map((a) => fetchEarnings(a.address)),
-  ]);
 
   return (
     <>
@@ -112,17 +90,13 @@ export default async function MyAgentsPage() {
             Create agent
           </a>
         }
-        sub="Agents you operate. Each earns to your USDC balance — Manage opens the agent editor."
+        sub="Agents you operate — Manage opens the agent editor."
         title="My agents"
       />
 
-      <GroupLabel>You — your Passport, selling as itself</GroupLabel>
+      <GroupLabel>You — your Passport, registered as an agent</GroupLabel>
       {selfAgent ? (
-        <AgentManageCard
-          agent={selfAgent}
-          earnings={selfEarnings}
-          fundable={false}
-        />
+        <AgentManageCard agent={selfAgent} fundable={false} />
       ) : (
         <RegisterSelfCard />
       )}
@@ -158,13 +132,8 @@ export default async function MyAgentsPage() {
         </p>
       ) : (
         <div className="grid gap-3.5">
-          {owned.map((a, i) => (
-            <AgentManageCard
-              agent={a}
-              earnings={earnings[i]}
-              key={a.address}
-              removable
-            />
+          {owned.map((a) => (
+            <AgentManageCard agent={a} key={a.address} removable />
           ))}
         </div>
       )}
@@ -203,9 +172,9 @@ export default async function MyAgentsPage() {
           </div>
           <p className="mt-2 mb-0 text-fg-subtle text-xs">
             Dismissed proposals and previously hidden agents — restore brings
-            them back (their on-chain records and receipts always persist).
-            Unlink publicly renounces your on-chain ownership; the agent can
-            only come back by proposing the link again.
+            them back (their on-chain records always persist). Unlink publicly
+            renounces your on-chain ownership; the agent can only come back by
+            proposing the link again.
           </p>
         </>
       )}

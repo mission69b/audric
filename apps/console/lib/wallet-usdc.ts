@@ -2,9 +2,9 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { queryBalance } from "@t2000/sdk";
 import { env } from "@/lib/env";
 
-// On-chain Passport USDC — the marketplace pot (buys, agent payments,
-// earnings), distinct from platform Credit. Best-effort: RPC hiccups
-// return null and callers render "—".
+// On-chain Passport USDC — the wallet pot (x402 agent payments), distinct
+// from platform Credit. Best-effort: RPC hiccups return null and callers
+// render "—".
 export async function fetchWalletUsdc(address: string): Promise<number | null> {
   try {
     const network =

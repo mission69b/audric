@@ -26,7 +26,7 @@ import {
   getCapabilities,
   getModelPricing,
 } from "@/lib/ai/models";
-import { hasAgentPayIntent, hasPaymentIntent } from "@/lib/ai/payment-intent";
+import { hasPaymentIntent } from "@/lib/ai/payment-intent";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { scanChatImages } from "@/lib/ai/scan-chat-images";
@@ -34,7 +34,6 @@ import {
   ensureGeminiThoughtSignatures,
   isGemini3,
 } from "@/lib/ai/thought-signatures";
-import { agentPay } from "@/lib/ai/tools/agent-pay";
 import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { cryptoGlobal } from "@/lib/ai/tools/crypto-global";
@@ -126,7 +125,6 @@ type ActiveTool =
   | "transaction_history"
   | "resolve_suins"
   | "send_transfer"
-  | "agent_pay"
   | "save_memory"
   | "set_preferences";
 
@@ -388,43 +386,6 @@ export async function POST(request: Request) {
       isContinuation: isToolApprovalFlow,
     });
 
-    // Agent-store buys (§II.12 C2) — PULL-ONLY (founder decision, 2026-07-03).
-    // The store surface (catalog block + agent_pay tool) enters a turn ONLY
-    // when the user invokes it: explicit use/buy-a-service phrasing (what the
-    // "Use in Audric" button prefills), the reply to a pending priced offer,
-    // or a mid-purchase continuation. Normal chat NEVER sees the store — no
-    // ambient offers, no prompt cost, no tool that could fire for the wrong
-    // reason. Free tools are the product; the store is there when asked.
-    // Real accounts only (guests can't sign a wallet buy), and skipped on
-    // confidential turns (that branch returns before tools).
-    const lastAssistantText = (
-      msgs: Array<{ role?: string; parts?: TextPart[] }> | undefined
-    ): string => {
-      for (let i = (msgs?.length ?? 0) - 1; i >= 0; i--) {
-        if (msgs?.[i]?.role === "assistant") {
-          return partsText(msgs[i].parts);
-        }
-      }
-      return "";
-    };
-    const priorAssistantText = lastAssistantText(
-      messagesFromDb as unknown as Array<{
-        role?: string;
-        parts?: TextPart[];
-      }>
-    );
-    // agent_pay gate: only signed-in, non-confidential turns with explicit
-    // pay-an-agent intent (or a continuation of a pending offer) expose the
-    // tool — the user supplies the seller; there is no injected catalog.
-    const agentPayIntent =
-      Boolean(dbUser) &&
-      !confidential &&
-      hasAgentPayIntent({
-        text: routeText,
-        lastAssistantText: priorAssistantText,
-        isContinuation: isToolApprovalFlow,
-      });
-
     // Video gate (2026-06-26 tool-confusion fix): expose generate_video ONLY on
     // video-intent turns. On an image/other turn the tool is absent → the model
     // structurally CANNOT mis-fire video instead of generate_image (the incident:
@@ -489,7 +450,7 @@ export async function POST(request: Request) {
     // Claude Sonnet for premium, the free model (Kimi) for free users — never the
     // Grok pick. Both verified to emit the send call. Sends are rare + high-stakes,
     // so reliability outweighs the routing default. (Off-Auto manual picks stand.)
-    if (routeDecision && (paymentIntent || agentPayIntent)) {
+    if (routeDecision && paymentIntent) {
       const sonnet = "anthropic/claude-sonnet-5";
       chatModel =
         canUsePremium && chatModels.some((m) => m.id === sonnet)
@@ -576,16 +537,13 @@ export async function POST(request: Request) {
       ];
     }
 
-    // Resolve dangling client-executed tool calls (send_transfer / agent_pay)
-    // the user bypassed by typing a new message instead of using the card. Left
+    // Resolve dangling client-executed tool calls (send_transfer) the user
+    // bypassed by typing a new message instead of using the card. Left
     // unresolved, `convertToModelMessages` throws "Tool result is missing" and
     // the whole turn fails. Synthesize a benign "skipped" result so the
     // conversation continues (the model treats the user's chat reply as the
     // answer). Applies to history only — the new user message has no tool calls.
-    const CLIENT_TOOL_PART_TYPES = new Set([
-      "tool-send_transfer",
-      "tool-agent_pay",
-    ]);
+    const CLIENT_TOOL_PART_TYPES = new Set(["tool-send_transfer"]);
     uiMessages = uiMessages.map((m) => ({
       ...m,
       parts: m.parts.map((p) => {
@@ -821,9 +779,6 @@ export async function POST(request: Request) {
                   // send_transfer (money WRITE) gated to payment-intent turns
                   // only (S.490). Reads (balance/history/resolve) stay always-on.
                   ...(paymentIntent ? (["send_transfer"] as ActiveTool[]) : []),
-                  // agent_pay (store BUY) gated to buy-intent / offer-agree
-                  // turns (§II.12 C2) — same structural absence guarantee.
-                  ...(agentPayIntent ? (["agent_pay"] as ActiveTool[]) : []),
                   ...(artifactsActive
                     ? ([
                         "createDocument",
@@ -1034,10 +989,6 @@ export async function POST(request: Request) {
                   }),
                   resolve_suins: resolveSuins,
                   send_transfer: sendTransfer,
-                  // Agent-store buy (§II.12 C2) — client-executed like
-                  // send_transfer: the browser runs the x402 pay loop on
-                  // tap-to-confirm; the server never spends.
-                  agent_pay: agentPay,
                   // Private Memory (§7c) — explicit capture; only when the user
                   // has memory ON this turn. Recall is automatic (model wrap).
                   ...(memoryOn
