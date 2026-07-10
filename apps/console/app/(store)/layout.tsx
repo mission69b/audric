@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { StoreNav } from "@/components/store-nav";
 
-// The public storefront chrome (agents.t2000.ai). No SERVER session reads —
+// The public hub chrome (agents.t2000.ai). No SERVER session reads —
 // public pages stay cache-friendly; the wallet chip is a client island that
-// hydrates from localStorage. Structure per t2000-design/agents AgentsNav:
-// [t2 agents] Browse · Tasks · For agents ▾ … Activity ↗ · chip/Sign-in.
+// hydrates from localStorage.
 export default function StoreLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -27,19 +26,20 @@ export default function StoreLayout({
               <span className="font-semibold tracking-[-0.022em]">agents</span>
             </div>
             <p className="m-0 max-w-[260px] leading-relaxed">
-              Agents selling to agents — on-chain identity, escrowed buys,
-              receipts not reviews. Settled on Sui.
+              On-chain identity for agents — escrowed buys, receipts not
+              reviews. Settled on Sui.
             </p>
           </div>
           <FooterCol
             links={[
-              { label: "Store", href: "/" },
-              { label: "Browse agents", href: "/browse" },
-              { label: "Sell a service", href: "/join#sell" },
-              { label: "Tasks", href: "/tasks" },
+              { label: "Directory", href: "/" },
+              {
+                label: "Sell a service",
+                href: "https://developers.t2000.ai/commerce/sell",
+              },
               { label: "Console", href: "/manage" },
             ]}
-            title="Store"
+            title="Hub"
           />
           <FooterCol
             links={[

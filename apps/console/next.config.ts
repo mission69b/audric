@@ -6,10 +6,20 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@audric/accounts", "@audric/auth", "@audric/onramp"],
   poweredByHeader: false,
   async redirects() {
-    // S.678: /buy + /sell consolidated into the one okx-style /join page.
+    // SPEC_HUB_V1: the retail pages (/join, /browse, /tasks) were deleted —
+    // stale links land on the hub home; /sell points at the docs.
     return [
-      { source: "/buy", destination: "/join#buy", permanent: true },
-      { source: "/sell", destination: "/join#sell", permanent: true },
+      { source: "/buy", destination: "/", permanent: false },
+      {
+        source: "/sell",
+        destination: "https://developers.t2000.ai/commerce/sell",
+        permanent: false,
+      },
+      { source: "/join", destination: "/", permanent: false },
+      { source: "/browse", destination: "/", permanent: false },
+      { source: "/tasks", destination: "/", permanent: false },
+      { source: "/tasks/:id", destination: "/", permanent: false },
+      { source: "/campaigns", destination: "/", permanent: false },
     ];
   },
   async headers() {

@@ -9,25 +9,18 @@ import Link from "next/link";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
-import { BuyFlowRail } from "@/components/buy-flow-rail";
 import { CopyButton } from "@/components/copy-button";
-import { OwnerManagePanel } from "@/components/owner-manage-panel";
-import { TryItButton } from "@/components/try-it-button";
-import { UseInAudric } from "@/components/use-in-audric";
-import { UseItServiceRow } from "@/components/use-it-tabs";
 import { buildAgentPrompt } from "@/lib/agent-prompt";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
 import { formatDate } from "@/lib/format";
 
-// Public agent listing (agents.t2000.ai/<address>). Service-first when the
-// agent sells something: price + receipt-backed stats + a copy-paste "use it"
-// panel (humans get the CLI, machines get the raw x402 endpoint). The full
-// on-chain record (the scan view) stays below in a disclosure.
-// Reads /v1/agents/:address (ERC-8004 registration-v1).
+// Public agent profile (agents.t2000.ai/<id>) — identity-first (SPEC_HUB_V1):
+// who the agent is, what it sells (as copyable commands — machine-first, no
+// in-browser checkout), and the receipt-backed record. Reads
+// /v1/agents/:address (ERC-8004 registration-v1).
 const API_BASE = "https://api.t2000.ai/v1";
-// The public x402 rail alias — any x402 client can buy through this URL
-// (gateway-mediated: collect → deliver → forward).
+// The public x402 rail alias — any x402 client can buy through this URL.
 const RAIL_BASE = "https://x402.t2000.ai";
 
 type Profile = {
@@ -46,7 +39,6 @@ type Profile = {
   paymentMethods?: string[];
   priceUsdc?: string;
   category?: string;
-  /** Store v2 Phase 1: the service catalog (slug-addressed SKUs). */
   services?: {
     slug: string;
     title: string;
@@ -63,9 +55,6 @@ type Profile = {
     repeatBuyers?: number;
     refunds?: number;
     deliveredRate?: number | null;
-    /** Star average over receipt-bound reviews (Phase 4); null until reviewed. */
-    score?: number | null;
-    reviewCount?: number;
     lastSaleAt: string | null;
     recent?: {
       at: string;
@@ -81,7 +70,6 @@ type Profile = {
 };
 
 const SUISCAN = "https://suiscan.xyz/mainnet";
-// Numeric listing URLs (Phase 3): /2 = agent #2.
 const NUMERIC_SEGMENT_RE = /^\d{1,10}$/;
 
 function short(v: string): string {
@@ -140,43 +128,8 @@ function Section({
   );
 }
 
-function CommandBlock({
-  title,
-  lines,
-  note,
-}: {
-  title: string;
-  lines: [string, string?][];
-  note?: string;
-}) {
-  // Copy target = the commands only (no $ prompts / # comments).
-  const copyText = lines.map(([cmd]) => cmd).join("\n");
-  return (
-    <div>
-      <div className="flex items-center justify-between gap-2">
-        <div className="font-medium text-foreground text-sm">{title}</div>
-        <CopyButton text={copyText} />
-      </div>
-      <div
-        className="mt-2 overflow-x-auto rounded-lg border p-4 font-mono text-muted-foreground text-xs leading-relaxed"
-        style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}
-      >
-        {lines.map(([cmd, comment]) => (
-          <div key={cmd}>
-            <span className="text-fg-subtle">$ </span>
-            <span className="text-foreground">{cmd}</span>
-            {comment && <span className="text-fg-subtle"> # {comment}</span>}
-          </div>
-        ))}
-      </div>
-      {note && <p className="mt-2 text-fg-subtle text-xs">{note}</p>}
-    </div>
-  );
-}
-
 async function fetchProfile(address: string): Promise<Profile | null> {
   try {
-    // Same URL + revalidate as generateMetadata → Next dedupes the fetch.
     const res = await fetchRetry(`${API_BASE}/agents/${address}`, {
       next: { revalidate: 30 },
     });
@@ -189,67 +142,6 @@ async function fetchProfile(address: string): Promise<Profile | null> {
   return null;
 }
 
-type ReviewsPayload = {
-  score: number | null;
-  count: number;
-  /** index 0 = 1 star … index 4 = 5 stars */
-  histogram: number[];
-  reviews: {
-    buyer: string;
-    stars: number;
-    text: string | null;
-    at: string;
-    tx: string;
-  }[];
-};
-
-// Phase 4 (SPEC_STORE_V2 §8): receipt-bound reviews, straight from the
-// gateway. Empty state renders nothing — sold counts stay the only numbers.
-async function fetchReviews(address: string): Promise<ReviewsPayload | null> {
-  try {
-    const res = await fetchRetry(`${RAIL_BASE}/commerce/reviews/${address}`, {
-      next: { revalidate: 30 },
-    });
-    if (res.ok) {
-      const d = (await res.json()) as ReviewsPayload;
-      return d.count > 0 ? d : null;
-    }
-  } catch {
-    // fall through to null
-  }
-  return null;
-}
-
-// R1 (S.697): slugs with a LIVE hosted handler — powers the "hosted on
-// t2000" service marker. Public gateway read; empty on any failure.
-async function fetchHostedSlugs(address: string): Promise<string[]> {
-  try {
-    const res = await fetchRetry(
-      `https://mpp.t2000.ai/serve/status?address=${encodeURIComponent(address)}`,
-      { next: { revalidate: 30 } }
-    );
-    if (res.ok) {
-      const d = (await res.json()) as {
-        handlers?: { slug: string; active: boolean }[];
-      };
-      return (d.handlers ?? []).filter((h) => h.active).map((h) => h.slug);
-    }
-  } catch {
-    // fall through to empty
-  }
-  return [];
-}
-
-function Stars({ n }: { n: number }) {
-  return (
-    <span className="text-amber-400" style={{ letterSpacing: 2 }}>
-      {"★".repeat(n)}
-      <span className="text-fg-subtle">{"★".repeat(5 - n)}</span>
-    </span>
-  );
-}
-
-// Per-listing tab title + share description (the store's SEO surface).
 export async function generateMetadata({
   params,
 }: {
@@ -275,23 +167,18 @@ export async function generateMetadata({
     title: `${profile.name}${price}`,
     description:
       profile.description?.split("\n")[0] ??
-      "An autonomous agent with on-chain identity on the t2000 Agent Store.",
+      "An autonomous agent with on-chain identity on the t2000 hub.",
   };
 }
 
 export default async function AgentProfilePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ address: string }>;
-  searchParams: Promise<{ use?: string }>;
 }) {
   const { address: segment } = await params;
-  const { use } = await searchParams;
 
-  // Vanity URLs: agents.t2000.ai/@handle → the canonical address listing.
-  // The @ prefix keeps handles out of the route namespace (no collisions
-  // with /browse, /tasks, … and no bare-name squatting).
+  // Vanity URLs: agents.t2000.ai/@handle → the canonical listing.
   const decoded = decodeURIComponent(segment);
   if (decoded.startsWith("@")) {
     const owner = await getUserByUsername(decoded.slice(1));
@@ -301,9 +188,7 @@ export default async function AgentProfilePage({
     redirect(`/${owner.id}`);
   }
 
-  // Legible numeric URLs (Store v2 Phase 3): agents.t2000.ai/2 = agent #2.
-  // Numeric is CANONICAL — hex address URLs 301 to it below (OKX-pattern
-  // short links; the on-chain numeric id is permanent, so the URL is too).
+  // Numeric URLs are canonical (permanent on-chain ids): /2 = agent #2.
   let address = segment;
   if (NUMERIC_SEGMENT_RE.test(decoded)) {
     const byId = await getAgentProfileByNumericId(Number(decoded)).catch(
@@ -319,32 +204,23 @@ export default async function AgentProfilePage({
   if (!profile) {
     notFound();
   }
-  // Hex → numeric canonicalization (permanent: numeric ids never change).
   if (
     address === segment &&
     segment.startsWith("0x") &&
     profile.registrations?.[0]?.agentId != null
   ) {
-    permanentRedirect(
-      `/${profile.registrations[0].agentId}${use ? `?use=${encodeURIComponent(use)}` : ""}`
-    );
+    permanentRedirect(`/${profile.registrations[0].agentId}`);
   }
 
   const numericId = profile.registrations?.[0]?.agentId;
-  // Claimed @handle (Passport self-agents: user.id IS the address).
   const handle = await getUserById(address)
     .then((u) => u?.username ?? null)
     .catch(() => null);
-  // A purchasable service needs a DELIVERY endpoint. Price-without-endpoint is
-  // the rail's payment-only mode (money forwards, no service response) — never
-  // dress that as "pay on delivery".
-  // Store v2 Phase 1: the catalog. Slug rows come from services[]; a legacy
-  // default listing (bare mcpEndpoint+price) renders as one slug-less row.
+  // A purchasable service needs a DELIVERY endpoint; sub-floor prices are
+  // unbuyable (every settle 400s) and self-delist (S.677).
   const catalog = (profile.services ?? []).filter(
     (s) => s.active !== false && meetsSettleFloor(s.priceUsdc)
   );
-  // Sub-floor default prices are unbuyable (every settle 400s) — treat as
-  // not purchasable so junk listings self-delist from the store (S.677).
   const defaultPriceOk = meetsSettleFloor(profile.priceUsdc);
   const hasDefaultListing = Boolean(
     profile.mcpEndpoint && profile.priceUsdc && defaultPriceOk
@@ -355,11 +231,30 @@ export default async function AgentProfilePage({
     !profile.mcpEndpoint && profile.priceUsdc && defaultPriceOk
   );
   const rep = profile.reputation;
-  const reviews = sells ? await fetchReviews(profile.address) : null;
   const buyUrl = `${RAIL_BASE}/commerce/pay/${profile.address}`;
-  // R1 (S.697): SKUs backed by a LIVE hosted handler get the "hosted on
-  // t2000" marker (trust + uptime signal; also disambiguates from wraps).
-  const hostedSlugs = await fetchHostedSlugs(profile.address);
+
+  const serviceRows =
+    catalog.length > 0
+      ? catalog.map((svc) => ({
+          slug: svc.slug as string | null,
+          title: svc.title,
+          rowDescription: svc.description.split("\n")[0] ?? null,
+          priceUsdc: svc.priceUsdc as string | null,
+          input: svc.input ?? null,
+          rowBuyUrl: `${buyUrl}/${svc.slug}`,
+        }))
+      : hasDefaultListing || profile.mcpEndpoint
+        ? [
+            {
+              slug: null as string | null,
+              title: profile.name,
+              rowDescription: profile.description?.split("\n")[0] ?? null,
+              priceUsdc: (profile.priceUsdc ?? null) as string | null,
+              input: null as string | null,
+              rowBuyUrl: buyUrl,
+            },
+          ]
+        : [];
 
   return (
     <>
@@ -367,11 +262,10 @@ export default async function AgentProfilePage({
         className="text-muted-foreground text-sm transition-colors hover:text-foreground"
         href="/"
       >
-        ← Agents
+        ← Hub
       </Link>
 
-      {/* Header (design ListingHeader) — big monogram tile + display name +
-          the receipt-backed Verified pill. */}
+      {/* Header — monogram tile + display name + the receipt-backed pill. */}
       <div className="mt-6 flex flex-wrap items-start gap-5">
         <AgentAvatar
           address={profile.address}
@@ -417,13 +311,6 @@ export default async function AgentProfilePage({
         </div>
       </div>
 
-      <OwnerManagePanel
-        profile={{
-          address: profile.address,
-          owner: profile.owner ?? null,
-        }}
-      />
-
       {profile.description && (
         <p className="mt-3 max-w-2xl whitespace-pre-line text-muted-foreground">
           {profile.description}
@@ -468,26 +355,11 @@ export default async function AgentProfilePage({
           </div>
         )}
 
-      {/* Reputation strip (design ListingHeader) — every number derives from
-          settlement receipts. */}
+      {/* Reputation strip — every number derives from settlement receipts. */}
       {sells && rep && (
-        <div
-          className={`ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3 ${
-            typeof rep.score === "number" ? "lg:grid-cols-6" : "lg:grid-cols-5"
-          }`}
-        >
+        <div className="ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-3 lg:grid-cols-5">
           {(
             [
-              // Score sits NEXT TO the receipts numbers, never instead of
-              // them — "5.0 stars, 3 refunds" must stay visibly readable.
-              ...(typeof rep.score === "number"
-                ? [
-                    [
-                      "Score",
-                      `★ ${rep.score.toFixed(rep.score === 5 ? 1 : 2)} (${rep.reviewCount})`,
-                    ] as const,
-                  ]
-                : []),
               ["Sold", String(rep.sales)],
               ["Distinct buyers", String(rep.buyers)],
               ["Settled", `$${rep.volumeUsd.toFixed(2)}`],
@@ -517,48 +389,12 @@ export default async function AgentProfilePage({
         </div>
       )}
 
-      {/* The service — ONE row, expanding into the tabbed Use-it panel
-          (design §UseItInline: Try it · Your agent · x402 · Audric). */}
-      {sells && (
+      {/* Services — machine-first: the paste-prompt + the commands. */}
+      {sells && serviceRows.length > 0 && (
         <>
           <div className="ag-eyebrow mt-8">{"// SERVICES"}</div>
-          {/* Store v2 Phase 1: one CARD per catalog SKU (slug buy URLs) in a
-              3-col grid — the open card spans the row for its Use-it panel. A
-              legacy default listing renders as a single full-width card. */}
-          <div
-            className={
-              catalog.length > 1
-                ? "mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-                : "mt-4 grid gap-4"
-            }
-          >
-            {(catalog.length > 0
-              ? catalog.map((svc) => ({
-                  slug: svc.slug as string | null,
-                  title: svc.title,
-                  rowDescription: svc.description.split("\n")[0] ?? null,
-                  priceUsdc: svc.priceUsdc as string | null,
-                  input: svc.input ?? null,
-                  rowBuyUrl: `${buyUrl}/${svc.slug}`,
-                  audricTab: true,
-                }))
-              : hasDefaultListing || profile.mcpEndpoint
-                ? [
-                    {
-                      slug: null as string | null,
-                      title: profile.name,
-                      rowDescription:
-                        profile.description?.split("\n")[0] ?? null,
-                      priceUsdc: (profile.priceUsdc ?? null) as string | null,
-                      input: null as string | null,
-                      rowBuyUrl: buyUrl,
-                      audricTab: true,
-                    },
-                  ]
-                : []
-            ).map((row) => {
-              // The prompt renders VISIBLY (founder 2026-07-08 — read it
-              // before you copy it; the OKX how-to-use-modal pattern).
+          <div className="mt-4 grid gap-4">
+            {serviceRows.map((row) => {
               const agentPrompt = buildAgentPrompt({
                 name: profile.name,
                 numericId,
@@ -569,119 +405,80 @@ export default async function AgentProfilePage({
                 serviceTitle: row.slug ? row.title : null,
                 input: row.input,
               });
+              const cliCmd = `t2 agent pay ${profile.address}${row.slug ? ` --service ${row.slug}` : ""}`;
               return (
-                <UseItServiceRow
-                  description={row.rowDescription}
-                  initialTab={
-                    row.slug
-                      ? row.slug === catalog[0]?.slug
-                        ? (use ?? null)
-                        : null
-                      : (use ?? null)
-                  }
-                  key={row.slug ?? "default"}
-                  priceUsdc={row.priceUsdc}
-                  tabs={[
-                    {
-                      id: "agent" as const,
-                      label: "Your agent",
-                      body: (
-                        <div className="flex flex-col gap-4 *:min-w-0">
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="font-medium text-foreground text-sm">
-                                Paste this into your agent
-                              </div>
-                              <CopyButton text={agentPrompt} />
-                            </div>
-                            <p className="mt-1 mb-2 text-fg-muted text-xs">
-                              Works in Claude Code, Cursor, or any agent with
-                              the t2000 CLI or skills installed.
-                            </p>
-                            <pre
-                              className="m-0 max-h-56 overflow-auto whitespace-pre-wrap rounded-[10px] border p-3.5 font-mono text-[11.5px] text-muted-foreground leading-relaxed"
-                              style={{
-                                background: "#0d0d0d",
-                                borderColor: "var(--ag-border)",
-                              }}
-                            >
-                              {agentPrompt}
-                            </pre>
-                          </div>
-                          <CommandBlock
-                            lines={[
-                              ["npm i -g @t2000/cli", "once"],
-                              [
-                                `t2 agent pay ${profile.address}${row.slug ? ` --service ${row.slug}` : ""}`,
-                              ],
-                            ]}
-                            note="Pays the declared price from your funded wallet, delivers the response, settles on Sui. Add --data '{…}' to pass input."
-                            title="Or straight from the CLI"
-                          />
+                <div className="ag-card p-5" key={row.slug ?? "default"}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="font-semibold text-[16px] text-foreground tracking-[-0.016em]">
+                      {row.title}
+                      {row.slug && (
+                        <span className="ml-2 font-mono text-[11px] text-fg-subtle">
+                          /{row.slug}
+                        </span>
+                      )}
+                    </div>
+                    {row.priceUsdc && (
+                      <div className="font-mono text-[14px] text-foreground">
+                        ${row.priceUsdc}
+                        <span className="text-fg-subtle text-xs">/call</span>
+                      </div>
+                    )}
+                  </div>
+                  {row.rowDescription && (
+                    <p className="mt-1.5 mb-0 text-[13.5px] text-muted-foreground leading-relaxed">
+                      {row.rowDescription}
+                    </p>
+                  )}
+                  {row.input && (
+                    <p className="mt-1.5 mb-0 text-fg-subtle text-xs">
+                      Input: <span className="font-mono">{row.input}</span>
+                    </p>
+                  )}
+                  <div className="mt-4 flex flex-col gap-3">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-[12.5px] text-foreground">
+                          Paste into your agent
                         </div>
-                      ),
-                    },
-                    // Try-it caps at $5 in-browser (lib/try-service TRY_IT_CAP_USD)
-                    // — over the cap the island renders null, so skip the tab.
-                    ...(row.priceUsdc && Number.parseFloat(row.priceUsdc) <= 5
-                      ? [
-                          {
-                            id: "try" as const,
-                            label: "Try it",
-                            body: (
-                              <div className="flex flex-col gap-4">
-                                <BuyFlowRail />
-                                <TryItButton
-                                  name={row.title}
-                                  priceUsdc={row.priceUsdc}
-                                  seller={profile.address}
-                                  slug={row.slug}
-                                />
-                              </div>
-                            ),
-                          },
-                        ]
-                      : []),
-                    {
-                      id: "x402" as const,
-                      label: "x402",
-                      body: (
-                        <CommandBlock
-                          lines={[[`curl ${row.rowBuyUrl}`]]}
-                          note="Returns HTTP 402 + payment requirements. Any client that speaks the Sui x402 scheme (the t2000 CLI and SDK do) pays and gets the response in one round-trip."
-                          title="Machines — raw x402"
-                        />
-                      ),
-                    },
-                    ...(row.audricTab && row.priceUsdc
-                      ? [
-                          {
-                            id: "audric" as const,
-                            label: "Audric",
-                            body: (
-                              <UseInAudric
-                                address={profile.address}
-                                name={profile.name}
-                                priceUsdc={row.priceUsdc}
-                                qualified={
-                                  (rep?.sales ?? 0) >= 3 &&
-                                  (rep?.buyers ?? 0) >= 2 &&
-                                  (rep?.deliveredRate ?? 0) >= 0.8
-                                }
-                                serviceTitle={row.slug ? row.title : null}
-                              />
-                            ),
-                          },
-                        ]
-                      : []),
-                  ]}
-                  title={row.title}
-                  typeLabel={
-                    row.slug && hostedSlugs.includes(row.slug)
-                      ? "x402 · hosted on t2000"
-                      : "x402"
-                  }
-                />
+                        <CopyButton text={agentPrompt} />
+                      </div>
+                      <pre
+                        className="mt-1.5 mb-0 max-h-44 overflow-auto whitespace-pre-wrap rounded-[10px] border p-3 font-mono text-[11.5px] text-muted-foreground leading-relaxed"
+                        style={{
+                          background: "#0d0d0d",
+                          borderColor: "var(--ag-border)",
+                        }}
+                      >
+                        {agentPrompt}
+                      </pre>
+                    </div>
+                    <div className="grid gap-2 text-[11.5px] sm:grid-cols-2">
+                      <div
+                        className="overflow-x-auto rounded-[10px] border p-3 font-mono text-muted-foreground"
+                        style={{
+                          background: "#0d0d0d",
+                          borderColor: "var(--ag-border)",
+                        }}
+                      >
+                        <span className="text-fg-subtle">$ </span>
+                        {cliCmd}
+                      </div>
+                      <div
+                        className="overflow-x-auto rounded-[10px] border p-3 font-mono text-muted-foreground"
+                        style={{
+                          background: "#0d0d0d",
+                          borderColor: "var(--ag-border)",
+                        }}
+                      >
+                        <span className="text-fg-subtle">$ </span>
+                        curl {row.rowBuyUrl}
+                        <span className="text-fg-subtle">
+                          {"  # → 402 terms"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -701,7 +498,7 @@ export default async function AgentProfilePage({
             pay exactly the listed price; the 2.5% platform fee comes out of the
             seller&apos;s side at settlement.
             {rep &&
-              " Every number above derives from on-chain settlement receipts, not self-reports — and reviews can only be posted by wallets with a settled purchase."}
+              " Every number above derives from on-chain settlement receipts, not self-reports."}
           </p>
         </>
       )}
@@ -779,100 +576,6 @@ export default async function AgentProfilePage({
         </section>
       )}
 
-      {/* Reviews (Phase 4, SPEC_STORE_V2 §8) — receipt-bound text + stars.
-          Score = plain average; the histogram bars scale RELATIVE to the
-          largest band (OKX display convention). Receipts numbers stay
-          sovereign in the strip above — this section never replaces them. */}
-      {reviews && (
-        <section className="mt-10">
-          <div className="ag-eyebrow">{"// REVIEWS"}</div>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h2
-              className="ag-title"
-              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
-            >
-              Reviewed by buyers.
-            </h2>
-            <p className="m-0 max-w-[340px] text-fg-subtle text-xs leading-relaxed">
-              Only wallets with a settled purchase can review — every review
-              links its on-chain receipt. Score is the plain average.
-            </p>
-          </div>
-          <div className="mt-3 grid gap-4 md:grid-cols-[220px_1fr]">
-            <div className="ag-card p-5">
-              <div className="font-semibold text-[40px] text-foreground tabular-nums tracking-tight">
-                {reviews.score?.toFixed(reviews.score === 5 ? 1 : 2)}
-              </div>
-              <div className="mt-1">
-                <Stars n={Math.round(reviews.score ?? 0)} />
-              </div>
-              <div className="mt-2 text-fg-subtle text-xs">
-                {reviews.count} review{reviews.count === 1 ? "" : "s"}
-              </div>
-              <div className="mt-4 flex flex-col gap-1.5">
-                {[5, 4, 3, 2, 1].map((band) => {
-                  const n = reviews.histogram[band - 1] ?? 0;
-                  const max = Math.max(...reviews.histogram, 1);
-                  return (
-                    <div className="flex items-center gap-2" key={band}>
-                      <span className="w-7 shrink-0 text-fg-subtle text-xs">
-                        {band}★
-                      </span>
-                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--ag-overlay)]">
-                        <span
-                          className="block h-full rounded-full bg-amber-400/80"
-                          style={{ width: `${(n / max) * 100}%` }}
-                        />
-                      </span>
-                      <span className="w-5 shrink-0 text-right text-fg-subtle text-xs tabular-nums">
-                        {n}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="ag-card divide-y divide-border/50 overflow-hidden">
-              {reviews.reviews.slice(0, 8).map((r) => (
-                <div className="px-5 py-4" key={r.tx}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <Stars n={r.stars} />
-                      <span className="font-mono text-fg-subtle text-xs">
-                        {r.buyer}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-fg-subtle text-xs">
-                      <span>{formatDate(r.at)}</span>
-                      <a
-                        className="underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-                        href={`${SUISCAN}/tx/${r.tx}`}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        receipt ↗
-                      </a>
-                    </div>
-                  </div>
-                  {r.text && (
-                    <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-                      {r.text}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <p className="mt-3 text-fg-subtle text-xs">
-            Bought from this agent? Review it:{" "}
-            <span className="font-mono">
-              t2 agent review {profile.address.slice(0, 10)}… --stars 5 --text
-              &quot;…&quot;
-            </span>
-          </p>
-        </section>
-      )}
-
       {/* Price-only agents: honest framing — a payment target, not a service. */}
       {priceOnly && (
         <div className="mt-6 rounded-2xl border border-border/50 bg-card/40 p-5">
@@ -893,9 +596,7 @@ export default async function AgentProfilePage({
         </div>
       )}
 
-      {/* Service wiring — buyer-facing only. The buy URL is the ONLY address a
-          buyer ever needs (the seller's hosting endpoint is plumbing — it lives
-          in the registration JSON for machines, not on the product page). */}
+      {/* Service wiring — buyer-facing only. */}
       {sells && (
         <Section title="Service">
           <Field label="x402 buy URL" mono value={buyUrl} />
@@ -911,8 +612,7 @@ export default async function AgentProfilePage({
         </Section>
       )}
 
-      {/* The on-chain record (the scan view). Leads for registry-only agents;
-          folds behind a disclosure when a service leads the page. */}
+      {/* The on-chain record (the scan view). */}
       <details className="group mt-8" open={!sells}>
         <summary className="cursor-pointer list-none font-medium text-muted-foreground text-xs uppercase tracking-wide transition-colors hover:text-foreground">
           <span className="mr-1 inline-block transition-transform group-open:rotate-90">

@@ -9,7 +9,6 @@ import {
   ExternalLink,
   KeyRound,
   LayoutGrid,
-  ListChecks,
   Plus,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,13 +25,12 @@ const NAV_GROUPS: {
   items: { href: string; label: string; icon: typeof LayoutGrid }[];
 }[] = [
   {
-    label: "Your marketplace",
+    label: "Your agents",
     items: [
       { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
       { href: "/manage/agents", label: "My agents", icon: Bot },
       { href: "/manage/create", label: "Create agent", icon: Plus },
       { href: "/manage/earnings", label: "Earnings", icon: CircleDollarSign },
-      { href: "/manage/tasks", label: "Posted tasks", icon: ListChecks },
     ],
   },
   {
@@ -181,7 +179,7 @@ export function Sidebar({
             [
               "USDC",
               walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`,
-              "marketplace",
+              "agent payments",
               "var(--ag-verify)",
             ],
             [

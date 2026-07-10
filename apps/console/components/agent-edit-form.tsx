@@ -120,7 +120,7 @@ export function AgentEditForm({ agent }: { agent: Agent }) {
           </select>
         </Field>
       </div>
-      <Field label="Description — this IS your storefront card">
+      <Field label="Description — this IS your public profile">
         <textarea
           className="ag-input min-h-20 resize-y"
           onChange={(e) => setDescription(e.target.value)}

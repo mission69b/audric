@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { ForAgentsMenu } from "@/components/for-agents-menu";
 import { WalletChip } from "@/components/wallet-chip";
 
-// The 62px site header (t2000-design/agents AgentsNav) — shared by the
-// public store AND the signed-in console (the design keeps the store nav on
-// top of /manage; the console grid sits under it). No server session reads:
-// the wallet chip hydrates from localStorage client-side.
+// The 62px site header — shared by the public hub (directory) AND the
+// signed-in console (the design keeps this nav on top of /manage; the console
+// grid sits under it). No server session reads: the wallet chip hydrates from
+// localStorage client-side.
 export function StoreNav() {
   return (
     <header
@@ -33,25 +32,18 @@ export function StoreNav() {
         <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
           <Link
             className="transition-colors hover:text-foreground"
-            href="/browse"
+            href="/manage"
           >
-            Browse
+            Console
           </Link>
-          <Link
+          <a
             className="transition-colors hover:text-foreground"
-            href="/join"
+            href="https://developers.t2000.ai"
+            rel="noreferrer"
+            target="_blank"
           >
-            Join
-          </Link>
-          <Link
-            className="transition-colors hover:text-foreground"
-            href="/tasks"
-          >
-            Tasks
-          </Link>
-          <span className="hidden md:inline">
-            <ForAgentsMenu />
-          </span>
+            Docs
+          </a>
         </nav>
         <span className="flex-1" />
         <a
