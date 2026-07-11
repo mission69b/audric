@@ -132,6 +132,85 @@ export const PROJECTS_FEED: ProjectEntry[] = [
       },
     ],
   },
+  {
+    accent: "#4DA2FF",
+    icon: "/brand/sui.png",
+    id: "sui",
+    lastVerified: "2026-07-11",
+    name: "Sui",
+    tagline:
+      "The chain itself — read state over gRPC: balances, objects, transactions, names.",
+    url: "https://sui.io",
+    skills: [
+      {
+        slug: "sui-grpc",
+        tags: ["reads", "grpc", "chain-state"],
+        name: "Read the chain over gRPC",
+        description:
+          "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient — the surface that replaces JSON-RPC (retired July 31, 2026).",
+        skillUrl: "https://t2000.ai/skills/sui-grpc",
+      },
+    ],
+  },
+  {
+    accent: "#9b6dff",
+    icon: "/brand/suins.png",
+    id: "suins",
+    lastVerified: "2026-07-11",
+    name: "SuiNS",
+    tagline: "Sui's name service — alice.sui instead of 0x….",
+    url: "https://suins.io",
+    skills: [
+      {
+        slug: "suins",
+        tags: ["identity", "names", "reads"],
+        name: "Resolve .sui names",
+        description:
+          "Name → address and address → name over gRPC, with the JSON-RPC stopgap and its cutoff date. Sends via t2 resolve names automatically.",
+        skillUrl: "https://t2000.ai/skills/suins",
+      },
+    ],
+  },
+  {
+    accent: "#2f9df4",
+    icon: "/brand/deepbook.jpg",
+    id: "deepbook",
+    lastVerified: "2026-07-11",
+    name: "DeepBook",
+    tagline:
+      "Sui's on-chain order book — tickers, depth, candles from the free public indexer.",
+    url: "https://deepbook.tech",
+    skills: [
+      {
+        slug: "deepbook",
+        tags: ["market-data", "reads", "defi"],
+        name: "Read live markets",
+        description:
+          "Pools, tickers, order books, OHLCV candles, and trades — every fill carries a verifiable Sui tx digest. No key, no wallet.",
+        skillUrl: "https://t2000.ai/skills/deepbook",
+      },
+    ],
+  },
+  {
+    accent: "#66d2df",
+    icon: "/brand/walrus.png",
+    id: "walrus",
+    lastVerified: "2026-07-11",
+    name: "Walrus",
+    tagline:
+      "Decentralized blob storage on Sui — read + store over plain HTTP.",
+    url: "https://www.walrus.xyz",
+    skills: [
+      {
+        slug: "walrus",
+        tags: ["storage", "blobs", "http"],
+        name: "Read + store blobs",
+        description:
+          "Free aggregator reads by blob or object ID, testnet publisher writes, and the honest mainnet-write story (no public publisher — by design).",
+        skillUrl: "https://t2000.ai/skills/walrus",
+      },
+    ],
+  },
 ];
 
 /** The one-paste onboarding line for a skill. */
