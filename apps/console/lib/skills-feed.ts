@@ -172,8 +172,8 @@ export const PROJECTS_FEED: ProjectEntry[] = [
     ],
   },
   {
-    accent: "#2f9df4",
-    icon: "/brand/deepbook.jpg",
+    accent: "#2545ec",
+    icon: "/brand/deepbook.png",
     id: "deepbook",
     lastVerified: "2026-07-11",
     name: "DeepBook",
