@@ -1,10 +1,9 @@
-// The Hub skills feed (SPEC_HUB_V1 §3.1) — grouped by PROJECT (the Monad
-// agent-hub pattern): one card per protocol/project, each carrying its
-// skills. Every skillUrl is LIVE, served markdown an agent reads and follows.
-// Onboarding is one paste:
-//   "Read <skillUrl> and follow the instructions."
-// Third-party dapps join by PR — the feed is the curation point; only skills
-// that have been read + smoke-tested get merged.
+// The t2 Agents skills shelf. SSOT = `t2000-skills/feed.json` in the t2000
+// repo, served live at t2000.ai/skills/feed.json (S.705 — the feed-repo
+// shape): a third party PRs SKILL.md + a brand mark + a feed entry, and the
+// shelf updates on the next revalidate with NO console deploy. The snapshot
+// below is the FALLBACK (feed unreachable) and the type contract.
+// Onboarding stays one paste: "Read <skillUrl> and follow the instructions."
 
 export interface SkillEntry {
   description: string;
@@ -18,7 +17,7 @@ export interface SkillEntry {
 export interface ProjectEntry {
   /** Brand accent for the icon tile ring / fallback monogram. */
   accent: string;
-  /** Brand mark under public/brand (square, renders in a 40px tile). */
+  /** Brand mark URL (served from t2000.ai/skills/brand/*). */
   icon: string;
   id: string;
   /** When the skills were last read + smoke-tested against what the URL
@@ -31,15 +30,42 @@ export interface ProjectEntry {
   url: string;
 }
 
-/** Look a project up by its /skills/[project] segment. */
-export function getProject(id: string): ProjectEntry | undefined {
-  return PROJECTS_FEED.find((p) => p.id === id);
+const FEED_URL = "https://t2000.ai/skills/feed.json";
+const BRAND = "https://t2000.ai/skills/brand";
+
+/** Fetch the live shelf; fall back to the bundled snapshot on any failure. */
+export async function loadProjectsFeed(): Promise<ProjectEntry[]> {
+  try {
+    const res = await fetch(FEED_URL, { next: { revalidate: 300 } });
+    if (res.ok) {
+      const data = (await res.json()) as { projects?: ProjectEntry[] };
+      const projects = data.projects ?? [];
+      // Minimal shape gate — a malformed feed must not blank the shelf.
+      if (
+        projects.length > 0 &&
+        projects.every((p) => p.id && p.name && Array.isArray(p.skills))
+      ) {
+        return projects;
+      }
+    }
+  } catch {
+    // feed unreachable — render the snapshot
+  }
+  return PROJECTS_FALLBACK;
 }
 
-export const PROJECTS_FEED: ProjectEntry[] = [
+/** Look a project up by its /skills/[project] segment. */
+export async function getProject(
+  id: string
+): Promise<ProjectEntry | undefined> {
+  const projects = await loadProjectsFeed();
+  return projects.find((p) => p.id === id);
+}
+
+export const PROJECTS_FALLBACK: ProjectEntry[] = [
   {
     accent: "#0072F5",
-    icon: "/brand/pfp-t2-black-field.svg",
+    icon: `${BRAND}/pfp-t2-black-field.svg`,
     id: "t2000",
     lastVerified: "2026-07-10",
     name: "t2000",
@@ -60,7 +86,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
         tags: ["payments", "gasless", "suins"],
         name: "Send stablecoins",
         description:
-          "Send USDC / USDsui / SUI to any address, SuiNS name, or @handle — stablecoin sends are gasless.",
+          "Gasless USDC / USDsui sends (and SUI with gas) to addresses, SuiNS names, or @audric handles.",
         skillUrl: "https://t2000.ai/skills/t2000-send",
       },
       {
@@ -108,14 +134,14 @@ export const PROJECTS_FEED: ProjectEntry[] = [
         tags: ["mcp", "setup"],
         name: "Wire up MCP",
         description:
-          "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client — 13 tools + one prompt per skill.",
+          "Connect the wallet to Claude Desktop, Cursor, Windsurf, or any MCP client — every wallet capability as tools, plus one prompt per skill.",
         skillUrl: "https://t2000.ai/skills/t2000-mcp",
       },
     ],
   },
   {
     accent: "#4de5c8",
-    icon: "/brand/cetus.png",
+    icon: `${BRAND}/cetus.png`,
     id: "cetus",
     lastVerified: "2026-07-10",
     name: "Cetus",
@@ -134,7 +160,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
   },
   {
     accent: "#4DA2FF",
-    icon: "/brand/sui.png",
+    icon: `${BRAND}/sui.png`,
     id: "sui",
     lastVerified: "2026-07-11",
     name: "Sui",
@@ -154,7 +180,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
   },
   {
     accent: "#9b6dff",
-    icon: "/brand/suins.png",
+    icon: `${BRAND}/suins.png`,
     id: "suins",
     lastVerified: "2026-07-11",
     name: "SuiNS",
@@ -173,7 +199,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
   },
   {
     accent: "#2545ec",
-    icon: "/brand/deepbook.png",
+    icon: `${BRAND}/deepbook.png`,
     id: "deepbook",
     lastVerified: "2026-07-11",
     name: "DeepBook",
@@ -193,7 +219,7 @@ export const PROJECTS_FEED: ProjectEntry[] = [
   },
   {
     accent: "#66d2df",
-    icon: "/brand/walrus.png",
+    icon: `${BRAND}/walrus.png`,
     id: "walrus",
     lastVerified: "2026-07-11",
     name: "Walrus",

@@ -11,6 +11,7 @@ import {
 } from "@/components/agent-action-dialog";
 import { AgentManageCard } from "@/components/agent-manage-card";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
+import { CopyButton } from "@/components/copy-button";
 import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
 import { Badge } from "@/components/ui/badge";
@@ -79,17 +80,15 @@ export default async function MyAgentsPage() {
     getAgentProfile(session.user.id),
   ]);
 
+  // The agent registers itself from where it RUNS (its key must live with
+  // it) — the console never mints agent keys (S.705: the browser create
+  // flow was deleted; a sessionStorage-stashed key is how records get
+  // orphaned). This command proposes the signed-in Passport as owner.
+  const createCmd = `t2 agent create --name "My Agent" --owner ${session.user.id}`;
+
   return (
     <>
       <PanelHead
-        action={
-          <a
-            className="inline-flex h-8 items-center gap-1 rounded-lg bg-primary px-3 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/80"
-            href="/manage/create"
-          >
-            Create agent
-          </a>
-        }
         sub="Agents you operate — Manage opens the agent editor."
         title="My agents"
       />
@@ -117,26 +116,43 @@ export default async function MyAgentsPage() {
       <GroupLabel>Agents you own</GroupLabel>
       {owned.length === 0 ? (
         <p className="m-0 text-fg-muted text-sm">
-          You don&apos;t own any agents yet.{" "}
-          <a
-            className="text-foreground underline underline-offset-4"
-            href="/manage/create"
-          >
-            Create one
-          </a>{" "}
-          — or an existing agent links to you with{" "}
-          <code className="font-mono text-foreground text-xs">
-            t2 agent link &lt;your-address&gt;
-          </code>
-          , then you confirm here.
+          You don&apos;t own any agents yet — link one below.
         </p>
       ) : (
         <div className="grid gap-3.5">
           {owned.map((a) => (
-            <AgentManageCard agent={a} key={a.address} removable />
+            <AgentManageCard agent={a} key={a.address} />
           ))}
         </div>
       )}
+
+      {/* New agent = a CLI moment, not a form. The keypair must live where
+          the agent runs; the console's job is ownership + management. */}
+      <GroupLabel>New agent — from where your agent runs</GroupLabel>
+      <div className="ag-card p-5">
+        <p className="m-0 text-[13px] text-fg-muted leading-relaxed">
+          An agent registers itself so its key stays on its own machine — the
+          console never holds agent keys. Run this where the agent lives (wallet
+          + free on-chain Agent ID + you proposed as owner), then confirm the
+          ownership request that appears above:
+        </p>
+        <div
+          className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border p-3"
+          style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}
+        >
+          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-muted-foreground">
+            {createCmd}
+          </code>
+          <CopyButton text={createCmd} />
+        </div>
+        <p className="mt-2 mb-0 text-[11.5px] text-fg-subtle">
+          Needs the CLI: <span className="font-mono">npm i -g @t2000/cli</span>.
+          An existing agent links with{" "}
+          <span className="font-mono">
+            t2 agent link {short(session.user.id)}…
+          </span>
+        </p>
+      </div>
 
       {archived.length > 0 && (
         <>
@@ -156,25 +172,13 @@ export default async function MyAgentsPage() {
                     {short(a.address)}
                   </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {a.owner === session.user.id && (
-                    <AgentActionButton
-                      action="unlink"
-                      active={a.active}
-                      agent={a.address}
-                      name={a.displayName || a.name}
-                    />
-                  )}
-                  <RestoreButton agent={a.address} />
-                </div>
+                <RestoreButton agent={a.address} />
               </div>
             ))}
           </div>
           <p className="mt-2 mb-0 text-fg-subtle text-xs">
             Dismissed proposals and previously hidden agents — restore brings
-            them back (their on-chain records always persist). Unlink publicly
-            renounces your on-chain ownership; the agent can only come back by
-            proposing the link again.
+            them back (their on-chain records always persist).
           </p>
         </>
       )}

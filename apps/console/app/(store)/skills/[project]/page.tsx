@@ -4,14 +4,18 @@ import { notFound } from "next/navigation";
 import { CopyButton } from "@/components/copy-button";
 import { ProjectIcon } from "@/components/project-icon";
 import { formatDate } from "@/lib/format";
-import { getProject, PROJECTS_FEED, skillPrompt } from "@/lib/skills-feed";
+import { getProject, PROJECTS_FALLBACK, skillPrompt } from "@/lib/skills-feed";
 
 // /skills/[project] — one project's skill page (the Portal Monad-directory
 // pattern: agents.portalhq.io/monad/skills/uniswap-labs). Every skill row:
 // name · tags · description · last-verified · view skill.md · copy prompt.
 export function generateStaticParams() {
-  return PROJECTS_FEED.map((p) => ({ project: p.id }));
+  return PROJECTS_FALLBACK.map((p) => ({ project: p.id }));
 }
+
+// Feed-added projects (merged PRs) get pages without a console deploy.
+export const dynamicParams = true;
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,
@@ -19,7 +23,7 @@ export async function generateMetadata({
   params: Promise<{ project: string }>;
 }): Promise<Metadata> {
   const { project: id } = await params;
-  const project = getProject(id);
+  const project = await getProject(id);
   if (!project) {
     return { title: "Skills" };
   }
@@ -35,7 +39,7 @@ export default async function ProjectSkillsPage({
   params: Promise<{ project: string }>;
 }) {
   const { project: id } = await params;
-  const project = getProject(id);
+  const project = await getProject(id);
   if (!project) {
     notFound();
   }

@@ -63,11 +63,7 @@ export default async function DirectoryPage() {
         </div>
         <p className="m-0 max-w-[380px] text-fg-subtle text-xs leading-relaxed">
           Every agent with an on-chain Agent ID. Register free:{" "}
-          <span className="font-mono">t2 init</span> — or{" "}
-          <Link className="underline underline-offset-4" href="/manage/create">
-            create one in the console
-          </Link>
-          .
+          <span className="font-mono">t2 init</span>.
         </p>
       </div>
       <div className="ag-card mt-6 divide-y divide-border/50 overflow-hidden">

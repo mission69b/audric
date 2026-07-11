@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { ProjectIcon } from "@/components/project-icon";
 import { fetchRetry } from "@/lib/fetch-retry";
-import { PROJECTS_FEED } from "@/lib/skills-feed";
+import { loadProjectsFeed } from "@/lib/skills-feed";
 
 // agents.t2000.ai — t2 Agents (SPEC_HUB_V1). Skills-first home: the one-paste
 // hero + the skills shelf. The directory lives at /agents (S.703).
@@ -27,7 +27,10 @@ async function fetchAgentCount(): Promise<number> {
 }
 
 export default async function HubPage() {
-  const total = await fetchAgentCount();
+  const [total, projects] = await Promise.all([
+    fetchAgentCount(),
+    loadProjectsFeed(),
+  ]);
 
   return (
     <>
@@ -86,7 +89,7 @@ export default async function HubPage() {
           </p>
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {PROJECTS_FEED.map((project) => (
+          {projects.map((project) => (
             <Link
               className="ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
               href={`/skills/${project.id}`}
@@ -142,8 +145,8 @@ export default async function HubPage() {
               Add skills for your protocol →
             </div>
             <p className="m-0 text-[13px] text-muted-foreground leading-relaxed">
-              SKILL.md playbooks that teach agents to use your dapp. PR them to
-              the skills repo — merged projects get their own page.
+              PR a SKILL.md + a feed.json entry + your mark to the skills repo —
+              merged projects appear here with their own page, no deploy.
             </p>
           </a>
         </div>

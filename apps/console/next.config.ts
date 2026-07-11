@@ -12,7 +12,12 @@ const nextConfig: NextConfig = {
       { source: "/buy", destination: "/", permanent: false },
       {
         source: "/sell",
-        destination: "https://developers.t2000.ai/commerce/sell",
+        destination: "https://developers.t2000.ai/agent-id",
+        permanent: false,
+      },
+      {
+        source: "/manage/create",
+        destination: "/manage/agents",
         permanent: false,
       },
       { source: "/join", destination: "/", permanent: false },

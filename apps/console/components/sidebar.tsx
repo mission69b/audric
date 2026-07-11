@@ -8,7 +8,6 @@ import {
   ExternalLink,
   KeyRound,
   LayoutGrid,
-  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +27,6 @@ const NAV_GROUPS: {
     items: [
       { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
       { href: "/manage/agents", label: "My agents", icon: Bot },
-      { href: "/manage/create", label: "Create agent", icon: Plus },
     ],
   },
   {

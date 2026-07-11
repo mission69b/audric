@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { FundAgent } from "@/components/fund-agent";
 
@@ -23,14 +22,11 @@ function short(a: string): string {
 export function AgentManageCard({
   agent,
   fundable = true,
-  removable = false,
 }: {
   agent: Agent;
   /** False for the SELF row — funding your own Passport from itself is a
    *  no-op self-send (founder catch, first live test). */
   fundable?: boolean;
-  /** Owned (non-self) rows get "Remove" — off-chain archive (S.690). */
-  removable?: boolean;
 }) {
   return (
     <div className="ag-card flex flex-wrap items-center gap-4 px-5 py-[18px]">
@@ -73,14 +69,6 @@ export function AgentManageCard({
       >
         Manage
       </Link>
-      {removable && (
-        <AgentActionButton
-          action="unlink"
-          active={agent.active}
-          agent={agent.address}
-          name={agent.displayName || agent.name}
-        />
-      )}
     </div>
   );
 }
