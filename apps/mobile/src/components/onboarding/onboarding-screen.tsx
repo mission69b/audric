@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WALLET_ADDRESS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
@@ -6,7 +6,6 @@ import {
   AudricMark,
   Copy,
   EyeOff,
-  GoogleG,
   Lock,
   ScanFace,
   ShieldCheck,
@@ -17,10 +16,11 @@ import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
 // The first-launch onboarding (prototype OnboardScreen). Four steps — Welcome →
-// Privacy → Wallet ready → Face ID — with a progress-dot header. "Continue with
-// Google" runs a zkLogin sign-in animation then advances (guest:false); "Skip for
-// now" on step 0 drops into the anonymous guest path (web parity). It renders full
-// screen in place of the tab shell until `onboarded` flips true.
+// Privacy → Wallet ready → Face ID — with a progress-dot header. It renders
+// AFTER the real sign-in gate (src/app/gate.tsx), so the user already holds a
+// session: step 0 just advances (the prototype's mock "Continue with Google"
+// re-ask was removed — sign-in happens exactly once, at the gate). It renders
+// full screen in place of the tab shell until `onboarded` flips true.
 export function OnboardingScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -60,7 +60,7 @@ export function OnboardingScreen() {
 
 function Welcome() {
   const { colors } = useTheme();
-  const { signingIn, onGoogle, skipToApp } = useAppState();
+  const { onboardNext, finishOnboarding } = useAppState();
   const insets = useSafeAreaInsets();
 
   return (
@@ -75,34 +75,16 @@ function Welcome() {
       </View>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 30 }]}>
-        {signingIn ? (
-          <View style={styles.loadingCol}>
-            <ActivityIndicator size="large" color={colors.fg} />
-            <Text style={[styles.loadingTitle, { color: colors.fg }]}>
-              Setting up your private workspace
-            </Text>
-            <Text style={[styles.loadingSub, { color: colors.mutedFg }]}>
-              Creating your non-custodial wallet…
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Pressable
-              onPress={onGoogle}
-              style={[styles.googleBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            >
-              <GoogleG size={18} />
-              <Text style={[styles.googleText, { color: colors.fg }]}>Continue with Google</Text>
-            </Pressable>
-            <Text style={[styles.terms, { color: colors.mutedFg }]}>
-              By continuing you agree to the <Text style={{ color: colors.fg }}>Terms</Text> and{" "}
-              <Text style={{ color: colors.fg }}>Privacy Policy</Text>.
-            </Text>
-            <Pressable onPress={skipToApp} hitSlop={6} style={styles.skip}>
-              <Text style={[styles.skipText, { color: colors.mutedFg }]}>Skip for now</Text>
-            </Pressable>
-          </>
-        )}
+        <Pressable onPress={onboardNext} style={[styles.primaryBtn, { backgroundColor: colors.fg }]}>
+          <Text style={[styles.primaryText, { color: colors.bg }]}>Get started</Text>
+        </Pressable>
+        <Text style={[styles.terms, { color: colors.mutedFg }]}>
+          By continuing you agree to the <Text style={{ color: colors.fg }}>Terms</Text> and{" "}
+          <Text style={{ color: colors.fg }}>Privacy Policy</Text>.
+        </Text>
+        <Pressable onPress={finishOnboarding} hitSlop={6} style={styles.skip}>
+          <Text style={[styles.skipText, { color: colors.mutedFg }]}>Skip for now</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -274,19 +256,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 260,
   },
-  loadingCol: { alignItems: "center", gap: 14, paddingVertical: 10 },
-  loadingTitle: { fontFamily: fonts.medium, fontSize: 13.5 },
-  loadingSub: { fontFamily: fonts.regular, fontSize: 12 },
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
-  googleText: { fontFamily: fonts.semibold, fontSize: 14 },
   terms: {
     fontFamily: fonts.regular,
     fontSize: 11,

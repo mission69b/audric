@@ -186,11 +186,8 @@ type Store = {
   // onboarding (prototype first-launch flow → OnboardScreen)
   onboarded: boolean;
   step: number;
-  signingIn: boolean;
-  onGoogle: () => void;
   onboardNext: () => void;
   finishOnboarding: () => void;
-  skipToApp: () => void;
   replayOnboarding: () => void;
 
   // guest nudge (anonymous "try before signup")
@@ -199,7 +196,6 @@ type Store = {
   nudge: boolean;
   openNudge: () => void;
   closeNudge: () => void;
-  signInFromNudge: () => void;
 };
 
 const AppStateContext = createContext<Store | null>(null);
@@ -377,11 +373,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
 
   // Onboarding — the app boots into the first-launch flow (prototype default
-  // `onboarded:false`). "Continue with Google" signs in through the 4 steps
-  // (guest:false); "Skip for now" drops into the anonymous guest path.
+  // `onboarded:false`). Real sign-in already happened at the gate; the steps
+  // only introduce the app ("Get started" advances, "Skip for now" finishes).
   const [onboarded, setOnboarded] = useState(false);
   const [step, setStep] = useState(ONBOARD_START_STEP);
-  const [signingIn, setSigningIn] = useState(false);
   // Guest persona (anonymous "try before signup"): free models, no persistence,
   // a sign-in nudge after a few turns. Flipped by the onboarding actions.
   const [guest, setGuest] = useState(false);
@@ -390,7 +385,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const googleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // --- Real AI transport (Vercel AI SDK) ------------------------------------
   // The text conversation streams through the provider seam via the Expo Router
@@ -519,7 +513,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () => () => {
       if (replyTimer.current) clearTimeout(replyTimer.current);
       if (sendTimer.current) clearTimeout(sendTimer.current);
-      if (googleTimer.current) clearTimeout(googleTimer.current);
     },
     []
   );
@@ -725,16 +718,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [busy, draft, guest, sendMessage, setChatMessages]
   );
 
-  // Onboarding transitions (prototype onGoogle / onboardNext / finish / skip).
-  const onGoogle = useCallback(() => {
-    setSigningIn(true);
-    if (googleTimer.current) clearTimeout(googleTimer.current);
-    googleTimer.current = setTimeout(() => {
-      setSigningIn(false);
-      setStep(1);
-    }, 1700);
-  }, []);
-
+  // Onboarding transitions (prototype onboardNext / finish / skip — the mock
+  // onGoogle sign-in animation was removed; the gate owns real sign-in).
   const finishOnboarding = useCallback(() => {
     cancelPending();
     setOnboarded(true);
@@ -743,31 +728,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setChatMessages([]);
     setChatId(Crypto.randomUUID());
     setStep(0);
-    setSigningIn(false);
-    setAnonTurns(0);
-  }, [cancelPending]);
-
-  const skipToApp = useCallback(() => {
-    cancelPending();
-    setOnboarded(true);
-    setGuest(true);
-    setTabRaw("chat");
-    setChatMessages([]);
-    setChatId(Crypto.randomUUID());
-    setStep(0);
-    setSigningIn(false);
     setAnonTurns(0);
   }, [cancelPending]);
 
   const replayOnboarding = useCallback(() => {
     cancelPending();
-    if (googleTimer.current) clearTimeout(googleTimer.current);
     setOnboarded(false);
     setGuest(false);
     setChatMessages([]);
     setChatId(Crypto.randomUUID());
     setStep(ONBOARD_START_STEP);
-    setSigningIn(false);
     setAnonTurns(0);
     setNudge(false);
     setCtxOpen(false);
@@ -972,11 +942,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
       onboarded,
       step,
-      signingIn,
-      onGoogle,
       onboardNext: () => setStep((s) => Math.min(3, s + 1)),
       finishOnboarding,
-      skipToApp,
       replayOnboarding,
 
       guest,
@@ -984,11 +951,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       nudge,
       openNudge: () => setNudge(true),
       closeNudge: () => setNudge(false),
-      signInFromNudge: () => {
-        setGuest(false);
-        setNudge(false);
-        setAnonTurns(0);
-      },
     }),
     [
       tab,
@@ -1041,10 +1003,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       doConfirm,
       onboarded,
       step,
-      signingIn,
-      onGoogle,
       finishOnboarding,
-      skipToApp,
       replayOnboarding,
       guest,
       anonTurns,

@@ -58,7 +58,6 @@ export function Composer() {
     send,
     stop,
     busy,
-    messages,
     model,
     openModel,
     attachDemo,
@@ -75,8 +74,11 @@ export function Composer() {
   }, [draft]);
   const slashOpen = draft.startsWith("/") && slashCmds.length > 0;
 
-  const hasMessages = messages.length > 0;
-  const ctxShow = hasMessages && !busy;
+  // Context meter hidden until REAL token usage is wired (catalog CTX is static
+  // prototype data — showing it would fake live numbers). To re-enable: surface
+  // usage from the stream's finish part (chat+api → message metadata), replace
+  // catalog CTX with it, then restore `messages.length > 0 && !busy`.
+  const ctxShow = false;
   const attachVisionError = attachDemo && !VISION_MODELS.has(model);
 
   return (

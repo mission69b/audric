@@ -101,27 +101,3 @@ export const fonts = {
 
 export const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 40 } as const;
 export const radius = { sm: 8, md: 12, lg: 20, pill: 999 } as const;
-export const font = {
-  title: 28,
-  heading: 20,
-  body: 16,
-  small: 13,
-} as const;
-
-// ---------------------------------------------------------------------------
-// Legacy dark-only palette. The pre-prototype screens (gate, old chat/settings)
-// import `{ colors }` with these key names. Kept as a dark-theme alias so the app
-// keeps compiling while each screen migrates to `useTheme()`. Remove once no file
-// imports `colors` from here.
-export const colors = {
-  background: darkColors.bg,
-  card: darkColors.card,
-  cardBorder: darkColors.border,
-  foreground: darkColors.fg,
-  muted: darkColors.secondaryFg,
-  mutedFaint: darkColors.mutedFg,
-  accent: darkColors.teal,
-  accentInk: "#04141a",
-  success: darkColors.priv,
-  danger: darkColors.danger,
-} as const;

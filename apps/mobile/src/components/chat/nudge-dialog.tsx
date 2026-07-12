@@ -1,16 +1,24 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppState } from "@/app-state/store";
+import { useAuth } from "@/auth/useAuth";
 import { CenterDialog } from "@/components/ui/sheet";
 import { GoogleG, Sparkles } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
 // Guest sign-in nudge (prototype NUDGE). Fires after the 3rd anonymous turn (see
-// store.send). "Continue with Google" flips out of guest mode; "Maybe later"
-// dismisses. Presentational sign-in (no auth backend yet).
+// store.send). "Continue with Google" routes to the REAL sign-in: it clears the
+// (guest/dev) session so the root navigator lands on the gate — the single
+// sign-in surface. "Maybe later" dismisses.
 export function NudgeDialog() {
   const { colors } = useTheme();
-  const { nudge, closeNudge, signInFromNudge } = useAppState();
+  const { nudge, closeNudge } = useAppState();
+  const { signOut } = useAuth();
+
+  const goToSignIn = () => {
+    closeNudge();
+    void signOut();
+  };
 
   return (
     <CenterDialog visible={nudge} onClose={closeNudge}>
@@ -24,7 +32,7 @@ export function NudgeDialog() {
         higher limits.
       </Text>
 
-      <Pressable onPress={signInFromNudge} style={[styles.primary, { backgroundColor: colors.fg }]}>
+      <Pressable onPress={goToSignIn} style={[styles.primary, { backgroundColor: colors.fg }]}>
         <GoogleG size={18} />
         <Text style={[styles.primaryText, { color: colors.bg }]}>Continue with Google</Text>
       </Pressable>

@@ -42,8 +42,8 @@ export const MODELS: ModelRow[] = [
     caps: { tools: true, vision: true },
   },
   {
-    name: "Claude Sonnet 4.6",
-    id: "anthropic/claude-sonnet-4.6",
+    name: "Claude Sonnet 5",
+    id: "anthropic/claude-sonnet-5",
     best: "Balanced & fast",
     prov: "anthropic",
     kind: "paid",
@@ -85,7 +85,7 @@ export function modelId(name: string): string {
 export const VISION_MODELS = new Set([
   "Auto",
   "Grok 4.3",
-  "Claude Sonnet 4.6",
+  "Claude Sonnet 5",
   "Claude Opus 4.8",
   "GPT-5.5",
 ]);
