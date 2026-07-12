@@ -102,6 +102,16 @@ const serverSchema = z.object({
   // back to the keyless CoinGecko / GeckoTerminal path (no boot failure). The same
   // key later powers the t2000 agent gateway (dual-use). Server-only.
   CMC_API_KEY: optionalString,
+  // OPTIONAL kill switch: set to "0" or "off" to disable the whole surface
+  // (no catalog block, no tool, no offers) without a code change. Unset/other
+  // → enabled. Server-only.
+  // Ambient search images (Brave Image Search) — OPTIONAL: web_search fetches a
+  // handful of related images (safesearch strict) in parallel with the Sonar
+  // call for the answer's image strip. Our Perplexity tier doesn't return
+  // `return_images`, so Brave is the image source; DIRECT key by design (never
+  // via the t2000 gateway — that rail is x402-metered for agents). Unset → no
+  // image strip (no boot failure). Server-only.
+  BRAVE_API_KEY: optionalString,
   // Image super-resolution (fal.ai) — OPTIONAL: enables the `upscale_image` tool
   // (fal `clarity-upscaler`, image→image — not on the Vercel Gateway's text→image
   // surface). Unset → the tool returns a graceful "not configured" notice (no
@@ -124,11 +134,6 @@ const serverSchema = z.object({
   // Both unset → POST /v1/aci/anchor degrades to 503 (no impact on serving).
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: optionalString,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: optionalString,
-  // Walrus "pin & own" durable receipts (SPEC_CONFIDENTIAL_UI §3). A SUI+WAL-
-  // funded signer that pays for blob storage; unset → pins skipped (verify
-  // falls back to the gateway TTL window). Server-only.
-  WALRUS_SIGNER_KEY: optionalString,
-  WALRUS_RECEIPT_EPOCHS: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -167,14 +172,13 @@ const runtimeEnv = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   CMC_API_KEY: process.env.CMC_API_KEY,
+  BRAVE_API_KEY: process.env.BRAVE_API_KEY,
   FAL_API_KEY: process.env.FAL_API_KEY,
   PHALA_API_KEY: process.env.PHALA_API_KEY,
   CONFIDENTIAL_ATTESTATION_ENFORCE:
     process.env.CONFIDENTIAL_ATTESTATION_ENFORCE,
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: process.env.CONFIDENTIAL_ANCHOR_PACKAGE_ID,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: process.env.CONFIDENTIAL_ANCHOR_SIGNER_KEY,
-  WALRUS_SIGNER_KEY: process.env.WALRUS_SIGNER_KEY,
-  WALRUS_RECEIPT_EPOCHS: process.env.WALRUS_RECEIPT_EPOCHS,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

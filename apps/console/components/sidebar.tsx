@@ -1,6 +1,5 @@
 "use client";
 
-import { clearSession } from "@audric/auth/client";
 import {
   BarChart3,
   Bot,
@@ -9,20 +8,41 @@ import {
   ExternalLink,
   KeyRound,
   LayoutGrid,
-  LogOut,
-  PanelLeftClose,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const NAV = [
-  { href: "/dashboard", label: "Overview", icon: LayoutGrid },
-  { href: "/keys", label: "API keys", icon: KeyRound },
-  { href: "/my-agents", label: "My agents", icon: Bot },
-  { href: "/usage", label: "Usage", icon: BarChart3 },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/models", label: "Models", icon: Boxes },
+// Console sidebar (t2000-design/agents ManageConsole §Sidebar): identity
+// block (monogram tile + @handle + copy-address), grouped nav, then the
+// two-balance money block — USDC → agent payments · Credit → Private Inference —
+// stated once, and Docs ↗. Sign-out lives in the top nav's wallet chip.
+const NAV_GROUPS: {
+  label: string;
+  items: { href: string; label: string; icon: typeof LayoutGrid }[];
+}[] = [
+  {
+    label: "Your agents",
+    items: [
+      { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
+      { href: "/manage/agents", label: "My agents", icon: Bot },
+    ],
+  },
+  {
+    label: "Private Inference",
+    items: [
+      { href: "/manage/keys", label: "API keys", icon: KeyRound },
+      { href: "/manage/usage", label: "Usage", icon: BarChart3 },
+      { href: "/manage/models", label: "Models", icon: Boxes },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { href: "/manage/billing", label: "Wallet & billing", icon: CreditCard },
+    ],
+  },
 ];
 
 function shortAddress(address: string): string {
@@ -32,118 +52,183 @@ function shortAddress(address: string): string {
 }
 
 export function Sidebar({
-  email,
   address,
   balance,
+  walletUsdc,
   handle,
-  onToggle,
   onNavigate,
 }: {
-  email: string | null;
   address: string;
+  /** Platform credit (Private Inference), formatted "12.34". */
   balance: string;
+  /** On-chain Passport USDC — null when the RPC read failed. */
+  walletUsdc: number | null;
   handle?: string | null;
-  onToggle?: () => void;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-
-  async function signOut() {
-    clearSession();
-    await fetch("/api/auth/session", { method: "DELETE" }).catch(
-      () => undefined
-    );
-    window.location.href = "/";
-  }
+  const [copied, setCopied] = useState(false);
 
   return (
-    <aside className="sticky top-0 flex h-dvh w-64 shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground">
-      <div className="flex h-14 items-center justify-between gap-2 px-4">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sidebar-accent-foreground tracking-tight">
-            t2000
-          </span>
-          <span className="rounded bg-sidebar-accent px-1.5 py-0.5 font-mono text-[10px] text-sidebar-foreground/70">
-            platform
-          </span>
-        </div>
-        {onToggle ? (
-          <button
-            aria-label="Collapse sidebar"
-            className="rounded-md p-1.5 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            onClick={onToggle}
-            type="button"
+    <aside
+      className="flex h-full w-60 shrink-0 flex-col overflow-y-auto border-r pt-[26px] pr-4 pb-[26px] max-md:px-3"
+      style={{
+        borderColor: "var(--ag-border)",
+        background: "var(--ag-canvas)",
+      }}
+    >
+      {/* Identity — who is signed in (design: tile + handle + copy address). */}
+      <div className="px-3 pb-[18px]">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex size-[34px] items-center justify-center rounded-[9px] border font-mono text-[13px] text-fg-muted"
+            style={{
+              background: "var(--ag-overlay)",
+              borderColor: "var(--ag-border)",
+            }}
           >
-            <PanelLeftClose className="size-4" />
-          </button>
-        ) : null}
-      </div>
-
-      <nav className="flex flex-1 flex-col gap-0.5 px-2 py-2">
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              className={cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors",
-                active
-                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-              href={href}
-              key={href}
-              onClick={onNavigate}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
-          );
-        })}
-        <a
-          className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          href="https://developers.t2000.ai"
-          rel="noreferrer"
-          target="_blank"
-        >
-          <ExternalLink className="size-4" />
-          Docs
-        </a>
-      </nav>
-
-      <div className="space-y-0.5 border-sidebar-border border-t p-2">
-        <Link
-          className="block rounded-md px-2.5 py-2 transition-colors hover:bg-sidebar-accent"
-          href="/billing"
-          onClick={onNavigate}
-        >
-          <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wide">
-            Credit
+            ◎
           </div>
-          <div className="font-semibold text-sidebar-accent-foreground tabular-nums">
-            ${balance}
-          </div>
-        </Link>
-        <div className="flex items-center justify-between gap-2 px-2.5 py-1.5">
-          <div className="min-w-0 leading-tight">
-            <div className="truncate font-mono text-sidebar-foreground/80 text-xs">
+          <div className="min-w-0">
+            <div className="truncate font-semibold text-[13.5px] text-foreground">
               {handle ?? shortAddress(address)}
             </div>
-            {email ? (
-              <div className="truncate text-[11px] text-sidebar-foreground/45">
-                {email}
-              </div>
-            ) : null}
+            <button
+              className="flex items-center gap-1.5 font-mono text-[11px] text-fg-subtle transition-colors hover:text-fg-muted"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(address);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1400);
+                } catch {
+                  // clipboard unavailable
+                }
+              }}
+              title="Copy address"
+              type="button"
+            >
+              {copied ? "Copied ✓" : shortAddress(address)}
+              {!copied && (
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="11"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  viewBox="0 0 16 16"
+                  width="11"
+                >
+                  <rect height="8" rx="1.5" width="8" x="5.5" y="5.5" />
+                  <path
+                    d="M10.5 5.5V3.5A1 1 0 0 0 9.5 2.5h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+            </button>
           </div>
-          <button
-            className="shrink-0 text-sidebar-foreground/50 transition-colors hover:text-sidebar-accent-foreground"
-            onClick={signOut}
-            title="Sign out"
-            type="button"
-          >
-            <LogOut className="size-4" />
-          </button>
         </div>
       </div>
+
+      <nav className="flex flex-col gap-4">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.label}>
+            <div className="px-3 pb-[7px] font-medium font-mono text-[9.5px] text-fg-subtle uppercase tracking-[0.12em]">
+              {group.label}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {group.items.map(({ href, label, icon: Icon }) => {
+                const active =
+                  pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <Link
+                    className={cn(
+                      "flex items-center gap-[11px] rounded-[7px] px-3 py-2 font-medium text-[13.5px] transition-colors",
+                      active
+                        ? "bg-[color:var(--ag-overlay)] text-foreground"
+                        : "text-fg-muted hover:bg-[color:var(--ag-card)] hover:text-foreground"
+                    )}
+                    href={href}
+                    key={href}
+                    onClick={onNavigate}
+                  >
+                    <Icon className="size-4" strokeWidth={1.3} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <span className="flex-1" />
+
+      {/* Two-balance money block — the model, stated once (design). */}
+      <Link
+        className="ag-card mt-5 block px-3.5 py-[13px] no-underline"
+        href="/manage/billing"
+        onClick={onNavigate}
+      >
+        {(
+          [
+            [
+              "USDC",
+              walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`,
+              "agent payments",
+              "var(--ag-verify)",
+            ],
+            [
+              "Credit",
+              `$${balance}`,
+              "Private Inference + Audric",
+              "var(--ag-accent)",
+            ],
+          ] as const
+        ).map(([k, v, note, c], i) => (
+          <div
+            className="flex items-baseline justify-between gap-2"
+            key={k}
+            style={
+              i
+                ? {
+                    paddingTop: 9,
+                    marginTop: 9,
+                    borderTop: "1px solid var(--ag-border)",
+                  }
+                : undefined
+            }
+          >
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ background: c }}
+                />
+                <span className="font-semibold text-[12.5px] text-foreground">
+                  {k}
+                </span>
+              </div>
+              <div className="mt-0.5 pl-3 font-mono text-[10px] text-fg-subtle">
+                {note}
+              </div>
+            </div>
+            <span className="font-mono text-[13.5px] text-foreground tabular-nums">
+              {v}
+            </span>
+          </div>
+        ))}
+      </Link>
+
+      <a
+        className="mt-1 flex items-center gap-2 px-3 py-2.5 font-medium text-[13px] text-fg-subtle no-underline transition-colors hover:text-foreground"
+        href="https://developers.t2000.ai"
+        rel="noreferrer"
+        target="_blank"
+      >
+        <ExternalLink className="size-[15px]" strokeWidth={1.3} />
+        Docs ↗
+      </a>
     </aside>
   );
 }

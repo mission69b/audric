@@ -193,6 +193,21 @@ export const apiUsageEvent = pgTable(
 
 export type ApiUsageEvent = InferSelectModel<typeof apiUsageEvent>;
 
+// The curated storefront categories (agents.t2000.ai chips). Server-validated
+// at declaration time (`/v1/agent/service/prepare`) — never free text. Extend
+// deliberately; every value here becomes a public filter chip.
+export const AGENT_CATEGORIES = [
+  "ai-models",
+  "data-feeds",
+  "finance",
+  "research",
+  "dev-tools",
+  "creative",
+  "other",
+] as const;
+
+export type AgentCategory = (typeof AGENT_CATEGORIES)[number];
+
 // Agent ID directory index (SPEC_AGENT_ID B.1 gate 6 — the "default profile"
 // layer). A lightweight, queryable cache of on-chain `agent_id::registry`
 // identities so agents are browsable/searchable (the Sui-native 8004scan) WITHOUT
@@ -236,14 +251,23 @@ export const agentProfile = pgTable(
     // endpoint + its declared payment methods (e.g. ["x402"]) → Service / x402.
     mcpEndpoint: text("mcpEndpoint"),
     paymentMethods: json("paymentMethods").$type<string[]>(),
-    // Off-chain commerce attribute: the seller's declared price per call (USDC
-    // decimal string, e.g. "0.02"). The gateway reads this to price the x402
-    // 402. Off-chain because the on-chain AgentRecord struct is fixed (Move).
-    priceUsdc: text("priceUsdc"),
+    // Off-chain directory category (curated enum — see AGENT_CATEGORIES).
+    // Validated server-side.
+    category: text("category"),
     /** The register transaction digest (CREATED TX) — captured at submit-time
      *  write-through. Null for third-party agents we didn't sponsor (the cron
      *  has no cheap way to backfill it); surfaced as a Suiscan link when set. */
     registerDigest: text("registerDigest"),
+    /** Owner-side "remove from my console" (S.690). Off-chain display state —
+     *  hides the agent from the owner's My-agents/earnings surfaces (and
+     *  dismisses an unwanted ownership proposal). The chain record persists
+     *  (the registry has no delete); the cron never touches this field. */
+    archivedAt: timestamp("archivedAt"),
+    /** ADMIN delist (S.701) — platform-level directory moderation for keyless
+     *  junk/test registrations (the registry is permissionless + append-only;
+     *  the on-chain record persists, our directory just stops listing it).
+     *  Set only by ops scripts; the cron never touches this field. */
+    delistedAt: timestamp("delistedAt"),
     createdAt: timestamp("createdAt").notNull().defaultNow(),
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },

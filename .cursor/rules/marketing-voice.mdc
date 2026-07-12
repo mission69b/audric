@@ -1,0 +1,67 @@
+---
+description: Marketing + blog voice — "pure Apple simplicity". Plain words, short sentences, product-first, no code-name jargon. Applies to blog posts, landing copy, changelog, and launch announcements.
+globs: apps/web-v3/content/**,apps/web-v3/app/blog/**,apps/web-v3/app/(marketing)/**
+alwaysApply: false
+---
+
+# Marketing & Blog Voice — Pure Apple Simplicity
+
+Everything customer-facing (blog posts, landing copy, changelog, launch notes)
+reads like Apple wrote it: **plain, confident, product-first.** The reader should
+feel what a thing *does for them* before they ever meet how it works.
+
+## The rules
+
+1. **Lead with the benefit, in plain words.** Open with what it does, not what it is.
+   Short, declarative first line. ("Audric can now generate video.")
+2. **Short sentences. One idea each.** Break stacked em-dash sentences into two.
+3. **No code-name jargon in prose.** Say what it does; don't make the reader learn an
+   acronym. Name a technology only when it *earns* its place — and explain it in plain
+   words right there (Apple names Face ID and Secure Enclave; it never says the protocol).
+4. **Cut hedges and filler.** No "actually", "genuinely", "already", "just", "in about
+   three seconds". Say "in seconds" or give the real number, not a fuzzy one.
+5. **Concrete over abstract.** Real examples ("Send 10 USDC to alice@audric.") beat
+   adjectives. Show, don't assert.
+6. **Confident and calm.** No hype, no exclamation marks, no "revolutionary". The product
+   is impressive; the copy doesn't need to shout.
+7. **Repeat the pillar, not the paragraph.** A consistent one-line footer (e.g. "Private
+   by default.") is good; re-explaining it every post is not.
+
+## Jargon → plain (translate in prose; keep the term only in a "how it works" aside)
+
+| Don't write | Write |
+|---|---|
+| `zkLogin` | "Sign in with Google — your key is made on your device and never leaves it" |
+| `x402` | "an open payment standard" (link `suimpp.dev` if useful) |
+| `TEE` | "a secure enclave" |
+| `ZDR` | "zero data retention" (spelled out; drop the acronym) |
+| `KYC` | "ID checks" |
+| `OHLCV` | "daily price history" |
+| `DePIN`, `RWA` | name plain examples: "sectors like AI, gaming" |
+| `DEX` | "where it trades" / "an exchange" |
+| `classifier`, `orchestration` | "Auto reads your request and picks the right model" |
+| `non-custodial` | "only you hold the keys" (use the term at most once, explained) |
+
+**Keep + explain plainly** (these earn their place — they're the differentiator): Sui,
+Walrus, USDC/USDsui, "zero data retention", "secure enclave", "Audric Passport".
+
+## Structure of a launch post
+
+- Punchy one-line open (the benefit).
+- 1–2 sentences of context.
+- A short "What you get" / feature list (bold lead-ins, plain descriptions).
+- A "how it works" section *only if it adds trust* — plain language, name-and-explain.
+- A consistent "Private by default" footer.
+- Frontmatter: `title`, `date`, `description` (one plain sentence), `author`.
+
+## Before you ship
+
+Read it aloud. If a sentence needs a second breath, split it. If a word would make a
+smart non-crypto friend pause, replace it. If a paragraph asserts instead of shows, cut
+or make it concrete.
+
+## Reference
+
+The canonical examples are the live posts in `apps/web-v3/content/blog/` — `introducing-audric.md`
+(the flagship, full "how it works") and the short feature posts (`generate-video.md`,
+`image-upscaling.md`) for the tight single-feature format.

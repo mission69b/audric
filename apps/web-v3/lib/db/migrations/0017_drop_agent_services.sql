@@ -1,0 +1,1 @@
+ALTER TABLE "AgentProfile" DROP COLUMN IF EXISTS "services";

@@ -9,7 +9,7 @@ import { getPhalaPricing } from "@/lib/api/providers";
 // the CHARGED price (base × per-model margin), context window, and privacy tier.
 //
 // PUBLIC (no key) — a model + pricing catalog is public info (every AI gateway
-// exposes one), and the console (platform.t2000.ai) renders it for browsing
+// exposes one), and the console (agents.t2000.ai/manage) renders it for browsing
 // before a dev has a key. The OpenAI SDK's models.list() still works (it sends
 // the key, which is simply ignored here). The completions endpoint stays gated.
 export async function GET() {
@@ -36,6 +36,7 @@ export async function GET() {
         name: m.name,
         tier: m.tier,
         privacy: m.privacy,
+        reasoning: m.reasoning ?? false,
         context_window: base.contextWindow ?? null,
         pricing: {
           // USD per 1M tokens, CHARGED (what debits credit) — what you see = what you pay.

@@ -4,7 +4,6 @@ import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
-import { pinReceipt } from "@/lib/api/walrus";
 import { env } from "@/lib/env";
 import { getReadyRedisClient } from "@/lib/ratelimit";
 
@@ -31,34 +30,65 @@ const ACI_BASE = "https://inference.phala.com";
 const ANCHOR_GAS_BUDGET = 10_000_000n; // 0.01 SUI — one small event-emit MoveCall.
 const ANCHOR_KEY_PREFIX = "aci-anchor:";
 const ANCHOR_TTL_SECONDS = 60 * 60 * 24 * 365; // 1y — anchored once, kept for verify.
+const RECEIPT_BODY_KEY_PREFIX = "aci-receipt-body:";
+const RECEIPT_BODY_TTL_SECONDS = 60 * 60 * 24 * 365; // 1y — durable body for post-TTL verify.
 
 /**
- * Anchor-every + pin — the one background job fired after every confidential
- * response (SPEC_CONFIDENTIAL_UI §2). Pins the signed receipt to Walrus
- * (durable, §3) then anchors it on Sui. Best-effort + idempotent: the response
- * already shipped; both steps no-op if already done. Fire via `after()` so it
- * runs post-response without adding latency.
+ * Anchor-every + store — the one background job fired after every confidential
+ * response (SPEC_CONFIDENTIAL_UI §2). Anchors the signed receipt on Sui (the
+ * trustless, permanent commitment) then persists the receipt BODY to our durable
+ * store so `/v1/aci/receipts/{id}` can serve it after the upstream gateway TTL
+ * expires. Serving from our store stays fully trustless: the receipt is TEE-signed
+ * and its hash is anchored on-chain, so it can't be forged wherever it lives.
+ * Best-effort + idempotent; fired via `after()` so there's no added latency.
  */
-export async function anchorAndPin(receiptId: string): Promise<void> {
+export async function anchorAndStore(receiptId: string): Promise<void> {
   try {
-    // Fetch the signed receipt once (while fresh) → pin to Walrus for durability.
+    await anchorReceipt(receiptId);
+  } catch (e) {
+    console.error("[anchorAndStore] anchor step failed", receiptId, e);
+  }
+  try {
+    // Fetch the signed receipt (still fresh) → persist it for durability.
     if (env.PHALA_API_KEY) {
       const res = await fetch(
         `${ACI_BASE}/v1/aci/receipts/${encodeURIComponent(receiptId)}`,
         { headers: { Authorization: `Bearer ${env.PHALA_API_KEY}` } }
       );
       if (res.ok) {
-        await pinReceipt(receiptId, await res.text());
+        await storeReceiptBody(receiptId, await res.text());
       }
     }
   } catch (e) {
-    console.error("[anchorAndPin] pin step failed", receiptId, e);
+    console.error("[anchorAndStore] store step failed", receiptId, e);
   }
-  try {
-    await anchorReceipt(receiptId);
-  } catch (e) {
-    console.error("[anchorAndPin] anchor step failed", receiptId, e);
+}
+
+/** The durably-stored signed receipt body, if persisted (else null). Served by
+ *  `/v1/aci/receipts/{id}` once the upstream gateway TTL has expired. */
+export async function getReceiptBody(
+  receiptId: string
+): Promise<string | null> {
+  const redis = await getReadyRedisClient();
+  if (!redis) {
+    return null;
   }
+  return (await redis.get(`${RECEIPT_BODY_KEY_PREFIX}${receiptId}`)) as
+    | string
+    | null;
+}
+
+async function storeReceiptBody(
+  receiptId: string,
+  body: string
+): Promise<void> {
+  const redis = await getReadyRedisClient();
+  if (!redis) {
+    return;
+  }
+  await redis.set(`${RECEIPT_BODY_KEY_PREFIX}${receiptId}`, body, {
+    EX: RECEIPT_BODY_TTL_SECONDS,
+  });
 }
 
 /** The anchor tx digest for a receipt, if it's been anchored (else null). */
@@ -200,7 +230,29 @@ export async function anchorReceipt(receiptId: string): Promise<AnchorResult> {
     return tx;
   };
   const submit = async (addressBalanceGas: boolean): Promise<string> => {
-    const bytes = await buildAnchorTx(addressBalanceGas).build({ client });
+    const tx = buildAnchorTx(addressBalanceGas);
+    if (addressBalanceGas) {
+      // SIP-58 replay protection: a tx with NO address-owned inputs (ours is
+      // pure args + the shared Clock) paying gas from the address balance
+      // must carry a ValidDuring expiration of ≤ 2 epochs. The SDK only
+      // auto-sets this when IT computes the budget — we preset one, so set
+      // it ourselves (same shape as the SDK's buildValidDuringExpiration).
+      const [{ systemState }, { chainIdentifier }] = await Promise.all([
+        client.core.getCurrentSystemState(),
+        client.core.getChainIdentifier(),
+      ]);
+      tx.setExpiration({
+        ValidDuring: {
+          minEpoch: systemState.epoch,
+          maxEpoch: String(BigInt(systemState.epoch) + 1n),
+          minTimestamp: null,
+          maxTimestamp: null,
+          chain: chainIdentifier,
+          nonce: (Math.random() * 0x1_00_00_00_00) >>> 0,
+        },
+      });
+    }
+    const bytes = await tx.build({ client });
     const { signature } = await signer.signTransaction(bytes);
     const result = await client.core.executeTransaction({
       transaction: bytes,

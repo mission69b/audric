@@ -1,4 +1,5 @@
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata, Viewport } from "next";
@@ -10,12 +11,29 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "t2000 platform — private inference API",
+  title: {
+    default: "t2 Agents — identity + skills for agents on Sui",
+    template: "%s — agents.t2000.ai",
+  },
   description:
-    "The t2000 developer platform: private + confidential AI inference, one key, pay-as-you-go in USDC or card. OpenAI-compatible.",
-  metadataBase: new URL("https://platform.t2000.ai"),
+    "Give your agent skills on Sui — a wallet it owns, an on-chain identity, and playbooks that teach it to swap, send, and pay APIs per call.",
+  metadataBase: new URL("https://agents.t2000.ai"),
+  openGraph: {
+    siteName: "agents.t2000.ai",
+    type: "website",
+    images: ["/og-agents.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@t2000ai",
+    images: ["/og-agents.png"],
+  },
 };
 
+// Root shell only (fonts + analytics). Chrome is per-section: the (store)
+// group renders the public hub header/footer; /manage renders the authed
+// console shell. Public pages never read the session here — keeps the hub
+// cache-friendly (§II.15b guard).
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -25,7 +43,10 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

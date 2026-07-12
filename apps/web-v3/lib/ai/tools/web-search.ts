@@ -1,11 +1,12 @@
 import { gateway, generateText, tool } from "ai";
 import { z } from "zod";
+import { braveImageSearch } from "@/lib/ai/brave";
 import { env } from "@/lib/env";
 
 /**
  * web_search — SDK-executed live web search (Audric v3).
  *
- * Two paths, same shape out ({ answer, sources: [{ url, title }] }):
+ * Two paths, same shape out ({ answer, sources, images }):
  *
  *  1. DIRECT Perplexity API (when PERPLEXITY_API_KEY is set) — returns
  *     `search_results` with real page TITLES (+ url, date). The Vercel AI
@@ -15,6 +16,13 @@ import { env } from "@/lib/env";
  *     answer + source URLs only (no titles). Keyless; bills on the Gateway
  *     credential.
  *
+ * Ambient related images come from BRAVE image search (safesearch strict),
+ * fetched in PARALLEL with the Sonar call when BRAVE_API_KEY is set — our
+ * Perplexity tier doesn't return `return_images`. Direct key by design (never
+ * via the t2000 gateway — that rail is x402-metered for agents). Sources carry
+ * `date` and the result carries `images` for the Perplexity-style source cards
+ * + image strip (search-results.tsx); both degrade to nothing when absent.
+ *
  * Why SDK-executed (not the Gateway's provider search tool): provider-executed
  * tools don't trigger the AI SDK's multi-step continuation — models call, get
  * results, and stop WITHOUT synthesizing. Returning the result through the
@@ -22,13 +30,22 @@ import { env } from "@/lib/env";
  */
 
 const MAX_ANSWER_CHARS = 4000;
+const MAX_IMAGES = 6;
 
-type Source = { url: string; title: string };
+type Source = { url: string; title: string; date?: string };
+type SearchImage = { url: string; origin?: string };
 
 function cap(text: string): string {
   return text.length > MAX_ANSWER_CHARS
     ? `${text.slice(0, MAX_ANSWER_CHARS)}…`
     : text;
+}
+
+/** Ambient image strip — shared Brave helper (lib/ai/brave.ts), capped small.
+ * Never throws; [] on any failure. */
+async function braveImages(query: string): Promise<SearchImage[]> {
+  const results = await braveImageSearch(query, MAX_IMAGES);
+  return results.map((r) => ({ url: r.url, origin: r.origin }));
 }
 
 async function searchDirect(
@@ -51,16 +68,19 @@ async function searchDirect(
   }
   const data = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
-    search_results?: { url?: string; title?: string }[];
+    search_results?: { url?: string; title?: string; date?: string }[];
     citations?: string[];
   };
   const text = data.choices?.[0]?.message?.content ?? "";
 
   const fromResults: Source[] = (data.search_results ?? [])
-    .filter((r): r is { url: string; title?: string } => Boolean(r.url))
+    .filter((r): r is { url: string; title?: string; date?: string } =>
+      Boolean(r.url)
+    )
     .map((r) => ({
       url: r.url,
       title: typeof r.title === "string" ? r.title : "",
+      ...(typeof r.date === "string" && r.date ? { date: r.date } : {}),
     }));
   // Fallback to bare citation URLs if the API omitted search_results.
   const sources =
@@ -106,14 +126,22 @@ export const webSearch = tool({
   }),
   execute: async ({ query }) => {
     const apiKey = env.PERPLEXITY_API_KEY;
-    if (apiKey) {
-      try {
-        return await searchDirect(query, apiKey);
-      } catch {
-        // Direct call failed (rate limit / outage) → degrade to the Gateway.
+    // Answer (Sonar) + ambient images (Brave) run in parallel — images never
+    // block or fail the search (braveImages returns [] on any failure).
+    const [result, images] = await Promise.all([
+      (async () => {
+        if (apiKey) {
+          try {
+            return await searchDirect(query, apiKey);
+          } catch {
+            // Direct call failed (rate limit / outage) → degrade to the Gateway.
+            return await searchGateway(query);
+          }
+        }
         return await searchGateway(query);
-      }
-    }
-    return await searchGateway(query);
+      })(),
+      braveImages(query),
+    ]);
+    return { ...result, images };
   },
 });

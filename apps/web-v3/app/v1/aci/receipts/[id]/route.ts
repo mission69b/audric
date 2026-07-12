@@ -1,6 +1,6 @@
+import { getReceiptBody } from "@/lib/api/anchor";
 import { openAiError } from "@/lib/api/keys";
 import { isConfidentialConfigured } from "@/lib/api/providers";
-import { fetchReceiptFromWalrus } from "@/lib/api/walrus";
 import { env } from "@/lib/env";
 
 // GET /v1/aci/receipts/{id} — fetch the signed per-response receipt for a
@@ -45,9 +45,10 @@ export async function GET(
         },
       });
     }
-    // Gateway TTL expired (or miss) → serve the durable Walrus copy if pinned
-    // (SPEC_CONFIDENTIAL_UI §3). Still trustless: the receipt is signed + anchored.
-    const durable = await fetchReceiptFromWalrus(id);
+    // Gateway TTL expired (or miss) → serve our durably-stored copy if we have
+    // one (SPEC_CONFIDENTIAL_UI §3). Still trustless: the receipt is signed +
+    // its hash anchored on-chain, so it can't be forged wherever it's served.
+    const durable = await getReceiptBody(id);
     if (durable) {
       return new Response(durable, {
         status: 200,
@@ -62,7 +63,7 @@ export async function GET(
     });
   } catch {
     // Upstream errored — last-chance durable fallback.
-    const durable = await fetchReceiptFromWalrus(id);
+    const durable = await getReceiptBody(id);
     if (durable) {
       return new Response(durable, {
         status: 200,

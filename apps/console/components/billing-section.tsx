@@ -3,6 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
+import { Segmented } from "@/components/segmented";
 import { Button } from "@/components/ui/button";
 import { payStablecoinTopup, type TopupAsset } from "@/lib/usdc-topup";
 
@@ -230,22 +231,12 @@ export function BillingSection({
             <Copy className="size-3.5 text-muted-foreground" />
           )}
         </button>
-        <div className="mt-3 inline-flex rounded-lg border border-border/50 p-0.5">
-          {TOPUP_ASSETS.map((a) => (
-            <button
-              className={
-                usdcAsset === a
-                  ? "rounded-md bg-foreground/10 px-2.5 py-1 font-medium text-foreground text-xs"
-                  : "rounded-md px-2.5 py-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
-              }
-              disabled={usdcBusy !== null}
-              key={a}
-              onClick={() => setUsdcAsset(a)}
-              type="button"
-            >
-              {a}
-            </button>
-          ))}
+        <div className="mt-3">
+          <Segmented
+            onChange={(a) => setUsdcAsset(a)}
+            options={TOPUP_ASSETS.map((a) => ({ id: a, label: a }))}
+            value={usdcAsset}
+          />
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {USDC_AMOUNTS.map((amt) => (

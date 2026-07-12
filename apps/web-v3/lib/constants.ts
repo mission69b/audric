@@ -18,6 +18,31 @@ export type StarterChip = {
   authed?: boolean;
 };
 
+/** Confidential-mode starter chips — a pure in-TEE completion (no image/web/
+ * video/wallet), so themed for private document + drafting work. */
+export const confidentialChips: StarterChip[] = [
+  {
+    label: "Analyze a PDF",
+    starterPrompt:
+      "I'll paste a document (PDF or text) — analyze it privately and pull out the key points and anything I should watch for.",
+  },
+  {
+    label: "Review a term sheet",
+    starterPrompt:
+      "Review a term sheet or contract I'll paste. Summarize it in plain English and flag the important or unusual clauses.",
+  },
+  {
+    label: "Draft an email",
+    starterPrompt:
+      "Help me draft an email — ask me the key details, then write it.",
+  },
+  {
+    label: "Explain a concept",
+    starterPrompt:
+      "Explain a concept to me clearly and simply. I'll tell you the topic.",
+  },
+];
+
 export const starterChips: StarterChip[] = [
   {
     label: "Generate image",
@@ -29,7 +54,7 @@ export const starterChips: StarterChip[] = [
       "I need you to research a topic for me. Use web search to find current, reliable information. Summarize the key findings clearly, cite your sources, and flag any conflicting information or areas where more research might be needed.",
   },
   {
-    label: "Create a video prompt",
+    label: "Create a video",
     starterPrompt:
       "Help me make a video. Suggest one vivid, cinematic scene idea (visuals only — no on-screen text or logos), then generate a short clip of it.",
   },
@@ -51,15 +76,26 @@ export const composerPlaceholders: string[] = [
   "Analyze documents and PDFs",
   "Generate or animate videos",
   "Edit or upscale your images",
-  "What are the trending AI crypto projects?",
+  "Draft an email or a document",
+  "Explain a complex topic simply",
+  "Summarize a long article or paper",
   "Make a video of a calm ocean wave at sunset",
-  "Research NVDA — fundamentals, ratings and recent news",
-  "New tokens on Solana",
-  "Top crypto gainers this week",
-  "Show me ETH's price over the last 30 days",
-  "What's the crypto Fear & Greed index right now?",
+  "Research a company — fundamentals, news, ratings",
   "Send USDC to a friend — free and instant",
   "What's in my Passport wallet?",
+];
+
+/** Placeholders shown when Confidential mode is on — a pure in-TEE completion
+ * (no web/tools/images), so themed for private document + drafting work. */
+export const confidentialPlaceholders: string[] = [
+  "Ask me anything — sealed in a GPU-TEE",
+  "Review this term sheet",
+  "Analyze this PDF privately",
+  "Summarize this contract",
+  "Draft a reply to this email",
+  "Explain this legal clause in plain English",
+  "Redline this agreement",
+  "Talk through something sensitive, privately",
 ];
 
 /** Concrete example prompts for the static login/preview pane. */

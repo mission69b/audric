@@ -15,6 +15,7 @@ import {
   ToolOutput,
 } from "../ai-elements/tool";
 import { BalanceTool } from "./balance-tool";
+import { ConfidentialBadge } from "./confidential-badge";
 import { type CotItem, CotTimeline } from "./cot-timeline";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
@@ -28,11 +29,23 @@ function modelDisplayName(id: string): string {
 
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import { useArtifact } from "@/hooks/use-artifact";
+import { ImageSearchResults } from "./image-search-results";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
 import { MessageActions } from "./message-actions";
 import { PreviewAttachment } from "./preview-attachment";
+import { type CryptoMarketOutput, PriceCard } from "./price-card";
+import { PriceChart, type PriceHistoryOutput } from "./price-chart";
+import { SearchResults } from "./search-results";
 import { SendTransferTool } from "./send-transfer-tool";
+import { StockCard, type StockOutput } from "./stock-card";
+
+/** Slim pulse placeholder while a finance skill is fetching. */
+function FinanceCardLoading() {
+  return (
+    <div className="h-24 w-full max-w-xl animate-pulse rounded-2xl border border-border/40 bg-muted/30" />
+  );
+}
 
 /** Free daily-image cap reached → a clean upgrade-to-view gate (Venice-style). */
 function ImageLimitCard({ message }: { message: string }) {
@@ -170,6 +183,20 @@ const PurePreviewMessage = ({
       pushNarration(part.text ?? "");
     }
   });
+  // Perplexity-style visual layer — aggregate every completed search's sources
+  // + related images for the card grid / image strip rendered above the answer
+  // (search-results.tsx). The CoT timeline above stays the process view.
+  const searchSources = allParts.flatMap((p) =>
+    p.type === "tool-web_search" && p.state === "output-available"
+      ? (p.output?.sources ?? [])
+      : []
+  );
+  const searchImages = allParts.flatMap((p) =>
+    p.type === "tool-web_search" && p.state === "output-available"
+      ? (p.output?.images ?? [])
+      : []
+  );
+
   // Terminal marker once the turn has finished its work. If an image tool
   // errored, mark the turn FAILED (not a misleading "Done" ✓ next to a failed
   // generation). Only when there was visible work and we're not still streaming.
@@ -210,6 +237,63 @@ const PurePreviewMessage = ({
 
     if (type === "tool-balance_check") {
       return <BalanceTool key={part.toolCallId} part={part} />;
+    }
+
+    if (type === "tool-image_search") {
+      if (part.state !== "output-available") {
+        return (
+          <div
+            className="grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-3"
+            key={part.toolCallId}
+          >
+            {[0, 1, 2].map((i) => (
+              <div
+                className="h-32 animate-pulse rounded-xl bg-muted/30"
+                key={i}
+              />
+            ))}
+          </div>
+        );
+      }
+      const out = part.output as
+        | { images?: { url: string; origin?: string; title?: string }[] }
+        | undefined;
+      return (
+        <ImageSearchResults images={out?.images ?? []} key={part.toolCallId} />
+      );
+    }
+
+    // Finance cards — structured skill output → scannable visual anchor
+    // (the model still narrates the numbers in its text below the card).
+    if (type === "tool-crypto_market") {
+      if (part.state !== "output-available") {
+        return <FinanceCardLoading key={part.toolCallId} />;
+      }
+      return (
+        <PriceCard
+          key={part.toolCallId}
+          output={part.output as CryptoMarketOutput}
+        />
+      );
+    }
+    if (type === "tool-crypto_history") {
+      if (part.state !== "output-available") {
+        return <FinanceCardLoading key={part.toolCallId} />;
+      }
+      return (
+        <PriceChart
+          key={part.toolCallId}
+          output={part.output as PriceHistoryOutput}
+        />
+      );
+    }
+    if (type === "tool-stock_analysis") {
+      if (part.state !== "output-available") {
+        return <FinanceCardLoading key={part.toolCallId} />;
+      }
+      return (
+        <StockCard key={part.toolCallId} output={part.output as StockOutput} />
+      );
     }
 
     if (type === "text") {
@@ -619,6 +703,9 @@ const PurePreviewMessage = ({
           }
         />
       )}
+      {isAssistant && (searchSources.length > 0 || searchImages.length > 0) && (
+        <SearchResults images={searchImages} sources={searchSources} />
+      )}
       {isEmptyAssistant ? (
         <MessageContent className="text-[13px] leading-[1.65]">
           <MessageResponse>
@@ -630,6 +717,7 @@ const PurePreviewMessage = ({
         parts
       )}
       {modelBadge}
+      {isAssistant && <ConfidentialBadge message={message} />}
       {actions}
     </>
   );

@@ -5,7 +5,6 @@ import {
   GiftIcon,
   PanelLeftIcon,
   PenSquareIcon,
-  SparklesIcon,
   TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -131,19 +130,8 @@ export function AppSidebar({ user }: { user: SessionUser | undefined }) {
                     <span className="font-medium">New chat</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    className="h-8 rounded-lg text-[13px] text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    onClick={() => {
-                      setOpenMobile(false);
-                      router.push("/skills");
-                    }}
-                    tooltip="Skills"
-                  >
-                    <SparklesIcon className="size-4" />
-                    <span className="font-medium">Skills</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {/* Markets nav entry removed until there's demand — the /markets
+                    page stays live (pricing + blog deep-links still point at it). */}
                 {!user && (
                   <SidebarMenuItem>
                     <SidebarMenuButton

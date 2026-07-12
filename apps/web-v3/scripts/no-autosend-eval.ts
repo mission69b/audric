@@ -75,7 +75,7 @@ const CASES: Case[] = [
 ];
 
 let passed = 0;
-console.log(`no-autosend eval — ${CASES.length} cases\n`);
+console.log(`no-autosend eval — ${CASES.length} send cases\n`);
 for (const c of CASES) {
   const got = hasPaymentIntent({
     text: c.text,
@@ -90,9 +90,10 @@ for (const c of CASES) {
     `${ok ? "✅" : "❌"} exposed=${got} expect=${c.expect}  ${c.label}`
   );
 }
-console.log(`\n${passed}/${CASES.length} passed`);
+
+console.log(`\n${passed}/${CASES.length} send cases passed`);
 if (passed !== CASES.length) {
-  console.log("FAIL ❌ — send-safety invariant broken");
+  console.log("FAIL ❌ — money-tool gating invariant broken");
   process.exit(1);
 }
-console.log("PASS ✅ (send_transfer never exposed without payment intent)");
+console.log("PASS ✅ (send_transfer never exposed without user intent)");

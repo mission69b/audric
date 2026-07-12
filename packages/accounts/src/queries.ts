@@ -1,11 +1,22 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, isNull, sum } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sum,
+} from "drizzle-orm";
 import { db } from "./db";
 import {
   type AgentProfile,
-  agentProfile,
   type ApiKey,
+  agentProfile,
   apiKey,
   apiUsageEvent,
   creditLedger,
@@ -18,6 +29,43 @@ import {
 export async function getUserById(id: string): Promise<User | undefined> {
   const [row] = await db.select().from(user).where(eq(user.id, id)).limit(1);
   return row;
+}
+
+/** Resolve a claimed @handle (the unique `username` column) to its user —
+ *  powers agents.t2000.ai/@handle vanity URLs. Case-insensitive would need a
+ *  citext/index migration; handles are minted lowercase, so exact-match works
+ *  against lowercased input. */
+export async function getUserByUsername(
+  username: string
+): Promise<User | undefined> {
+  const [row] = await db
+    .select()
+    .from(user)
+    .where(eq(user.username, username.toLowerCase()))
+    .limit(1);
+  return row;
+}
+
+/** Batched reverse lookup: user ids (= Passport addresses) → claimed
+ *  @handles. Powers the store's `@handle · #id` card lines — one query per
+ *  page render, only rows that actually claimed a username come back. */
+export async function getUsernamesByIds(
+  ids: string[]
+): Promise<Map<string, string>> {
+  if (ids.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ id: user.id, username: user.username })
+    .from(user)
+    .where(inArray(user.id, ids));
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    if (row.username) {
+      map.set(row.id, row.username);
+    }
+  }
+  return map;
 }
 
 // ── Agent ID directory (gate 6) ──────────────────────────────────────────────
@@ -40,10 +88,9 @@ export async function upsertAgentProfile(opts: {
   metadataUri?: string | null;
   mcpEndpoint?: string | null;
   paymentMethods?: string[] | null;
-  /** Off-chain commerce price (USDC decimal string). NOT on-chain, so the cron
-   *  has no authority over it — always preserve-on-undefined (never cleared by a
-   *  reconcile), set only when the service write-through provides it. */
-  priceUsdc?: string | null;
+  /** Off-chain directory category (curated enum) — preserve-on-undefined,
+   *  the cron never clears it. */
+  category?: string | null;
   /** The register tx digest (CREATED TX). Only the register write-through has
    *  it — always preserve-on-undefined (the cron + third-party path never
    *  carry it, so they must not clobber a captured digest). */
@@ -66,7 +113,7 @@ export async function upsertAgentProfile(opts: {
   // LAST UPDATED tracks on-chain state changes (chain `updated_at_ms`); fall
   // back to wall-clock for the bare write-through that has no chain timestamp.
   const updatedAt =
-    opts.chainUpdatedAtMs != null ? new Date(opts.chainUpdatedAtMs) : now;
+    opts.chainUpdatedAtMs == null ? now : new Date(opts.chainUpdatedAtMs);
   await db
     .insert(agentProfile)
     .values({
@@ -79,7 +126,7 @@ export async function upsertAgentProfile(opts: {
       metadataUri: opts.metadataUri ?? null,
       mcpEndpoint: opts.mcpEndpoint ?? null,
       paymentMethods: opts.paymentMethods ?? null,
-      priceUsdc: opts.priceUsdc ?? null,
+      category: opts.category ?? null,
       registerDigest: opts.registerDigest ?? null,
       updatedAt,
     })
@@ -93,13 +140,26 @@ export async function upsertAgentProfile(opts: {
         metadataUri: pick(opts.metadataUri),
         mcpEndpoint: pick(opts.mcpEndpoint),
         paymentMethods: pick(opts.paymentMethods),
-        // Off-chain: always preserve-on-undefined (cron never clears it).
-        priceUsdc: opts.priceUsdc ?? undefined,
+        // Off-chain: always preserve-on-undefined (cron never clears them).
+        category: opts.category ?? undefined,
         // CREATED TX never changes; preserve unless this writer supplies it.
         registerDigest: opts.registerDigest ?? undefined,
         updatedAt,
       },
     });
+}
+
+/** Resolve an agent by its ERC-8004-style numeric id (Store v2 Phase 3 —
+ *  the legible `agents.t2000.ai/16` URLs). */
+export async function getAgentProfileByNumericId(
+  numericId: number
+): Promise<AgentProfile | undefined> {
+  const [row] = await db
+    .select()
+    .from(agentProfile)
+    .where(eq(agentProfile.numericId, numericId))
+    .limit(1);
+  return row;
 }
 
 /** Set the editable rich-profile fields (gate 8c). Only provided fields are
@@ -111,9 +171,8 @@ export async function setAgentProfileFields(
     displayName?: string | null;
     imageUrl?: string | null;
     description?: string | null;
-    // Off-chain commerce price — owner-editable from the console alongside the
-    // display fields (the on-chain endpoint stays agent-keypair-only).
-    priceUsdc?: string | null;
+    // Off-chain directory category (curated enum; caller validates).
+    category?: string | null;
     // Off-chain social links (full https URLs).
     website?: string | null;
     twitter?: string | null;
@@ -131,7 +190,7 @@ export async function setAgentProfileFields(
       displayName: fields.displayName ?? null,
       imageUrl: fields.imageUrl ?? null,
       description: fields.description ?? null,
-      priceUsdc: fields.priceUsdc ?? null,
+      category: fields.category ?? null,
       website: fields.website ?? null,
       twitter: fields.twitter ?? null,
       github: fields.github ?? null,
@@ -143,46 +202,10 @@ export async function setAgentProfileFields(
         displayName: fields.displayName,
         imageUrl: fields.imageUrl,
         description: fields.description,
-        priceUsdc: fields.priceUsdc,
+        category: fields.category,
         website: fields.website,
         twitter: fields.twitter,
         github: fields.github,
-        updatedAt: now,
-      },
-    });
-}
-
-/** Write the service fields right after an on-chain `update` (instant, no cron
- *  lag). `mcpEndpoint` + `paymentMethods` are the new on-chain truth → written
- *  EXACTLY (null/[] clears them — fixes "can't clear an endpoint"). `priceUsdc`
- *  is off-chain → written only when provided (undefined = preserve). */
-export async function setAgentServiceFields(
-  address: string,
-  fields: {
-    mcpEndpoint?: string | null;
-    paymentMethods?: string[] | null;
-    priceUsdc?: string;
-  }
-): Promise<void> {
-  const now = new Date();
-  await db
-    .insert(agentProfile)
-    .values({
-      address,
-      name: defaultAgentName(address),
-      mcpEndpoint: fields.mcpEndpoint ?? null,
-      paymentMethods: fields.paymentMethods ?? null,
-      priceUsdc: fields.priceUsdc ?? null,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: agentProfile.address,
-      set: {
-        // On-chain truth — always written (null/[] clears).
-        mcpEndpoint: fields.mcpEndpoint ?? null,
-        paymentMethods: fields.paymentMethods ?? null,
-        // Off-chain — preserve unless explicitly provided.
-        ...(fields.priceUsdc !== undefined ? { priceUsdc: fields.priceUsdc } : {}),
         updatedAt: now,
       },
     });
@@ -209,10 +232,10 @@ export async function setAgentOwnership(
     .onConflictDoUpdate({
       target: agentProfile.address,
       set: {
-        ...(fields.owner !== undefined ? { owner: fields.owner } : {}),
-        ...(fields.pendingOwner !== undefined
-          ? { pendingOwner: fields.pendingOwner }
-          : {}),
+        ...(fields.owner === undefined ? {} : { owner: fields.owner }),
+        ...(fields.pendingOwner === undefined
+          ? {}
+          : { pendingOwner: fields.pendingOwner }),
         updatedAt: now,
       },
     });
@@ -223,20 +246,56 @@ export async function setAgentOwnership(
 export async function listAgentsForOwner(owner: string): Promise<{
   owned: AgentProfile[];
   pending: AgentProfile[];
+  archived: AgentProfile[];
 }> {
-  const [owned, pending] = await Promise.all([
+  const [owned, pending, archived] = await Promise.all([
     db
       .select()
       .from(agentProfile)
-      .where(eq(agentProfile.owner, owner))
+      .where(
+        and(eq(agentProfile.owner, owner), isNull(agentProfile.archivedAt))
+      )
       .orderBy(desc(agentProfile.createdAt)),
     db
       .select()
       .from(agentProfile)
-      .where(eq(agentProfile.pendingOwner, owner))
+      .where(
+        and(
+          eq(agentProfile.pendingOwner, owner),
+          isNull(agentProfile.archivedAt)
+        )
+      )
+      .orderBy(desc(agentProfile.createdAt)),
+    // Removed-from-console rows (owned or dismissed proposals) — powers the
+    // "Archived — restore" footer.
+    db
+      .select()
+      .from(agentProfile)
+      .where(
+        and(
+          isNotNull(agentProfile.archivedAt),
+          or(
+            eq(agentProfile.owner, owner),
+            eq(agentProfile.pendingOwner, owner)
+          )
+        )
+      )
       .orderBy(desc(agentProfile.createdAt)),
   ]);
-  return { owned, pending };
+  return { owned, pending, archived };
+}
+
+/** Owner-side archive toggle (S.690): hide an agent from (or restore it to)
+ *  the owner's console surfaces. Authorization is the CALLER's job (owner or
+ *  proposed-owner session). */
+export async function setAgentArchived(
+  address: string,
+  archived: boolean
+): Promise<void> {
+  await db
+    .update(agentProfile)
+    .set({ archivedAt: archived ? new Date() : null, updatedAt: new Date() })
+    .where(eq(agentProfile.address, address));
 }
 
 export async function getAgentProfile(
@@ -254,17 +313,29 @@ export async function getAgentProfile(
 export async function listAgentProfiles(opts?: {
   limit?: number;
   offset?: number;
+  /** Default true (Store v2 Phase 3): deactivated records (e.g. the retired
+   *  seed shelf) stay out of the browsable directory; direct address URLs
+   *  still resolve them. Pass false for the full registry. */
+  activeOnly?: boolean;
 }): Promise<{ agents: AgentProfile[]; total: number }> {
   const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
   const offset = Math.max(opts?.offset ?? 0, 0);
+  const activeOnly = opts?.activeOnly !== false;
+  // Admin-delisted rows (S.701) never list — the registry is permissionless
+  // and append-only, so directory moderation is the only lever for keyless
+  // junk registrations. Direct address URLs still resolve them.
+  const where = activeOnly
+    ? and(eq(agentProfile.active, true), isNull(agentProfile.delistedAt))
+    : isNull(agentProfile.delistedAt);
   const [rows, [totalRow]] = await Promise.all([
     db
       .select()
       .from(agentProfile)
+      .where(where)
       .orderBy(desc(agentProfile.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ value: count() }).from(agentProfile),
+    db.select({ value: count() }).from(agentProfile).where(where),
   ]);
   return { agents: rows, total: totalRow?.value ?? 0 };
 }

@@ -1,6 +1,6 @@
-// Audric's settings card pattern — soft, translucent, blended. Reused verbatim
-// so the console matches audric.ai's polish (rounded-2xl · border-border/50 ·
-// bg-card/40 · small text-sm titles).
+// Console card (t2000-design/agents ManageConsole panels) — every settings
+// block is an ag-card with a 14/600 title + 12.5 muted sub. One component,
+// so keys/usage/models/billing/tasks reskin at a single point.
 
 export function Section({
   title,
@@ -12,14 +12,14 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-border/50 bg-card/40 p-5">
+    <div className="ag-card p-5">
       {title ? (
-        <h2 className="font-medium text-foreground text-sm">{title}</h2>
+        <h2 className="m-0 font-semibold text-[14px] text-foreground">
+          {title}
+        </h2>
       ) : null}
       {description ? (
-        <p className="mt-0.5 mb-3 text-muted-foreground text-xs">
-          {description}
-        </p>
+        <p className="mt-1 mb-3 text-[12.5px] text-fg-muted">{description}</p>
       ) : null}
       {children}
     </div>

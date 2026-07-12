@@ -81,7 +81,7 @@ export function ApiKeysSection() {
   const keys = data?.keys ?? [];
 
   return (
-    <Section title="API keys">
+    <Section>
       {data && !data.canIssue ? (
         <p className="text-muted-foreground text-xs">
           Add credit (or a plan) to mint a key — fund your balance in Billing to

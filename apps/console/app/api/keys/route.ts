@@ -9,7 +9,7 @@ import {
 } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 
-// Session-authed (zkLogin) management surface for Private API keys, on the
+// Session-authed (zkLogin) management surface for Private Inference keys, on the
 // t2000 console. Mints the SAME `sk-…` keys as audric.ai (shared @audric/accounts
 // hash) → they authenticate against api.t2000.ai. The plaintext secret is
 // returned exactly ONCE on create. (SPEC_T2000_API_V2 M1.)

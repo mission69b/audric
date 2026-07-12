@@ -26,6 +26,10 @@ export type ImageModel = {
   costPerImage: number;
   /** Aspect ratios this model supports (validates the request; see §2.2). */
   aspectRatios: AspectRatio[];
+  /** Which dimension param the Gateway model natively accepts. `size` models
+   * warn-and-ignore `aspectRatio` (→ square); `aspectRatio` models drop or
+   * derive `size` (imagen-4 dropped it entirely → non-square came out 1:1). */
+  dimensionParam: "size" | "aspectRatio";
 };
 
 const ALL_RATIOS: AspectRatio[] = ["1:1", "16:9", "9:16", "4:3", "3:4"];
@@ -40,6 +44,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     mature: false,
     costPerImage: 0.04,
     aspectRatios: ALL_RATIOS,
+    dimensionParam: "size",
   },
   {
     id: "prodia/flux-fast-schnell",
@@ -49,6 +54,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     mature: false,
     costPerImage: 0.003,
     aspectRatios: ["1:1", "16:9", "9:16"],
+    dimensionParam: "size",
   },
   {
     id: "bfl/flux-2-pro",
@@ -58,6 +64,8 @@ export const IMAGE_MODELS: ImageModel[] = [
     mature: false,
     costPerImage: 0.05,
     aspectRatios: ALL_RATIOS,
+    // Warned "Deriving aspect_ratio from size" — aspect_ratio is its native param.
+    dimensionParam: "aspectRatio",
   },
   {
     id: "google/imagen-4.0-generate-001",
@@ -67,6 +75,9 @@ export const IMAGE_MODELS: ImageModel[] = [
     mature: false,
     costPerImage: 0.04,
     aspectRatios: ALL_RATIOS,
+    // Warned "size is not supported… use aspectRatio" and DROPPED size — the
+    // default model was returning square for every non-square request.
+    dimensionParam: "aspectRatio",
   },
   {
     id: "recraft/recraft-v4",
@@ -76,6 +87,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     mature: false,
     costPerImage: 0.04,
     aspectRatios: ["1:1", "16:9", "9:16"],
+    dimensionParam: "size",
   },
   {
     id: "xai/grok-imagine-image-pro",
@@ -85,6 +97,7 @@ export const IMAGE_MODELS: ImageModel[] = [
     mature: false,
     costPerImage: 0.05,
     aspectRatios: ["1:1", "16:9", "9:16"],
+    dimensionParam: "size",
   },
 ];
 

@@ -1,7 +1,7 @@
 import { generateText, streamText } from "ai";
 import { after } from "next/server";
 import { getModelPricing } from "@/lib/ai/models";
-import { anchorAndPin } from "@/lib/api/anchor";
+import { anchorAndStore } from "@/lib/api/anchor";
 import {
   isAttestationEnforced,
   verifyConfidentialUpstream,
@@ -271,10 +271,11 @@ export async function POST(request: Request) {
       // Confidential calls return an x-receipt-id (TEE attestation receipt) —
       // pass it through so callers can later verify the run (v3 verifier).
       const receiptId = response?.headers?.["x-receipt-id"];
-      // Anchor-every + pin: every confidential response is auto-anchored on Sui
-      // + pinned to Walrus, async (post-response, no added latency).
+      // Anchor-every + store: every confidential response is auto-anchored on
+      // Sui + its signed receipt persisted for durable verify, async
+      // (post-response, no added latency).
       if (confidential && typeof receiptId === "string" && receiptId) {
-        after(() => anchorAndPin(receiptId));
+        after(() => anchorAndStore(receiptId));
       }
       return Response.json(
         {
@@ -332,13 +333,13 @@ export async function POST(request: Request) {
 
         const usage = await result.usage;
         // Confidential: capture the receipt id for anchor-every (regardless of
-        // include_usage) + the final usage chunk when present. Anchor + pin
+        // include_usage) + the final usage chunk when present. Anchor + store
         // async, post-response — no added latency.
         const receiptId = confidential
           ? (await result.response)?.headers?.["x-receipt-id"]
           : undefined;
         if (typeof receiptId === "string" && receiptId) {
-          after(() => anchorAndPin(receiptId));
+          after(() => anchorAndStore(receiptId));
         }
         if (includeUsage) {
           // Streaming can't add trailing HTTP headers, so the TEE receipt rides

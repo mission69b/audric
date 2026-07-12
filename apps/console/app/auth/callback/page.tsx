@@ -31,7 +31,7 @@ export default function CallbackPage() {
         if (!res.ok) {
           throw new Error("Failed to establish session");
         }
-        router.replace("/dashboard");
+        router.replace("/manage/dashboard");
       } catch (e) {
         setError(e instanceof Error ? e.message : "Sign-in failed");
       }

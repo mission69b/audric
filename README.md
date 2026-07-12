@@ -33,7 +33,7 @@ Privacy isn't a setting — it's how Audric is built.
 - **Non-custodial** — your wallet is yours. We never hold your keys, and every money move waits on your tap-to-confirm.
 - **Yours to delete** — delete any chat, all chats, or purge everything (chats + files) from Settings.
 
-*Coming:* **Confidential (TEE) models** even the provider can't read, and **end-to-end sealed chats** (Seal on Walrus) — the privacy ladder ends at *provably yours*.
+**Confidential (GPU-TEE) mode is live** — flip the **Confidential** toggle and your turn runs inside a hardware enclave (provider can't read it), auto-anchored on Sui with a receipt you can **verify yourself** (in-app or at [verify.t2000.ai](https://verify.t2000.ai)). *Coming:* **end-to-end sealed chats** (Seal on Walrus) — the privacy ladder ends at *provably yours*.
 
 ## Audric Intelligence
 

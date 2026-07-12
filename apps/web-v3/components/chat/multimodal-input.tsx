@@ -6,11 +6,11 @@ import equal from "fast-deep-equal";
 import {
   ArrowUpIcon,
   BrainIcon,
-  EyeIcon,
+  CheckIcon,
   LockIcon,
+  MonitorIcon,
+  ShieldCheckIcon,
   SparklesIcon,
-  WrenchIcon,
-  XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -31,7 +31,6 @@ import {
   ModelSelector,
   ModelSelectorContent,
   ModelSelectorGroup,
-  ModelSelectorInput,
   ModelSelectorItem,
   ModelSelectorList,
   ModelSelectorLogo,
@@ -42,6 +41,11 @@ import { useSignInNudge } from "@/components/auth/sign-in-nudge";
 import { useZkLogin } from "@/components/auth/zklogin-provider";
 import { useUpgradeModal } from "@/components/pricing/upgrade-modal";
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -51,10 +55,12 @@ import {
   AUTO_MODEL_ID,
   type ChatModel,
   chatModels,
-  type ModelPricing,
   type ModelPrivacyTier,
 } from "@/lib/ai/models";
-import { composerPlaceholders } from "@/lib/constants";
+import {
+  composerPlaceholders,
+  confidentialPlaceholders,
+} from "@/lib/constants";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -89,6 +95,10 @@ const SERVER_UPLOAD_LIMIT = 4 * 1024 * 1024;
 // A clipboard paste longer than this becomes a "Pasted text" attachment
 // (Claude-style) instead of flooding the composer. Smaller pastes stay inline.
 const PASTE_TO_FILE_CHARS = 2000;
+
+function isImageAttachment(a: Attachment): boolean {
+  return a.contentType?.startsWith("image/") ?? false;
+}
 
 function PureMultimodalInput({
   chatId,
@@ -165,17 +175,6 @@ function PureMultimodalInput({
   // #1 anon: after a few guest turns, proactively prompt sign-in (the hard
   // message-limit gate also triggers it, in use-active-chat's onError).
   const [anonTurns, setAnonTurns] = useLocalStorage<number>("anon-turns", 0);
-  // #2 signed-in free: a dismissible "upgrade" cue above the composer (not shown
-  // when the out-of-credit banner is up, and persistently dismissible).
-  const [upgradeNudgeDismissed, setUpgradeNudgeDismissed] =
-    useLocalStorage<boolean>("upgrade-nudge-dismissed", false);
-  // Gate on the balance SWR having RESOLVED (credit !== undefined) — otherwise
-  // `tier ?? "free"` defaults to free during load and the nudge flashes for paid
-  // users on a hard refresh before their tier arrives.
-  const isFreeTier =
-    isAuthed && credit !== undefined && (credit.tier ?? "free") === "free";
-  const showUpgradeNudge =
-    isFreeTier && !showCreditBanner && !upgradeNudgeDismissed;
   // Active-model capabilities — used to hint on image paste to a non-vision
   // model (the attach button is already gated; paste bypasses it).
   const { data: capsResponse } = useSWR<{
@@ -191,7 +190,7 @@ function PureMultimodalInput({
   // composer treats Auto as image-capable. PDFs work on every model (extracted
   // to text), so they're never blocked here.
   const isAuto = selectedModelId === AUTO_MODEL_ID;
-  const canAttachImages = modelHasVision || isAuto;
+  const canAttachImagesForModel = modelHasVision || isAuto;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
   const hasAutoFocused = useRef(false);
@@ -209,6 +208,51 @@ function PureMultimodalInput({
     "input",
     ""
   );
+
+  // Confidential mode (GPU-TEE) — lifted here so the composer can "light up"
+  // when on. Persisted in localStorage + read per-request by the chat transport.
+  const [confidential, setConfidential] = useState(false);
+  useEffect(() => {
+    setConfidential(window.localStorage.getItem("audric-confidential") === "1");
+  }, []);
+  // Explicit setter (the mode tabs pick Private/Confidential directly). Persists
+  // + fires the event the header shield / greeting listen for. Turning it ON
+  // drops any staged image attachments — confidential (phala/*) models are
+  // text-only, and a base64-inlined photo blows Phala's request-body cap (413
+  // mid-stream → dead "Load failed"; 2026-07-03 customer bug).
+  const setConfidentialMode = useCallback(
+    (next: boolean) => {
+      setConfidential(next);
+      window.localStorage.setItem("audric-confidential", next ? "1" : "0");
+      window.dispatchEvent(new Event("audric-confidential-change"));
+      if (next && attachments.some(isImageAttachment)) {
+        setAttachments((curr) => curr.filter((a) => !isImageAttachment(a)));
+        toast.error(
+          "Removed the attached image — Confidential mode is text-only. (PDFs work.)"
+        );
+      }
+    },
+    [attachments, setAttachments]
+  );
+  // Images need a vision model AND normal (non-confidential) mode.
+  const canAttachImages = canAttachImagesForModel && !confidential;
+  const imageBlockReason = confidential
+    ? "Confidential mode is text-only — turn it off to attach images. (PDFs work.)"
+    : "This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)";
+  // Which confidential (phala/*) model runs when Confidential is on — persisted
+  // + sent as the model id by the transport (default: the fast gpt-oss-120b).
+  const [confidentialModelId, setConfidentialModelId] =
+    useState("phala/gpt-oss-120b");
+  useEffect(() => {
+    const saved = window.localStorage.getItem("audric-confidential-model");
+    if (saved) {
+      setConfidentialModelId(saved);
+    }
+  }, []);
+  const pickConfidentialModel = useCallback((id: string) => {
+    setConfidentialModelId(id);
+    window.localStorage.setItem("audric-confidential-model", id);
+  }, []);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -300,10 +344,7 @@ function PureMultimodalInput({
     if (editingMessage) {
       return;
     }
-    const id = setInterval(
-      () => setPlaceholderIndex((i) => (i + 1) % composerPlaceholders.length),
-      3500
-    );
+    const id = setInterval(() => setPlaceholderIndex((i) => i + 1), 3500);
     return () => clearInterval(id);
   }, [editingMessage]);
   const [slashOpen, setSlashOpen] = useState(false);
@@ -311,6 +352,22 @@ function PureMultimodalInput({
   const [slashIndex, setSlashIndex] = useState(0);
 
   const submitForm = useCallback(() => {
+    // Confidential is the paid tier — gate at send (tease → intent → upsell):
+    // the toggle + glow already sold it; upsell now at the moment of intent.
+    if (confidential && !canUsePremium) {
+      openUpgrade();
+      return;
+    }
+    // Belt-and-braces: never send an image into the confidential path (the
+    // attach/paste/toggle gates should make this unreachable) — the phala/*
+    // models are text-only and the base64 payload 413s at Phala's ingress.
+    if (confidential && attachments.some(isImageAttachment)) {
+      setAttachments((curr) => curr.filter((a) => !isImageAttachment(a)));
+      toast.error(
+        "Removed the attached image — Confidential mode is text-only. Turn Confidential off to send images."
+      );
+      return;
+    }
     window.history.pushState(
       {},
       "",
@@ -365,6 +422,9 @@ function PureMultimodalInput({
     anonTurns,
     setAnonTurns,
     promptSignIn,
+    confidential,
+    canUsePremium,
+    openUpgrade,
   ]);
 
   const uploadFile = useCallback(async (file: File) => {
@@ -436,9 +496,7 @@ function PureMultimodalInput({
         (file) => !(file.type.startsWith("image/") && !canAttachImages)
       );
       if (files.length < picked.length) {
-        toast.error(
-          "This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)"
-        );
+        toast.error(imageBlockReason);
       }
       if (files.length === 0) {
         return;
@@ -463,7 +521,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile, canAttachImages]
+    [setAttachments, uploadFile, canAttachImages, imageBlockReason]
   );
 
   const handleFileChange = useCallback(
@@ -552,12 +610,10 @@ function PureMultimodalInput({
 
       event.preventDefault();
 
-      // The model can't see images → don't silently attach one it'll ignore.
-      // (Auto routes images to a vision model, so it's allowed.)
+      // The model can't see images (or Confidential is on) → don't silently
+      // attach one it'll ignore. (Auto routes images to a vision model.)
       if (!canAttachImages) {
-        toast.error(
-          "This model can't see images. Switch to a vision model or Auto to attach one."
-        );
+        toast.error(imageBlockReason);
         return;
       }
 
@@ -587,7 +643,7 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile, canAttachImages]
+    [setAttachments, uploadFile, canAttachImages, imageBlockReason]
   );
 
   useEffect(() => {
@@ -638,7 +694,11 @@ function PureMultimodalInput({
       )}
 
       <input
-        accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
+        accept={
+          canAttachImages
+            ? "image/jpeg,image/png,image/webp,image/gif,application/pdf"
+            : "application/pdf"
+        }
         className="pointer-events-none fixed -top-4 -left-4 size-0.5 opacity-0"
         multiple
         onChange={handleFileChange}
@@ -657,32 +717,6 @@ function PureMultimodalInput({
           />
         )}
       </div>
-
-      {showUpgradeNudge && (
-        <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-teal-500/20 bg-teal-500/[0.04] px-3 py-1.5 text-[12px]">
-          <span className="text-muted-foreground">
-            <span className="font-medium text-foreground">Upgrade</span> for
-            every frontier model + video — monthly credit that never expires.
-          </span>
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              className="h-6 rounded-lg px-2 text-[11px]"
-              onClick={openUpgrade}
-              size="sm"
-            >
-              See plans
-            </Button>
-            <button
-              aria-label="Dismiss"
-              className="rounded p-1 text-muted-foreground/50 transition-colors hover:text-foreground"
-              onClick={() => setUpgradeNudgeDismissed(true)}
-              type="button"
-            >
-              <XIcon className="size-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {showCreditBanner && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/40 bg-card/70 px-3 py-2 text-[12px]">
@@ -725,7 +759,12 @@ function PureMultimodalInput({
       )}
 
       <PromptInput
-        className="[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]"
+        className={cn(
+          "[&>div]:rounded-2xl [&>div]:border [&>div]:border-border/30 [&>div]:bg-card/70 [&>div]:shadow-[var(--shadow-composer)] [&>div]:transition-shadow [&>div]:duration-300 [&>div]:focus-within:shadow-[var(--shadow-composer-focus)]",
+          // Confidential mode "lights up" the composer — an emerald lock glow.
+          confidential &&
+            "[&>div]:border-emerald-500/40 [&>div]:shadow-[0_0_0_1px_rgba(16,185,129,0.25),0_0_24px_-4px_rgba(16,185,129,0.35)]"
+        )}
         onSubmit={() => {
           if (input.startsWith("/")) {
             const query = input.slice(1).trim();
@@ -818,47 +857,72 @@ function PureMultimodalInput({
           placeholder={
             editingMessage
               ? "Edit your message..."
-              : composerPlaceholders[placeholderIndex]
+              : (confidential
+                  ? confidentialPlaceholders
+                  : composerPlaceholders)[
+                  placeholderIndex %
+                    (confidential
+                      ? confidentialPlaceholders
+                      : composerPlaceholders
+                    ).length
+                ]
           }
           ref={textareaRef}
           value={input}
         />
         <PromptInputFooter className="px-3 pb-3">
-          <PromptInputTools>
+          {/* Left (v0-style): attach · model · modes · memory. Right: submit. */}
+          <PromptInputTools className="min-w-0 flex-wrap gap-y-1">
             <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-            <ModelSelectorCompact
+            {confidential ? (
+              <ConfidentialModelSelector
+                onSelect={pickConfidentialModel}
+                selectedId={confidentialModelId}
+              />
+            ) : (
+              <ModelSelectorCompact
+                canUsePremium={canUsePremium}
+                onModelChange={onModelChange}
+                selectedModelId={selectedModelId}
+              />
+            )}
+            <ModeTabs
               canUsePremium={canUsePremium}
-              onModelChange={onModelChange}
-              selectedModelId={selectedModelId}
+              confidential={confidential}
+              onSelect={setConfidentialMode}
             />
+            {/* Memory last — its "on" label changes width, so isolate it from
+                the tabs to avoid shoving them. */}
+            <MemoryToggle />
+          </PromptInputTools>
+
+          <div className="flex shrink-0 items-center gap-1">
             <ChatContextUsage
               messages={messages as ChatMessage[]}
               selectedModelId={selectedModelId}
             />
-            <MemoryToggle />
-          </PromptInputTools>
-
-          {status === "submitted" ? (
-            <StopButton setMessages={setMessages} stop={stop} />
-          ) : (
-            <PromptInputSubmit
-              className={cn(
-                "h-7 w-7 rounded-xl transition-all duration-200",
-                input.trim() || attachments.length > 0
-                  ? "bg-foreground text-background hover:opacity-85 active:scale-95"
-                  : "bg-muted text-muted-foreground/25 cursor-not-allowed"
-              )}
-              data-testid="send-button"
-              disabled={
-                (!input.trim() && attachments.length === 0) ||
-                uploadQueue.length > 0
-              }
-              status={status}
-              variant="secondary"
-            >
-              <ArrowUpIcon className="size-4" />
-            </PromptInputSubmit>
-          )}
+            {status === "submitted" ? (
+              <StopButton setMessages={setMessages} stop={stop} />
+            ) : (
+              <PromptInputSubmit
+                className={cn(
+                  "h-7 w-7 rounded-xl transition-all duration-200",
+                  input.trim() || attachments.length > 0
+                    ? "bg-foreground text-background hover:opacity-85 active:scale-95"
+                    : "bg-muted text-muted-foreground/25 cursor-not-allowed"
+                )}
+                data-testid="send-button"
+                disabled={
+                  (!input.trim() && attachments.length === 0) ||
+                  uploadQueue.length > 0
+                }
+                status={status}
+                variant="secondary"
+              >
+                <ArrowUpIcon className="size-4" />
+              </PromptInputSubmit>
+            )}
+          </div>
         </PromptInputFooter>
       </PromptInput>
     </div>
@@ -924,28 +988,160 @@ const AttachmentsButton = memo(PureAttachmentsButton);
 
 // Honest privacy labels (SPEC_AUDRIC_V3 §5c). At launch every model rides the
 // Vercel AI Gateway → `anon`. NEVER relabel a gateway model `private` (the
+// Human names for provider slugs — group headings + the "Powered by" line in
+// the model hover panel (v0-style).
+const PROVIDER_NAMES: Record<string, string> = {
+  alibaba: "Alibaba",
+  anthropic: "Anthropic",
+  "arcee-ai": "Arcee AI",
+  bytedance: "ByteDance",
+  cohere: "Cohere",
+  deepseek: "DeepSeek",
+  google: "Google",
+  inception: "Inception",
+  kwaipilot: "Kwaipilot",
+  meituan: "Meituan",
+  meta: "Meta",
+  minimax: "MiniMax",
+  mistral: "Mistral",
+  moonshotai: "Moonshot",
+  morph: "Morph",
+  nvidia: "Nvidia",
+  openai: "OpenAI",
+  perplexity: "Perplexity",
+  "prime-intellect": "Prime Intellect",
+  qwen: "Qwen",
+  xiaomi: "Xiaomi",
+  xai: "xAI",
+  zai: "Zai",
+  phala: "Phala",
+};
+
 // no-overclaim rule). Venice's styling (teal/purple/blue pills + hover tip) is
 // matched; its "Kimi = Private" labeling is deliberately NOT copied.
 const PRIVACY_BADGE: Record<
-  ModelPrivacyTier,
+  ModelPrivacyTier | "confidential",
   { label: string; className: string; tip: string }
 > = {
   anon: {
     label: "Anon",
     className: "bg-muted text-muted-foreground",
-    tip: "Gateway-routed; upstream provider may retain anonymized prompts.",
+    tip: "Anonymized upstream",
   },
   private: {
     label: "Private",
     className: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    tip: "Zero data retention — your prompts are never stored or trained on.",
+    tip: "Zero data retention",
   },
   local: {
     label: "Local",
     className: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-    tip: "Self-hosted — prompts stay private.",
+    tip: "Self-hosted · private",
+  },
+  confidential: {
+    label: "Confidential",
+    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    tip: "GPU-TEE · verifiable",
   },
 };
+
+// v0-style hover detail panel — rows stay clean (icon · name · check); all the
+// detail (description, "Powered by", pricing, capabilities, privacy) lives
+// here, shown on hover beside the list. Touch devices never hover → the list
+// simply stays compact (v0 mobile behavior).
+function ModelHoverPanel({
+  children,
+  name,
+  description,
+  provider,
+  free,
+  locked,
+  isAuthed,
+  pricing,
+  cap,
+  privacy,
+}: {
+  children: React.ReactNode;
+  name: string;
+  description?: string;
+  provider?: string;
+  free?: boolean;
+  locked?: boolean;
+  isAuthed?: boolean;
+  pricing?: { inputPer1M?: number; outputPer1M?: number };
+  cap?: { tools?: boolean; vision?: boolean; reasoning?: boolean };
+  privacy?: ModelPrivacyTier | "confidential";
+}) {
+  const price = (n?: number) =>
+    typeof n === "number" && Number.isFinite(n) ? `$${n.toFixed(2)}` : null;
+  const input = price(pricing?.inputPer1M);
+  const output = price(pricing?.outputPer1M);
+  const capList = [
+    cap?.tools && "Tools",
+    cap?.vision && "Vision",
+    cap?.reasoning && "Reasoning",
+  ].filter(Boolean) as string[];
+
+  return (
+    <HoverCard closeDelay={0} openDelay={150}>
+      <HoverCardTrigger asChild>{children}</HoverCardTrigger>
+      <HoverCardContent
+        align="start"
+        className="w-64 rounded-xl border-border/60 bg-card/95 p-3 shadow-[var(--shadow-float)] backdrop-blur-xl"
+        side="right"
+        sideOffset={10}
+      >
+        <p className="font-medium text-[13px] text-foreground leading-snug">
+          {description ?? name}
+        </p>
+        {provider && (
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <ModelSelectorLogo provider={provider} />
+            Powered by {PROVIDER_NAMES[provider] ?? provider}
+          </div>
+        )}
+        {(input || output || free) && (
+          <div className="mt-2.5 space-y-0.5 border-border/40 border-t pt-2.5 text-[11px] text-muted-foreground tabular-nums">
+            {free ? (
+              <div className="text-emerald-600 dark:text-emerald-400">
+                Free — no credit cost
+              </div>
+            ) : (
+              <>
+                {input && <div>{input}/1M input tokens</div>}
+                {output && <div>{output}/1M output tokens</div>}
+              </>
+            )}
+          </div>
+        )}
+        {(capList.length > 0 || privacy) && (
+          <div className="mt-2.5 flex items-center gap-2 border-border/40 border-t pt-2.5">
+            {capList.length > 0 && (
+              <span className="text-[10.5px] text-muted-foreground">
+                {capList.join(" · ")}
+              </span>
+            )}
+            {privacy && (
+              <span
+                className={cn(
+                  "ml-auto rounded px-1 py-0.5 font-medium text-[9px] uppercase tracking-wide",
+                  PRIVACY_BADGE[privacy].className
+                )}
+              >
+                {PRIVACY_BADGE[privacy].label}
+              </span>
+            )}
+          </div>
+        )}
+        {locked && (
+          <p className="mt-2.5 border-border/40 border-t pt-2.5 text-[10.5px] text-muted-foreground">
+            {isAuthed ? "Upgrade to unlock" : "Sign up to unlock"}
+          </p>
+        )}
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 function PureModelSelectorCompact({
   selectedModelId,
@@ -968,10 +1164,12 @@ function PureModelSelectorCompact({
     { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
   );
 
-  const pricing: Record<string, ModelPricing> | undefined = modelsData?.pricing;
   const capabilities:
     | Record<string, { tools: boolean; vision: boolean; reasoning: boolean }>
     | undefined = modelsData?.capabilities;
+  const pricing:
+    | Record<string, { inputPer1M?: number; outputPer1M?: number }>
+    | undefined = modelsData?.pricing;
   const dynamicModels: ChatModel[] | undefined = modelsData?.models;
   // "Auto" leads the curated lineup — the intelligent default.
   const curatedList = [AUTO_MODEL, ...chatModels];
@@ -998,11 +1196,13 @@ function PureModelSelectorCompact({
           ) : (
             provider && <ModelSelectorLogo provider={provider} />
           )}
-          <ModelSelectorName>{selectedModel.name}</ModelSelectorName>
+          {/* Mobile: provider icon only (Perplexity-style); name on desktop. */}
+          <ModelSelectorName className="hidden sm:inline">
+            {selectedModel.name}
+          </ModelSelectorName>
         </Button>
       </ModelSelectorTrigger>
       <ModelSelectorContent>
-        <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>
           {(() => {
             const curatedIds = new Set(curatedList.map((m) => m.id));
@@ -1037,37 +1237,12 @@ function PureModelSelectorCompact({
               return a.localeCompare(b);
             });
 
-            const providerNames: Record<string, string> = {
-              alibaba: "Alibaba",
-              anthropic: "Anthropic",
-              "arcee-ai": "Arcee AI",
-              bytedance: "ByteDance",
-              cohere: "Cohere",
-              deepseek: "DeepSeek",
-              google: "Google",
-              inception: "Inception",
-              kwaipilot: "Kwaipilot",
-              meituan: "Meituan",
-              meta: "Meta",
-              minimax: "MiniMax",
-              mistral: "Mistral",
-              moonshotai: "Moonshot",
-              morph: "Morph",
-              nvidia: "Nvidia",
-              openai: "OpenAI",
-              perplexity: "Perplexity",
-              "prime-intellect": "Prime Intellect",
-              xiaomi: "Xiaomi",
-              xai: "xAI",
-              zai: "Zai",
-            };
-
             return sortedKeys.map((key) => (
               <ModelSelectorGroup
                 heading={
                   key === "_available"
                     ? "Available"
-                    : (providerNames[key] ?? key)
+                    : (PROVIDER_NAMES[key] ?? key)
                 }
                 key={key}
               >
@@ -1081,170 +1256,83 @@ function PureModelSelectorCompact({
                     !canUsePremium &&
                     model.free !== true &&
                     model.id !== AUTO_MODEL_ID;
+                  const isSelected = model.id === selectedModel.id;
+                  // v0-style: clean row (icon · name · check/lock); every
+                  // detail lives in the hover panel beside the list.
                   return (
-                    <ModelSelectorItem
-                      className={cn(
-                        "flex w-full",
-                        model.id === selectedModel.id &&
-                          "border-b border-dashed border-foreground/50",
-                        !curated && "opacity-40 cursor-default",
-                        locked && "opacity-60"
-                      )}
+                    <ModelHoverPanel
+                      cap={capabilities?.[model.id]}
+                      description={
+                        model.id === AUTO_MODEL_ID
+                          ? "Picks the best model for each message"
+                          : model.bestFor
+                      }
+                      free={model.free}
+                      isAuthed={isAuthed}
                       key={model.id}
-                      onSelect={() => {
-                        if (!curated) {
-                          return;
-                        }
-                        if (locked) {
-                          setOpen(false);
-                          openUpgrade();
-                          return;
-                        }
-                        onModelChange?.(model.id);
-                        setCookie("chat-model", model.id);
-                        setOpen(false);
-                        setTimeout(() => {
-                          document
-                            .querySelector<HTMLTextAreaElement>(
-                              "[data-testid='multimodal-input']"
-                            )
-                            ?.focus();
-                        }, 50);
-                      }}
-                      value={model.id}
+                      locked={locked}
+                      name={model.name}
+                      pricing={
+                        model.id === AUTO_MODEL_ID
+                          ? undefined
+                          : pricing?.[model.id]
+                      }
+                      privacy={model.privacy}
+                      provider={
+                        model.id === AUTO_MODEL_ID ? undefined : logoProvider
+                      }
                     >
-                      {model.id === AUTO_MODEL_ID ? (
-                        <SparklesIcon className="size-4" />
-                      ) : (
-                        <ModelSelectorLogo provider={logoProvider} />
-                      )}
-                      <div className="flex min-w-0 flex-col">
+                      <ModelSelectorItem
+                        className={cn(
+                          "flex w-full items-center gap-2 py-2",
+                          !curated && "cursor-default opacity-40",
+                          locked && "opacity-60"
+                        )}
+                        onSelect={() => {
+                          if (!curated) {
+                            return;
+                          }
+                          if (locked) {
+                            setOpen(false);
+                            openUpgrade();
+                            return;
+                          }
+                          onModelChange?.(model.id);
+                          setCookie("chat-model", model.id);
+                          setOpen(false);
+                          setTimeout(() => {
+                            document
+                              .querySelector<HTMLTextAreaElement>(
+                                "[data-testid='multimodal-input']"
+                              )
+                              ?.focus();
+                          }, 50);
+                        }}
+                        value={model.id}
+                      >
+                        {model.id === AUTO_MODEL_ID ? (
+                          <SparklesIcon className="size-4" />
+                        ) : (
+                          <ModelSelectorLogo provider={logoProvider} />
+                        )}
                         <ModelSelectorName>{model.name}</ModelSelectorName>
-                        {model.bestFor && (
-                          <span className="truncate text-[10px] text-muted-foreground/50">
-                            {model.bestFor}
-                          </span>
-                        )}
-                      </div>
-                      <div className="ml-auto flex items-center gap-2 text-foreground/70">
-                        {(() => {
-                          const cap = capabilities?.[model.id];
-                          if (!cap) {
-                            return null;
-                          }
-                          return (
-                            <span className="flex items-center gap-1 text-muted-foreground/45">
-                              {cap.tools && (
-                                <WrenchIcon
-                                  aria-label="Tool use"
-                                  className="size-3"
-                                />
-                              )}
-                              {cap.vision && (
-                                <EyeIcon
-                                  aria-label="Vision"
-                                  className="size-3"
-                                />
-                              )}
-                              {cap.reasoning && (
-                                <BrainIcon
-                                  aria-label="Reasoning"
-                                  className="size-3"
-                                />
-                              )}
-                            </span>
-                          );
-                        })()}
-                        {locked && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <LockIcon className="size-3.5 text-muted-foreground/70" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {isAuthed
-                                ? "Upgrade to use premium models"
-                                : "Sign up to use premium models"}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {model.id === AUTO_MODEL_ID && (
-                          <span className="rounded bg-foreground/10 px-1 py-0.5 font-medium text-[9px] text-foreground/70 uppercase tracking-wide">
-                            Default
-                          </span>
-                        )}
-                        {(() => {
-                          const p = pricing?.[model.id];
-                          if (model.free) {
-                            return (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="text-[10px] text-emerald-500 tabular-nums">
-                                    Free
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  Free — included at no credit cost.
-                                </TooltipContent>
-                              </Tooltip>
-                            );
-                          }
-                          if (!p) {
-                            return null;
-                          }
-                          return (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="text-[10px] tabular-nums">
-                                  ${p.inputPer1M.toFixed(2)}/1M
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {`Input $${p.inputPer1M.toFixed(2)} · Output $${p.outputPer1M.toFixed(2)} per 1M tokens`}
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        })()}
-                        {model.privacy && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span
-                                className={cn(
-                                  "rounded px-1 py-0.5 font-medium text-[9px] uppercase tracking-wide",
-                                  PRIVACY_BADGE[model.privacy].className
-                                )}
-                              >
-                                {PRIVACY_BADGE[model.privacy].label}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[220px]">
-                              {PRIVACY_BADGE[model.privacy].tip}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {!curated && (
-                          <LockIcon className="size-3 text-muted-foreground/50" />
-                        )}
-                      </div>
-                    </ModelSelectorItem>
+                        <span className="ml-auto flex items-center">
+                          {isSelected ? (
+                            <CheckIcon className="size-4 text-foreground" />
+                          ) : (
+                            (locked || !curated) && (
+                              <LockIcon className="size-3.5 text-muted-foreground/50" />
+                            )
+                          )}
+                        </span>
+                      </ModelSelectorItem>
+                    </ModelHoverPanel>
                   );
                 })}
               </ModelSelectorGroup>
             ));
           })()}
         </ModelSelectorList>
-        <div className="border-border/40 border-t px-3 py-2">
-          <div className="flex items-center gap-1 text-[10px]">
-            <span className="text-muted-foreground/40">Anon</span>
-            <span className="text-muted-foreground/30">→</span>
-            <span className="rounded bg-teal-500/10 px-1 py-0.5 font-medium text-teal-600 dark:text-teal-400">
-              Private · ZDR
-            </span>
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground/50">
-            Every chat is zero-retention — your prompts are never stored or
-            trained on.
-          </p>
-        </div>
       </ModelSelectorContent>
     </ModelSelector>
   );
@@ -1284,27 +1372,190 @@ function PureMemoryToggle() {
           className={cn(
             "h-7 gap-1.5 rounded-lg px-2 text-[12px] transition-colors",
             on
-              ? "text-foreground"
-              : "text-muted-foreground/50 hover:text-foreground"
+              ? "bg-foreground/10 text-foreground ring-1 ring-border ring-inset"
+              : "text-muted-foreground/40 hover:text-foreground"
           )}
           onClick={toggle}
           type="button"
           variant="ghost"
         >
           <BrainIcon className="size-3.5" />
-          {on ? "Memory on" : "Memory"}
+          <span>{on ? "Memory on" : "Memory"}</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-[220px]">
-        {on
-          ? "Private Encrypted Memory · on — remembered across chats, deletable anytime."
-          : "Private Encrypted Memory · off — remember preferences across chats; encrypted, deletable."}
-      </TooltipContent>
+      <TooltipContent>Encrypted memory</TooltipContent>
     </Tooltip>
   );
 }
 
 const MemoryToggle = memo(PureMemoryToggle);
+
+// Composer mode tabs — a segmented control of mutually-exclusive modes:
+// Private (default · ZDR) · Confidential (GPU-TEE, auto-anchored on Sui) ·
+// Computer (roadmap, disabled). Desktop shows labels; mobile shows icons only.
+// Confidential is Pro-gated at send-time. The composer "lights up" (emerald glow)
+// + the header shield / greeting react to the Confidential selection via parent.
+function PureModeTabs({
+  confidential,
+  onSelect,
+  canUsePremium,
+}: {
+  confidential: boolean;
+  onSelect: (next: boolean) => void;
+  canUsePremium: boolean;
+}) {
+  const seg =
+    "flex h-6 items-center gap-1.5 rounded-md px-2 text-[12px] transition-colors";
+  const active = "bg-foreground/10 text-foreground";
+  const idle = "text-muted-foreground/50 hover:text-foreground";
+  return (
+    <div className="flex items-center gap-0.5 rounded-lg bg-foreground/[0.04] p-0.5">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className={cn(seg, confidential ? idle : active)}
+            onClick={() => onSelect(false)}
+            type="button"
+          >
+            <ShieldCheckIcon className="size-3.5" />
+            <span className="hidden sm:inline">Private</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Private · ZDR</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className={cn(seg, confidential ? active : idle)}
+            onClick={() => onSelect(true)}
+            type="button"
+          >
+            <LockIcon className="size-3.5" />
+            <span className="hidden sm:inline">Confidential</span>
+            {!canUsePremium && (
+              <span className="rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/70">
+                Pro
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>GPU-TEE · verifiable</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            aria-disabled="true"
+            className={cn(seg, "cursor-default text-muted-foreground/40")}
+            onClick={(e) => e.preventDefault()}
+            type="button"
+          >
+            <MonitorIcon className="size-3.5" />
+            <span className="hidden sm:inline">Computer</span>
+            <span className="hidden rounded bg-muted px-1 py-px text-[9px] text-muted-foreground/60 sm:inline">
+              Soon
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Agentic money-native workflows</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+const ModeTabs = memo(PureModeTabs);
+
+type ConfidentialModelOption = {
+  id: string;
+  name: string;
+  provider?: string;
+  reasoning?: boolean;
+  bestFor?: string;
+  inputPer1M?: number;
+  outputPer1M?: number;
+};
+
+// Model picker shown IN PLACE of the normal selector when Confidential is on —
+// lists only the GPU-TEE (phala/*) catalog, marked "TEE". The pick drives which
+// confidential model runs (persisted; sent as the model id by the transport).
+function PureConfidentialModelSelector({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data } = useSWR(
+    `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/models`,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false, dedupingInterval: 3_600_000 }
+  );
+  const models: ConfidentialModelOption[] = data?.confidentialModels ?? [];
+  const selected = models.find((m) => m.id === selectedId);
+  const label = selected?.name.replace(" (Confidential)", "") ?? "GPT-OSS 120B";
+
+  return (
+    <ModelSelector onOpenChange={setOpen} open={open}>
+      <ModelSelectorTrigger asChild>
+        <Button
+          className="h-7 max-w-[200px] justify-between gap-1.5 rounded-lg px-2 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+          type="button"
+          variant="ghost"
+        >
+          {selected?.provider ? (
+            <ModelSelectorLogo provider={selected.provider} />
+          ) : (
+            <LockIcon className="size-3.5" />
+          )}
+          {/* Mobile: provider icon only (Perplexity-style); name on desktop. */}
+          <ModelSelectorName className="hidden sm:inline">
+            {label}
+          </ModelSelectorName>
+        </Button>
+      </ModelSelectorTrigger>
+      <ModelSelectorContent>
+        <ModelSelectorList>
+          {models.map((m) => (
+            <ModelHoverPanel
+              cap={m.reasoning ? { reasoning: true } : undefined}
+              description={m.bestFor}
+              key={m.id}
+              name={m.name.replace(" (Confidential)", "")}
+              pricing={{ inputPer1M: m.inputPer1M, outputPer1M: m.outputPer1M }}
+              privacy="confidential"
+              provider={m.provider}
+            >
+              <ModelSelectorItem
+                className="flex w-full items-center gap-2 py-2"
+                onSelect={() => {
+                  onSelect(m.id);
+                  setOpen(false);
+                }}
+                value={m.id}
+              >
+                {m.provider ? (
+                  <ModelSelectorLogo provider={m.provider} />
+                ) : (
+                  <LockIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
+                )}
+                <ModelSelectorName>
+                  {m.name.replace(" (Confidential)", "")}
+                </ModelSelectorName>
+                {m.id === selectedId && (
+                  <CheckIcon className="ml-auto size-4 text-foreground" />
+                )}
+              </ModelSelectorItem>
+            </ModelHoverPanel>
+          ))}
+        </ModelSelectorList>
+      </ModelSelectorContent>
+    </ModelSelector>
+  );
+}
+
+const ConfidentialModelSelector = memo(PureConfidentialModelSelector);
 
 function PureStopButton({
   stop,

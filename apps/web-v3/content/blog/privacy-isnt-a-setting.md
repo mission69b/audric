@@ -13,7 +13,7 @@ Here's what that means in practice.
 
 ## We collect the minimum
 
-We collect only what's needed to run the service. There's no sign-up funnel harvesting your details — you sign in with Google and get a wallet and an account in seconds. No KYC, no seed phrase, no profile to fill out.
+We collect only what's needed to run the service. There's no sign-up funnel harvesting your details — you sign in with Google and get a wallet and an account in seconds. No ID checks, no seed phrase, no profile to fill out.
 
 ## Every AI request runs through a zero-retention gateway
 

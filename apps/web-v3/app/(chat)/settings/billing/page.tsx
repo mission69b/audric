@@ -8,6 +8,7 @@
  * tease. Closed-loop terms are accepted at the first top-up (§6b).
  */
 
+import { OnrampFlow } from "@audric/onramp/flow";
 import { CheckIcon, CopyIcon, XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -100,7 +101,8 @@ export default function BillingPage() {
   const [usdcBusy, setUsdcBusy] = useState<number | null>(null);
   const [usdcAsset, setUsdcAsset] = useState<TopupAsset>("USDC");
   const [copied, setCopied] = useState(false);
-  const { address } = useZkLogin();
+  const { address, email } = useZkLogin();
+  const [showBuyUsdc, setShowBuyUsdc] = useState(false);
 
   async function copyAddress() {
     if (!address) {
@@ -260,6 +262,45 @@ export default function BillingPage() {
             </Button>
           ))}
         </div>
+      </div>
+
+      {/* Buy USDC with a card (SPEC_ONRAMP, S.684) — the shared onramp flow,
+          embedded: card → USDC at YOUR Passport on Sui (wallet money, not
+          credit). Stripe is merchant of record; SDK mounts on reveal. */}
+      <div
+        className="mt-4 rounded-2xl border border-border/50 bg-card/40 p-5 scroll-mt-24"
+        id="buy-usdc"
+      >
+        <div className="font-medium text-foreground text-sm">
+          Buy USDC with a card
+        </div>
+        <p className="mt-0.5 text-muted-foreground text-xs">
+          Delivered to your own Passport wallet on Sui — funds sends, agent
+          payments, and store buys. Stripe handles identity and payment; Audric
+          never holds your funds.
+        </p>
+        {showBuyUsdc && address ? (
+          <div className="mt-3">
+            <OnrampFlow
+              address={address}
+              publishableKey={
+                process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""
+              }
+              sessionEmail={email ?? null}
+            />
+          </div>
+        ) : (
+          <Button
+            className="mt-3"
+            disabled={!address}
+            onClick={() => setShowBuyUsdc(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            Buy USDC with a card
+          </Button>
+        )}
       </div>
 
       {/* Pay with stablecoin (Sui) — gasless, from the Passport. Same balance. */}

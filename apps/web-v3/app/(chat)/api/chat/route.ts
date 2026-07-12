@@ -44,6 +44,7 @@ import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
 import { generateImage } from "@/lib/ai/tools/generate-image";
 import { generateVideo } from "@/lib/ai/tools/generate-video";
+import { imageSearch } from "@/lib/ai/tools/image-search";
 import { onchainTrending, tokenResearch } from "@/lib/ai/tools/onchain";
 import { perpMarket } from "@/lib/ai/tools/perp-market";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
@@ -58,6 +59,7 @@ import { upscaleImage } from "@/lib/ai/tools/upscale-image";
 import { webScrape } from "@/lib/ai/tools/web-scrape";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import { hasVideoIntent } from "@/lib/ai/video-intent";
+import { confidentialChatResponse } from "@/lib/api/confidential-chat";
 import { isProductionEnvironment } from "@/lib/constants";
 import { debitMicrosForUsage, marginFor } from "@/lib/credit/meter";
 import {
@@ -94,10 +96,14 @@ import { type PostRequestBody, postRequestBodySchema } from "./schema";
 // killed mid-stream in prod — raise to 300s (Vercel Fluid compute / Pro; Hobby
 // caps at 60s so deep-research turns need a paid tier). Genuinely long async
 // work (video gen) graduates to Vercel Workflows in 4b.
-export const maxDuration = 300;
+// 2026-07-07: 5 research turns/12h died at exactly 300s → raise to Fluid Pro's
+// 800s ceiling. If a deploy ever fails on "maxDuration must be ≤ 300", the
+// project lost Fluid — revert this line.
+export const maxDuration = 800;
 
 type ActiveTool =
   | "web_search"
+  | "image_search"
   | "web_scrape"
   | "crypto_market"
   | "crypto_history"
@@ -165,6 +171,7 @@ export async function POST(request: Request) {
       selectedChatModel,
       selectedVisibilityType,
       useMemWal,
+      confidential,
     } = requestBody;
 
     // Turn start — stamped ONCE here (server receive, ≈ user send) and reused for
@@ -444,7 +451,7 @@ export async function POST(request: Request) {
     // Grok pick. Both verified to emit the send call. Sends are rare + high-stakes,
     // so reliability outweighs the routing default. (Off-Auto manual picks stand.)
     if (routeDecision && paymentIntent) {
-      const sonnet = "anthropic/claude-sonnet-4.6";
+      const sonnet = "anthropic/claude-sonnet-5";
       chatModel =
         canUsePremium && chatModels.some((m) => m.id === sonnet)
           ? sonnet
@@ -643,6 +650,62 @@ export async function POST(request: Request) {
         )
       : await convertToModelMessages(inlinedMessages);
 
+    // Confidential mode — route this turn through a GPU-TEE as a pure in-TEE
+    // completion (no tools/memory/artifacts; those would leak data out of the
+    // enclave). Anchored on Sui + a durable verifiable receipt. Bypasses the
+    // agentic pipeline below entirely.
+    if (confidential) {
+      // Confidential is the paid tier — gate server-side (the client shows the
+      // upgrade overlay at send; this is belt-and-suspenders). Entitlement =
+      // credit OR plan (same basis as `canUsePremium`).
+      if (creditConfigured && !canUsePremium) {
+        return new ChatbotError("bad_request:credit").toResponse();
+      }
+      // The confidential (phala/*) models are text-only, and Phala's ingress
+      // caps the request body — a base64-inlined photo 413s MID-STREAM, which
+      // the client can only see as a dead "Load failed" (2026-07-03 customer
+      // bug). Fail fast with a typed error when THIS turn attaches an image
+      // (the composer blocks it too; this covers stale clients + the raw API).
+      const sendsImage = message?.parts?.some(
+        (p) =>
+          p.type === "file" &&
+          (p as { mediaType?: string }).mediaType?.startsWith("image/")
+      );
+      if (sendsImage) {
+        return new ChatbotError("bad_request:confidential").toResponse();
+      }
+      // Images attached EARLIER (normal-mode turns of the same chat) can't be
+      // removed by the user — replace them with a text note instead of blocking,
+      // so mixed-mode chats keep working and the model never hallucinates a
+      // photo it can't see.
+      const confidentialMessages = modelMessages.map((m) => {
+        if (!Array.isArray(m.content)) {
+          return m;
+        }
+        const content = m.content.map((part) =>
+          part.type === "image" || part.type === "file"
+            ? {
+                type: "text" as const,
+                text: "[An image or file was shared earlier in this chat — attachments aren't visible in Confidential mode.]",
+              }
+            : part
+        );
+        return { ...m, content } as typeof m;
+      });
+      // Belt-and-braces payload cap under Phala's ingress buffer limit — many
+      // extracted PDFs / pasted-text blocks in one chat can still stack past it.
+      if (JSON.stringify(confidentialMessages).length > 750_000) {
+        return new ChatbotError("bad_request:confidential_size").toResponse();
+      }
+      return confidentialChatResponse({
+        chatId: id,
+        userId: session?.user?.id,
+        modelMessages: confidentialMessages,
+        requestedModelId: selectedChatModel,
+        titlePromise,
+      });
+    }
+
     const stream = createUIMessageStream({
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
@@ -676,6 +739,9 @@ export async function POST(request: Request) {
             : session?.user
               ? [
                   "web_search",
+                  // image_search: explicit "show me X" visual intent (Brave,
+                  // safesearch strict). Free; graceful notice when key unset.
+                  "image_search",
                   // web_scrape: read a specific URL → clean markdown (the
                   // complement to search). Free (Jina Reader), keyless.
                   "web_scrape",
@@ -727,6 +793,7 @@ export async function POST(request: Request) {
               : isExplicitArtifact
                 ? [
                     "web_search",
+                    "image_search",
                     "web_scrape",
                     "crypto_market",
                     "crypto_history",
@@ -741,6 +808,7 @@ export async function POST(request: Request) {
                   ]
                 : [
                     "web_search",
+                    "image_search",
                     "web_scrape",
                     "crypto_market",
                     "crypto_history",
@@ -840,6 +908,10 @@ export async function POST(request: Request) {
             // parallelSearch) were both verified to NOT synthesize on our
             // open-model roster (S.478 A/B). Available to everyone (incl. anon).
             web_search: webSearch,
+            // image_search — explicit visual intent ("show me X"): Brave image
+            // vertical, safesearch strict, rendered as a grid. Free, available
+            // to everyone; graceful notice when BRAVE_API_KEY is unset.
+            image_search: imageSearch,
             // web_scrape — read a specific URL → clean markdown (Jina Reader);
             // free, keyless, available to everyone. Complement to web_search.
             web_scrape: webScrape,

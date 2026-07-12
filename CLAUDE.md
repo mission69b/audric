@@ -45,7 +45,7 @@ audric/
 3. **No DeFi.** No NAVI / save / borrow / lending / Prisma. The wallet does **send (gasless USDC/USDsui) · swap (Cetus, in SDK) · pay (x402 Recipes)**.
 4. **Money writes are CLIENT-executed.** `send_transfer` / `run_recipe` have no server `execute` — the browser signs via zkLogin on tap-to-confirm. The server NEVER holds keys.
 5. **Never read `process.env.X` directly.** Go through the typed `env` proxy (`lib/env.ts`, Zod gate validated at boot via `instrumentation.ts`). New var → add to schema + `runtimeEnv` first.
-6. **Honesty / no overclaim.** Never say a "coming soon" thing is live (TEE/Confidential, end-to-end-sealed chats, Walrus E2E backup). Memory is "encrypted + decentralized (Walrus) + deletable" — NOT "end-to-end" or "you own it on-chain" (that's the Seal upgrade). Every chat is ZDR; private files are never on a public URL.
+6. **Honesty / no overclaim.** **Confidential (GPU-TEE) mode IS live** (S.593 — composer toggle → `phala/*`, anchored + verifiable). Still "coming soon" (never say live): **end-to-end-sealed chats** (Seal), **Walrus E2E backup**, **Store**. Memory is "encrypted + decentralized (Walrus) + deletable" — NOT "end-to-end" or "you own it on-chain" (that's the Seal upgrade). Confidential mode is a pure in-TEE completion (no tools/web/memory — they'd leave the enclave). Every chat is ZDR; private files are never on a public URL.
 7. **Single source of truth.** Derive model lists / plan features from their catalogs (`lib/ai/models.ts`, `lib/credit/tiers.ts`) — never hardcode. `EVERY_PLAN`/`COMING_SOON` in `tiers.ts` feed BOTH `/pricing` and the billing page.
 8. **Lint = Biome/ultracite** (`pnpm exec biome check --write <files>`), NOT ESLint. Typecheck = `tsc --noEmit` (ignore stale `.next/types` errors after deleting a route → `rm -rf .next/types`).
 
@@ -53,7 +53,7 @@ audric/
 
 ## The AI stack
 
-- **Models** (`lib/ai/models.ts`): `Auto` (router) + **Kimi K2.5** (free, default), **DeepSeek V3.2**, **Grok 4.1 Fast**, **GPT-OSS-120B**, **Claude Opus 4.8**, **GPT-5.5**. All via the Vercel AI Gateway, **ZDR by default**. Privacy ladder in the switcher: Anon → Private·ZDR → Confidential(TEE, deferred behind `REDPILL_API_KEY`).
+- **Models** (`lib/ai/models.ts`): `Auto` (router) + **Kimi K2.5** (free, default), **DeepSeek V3.2**, **Grok 4.1 Fast**, **GPT-OSS-120B**, **Claude Opus 4.8**, **GPT-5.5**. All via the Vercel AI Gateway, **ZDR by default**. Privacy ladder in the switcher: Anon → Private·ZDR → **Confidential·TEE (LIVE, S.593)** — the composer Confidential toggle routes the turn to a `phala/*` GPU-TEE model (via `getInferenceModel` → inference.phala.com), anchored on Sui + verifiable (`t2 verify` / verify.t2000.ai). Sealed/E2E remains the deferred top rung.
   - **Gemini 3 Pro was REMOVED (2026-06-21)** — flaky on multi-step/replayed tool turns ("empty parts" 400). Re-add tracked in the handoff backlog. (The separate `google/gemini-2.5-flash-image` "Nano Banana" model used for IMAGE EDITING is unaffected.)
 - **Auto routing** (`lib/ai/intelligence/router.ts`): classifies each turn on DeepSeek (cheap, reliable `generateObject`) → picks model + reasoning effort + step budget by complexity. Entitlement-aware (free models always; premium only when funded). **Auto research → Kimi** (reliable + free + interleaved thinking; never Gemini).
 - **Tools** (`lib/ai/tools/`): `web_search` (direct Perplexity API for titled sources when `PERPLEXITY_API_KEY` set, else keyless Gateway Sonar fallback), `createDocument`/`editDocument`/`updateDocument`/`requestSuggestions` (artifacts), `balance_check`, `transaction_history`, `resolve_suins`, `send_transfer` (client-executed, gasless), `run_recipe` (client-executed, x402 — **always runs on Kimi**), `save_memory` (MemWal, when memory ON).
@@ -120,12 +120,12 @@ shadcn semantic tokens (`bg-background`/`text-foreground`, `bg-card`, `bg-muted`
 ## Env (`lib/env.ts` Zod gate)
 **Required:** `ENOKI_SECRET_KEY`, `AUTH_SECRET`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_ENOKI_API_KEY`, `NEXT_PUBLIC_SUI_NETWORK`.
 **Also used:** `AI_GATEWAY_API_KEY`, `POSTGRES_URL`, `BLOB_READ_WRITE_TOKEN`, `REDIS_URL` (rate limit).
-**Optional (feature-gated):** `MEMWAL_PRIVATE_KEY`/`MEMWAL_ACCOUNT_ID`/`MEMWAL_SERVER_URL` (memory) · `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_PRO`/`STRIPE_PRICE_MAX`/`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (billing) · `AUDRIC_PARENT_NFT_PRIVATE_KEY` (@handles) · `REDPILL_API_KEY` (Confidential/TEE — unset = deferred) · `PERPLEXITY_API_KEY` (web_search titles).
+**Optional (feature-gated):** `MEMWAL_PRIVATE_KEY`/`MEMWAL_ACCOUNT_ID`/`MEMWAL_SERVER_URL` (memory) · `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_PRO`/`STRIPE_PRICE_MAX`/`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (billing) · `AUDRIC_PARENT_NFT_PRIVATE_KEY` (@handles) · `PHALA_API_KEY` + `CONFIDENTIAL_ANCHOR_SIGNER_KEY` (Confidential GPU-TEE — **LIVE**: attested inference + anchor-every; receipts durably stored in Redis) · `PERPLEXITY_API_KEY` (web_search titles).
 
 ---
 
 ## Roadmap (never present as shipped)
-Confidential (TEE) models · End-to-end **sealed chats** (Seal on Walrus) · Decentralized memory backup · Agent Store. Privacy ladder ends at *provably yours*: Anon → Private·ZDR → Confidential(TEE) → Sealed(E2E).
+End-to-end **sealed chats** (Seal on Walrus) · Decentralized memory backup · Agent Store. Privacy ladder: Anon → Private·ZDR → **Confidential·TEE (LIVE, S.593)** → Sealed(E2E, coming). *(Confidential GPU-TEE mode shipped — no longer roadmap.)*
 
 ---
 

@@ -2,46 +2,8 @@ import { getAgentProfile } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { AGENT_ID_REGISTRY_ID } from "@t2000/id";
 
-// The gateway owns the commerce settlement receipts; reputation is aggregated
-// from them ("Verified on the rail", C.3).
-const GATEWAY_BASE = "https://mpp.t2000.ai";
-
-type Reputation = {
-  sales: number;
-  volumeUsd: number;
-  buyers: number;
-  lastSaleAt: string | null;
-};
-
-async function fetchReputation(
-  address: string
-): Promise<Reputation | undefined> {
-  try {
-    const res = await fetch(`${GATEWAY_BASE}/commerce/stats/${address}`, {
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) {
-      return;
-    }
-    const d = (await res.json()) as Reputation & { seller?: string };
-    // Only surface reputation once there's at least one real sale. Strip the
-    // gateway's internal `seller` echo — it's redundant in the public profile.
-    return d.sales > 0
-      ? {
-          sales: d.sales,
-          volumeUsd: d.volumeUsd,
-          buyers: d.buyers,
-          lastSaleAt: d.lastSaleAt,
-        }
-      : undefined;
-  } catch {
-    return;
-  }
-}
-
 // GET /v1/agents/:address → the agent's profile as ERC-8004 `registration-v1`
-// JSON (Agent ID B.1 gate 6 — the default profile / metadataUri target),
-// enriched with rail reputation (C.3). Public.
+// JSON (Agent ID B.1 gate 6 — the default profile / metadataUri target). Public.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ address: string }> }
@@ -59,8 +21,6 @@ export async function GET(
       { status: 404 }
     );
   }
-
-  const reputation = await fetchReputation(address);
 
   return Response.json({
     name: profile.displayName ?? profile.name,
@@ -80,8 +40,11 @@ export async function GET(
     owner: profile.owner ?? undefined,
     metadataUri: profile.metadataUri ?? undefined,
     mcpEndpoint: profile.mcpEndpoint ?? undefined,
+    // Preferred name for the same field — `mcpEndpoint` kept as a read alias
+    // (SPEC_STORE_V2 §5b: the delivery leg is plain HTTPS, not MCP protocol).
+    serviceEndpoint: profile.mcpEndpoint ?? undefined,
     paymentMethods: profile.paymentMethods ?? undefined,
-    priceUsdc: profile.priceUsdc ?? undefined,
+    category: profile.category ?? undefined,
     // Off-chain social links — omitted entirely when none are set.
     links:
       profile.website || profile.twitter || profile.github
@@ -91,7 +54,6 @@ export async function GET(
             github: profile.github ?? undefined,
           }
         : undefined,
-    reputation,
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,
     registrations: [

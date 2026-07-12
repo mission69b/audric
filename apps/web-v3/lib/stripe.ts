@@ -323,6 +323,86 @@ export async function setSubscriptionCancel(
   return true;
 }
 
+/**
+ * Change an active subscription to a different PAID tier. Stripe computes the
+ * proration and invoices it IMMEDIATELY (`always_invoice`) — an upgrade charges
+ * the prorated difference now (instant access); a downgrade to a lower paid tier
+ * issues a prorated credit. The tier itself syncs on the `customer.subscription.
+ * updated` webhook. Downgrade to Free is NOT handled here — that's a cancel at
+ * period end (`setSubscriptionCancel`). Returns false if there's no active sub.
+ */
+export async function changeSubscriptionTier(
+  userId: string,
+  tier: TierId
+): Promise<boolean> {
+  const priceId = priceIdForTier(tier);
+  if (!priceId) {
+    return false;
+  }
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return false;
+  }
+  const subs = await getStripe().subscriptions.list({
+    customer: customerId,
+    status: "active",
+    limit: 1,
+  });
+  const sub = subs.data[0];
+  const itemId = sub?.items.data[0]?.id;
+  if (!(sub && itemId)) {
+    return false;
+  }
+  await getStripe().subscriptions.update(sub.id, {
+    items: [{ id: itemId, price: priceId }],
+    proration_behavior: "always_invoice",
+    // Re-activate if it was set to cancel (e.g. switching back up after a
+    // pending downgrade-to-free).
+    cancel_at_period_end: false,
+    metadata: { userId, tier },
+  });
+  return true;
+}
+
+/**
+ * Preview what a switch to `tier` would charge NOW — Stripe computes the exact
+ * proration (positive = charged immediately for an upgrade; negative = credit
+ * for a downgrade). Powers the "you'll be charged ~$X now" breakdown in the
+ * confirm dialog. Returns null if there's no active sub / not configured.
+ */
+export async function previewSubscriptionChange(
+  userId: string,
+  tier: TierId
+): Promise<{ amountDueCents: number; currency: string } | null> {
+  const priceId = priceIdForTier(tier);
+  if (!priceId) {
+    return null;
+  }
+  const customerId = await existingCustomerId(userId);
+  if (!customerId) {
+    return null;
+  }
+  const subs = await getStripe().subscriptions.list({
+    customer: customerId,
+    status: "active",
+    limit: 1,
+  });
+  const sub = subs.data[0];
+  const itemId = sub?.items.data[0]?.id;
+  if (!(sub && itemId)) {
+    return null;
+  }
+  const preview = await getStripe().invoices.createPreview({
+    customer: customerId,
+    subscription: sub.id,
+    subscription_details: {
+      items: [{ id: itemId, price: priceId }],
+      proration_behavior: "always_invoice",
+    },
+  });
+  return { amountDueCents: preview.amount_due, currency: preview.currency };
+}
+
 /** Set a card as the customer's default (used for invoices + auto-recharge). */
 export async function setDefaultPaymentMethod(
   userId: string,

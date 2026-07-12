@@ -1,0 +1,32 @@
+import { getCurrentUser } from "@audric/auth/server";
+import { type NextRequest, NextResponse } from "next/server";
+
+// Console → web-v3 proxy for the owner-side UNLINK (registry v2
+// renounce_ownership, S.691). The OWNER is the session user
+// (server-authoritative — never client-set); the browser only signs the
+// bytes. Submit reuses /api/agent/confirm-submit (same owner-signed shape).
+const API = "https://api.t2000.ai/v1";
+
+export async function POST(request: NextRequest) {
+  const session = await getCurrentUser();
+  if (!session) {
+    return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  }
+  let agent: string;
+  try {
+    agent = String((await request.json())?.agent ?? "").trim();
+  } catch {
+    return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  }
+  if (!agent) {
+    return NextResponse.json({ error: "agent is required." }, { status: 400 });
+  }
+
+  const res = await fetch(`${API}/agent/owner/renounce`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ owner: session.user.id, agent }),
+  });
+  const json = await res.json().catch(() => ({}));
+  return NextResponse.json(json, { status: res.status });
+}

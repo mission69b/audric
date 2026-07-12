@@ -128,7 +128,7 @@ export function ReferralShareDialog({
 
         {data && data.total > 0 && (
           <p className="text-center text-muted-foreground text-xs">
-            {data.rewarded} joined · ${data.earnedUsd} earned
+            {data.total} joined · ${data.earnedUsd} earned
           </p>
         )}
       </DialogContent>

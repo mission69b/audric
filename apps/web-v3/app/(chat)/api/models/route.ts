@@ -1,13 +1,51 @@
+import { connection } from "next/server";
 import {
   getAllGatewayModels,
   getCapabilities,
   getModelPricing,
   isDemo,
 } from "@/lib/ai/models";
+import { apiMarginFor, apiModels } from "@/lib/api/models";
+import { getPhalaPricing } from "@/lib/api/providers";
 import { marginFor } from "@/lib/credit/meter";
 import { isMemoryConfigured } from "@/lib/memwal";
 
+// The confidential (GPU-TEE) catalog, priced at the charged rate (Phala × the
+// 2.0× confidential margin) — surfaced so the composer's model picker can show
+// the TEE models when Confidential mode is on.
+async function confidentialCatalog() {
+  const phalaPricing = await getPhalaPricing();
+  return apiModels
+    .filter((m) => m.privacy === "confidential")
+    .map((m) => {
+      const p = phalaPricing[m.id];
+      const margin = apiMarginFor(m.id);
+      // Short two-line subtitle (mirrors the private switcher's `bestFor`).
+      const bestFor = m.reasoning
+        ? "Reasoning · deep"
+        : /uncensored/i.test(m.name)
+          ? "Uncensored · open"
+          : "Fast · open";
+      return {
+        id: m.id,
+        name: m.name,
+        // Real upstream provider (moonshotai, deepseek, qwen, …) → the provider
+        // logo in the confidential switcher (matches the private switcher).
+        provider: m.upstream?.split("/")[0],
+        reasoning: m.reasoning ?? false,
+        bestFor,
+        inputPer1M: p ? p.inputPer1M * margin : undefined,
+        outputPer1M: p ? p.outputPer1M * margin : undefined,
+      };
+    });
+}
+
 export async function GET() {
+  // Force runtime execution — same Cache Components gotcha as /api/markets: a
+  // GET with no dynamic APIs gets PRERENDERED AT BUILD, where env (PHALA_API_KEY
+  // etc.) is absent → the baked snapshot had no confidential pricing. Freshness
+  // comes from the Cache-Control header, not prerendering.
+  await connection();
   // Short browser TTL + long shared TTL with background revalidation: the model
   // catalog changes rarely, but a long browser max-age makes additive response
   // changes (e.g. a new pricing field) invisible to already-cached clients for
@@ -23,6 +61,7 @@ export async function GET() {
   ]);
 
   const memoryEnabled = isMemoryConfigured();
+  const confidentialModels = await confidentialCatalog();
 
   // Show the CHARGED rate (Gateway list × the model's margin), not raw cost — so
   // the switcher price matches what actually debits from credit (the meter applies
@@ -53,6 +92,7 @@ export async function GET() {
         models,
         pricing,
         memoryEnabled,
+        confidentialModels,
       },
       { headers }
     );
@@ -63,6 +103,7 @@ export async function GET() {
       capabilities,
       pricing,
       memoryEnabled,
+      confidentialModels,
     },
     { headers }
   );

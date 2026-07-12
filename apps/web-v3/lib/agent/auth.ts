@@ -39,6 +39,16 @@ export function agentProfileChallengeMessage(nonce: string): string {
   return `t2000-agent-profile:${nonce}`;
 }
 
+/** The message to sign to replace the agent's service CATALOG (Store v2
+ *  Phase 1). Bound to nonce + a sha256 of the canonical services JSON, so a
+ *  captured signature can't be replayed with a different catalog payload. */
+export function agentServicesChallengeMessage(
+  nonce: string,
+  servicesSha256Hex: string
+): string {
+  return `t2000-agent-services:${nonce}:${servicesSha256Hex}`;
+}
+
 /** Verify a Sui personal-message signature proves ownership of `address`. */
 export async function verifyAgentSignature(opts: {
   address: string;

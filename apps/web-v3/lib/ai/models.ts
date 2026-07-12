@@ -98,18 +98,22 @@ export const chatModels: ChatModel[] = [
     bestFor: "Fast & capable",
   },
   {
-    id: "anthropic/claude-sonnet-4.6",
-    name: "Claude Sonnet 4.6",
+    id: "anthropic/claude-sonnet-5",
+    name: "Claude Sonnet 5",
     provider: "anthropic",
     description: "Balanced Claude — fast, strong writing & tools",
     gatewayOrder: ["anthropic", "bedrock"],
     privacy: "private",
     tier: "smart",
     vision: true,
-    margin: 1.15,
+    margin: 1.3,
     bestFor: "Balanced & fast",
   },
   {
+    // Fable 5 was trialed here (2026-07-02) and REMOVED same-day: the gateway
+    // marks it ZDR-INELIGIBLE ("this model retains data"), so it can't honor
+    // the Private tier's zero-data-retention promise — every request failed
+    // fail-closed. Revisit if/when the gateway lists it as ZDR-eligible.
     id: "anthropic/claude-opus-4.8",
     name: "Claude Opus 4.8",
     provider: "anthropic",
@@ -121,7 +125,7 @@ export const chatModels: ChatModel[] = [
     tier: "smart",
     frontier: true,
     vision: true,
-    margin: 1.15,
+    margin: 1.3,
     bestFor: "Code & writing",
   },
   {
@@ -144,8 +148,13 @@ export const chatModels: ChatModel[] = [
   // used for image editing is unaffected — different model, works fine.)
 ];
 
-/** Every selectable model. (Confidential/TEE tier deferred + removed 2026-06-24
- * — see SPEC_AUDRIC_AGENT_WEDGE; re-add when the TEE rung ships.) */
+/** Every selectable GATEWAY (ZDR) model. NOTE: the Confidential/TEE tier is NOT a
+ * gateway model here — it shipped 2026-07-01 (S.593) as a separate path: the
+ * composer "Confidential" toggle routes to a `phala/*` GPU-TEE model via
+ * `lib/api/providers.ts` `getInferenceModel` + `lib/api/confidential-chat.ts`
+ * (catalog in `lib/api/models.ts`, distinct from this gateway list). This
+ * `ModelPrivacyTier` union stays anon|private|local by design — confidential is a
+ * mode toggle, not a gateway privacy tier. */
 export const allChatModels: ChatModel[] = [...chatModels];
 
 export async function getCapabilities(): Promise<

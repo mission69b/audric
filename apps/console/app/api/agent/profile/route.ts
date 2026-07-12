@@ -1,13 +1,17 @@
-import { getAgentProfile, setAgentProfileFields } from "@audric/accounts";
+import {
+  AGENT_CATEGORIES,
+  getAgentProfile,
+  setAgentProfileFields,
+} from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { type NextRequest, NextResponse } from "next/server";
 
 // POST /api/agent/profile — owner-side edit of an agent's OFF-CHAIN fields
-// (displayName · imageUrl · description · priceUsdc). Session-authed (the owner's
-// Passport) + ownership-gated (the agent's confirmed on-chain owner must equal
-// the session user). The on-chain endpoint stays agent-keypair-only; this is the
-// human "manage my agent" path for the directory/commerce display fields.
+// (displayName · imageUrl · description · category · links). Session-authed
+// (the owner's Passport) + ownership-gated (the agent's confirmed on-chain
+// owner must equal the session user). This is the human "manage my agent"
+// path for the directory display fields.
 
 const MAX_NAME = 80;
 const MAX_DESC = 600;
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
     displayName?: string | null;
     imageUrl?: string | null;
     description?: string | null;
-    priceUsdc?: string | null;
+    category?: string | null;
     website?: string | null;
     twitter?: string | null;
     github?: string | null;
@@ -52,12 +56,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid agent." }, { status: 400 });
   }
 
-  // Ownership gate: the session user must be the agent's confirmed owner.
+  // Ownership gate: the session user must be the agent's confirmed owner —
+  // OR the agent itself (the SELF-agent: owner == agent == the Passport,
+  // §II.15a stage 3).
   const profile = await getAgentProfile(agent);
   if (!profile) {
     return NextResponse.json({ error: "Agent not found." }, { status: 404 });
   }
-  if (profile.owner !== session.user.id) {
+  if (profile.owner !== session.user.id && agent !== session.user.id) {
     return NextResponse.json(
       { error: "You don't own this agent." },
       { status: 403 }
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
     displayName?: string | null;
     imageUrl?: string | null;
     description?: string | null;
-    priceUsdc?: string | null;
+    category?: string | null;
     website?: string | null;
     twitter?: string | null;
     github?: string | null;
@@ -116,20 +122,15 @@ export async function POST(request: NextRequest) {
     }
     fields.description = v || null;
   }
-  if (body.priceUsdc !== undefined && body.priceUsdc !== null) {
-    const raw = String(body.priceUsdc).trim();
-    if (raw === "") {
-      fields.priceUsdc = null;
-    } else {
-      const n = Number(raw);
-      if (!Number.isFinite(n) || n <= 0 || n > 1000) {
-        return NextResponse.json(
-          { error: "Price must be a positive USDC amount (≤ 1000)." },
-          { status: 400 }
-        );
-      }
-      fields.priceUsdc = raw;
+  if (body.category !== undefined && body.category !== null) {
+    const v = String(body.category).trim().toLowerCase();
+    if (v && !(AGENT_CATEGORIES as readonly string[]).includes(v)) {
+      return NextResponse.json(
+        { error: `Category must be one of: ${AGENT_CATEGORIES.join(", ")}.` },
+        { status: 400 }
+      );
     }
+    fields.category = v || null;
   }
 
   if (Object.keys(fields).length === 0) {

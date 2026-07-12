@@ -31,49 +31,48 @@ export function ModelsSection() {
   }, []);
 
   return (
-    <Section
-      description="Prices are USD per 1M tokens — what you pay, metered to your credit."
-      title="Models"
-    >
+    <Section description="USD per 1M tokens, metered to your credit.">
       {models && models.length > 0 ? (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-border border-b text-left text-[11px] text-muted-foreground uppercase tracking-wide">
-              <th className="pb-2 font-medium">Model</th>
-              <th className="pb-2 font-medium">Privacy</th>
-              <th className="pb-2 text-right font-medium">In / 1M</th>
-              <th className="pb-2 text-right font-medium">Out / 1M</th>
-            </tr>
-          </thead>
-          <tbody>
-            {models.map((m) => (
-              <tr
-                className="border-border/50 border-b last:border-0"
-                key={m.id}
-              >
-                <td className="py-2.5">
-                  <div className="text-foreground">{m.name}</div>
-                  <div className="font-mono text-[11px] text-muted-foreground">
-                    {m.id}
-                  </div>
-                </td>
-                <td className="py-2.5">
-                  {m.privacy === "confidential" ? (
-                    <Badge variant="default">Confidential</Badge>
-                  ) : (
-                    <Badge variant="secondary">Private</Badge>
-                  )}
-                </td>
-                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
-                  ${m.pricing.input_per_1m.toFixed(2)}
-                </td>
-                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
-                  ${m.pricing.output_per_1m.toFixed(2)}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm">
+            <thead>
+              <tr className="border-border border-b text-left text-[11px] text-muted-foreground uppercase tracking-wide">
+                <th className="pb-2 font-medium">Model</th>
+                <th className="pb-2 font-medium">Privacy</th>
+                <th className="pb-2 text-right font-medium">In / 1M</th>
+                <th className="pb-2 text-right font-medium">Out / 1M</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {models.map((m) => (
+                <tr
+                  className="border-border/50 border-b last:border-0"
+                  key={m.id}
+                >
+                  <td className="py-2.5">
+                    <div className="text-foreground">{m.name}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {m.id}
+                    </div>
+                  </td>
+                  <td className="py-2.5">
+                    {m.privacy === "confidential" ? (
+                      <Badge variant="default">Confidential</Badge>
+                    ) : (
+                      <Badge variant="secondary">Private</Badge>
+                    )}
+                  </td>
+                  <td className="py-2.5 text-right text-muted-foreground tabular-nums">
+                    ${m.pricing.input_per_1m.toFixed(2)}
+                  </td>
+                  <td className="py-2.5 text-right text-muted-foreground tabular-nums">
+                    ${m.pricing.output_per_1m.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <p className="text-muted-foreground text-xs">Loading catalog…</p>
       )}

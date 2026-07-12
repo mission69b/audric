@@ -17,7 +17,9 @@ export type Surface =
   | "document"
   | "suggestions"
   | "credit"
-  | "activate_gateway";
+  | "activate_gateway"
+  | "confidential"
+  | "confidential_size";
 
 export type ErrorCode = `${ErrorType}:${Surface}`;
 
@@ -35,6 +37,8 @@ export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
   suggestions: "response",
   credit: "response",
   activate_gateway: "response",
+  confidential: "response",
+  confidential_size: "response",
 };
 
 export class ChatbotError extends Error {
@@ -99,6 +103,11 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
 
     case "bad_request:credit":
       return "You're out of Audric credit. Top up to use premium models — or switch to the free model (Kimi).";
+
+    case "bad_request:confidential":
+      return "Confidential mode is text-only — images can't be sent into the enclave. Remove the image, or turn Confidential off and resend. (PDFs work: their text is extracted.)";
+    case "bad_request:confidential_size":
+      return "This conversation's attachments are too large for Confidential mode. Start a new confidential chat, or turn Confidential off.";
     case "not_found:chat":
       return "The requested chat was not found. Please check the chat ID and try again.";
     case "forbidden:chat":

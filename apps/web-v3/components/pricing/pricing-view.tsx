@@ -9,9 +9,11 @@ import { PricingPlans } from "./pricing-plans";
 export function PricingView({
   onCtaClick,
   currentTier,
+  onChangePlan,
 }: {
   onCtaClick?: () => void;
   currentTier?: string;
+  onChangePlan?: (tier: string, label: string) => void;
 }) {
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -26,7 +28,11 @@ export function PricingView({
         </p>
       </div>
       <div className="mt-10">
-        <PricingPlans currentTier={currentTier} onCtaClick={onCtaClick} />
+        <PricingPlans
+          currentTier={currentTier}
+          onChangePlan={onChangePlan}
+          onCtaClick={onCtaClick}
+        />
       </div>
     </div>
   );

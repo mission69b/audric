@@ -46,6 +46,11 @@ export type ApiModel = {
    *  (differs from our alias `id` and from the Gateway's slug for the same
    *  model). Used for the Phala request + the live-pricing lookup. */
   upstream?: string;
+  /** True for reasoning models (glm-5.2, kimi) — they generate a hidden
+   *  reasoning trace before answering, so they're deeper but noticeably slower
+   *  (higher latency + more tokens). Surfaced in `/v1/models` + `t2 models` so
+   *  callers pick the speed/depth tradeoff consciously. We never cap tokens. */
+  reasoning?: boolean;
 };
 
 export const apiModels: ApiModel[] = [
@@ -56,6 +61,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "private",
     margin: 1.4,
+    reasoning: true,
   },
   {
     id: "deepseek/deepseek-v3.2",
@@ -70,6 +76,19 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "private",
     margin: 1.4,
+    reasoning: true,
+  },
+  {
+    // The coding hero (SPEC_INFERENCE_DEMAND: the free-tier model + a t2000/auto
+    // bulk candidate). Confidential twin pending — Phala's TEE inventory serves
+    // k2.5/k2.6 only (probed 2026-07-12); add `phala/kimi-k2.7-code` when their
+    // /v1/models lists it AND the attestation probe passes.
+    id: "moonshotai/kimi-k2.7-code",
+    name: "Kimi K2.7 Code",
+    tier: "open",
+    privacy: "private",
+    margin: 1.4,
+    reasoning: true,
   },
   {
     id: "alibaba/qwen3-max",
@@ -87,18 +106,20 @@ export const apiModels: ApiModel[] = [
   },
   // ── Tier B — Frontier/closed (one-key completeness; thin near-floor margin) ─
   {
-    id: "anthropic/claude-sonnet-4.6",
-    name: "Claude Sonnet 4.6",
+    id: "anthropic/claude-sonnet-5",
+    name: "Claude Sonnet 5",
     tier: "frontier",
     privacy: "private",
-    margin: 1.15,
+    margin: 1.3,
   },
   {
+    // Fable 5 removed 2026-07-02: gateway-flagged ZDR-INELIGIBLE (retains
+    // data) — can't carry the `private` promise. Revisit when eligible.
     id: "anthropic/claude-opus-4.8",
     name: "Claude Opus 4.8",
     tier: "frontier",
     privacy: "private",
-    margin: 1.15,
+    margin: 1.3,
   },
   {
     id: "openai/gpt-5.5",
@@ -135,6 +156,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "confidential",
     margin: 2.0,
+    reasoning: true,
   },
   {
     id: "phala/kimi-k2.6",
@@ -143,6 +165,7 @@ export const apiModels: ApiModel[] = [
     tier: "open",
     privacy: "confidential",
     margin: 2.0,
+    reasoning: true,
   },
   {
     id: "phala/deepseek-v4-flash",
