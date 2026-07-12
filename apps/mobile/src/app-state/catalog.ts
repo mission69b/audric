@@ -1,8 +1,10 @@
 // Static, presentational data for the chat surface — ported verbatim from the
 // mobile prototype's `renderVals()` (`Audric Mobile Design Brief/Audric Mobile.dc.html`).
-// These mirror web-v3's own catalogs (lib/ai/models.ts, slash-commands.tsx,
-// lib/skills/catalog.ts) exactly. Interactive suggestions/follow-ups carry the
-// literal text to send; the component wires it to the store's `askSuggestion`.
+// These mirror web-v3's own catalogs (lib/ai/models.ts, lib/credit/tiers.ts)
+// exactly. Interactive suggestions/follow-ups carry the literal text to send;
+// the component wires it to the store's `askSuggestion`. (The prototype's
+// Skills catalog was removed 2026-07-12 with the Skills tab — web-v3 main
+// deleted its /skills surface; skills run as chat-native tools.)
 
 export type ModelCaps = { tools?: boolean; vision?: boolean; reasoning?: boolean };
 export type ModelRow = {
@@ -276,108 +278,6 @@ export const EVERY_PLAN: string[] = [
 export const COMING_SOON: string[] = [
   "End-to-end encrypted chats — sealed with Seal, readable only by you",
   "Decentralized backup — your memory, end-to-end on Walrus",
-];
-
-// ---------------------------------------------------------------------------
-// Skills (prototype SKILLS tab). Mirrors web-v3 lib/skills/catalog.ts — 8 skills,
-// all free + chat-native. `examples` drop into the composer to tweak before send.
-
-export type Skill = {
-  name: string;
-  category: string;
-  description: string;
-  examples: string[];
-};
-
-export const SKILLS: Skill[] = [
-  {
-    name: "Crypto Market",
-    category: "Crypto",
-    description:
-      "Live price, market cap, rank, 24h/7d change, volume and all-time high for any listed coin.",
-    examples: [
-      "What's the price of SUI?",
-      "How's Bitcoin doing today?",
-      "Compare SUI and SOL market caps",
-    ],
-  },
-  {
-    name: "Crypto History",
-    category: "Crypto",
-    description:
-      "Daily price history (OHLCV) over any window — the trend, highs/lows and % change.",
-    examples: [
-      "Show me ETH's price over the last 30 days",
-      "How has SUI performed this week?",
-      "Compare the 30-day performance of SUI, SOL and SEI",
-    ],
-  },
-  {
-    name: "Crypto Screener",
-    category: "Crypto",
-    description:
-      "Rank & discover — top gainers/losers, newly-listed coins, what's trending, or the top coins in a sector (AI, DePIN, RWA, gaming…).",
-    examples: [
-      "Top crypto gainers this week",
-      "What are the top AI coins right now?",
-      "Any new coins launched recently?",
-    ],
-  },
-  {
-    name: "Market Pulse",
-    category: "Crypto",
-    description:
-      "The whole market at a glance — total crypto market cap, 24h volume, BTC/ETH dominance, plus the Fear & Greed sentiment index.",
-    examples: [
-      "Is the crypto market fearful or greedy?",
-      "What's the total crypto market cap?",
-      "What's Bitcoin's dominance right now?",
-    ],
-  },
-  {
-    name: "On-chain Trending",
-    category: "Crypto",
-    description:
-      "What's moving on a specific chain — trending, top-by-volume, or newly-launched tokens across Sui, Solana, Base, Ethereum, BSC and more.",
-    examples: [
-      "Top trending tokens on Sui right now",
-      "Top tokens by volume on Base",
-      "New tokens on Solana",
-    ],
-  },
-  {
-    name: "Token Research",
-    category: "Crypto",
-    description:
-      "Deep-dive any single token — by name, symbol, or contract address — across all chains: live price, liquidity, 24h volume, the DEX it trades on, and the latest news.",
-    examples: [
-      "Research the MANIFEST token on Sui",
-      "What's the liquidity and volume for DEEP on Sui?",
-      "Research the WAL token",
-    ],
-  },
-  {
-    name: "Perps",
-    category: "Crypto",
-    description:
-      "Live perpetual-futures data from Bluefin (Sui's perps DEX) — mark price, funding rate, open interest, 24h stats. Analyze a setup: funding, liquidation math, and the risks (data, never advice).",
-    examples: [
-      "How's the SUI perp doing on Bluefin?",
-      "What's the funding rate on BTC perps right now?",
-      "Analyze a SUI long at 5x — funding, liquidation, risks",
-    ],
-  },
-  {
-    name: "Stocks",
-    category: "Markets",
-    description:
-      "Live US stock & ETF quotes, fundamentals (P/E, EPS, 52-week range, dividend yield), analyst ratings, recent earnings, news and peers.",
-    examples: [
-      "What's Apple's stock price?",
-      "Research NVDA — fundamentals, ratings and recent news",
-      "Compare TSLA and AAPL",
-    ],
-  },
 ];
 
 // ---------------------------------------------------------------------------

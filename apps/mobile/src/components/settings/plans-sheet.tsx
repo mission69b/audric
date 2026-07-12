@@ -38,7 +38,6 @@ export function PlansSheet() {
               </View>
             ))}
           </View>
-          <Text style={[styles.browse, { color: colors.tealLabel }]}>Browse all Skills →</Text>
         </View>
 
         {/* Tiers */}
@@ -143,7 +142,6 @@ const styles = StyleSheet.create({
   everyTitle: { fontFamily: fonts.semibold, fontSize: 13 },
   everyTitleSub: { fontFamily: fonts.regular, fontSize: 12 },
   everyList: { gap: 9, marginTop: 11 },
-  browse: { fontFamily: fonts.semibold, fontSize: 12, marginTop: 12 },
 
   checkRow: { flexDirection: "row", gap: 9 },
   checkIcon: { marginTop: 1 },

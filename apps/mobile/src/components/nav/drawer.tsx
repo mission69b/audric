@@ -29,7 +29,6 @@ import {
   Ellipsis,
   PanelLeft,
   Settings,
-  Sparkle,
   SquarePen,
   Trash2,
   Wallet,
@@ -121,10 +120,6 @@ export function Drawer() {
           <Pressable onPress={newChat} style={styles.actionRow}>
             <SquarePen size={16} color={colors.fg} strokeWidth={1.9} />
             <Text style={[styles.actionText, { color: colors.fg }]}>New chat</Text>
-          </Pressable>
-          <Pressable onPress={() => setTab("skills")} style={styles.actionRow}>
-            <Sparkle size={16} color={colors.fg} strokeWidth={1.9} />
-            <Text style={[styles.actionText, { color: colors.fg }]}>Skills</Text>
           </Pressable>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />

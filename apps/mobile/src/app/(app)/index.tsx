@@ -26,7 +26,6 @@ import { PlansSheet } from "@/components/settings/plans-sheet";
 import { ReferralSheet } from "@/components/settings/referral-sheet";
 import { CustomSheet } from "@/components/settings/custom-sheet";
 import { HandleSheet } from "@/components/settings/handle-sheet";
-import { SkillsScreen } from "@/components/skills/skills-screen";
 import { Drawer } from "@/components/nav/drawer";
 import { AccountMenu } from "@/components/nav/account-menu";
 import { NudgeDialog } from "@/components/chat/nudge-dialog";
@@ -38,7 +37,9 @@ import { fonts } from "@/theme/tokens";
 // content area in place; every non-tab surface is a sheet/overlay mounted once
 // here (RN <Modal> portals them above the whole app). P1 ships the chat tab + its
 // six sheets; P2 adds the wallet tab (home + Send/Receive sheets); P3 adds the
-// settings + skills tabs and the navigation drawer that reaches every surface.
+// settings tab and the navigation drawer that reaches every surface. (The
+// prototype's Skills tab was removed 2026-07-12 — web-v3 main deleted its
+// /skills surface in the store purge; skills are chat-native tools now.)
 export default function Shell() {
   const { colors } = useTheme();
   const { tab, onboarded } = useAppState();
@@ -64,8 +65,6 @@ export default function Shell() {
           <WalletScreen />
         ) : tab === "settings" ? (
           <SettingsScreen />
-        ) : tab === "skills" ? (
-          <SkillsScreen />
         ) : (
           <Placeholder label={tab} />
         )}
@@ -119,7 +118,7 @@ function ChatTab() {
   );
 }
 
-// P2/P3 stand-in for the wallet / settings / skills tabs.
+// P2/P3 stand-in for the wallet / settings tabs.
 function Placeholder({ label }: { label: string }) {
   const { colors } = useTheme();
   return (

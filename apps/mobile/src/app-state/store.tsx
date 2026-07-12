@@ -31,7 +31,7 @@ import type { ChatMessage } from "@/lib/types";
 // same the prototype ships); the real web-v3 SSE transport + wallet calls swap in
 // behind these actions later without changing the UI.
 
-export type Tab = "chat" | "wallet" | "settings" | "skills";
+export type Tab = "chat" | "wallet" | "settings";
 export type Visibility = "private" | "public";
 export type SendStage = "confirm" | "sending" | "success";
 export type ConfirmKind = "delete" | "purge" | "forget" | "signout" | null;
