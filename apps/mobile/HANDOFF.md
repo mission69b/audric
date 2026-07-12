@@ -1,7 +1,13 @@
 # Audric Mobile — HANDOFF
 
+> **⚠️ SUPERSEDED IN PART (2026-07-12, funkii session) — read `REVIEW-2026-07-12.md` + `PARITY-AUDIT-2026-07-12.md` FIRST.** This doc is the 2026-07-05 snapshot; several load-bearing facts below are now stale:
+> - **Phase 0 PASSED** — sign-in works end-to-end; same Google → same Sui address as audric.ai. §0's "one thing blocking" and §2's whole "What's BLOCKED" section are RESOLVED (localhost bench, prod client). **B2 is green-lit.**
+> - **Canonical Google client is `396016292233-h1ch9…` ("audric", what prod runs)** — NOT the `evvduh…` id cited in §3. Secret recovered via rotation; prod Vercel carries it. See REVIEW §2.
+> - **Current branch is `mobile-main-merge`** (feat/mobile-app + main merged + fixes: Enoki nonce, Hermes crypto polyfills, Skills surface removed, docs). Continue from it.
+> - N1 in §4 is DONE. The forward order now lives in REVIEW §6 + PARITY-AUDIT's P0–P3.
+>
 > **Snapshot date:** 2026-07-05 · **Branch:** `feat/mobile-app` · **All committed + pushed** at `b553f315` (see [Commit state](#8-commit-state)).
-> Read this top-to-bottom before touching anything. It is the single most current picture of the mobile app. Companion docs are indexed at the bottom.
+> Read this top-to-bottom before touching anything. Companion docs are indexed at the bottom.
 
 ---
 

@@ -1,5 +1,10 @@
 # Phase 0 — zkLogin address-parity gate (runbook)
 
+> **✅ GATE PASSED 2026-07-12** (funkii live test, prod client `h1ch9…`): mobile
+> derived the same address as audric.ai for the same Google account — see
+> `REVIEW-2026-07-12.md` §1a for evidence. This runbook stays as the re-test
+> procedure (re-run after any change to client id, Enoki key, or the auth flow).
+
 **The hard gate.** Same Google account must derive the **same Sui address** on
 native as on the live web app. If it doesn't, native is using a different `aud`
 (or salt holder) and **funds would fork** → STOP and design a wallet migration
