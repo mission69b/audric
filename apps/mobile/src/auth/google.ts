@@ -1,12 +1,20 @@
+import { EnokiClient } from "@mysten/enoki";
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import {
   APP_RETURN_URI,
+  enokiApiKey,
+  enokiNetwork,
   GOOGLE_AUTH_ENDPOINT,
   googleClientId,
   serverRedirectUri,
 } from "./config";
+import { savePendingAuth } from "./pending-auth";
 import { createPkcePair, createState } from "./pkce";
+
+// ~7-day signing window target (mainnet epoch ≈ 24h) — mirrors packages/auth.
+const ADDITIONAL_EPOCHS = 7;
 
 // Lets the auth session complete if the app was backgrounded during the
 // browser handoff. Safe to call at module load.
@@ -36,11 +44,28 @@ export async function authorizeWithGoogle(): Promise<AuthCode> {
   const { verifier, challenge } = await createPkcePair();
   const state = createState();
 
+  // Enoki zkLogin nonce — without this, deriveAddress salt_failure's on every sign-in.
+  const keypair = new Ed25519Keypair();
+  const enoki = new EnokiClient({ apiKey: enokiApiKey() });
+  const { nonce, randomness, maxEpoch, estimatedExpiration } =
+    await enoki.createZkLoginNonce({
+      network: enokiNetwork(),
+      ephemeralPublicKey: keypair.getPublicKey(),
+      additionalEpochs: ADDITIONAL_EPOCHS,
+    });
+  await savePendingAuth({
+    ephemeralSecret: keypair.getSecretKey(),
+    randomness,
+    maxEpoch,
+    expiresAt: estimatedExpiration,
+  });
+
   const authUrl = `${GOOGLE_AUTH_ENDPOINT}?${buildQuery({
     client_id: googleClientId(),
     redirect_uri: serverRedirectUri(),
     response_type: "code",
     scope: "openid email",
+    nonce,
     code_challenge: challenge,
     code_challenge_method: "S256",
     state,

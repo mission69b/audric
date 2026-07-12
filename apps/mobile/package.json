@@ -3,6 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@mysten/enoki": "^1.1.0",
+    "@mysten/sui": "^2.17.0",
     "@ai-sdk/react": "^4.0.12",
     "@expo-google-fonts/geist": "^0.4.2",
     "@expo-google-fonts/geist-mono": "^0.4.2",

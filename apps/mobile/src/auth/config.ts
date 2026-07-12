@@ -67,3 +67,17 @@ export const serverRedirectUri = (): string => {
 
 /** JSON endpoint the app POSTs { code, codeVerifier, redirectUri } to. */
 export const exchangeUrl = (): string => `${exchangeBase()}/exchange`;
+
+/** Enoki public API key — same value as web-v3's NEXT_PUBLIC_ENOKI_API_KEY. */
+export const enokiApiKey = (): string =>
+  required(
+    "EXPO_PUBLIC_ENOKI_API_KEY",
+    process.env.EXPO_PUBLIC_ENOKI_API_KEY
+  );
+
+/** zkLogin network — must match web-v3 (mainnet). */
+export const enokiNetwork = (): "mainnet" | "testnet" | "devnet" => {
+  const v = process.env.EXPO_PUBLIC_ENOKI_NETWORK?.trim() || "mainnet";
+  if (v === "testnet" || v === "devnet") return v;
+  return "mainnet";
+};
