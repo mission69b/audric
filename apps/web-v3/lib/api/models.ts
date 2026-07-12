@@ -79,6 +79,18 @@ export const apiModels: ApiModel[] = [
     reasoning: true,
   },
   {
+    // The coding hero (SPEC_INFERENCE_DEMAND: the free-tier model + a t2000/auto
+    // bulk candidate). Confidential twin pending — Phala's TEE inventory serves
+    // k2.5/k2.6 only (probed 2026-07-12); add `phala/kimi-k2.7-code` when their
+    // /v1/models lists it AND the attestation probe passes.
+    id: "moonshotai/kimi-k2.7-code",
+    name: "Kimi K2.7 Code",
+    tier: "open",
+    privacy: "private",
+    margin: 1.4,
+    reasoning: true,
+  },
+  {
     id: "alibaba/qwen3-max",
     name: "Qwen3 Max",
     tier: "open",
