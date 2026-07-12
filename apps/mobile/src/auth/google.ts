@@ -1,3 +1,6 @@
+// Import order is load-bearing: the polyfill must run before @mysten modules
+// capture globalThis.crypto (see crypto-polyfill.ts).
+import "./crypto-polyfill";
 import { EnokiClient } from "@mysten/enoki";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import * as Linking from "expo-linking";
