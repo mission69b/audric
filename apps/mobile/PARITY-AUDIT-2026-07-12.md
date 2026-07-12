@@ -163,6 +163,42 @@ has a dedicated tab (good mobile idiom) that is 100% mock. B2 fills this.
 
 ---
 
+## 10. UI/UX parity (visual — verified against live screenshots, 390pt width)
+
+Compared web-v3 at iPhone width (:3002, device emulation) against the simulator
+side-by-side on 2026-07-12. Verdict per layer:
+
+### Tokens / theme / typography — ✅ effectively at parity
+- Dark palette matches web's `globals.css` almost exactly (`bg #151515` =
+  `oklch(.195)`, `card #1c1c1c` = `.225`, `border #262626` = `.27`, `fg
+  #ebebeb` = `.94`). One drift: web's `--muted` moved to `.165` (darker than
+  bg); mobile's `muted`/`secondary` are still `.26`.
+- Geist / Geist Mono on both. Radius/spacing language matches (rounded-2xl
+  cards, pill chips).
+- **Accent drift:** mobile leans on teal `#0ac7b4` for CTAs (gate button,
+  plans CTAs, suggestion bullets). Web reserves teal for the wordmark +
+  privacy accents — primary buttons are foreground-on-dark (white). This is
+  why the gate screen reads "off-brand". Align mobile CTAs to the web pattern.
+
+### Idiom adaptations — ✅ correct, keep
+Popover → bottom sheet, sidebar → drawer, hover panel → inline rows,
+settings page → tab. These SHOULD differ on touch; not gaps.
+
+### Drifted surface designs — 🟠 the real UI/UX gaps
+| Surface | Web (main, at phone width) | Mobile today |
+|---|---|---|
+| **Empty-state hero** | lowercase `audric private` wordmark (teal "private") + "What can I help with?" | Audric dots mark + "Private AI, truly yours" + tagline (old prototype copy) |
+| **Starter suggestions** | 3 pill CHIPS below composer, media-led (Generate image / Research a topic / Create a video), auto-send real turns | 3 full-width list ROWS above composer, wallet-led (balance / privacy / send) — 2 of 3 route into MOCK demo turns |
+| **Composer control row** | attach · sparkle model trigger · **mode tabs: Private (shield) / Confidential (lock·Pro) / Computer (Soon)** · submit; cycling capability placeholder | attach · "Auto ⌄" text chip · Memory toggle · submit; static "Message Audric…" placeholder. No mode tabs at all |
+| **Model switcher** | Minimal v0-style popover: "Available" heading, provider logos, lock on premium, check on selected — ALL detail in a side hover panel | Dense sheet: search box + rows carrying price/caps/badge inline (the old pre-redesign web design) |
+| **Chat header** | sidebar toggle · visibility pill ("Private ⌄") · privacy shield right | drawer toggle · **"Free plan / Upgrade" pill** · lock visibility · shield · new-chat (plan pill lives in web's sidebar user-nav, not the header) |
+| **Message follow-ups** | chips from `/api/followups` | same chip UI, canned data |
+
+**Sequencing note:** don't pixel-polish surfaces that P1 (backend convergence)
+or B2 will rebuild anyway — fold the composer/mode-tabs/switcher/empty-state
+redesign into those tasks. The token-level fixes (teal CTA → foreground CTA,
+`muted` value) are cheap and can land anytime.
+
 ## Recommended order (post-B2-start)
 
 1. **P0 — truth + money (B2):** bind `session.address`/email everywhere
