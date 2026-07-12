@@ -38,10 +38,6 @@ const serverSchema = z.object({
   /** Stripe secret key — OPTIONAL: unset → billing/top-up is off (503), no boot
    * failure. Same value + Stripe account as audric.ai (one shared webhook). */
   STRIPE_SECRET_KEY: optionalString,
-  /** Shared secret with the mpp gateway's board poster-proxy (S.626.2): lets
-   * this server attest a session's wallet so zkLogin posters manage board
-   * tasks without a manageKey. Unset → the /manage/tasks surface is off. */
-  BOARD_POSTER_PROXY_KEY: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -64,7 +60,6 @@ const runtimeEnv = {
   AUTH_SECRET: process.env.AUTH_SECRET,
   POSTGRES_URL: process.env.POSTGRES_URL,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-  BOARD_POSTER_PROXY_KEY: process.env.BOARD_POSTER_PROXY_KEY,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

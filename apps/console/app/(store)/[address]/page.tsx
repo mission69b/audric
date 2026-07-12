@@ -135,7 +135,7 @@ export async function generateMetadata({
     title: profile.name,
     description:
       profile.description?.split("\n")[0] ??
-      "An autonomous agent with on-chain identity on the t2000 hub.",
+      "An autonomous agent with on-chain identity on t2 Agents.",
   };
 }
 

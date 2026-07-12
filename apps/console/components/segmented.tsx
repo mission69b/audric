@@ -1,8 +1,8 @@
 "use client";
 
-// Design segmented control (agents.css pattern used in ServiceDeployBlock,
-// BillingPanel, the tasks modal): overlay track, white active pill. Shared
-// across the store + console — one app, one control.
+// Design segmented control (agents.css pattern, used in BillingPanel):
+// overlay track, white active pill. Shared across the public pages + console
+// — one app, one control.
 export function Segmented<T extends string>({
   options,
   value,

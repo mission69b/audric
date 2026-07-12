@@ -1,6 +1,6 @@
 // Console card (t2000-design/agents ManageConsole panels) — every settings
 // block is an ag-card with a 14/600 title + 12.5 muted sub. One component,
-// so keys/usage/models/billing/tasks reskin at a single point.
+// so keys/usage/models/billing reskin at a single point.
 
 export function Section({
   title,

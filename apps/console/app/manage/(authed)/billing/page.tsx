@@ -29,7 +29,7 @@ export default async function BillingPage() {
         title="Wallet & billing"
       />
 
-      {/* Marketplace USDC (design §BillingPanel first card) — on-chain,
+      {/* Passport USDC (design §BillingPanel first card) — on-chain,
           withdrawable any time via Audric (same Passport wallet). */}
       <div className="ag-card mb-4 p-6">
         <div className="flex items-center gap-[7px]">
@@ -38,7 +38,7 @@ export default async function BillingPage() {
             style={{ background: "var(--ag-verify)" }}
           />
           <span className="text-[12.5px] text-fg-muted">
-            Marketplace · USDC{" "}
+            Wallet · USDC{" "}
             <span className="text-fg-subtle">(on-chain)</span>
           </span>
         </div>

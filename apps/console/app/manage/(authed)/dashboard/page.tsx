@@ -114,8 +114,8 @@ export default async function OverviewPage() {
             className="size-[7px] rounded-full"
             style={{ background: "var(--ag-accent)" }}
           />
-          <b className="text-foreground">Credit</b> → model calls on the Private
-          API and in Audric chat — one shared balance.
+          <b className="text-foreground">Credit</b> → model calls on Private
+          Inference and in Audric chat — one shared balance.
         </span>
       </div>
     </>

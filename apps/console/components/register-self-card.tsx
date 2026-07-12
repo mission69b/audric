@@ -23,8 +23,8 @@ export function RegisterSelfCard() {
           Agent ID created ✓
         </div>
         <p className="mt-1.5 text-muted-foreground text-sm">
-          Your Passport is registered on-chain. Manage it — profile, service,
-          price — under{" "}
+          Your Passport is registered on-chain. Manage it — profile, handle,
+          ownership — under{" "}
           <a className="underline underline-offset-4" href="/manage/agents">
             My agents
           </a>

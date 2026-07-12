@@ -17,7 +17,7 @@ function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
-export default async function EditListingPage({
+export default async function EditAgentPage({
   params,
 }: {
   params: Promise<{ address: string }>;
