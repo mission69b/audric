@@ -1,9 +1,6 @@
 import {
-  canUseApi,
   createApiKey,
   generateApiKey,
-  getCreditBalanceMicros,
-  getUserById,
   listApiKeys,
   revokeApiKey,
 } from "@audric/accounts";
@@ -22,14 +19,9 @@ export async function GET() {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [user, balance, keys] = await Promise.all([
-    getUserById(session.user.id),
-    getCreditBalanceMicros(session.user.id),
-    listApiKeys(session.user.id),
-  ]);
+  const keys = await listApiKeys(session.user.id);
 
   return Response.json({
-    canIssue: canUseApi(user?.subscriptionTier, balance),
     keys: keys
       .filter((k) => !k.revokedAt)
       .map((k) => ({
@@ -48,20 +40,8 @@ export async function POST() {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [user, balance] = await Promise.all([
-    getUserById(session.user.id),
-    getCreditBalanceMicros(session.user.id),
-  ]);
-  if (!canUseApi(user?.subscriptionTier, balance)) {
-    return Response.json(
-      {
-        error:
-          "Add credit (or a plan) to mint a key — fund your balance to get started.",
-      },
-      { status: 402 }
-    );
-  }
-
+  // Minting is free (S.711): the free daily allowance on kimi-k2.7-code means
+  // a $0 account can use the API — paid models still 402 at request time.
   // Cap live keys so a runaway client can't mint unbounded rows.
   const existing = await listApiKeys(session.user.id);
   if (existing.filter((k) => !k.revokedAt).length >= MAX_KEYS) {

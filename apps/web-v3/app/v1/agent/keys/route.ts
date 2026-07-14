@@ -82,8 +82,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // The account must exist + be funded (fund via /v1/agent/topup first). Same
-  // gate the console key-issuance uses (canUseApi = credit OR a paid plan).
+  // The account must exist + be funded (fund via /v1/agent/topup first).
+  // Session-authed minting (console / audric.ai) is ungated at $0 (S.711 free
+  // tier), but this headless path keeps the credit gate: keypairs are free to
+  // generate, so a $0 mint here would be an unbounded sybil faucet for the
+  // free allowance. zkLogin accounts are the sybil boundary.
   const account = await getUserById(address);
   if (!account) {
     return openAiError(
