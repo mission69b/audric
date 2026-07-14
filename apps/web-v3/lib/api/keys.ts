@@ -32,9 +32,14 @@ export type ApiAuthResult =
  * plan grants monthly credit into the same ledger, so subs pass the balance
  * check too; a sub that has exhausted its credit gets the same 402 (top up /
  * wait for renewal).
+ *
+ * `skipCreditCheck` defers the $0 gate to the caller — the free tier needs
+ * the model resolved before it can tell "402" from "free allowance ride"
+ * (the caller MUST then run `ensureCredit` on every non-free path).
  */
 export async function authenticateApiKey(
-  request: Request
+  request: Request,
+  { skipCreditCheck = false }: { skipCreditCheck?: boolean } = {}
 ): Promise<ApiAuthResult> {
   const header = request.headers.get("authorization") ?? "";
   const match = header.match(/^Bearer\s+(sk-[A-Za-z0-9_-]+)$/);
@@ -65,18 +70,10 @@ export async function authenticateApiKey(
 
   // Fail closed at $0 (covers top-up devs AND subs whose credit is spent).
   // Inert when the credit rail is off (dev/unconfigured).
-  if (isCreditConfigured()) {
-    const balance = await getCreditBalanceMicros(row.userId);
-    if (balance <= 0) {
-      return {
-        ok: false,
-        response: openAiError(
-          402,
-          "Insufficient credit. Add credit or a plan at agents.t2000.ai/manage to continue.",
-          "insufficient_quota",
-          "insufficient_credit"
-        ),
-      };
+  if (!skipCreditCheck) {
+    const credit = await ensureCredit(row.userId);
+    if (credit) {
+      return { ok: false, response: credit };
     }
   }
 
@@ -86,6 +83,27 @@ export async function authenticateApiKey(
   });
 
   return { ok: true, userId: row.userId, keyId: row.id };
+}
+
+/**
+ * The $0 credit gate, standalone — returns the 402 Response when the balance
+ * is spent, null when the caller may proceed. Inert when the credit rail is
+ * off (dev/unconfigured).
+ */
+export async function ensureCredit(userId: string): Promise<Response | null> {
+  if (!isCreditConfigured()) {
+    return null;
+  }
+  const balance = await getCreditBalanceMicros(userId);
+  if (balance > 0) {
+    return null;
+  }
+  return openAiError(
+    402,
+    "Insufficient credit. Add credit or a plan at agents.t2000.ai/manage to continue.",
+    "insufficient_quota",
+    "insufficient_credit"
+  );
 }
 
 /** OpenAI-compatible error envelope (so existing SDKs surface it correctly). */

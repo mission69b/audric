@@ -14,7 +14,12 @@ import {
   isAttestationEnforced,
   verifyConfidentialUpstream,
 } from "@/lib/api/attestation";
-import { authenticateApiKey, openAiError } from "@/lib/api/keys";
+import {
+  FREE_TIER_MODEL,
+  recordFreeSpend,
+  tryFreeAllowance,
+} from "@/lib/api/free-tier";
+import { authenticateApiKey, ensureCredit, openAiError } from "@/lib/api/keys";
 import { apiMarginFor, getApiModel, isApiModel } from "@/lib/api/models";
 import {
   getInferenceModel,
@@ -250,7 +255,10 @@ function upstreamError(error: unknown): {
 // against the same CreditLedger as in-app turns. No Audric tools / agent loop —
 // that's the consumer product, not the raw API.
 export async function POST(request: Request) {
-  const auth = await authenticateApiKey(request);
+  // Credit gate deferred: the free tier needs the MODEL before it can tell
+  // "402" from "free allowance ride" — every non-free path below MUST pass
+  // ensureCredit before serving.
+  const auth = await authenticateApiKey(request, { skipCreditCheck: true });
   if (!auth.ok) {
     return auth.response;
   }
@@ -332,6 +340,38 @@ export async function POST(request: Request) {
       })
     : undefined;
   const model = routed?.served ?? requested;
+
+  // FREE TIER (SPEC_INFERENCE_DEMAND Step-1 item 4): the free-tier model,
+  // requested DIRECTLY (never via router ids / frontier / confidential), may
+  // ride the per-account daily allowance instead of the credit ledger. Every
+  // other path pays — the deferred credit gate runs here.
+  const freeEligible = requested === FREE_TIER_MODEL;
+  const free = freeEligible ? await tryFreeAllowance(auth.userId) : undefined;
+  const isFree = free?.ok === true;
+  if (free && !free.ok && free.reason === "rpm") {
+    return openAiError(
+      429,
+      "Free-tier rate limit exceeded — slow down, or add credit at agents.t2000.ai/manage for full-speed access.",
+      "rate_limit_error",
+      "free_tier_rate_limit"
+    );
+  }
+  if (!isFree) {
+    const credit = await ensureCredit(auth.userId);
+    if (credit) {
+      if (free && free.reason === "exhausted") {
+        // The spec'd upgrade path: exhaustion names the next step, never a
+        // bare "no credit".
+        return openAiError(
+          402,
+          "Free daily allowance used up (resets daily, UTC). Add credit at agents.t2000.ai/manage to keep coding — `t2000/auto` routes each step to the right model at open-tier prices.",
+          "insufficient_quota",
+          "free_tier_exhausted"
+        );
+      }
+      return credit;
+    }
+  }
 
   const confidential = isConfidentialModel(model);
   const maxOutputTokens = body.max_completion_tokens ?? body.max_tokens;
@@ -419,7 +459,11 @@ export async function POST(request: Request) {
         return;
       }
       const debit = debitMicrosForUsage(usage, pricing, apiMarginFor(model));
-      if (debit > 0) {
+      if (isFree) {
+        // Free ride: no ledger debit — the NOTIONAL debit settles the daily
+        // allowance counter instead (the cost-envelope accounting).
+        await recordFreeSpend(auth.userId, debit);
+      } else if (debit > 0) {
         await recordCredit({
           userId: auth.userId,
           amountMicros: -debit,
@@ -435,14 +479,15 @@ export async function POST(request: Request) {
         await maybeAutoRecharge(auth.userId);
       }
       // Structured usage event (My-usage screen) — idempotent on the completion
-      // id, mirrors the debit. Written even for $0 debits (token counts matter).
+      // id, mirrors the debit. Written even for $0 debits (token counts matter;
+      // free rides record $0 charged — the tokens still show).
       await recordApiUsage({
         userId: auth.userId,
         keyId: auth.keyId,
         model: model ?? "",
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
-        costMicros: debit,
+        costMicros: isFree ? 0 : debit,
         privacyTier: confidential ? "confidential" : "private",
         ref: id,
       });

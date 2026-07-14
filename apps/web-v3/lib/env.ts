@@ -121,6 +121,12 @@ const serverSchema = z.object({
   // Both unset → POST /v1/aci/anchor degrades to 503 (no impact on serving).
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: optionalString,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: optionalString,
+  // Private API free tier (SPEC_INFERENCE_DEMAND Step-1 item 4) — OPTIONAL:
+  // per-account daily allowance in micro-USD (e.g. "1000000" = $1.00/day) for
+  // the free-tier model only. Unset/0 → the free tier is OFF (every model
+  // stays fully metered; no behavior change). A cost-envelope dial, never a
+  // marketed token number. Server-only.
+  FREE_TIER_DAILY_MICROS: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -164,6 +170,7 @@ const runtimeEnv = {
     process.env.CONFIDENTIAL_ATTESTATION_ENFORCE,
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: process.env.CONFIDENTIAL_ANCHOR_PACKAGE_ID,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: process.env.CONFIDENTIAL_ANCHOR_SIGNER_KEY,
+  FREE_TIER_DAILY_MICROS: process.env.FREE_TIER_DAILY_MICROS,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,
