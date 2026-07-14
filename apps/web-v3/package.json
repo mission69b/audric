@@ -19,6 +19,7 @@
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
     "eval:router": "tsx scripts/router-eval.mts",
+    "eval:api-router": "tsx scripts/api-router-eval.ts",
     "eval:image": "tsx scripts/eval-image-fallback.ts",
     "eval:no-autosend": "tsx scripts/no-autosend-eval.ts",
     "eval:no-video-misfire": "tsx scripts/no-video-misfire-eval.ts",

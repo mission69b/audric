@@ -14,6 +14,7 @@ import {
   isConfidentialConfigured,
   isConfidentialModel,
 } from "@/lib/api/providers";
+import { isRouterModel, resolveRouterModel } from "@/lib/api/router";
 import { debitMicrosForUsage } from "@/lib/credit/meter";
 import { recordApiUsage, recordCredit } from "@/lib/db/queries";
 import { checkApiRateLimit } from "@/lib/ratelimit";
@@ -114,17 +115,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const model = body.model;
+  const requested = body.model;
   // Confidential (phala/*) models are only available when the Phala key is
   // configured — otherwise they're effectively not in the catalog (404, not 500).
   const modelUnavailable =
-    !model ||
-    !isApiModel(model) ||
-    (isConfidentialModel(model) && !isConfidentialConfigured());
+    !requested ||
+    !(isApiModel(requested) || isRouterModel(requested)) ||
+    (isConfidentialModel(requested) && !isConfidentialConfigured());
   if (modelUnavailable) {
     return openAiError(
       404,
-      `The model \`${model ?? ""}\` does not exist or you do not have access to it. See GET /v1/models.`,
+      `The model \`${requested ?? ""}\` does not exist or you do not have access to it. See GET /v1/models.`,
       "invalid_request_error",
       "model_not_found"
     );
@@ -150,6 +151,18 @@ export async function POST(request: Request) {
       role: m.role as "user" | "assistant",
       content: partsToText(m.content),
     }));
+
+  // `t2000/auto` / `t2000/auto-open` — the coding-profile router
+  // (SPEC_INFERENCE_DEMAND §2b). Resolve to the concrete model BEFORE the
+  // pipeline: serving, pricing, margin, and the usage ledger all follow the
+  // SERVED model (billed at the price of the model that actually ran — no
+  // blended rates). The response echoes the requested router id (OpenAI-client
+  // convention) and exposes the served model via `x-t2000-served-model` + the
+  // usage records (the console's open-vs-frontier split reads those).
+  const routed = isRouterModel(requested)
+    ? resolveRouterModel({ modelId: requested, messages, system })
+    : undefined;
+  const model = routed?.served ?? requested;
 
   const confidential = isConfidentialModel(model);
   const maxOutputTokens = body.max_completion_tokens ?? body.max_tokens;
@@ -277,12 +290,22 @@ export async function POST(request: Request) {
       if (confidential && typeof receiptId === "string" && receiptId) {
         after(() => anchorAndStore(receiptId));
       }
+      const headers: Record<string, string> = {};
+      if (typeof receiptId === "string" && receiptId) {
+        headers["x-receipt-id"] = receiptId;
+      }
+      if (routed) {
+        headers["x-t2000-served-model"] = model;
+        headers["x-t2000-route-reason"] = routed.reason;
+      }
       return Response.json(
         {
           id,
           object: "chat.completion",
           created,
-          model,
+          // Echo the REQUESTED id (router ids stay stable across round-trips);
+          // the served model rides the x-t2000-served-model header + usage.
+          model: requested,
           choices: [
             {
               index: 0,
@@ -296,7 +319,7 @@ export async function POST(request: Request) {
             total_tokens: usage.totalTokens ?? 0,
           },
         },
-        receiptId ? { headers: { "x-receipt-id": receiptId } } : undefined
+        Object.keys(headers).length > 0 ? { headers } : undefined
       );
     } catch (error) {
       console.error("[/v1/chat/completions] non-stream error", error);
@@ -314,7 +337,7 @@ export async function POST(request: Request) {
       id,
       object: "chat.completion.chunk",
       created,
-      model,
+      model: requested,
       choices: [{ index: 0, delta, finish_reason: finish }],
     })}\n\n`;
 
@@ -350,7 +373,7 @@ export async function POST(request: Request) {
                 id,
                 object: "chat.completion.chunk",
                 created,
-                model,
+                model: requested,
                 choices: [],
                 usage: {
                   prompt_tokens: usage.inputTokens ?? 0,
@@ -390,6 +413,14 @@ export async function POST(request: Request) {
       "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      // The served model is resolved before streaming starts, so router
+      // transparency headers can ride the response head.
+      ...(routed
+        ? {
+            "x-t2000-served-model": model,
+            "x-t2000-route-reason": routed.reason,
+          }
+        : {}),
     },
   });
 }
