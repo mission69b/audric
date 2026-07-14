@@ -1,4 +1,12 @@
-import { generateText, streamText } from "ai";
+import {
+  generateText,
+  jsonSchema,
+  type ModelMessage,
+  streamText,
+  type ToolChoice,
+  type ToolSet,
+  tool,
+} from "ai";
 import { after } from "next/server";
 import { getModelPricing } from "@/lib/ai/models";
 import { anchorAndStore } from "@/lib/api/anchor";
@@ -25,10 +33,31 @@ import { generateUUID } from "@/lib/utils";
 export const maxDuration = 300;
 
 type OpenAIContentPart = { type?: string; text?: string };
+type OpenAIToolCall = {
+  id?: string;
+  type?: string;
+  function?: { name?: string; arguments?: string };
+};
 type OpenAIMessage = {
   role: "system" | "user" | "assistant" | "tool";
-  content: string | OpenAIContentPart[];
+  content?: string | OpenAIContentPart[] | null;
+  tool_calls?: OpenAIToolCall[];
+  tool_call_id?: string;
+  name?: string;
 };
+type OpenAIFunctionTool = {
+  type?: string;
+  function?: {
+    name?: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+};
+type OpenAIToolChoice =
+  | "auto"
+  | "none"
+  | "required"
+  | { type?: string; function?: { name?: string } };
 type CompletionsBody = {
   model?: string;
   messages?: OpenAIMessage[];
@@ -38,17 +67,147 @@ type CompletionsBody = {
   max_tokens?: number;
   max_completion_tokens?: number;
   stream_options?: { include_usage?: boolean };
+  tools?: OpenAIFunctionTool[];
+  tool_choice?: OpenAIToolChoice;
 };
 
-/** OpenAI content → plain text (v1 is raw text; image parts are dropped). */
-function partsToText(content: string | OpenAIContentPart[]): string {
+/** OpenAI content → plain text (image parts are dropped). */
+function partsToText(
+  content: string | OpenAIContentPart[] | null | undefined
+): string {
   if (typeof content === "string") {
     return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
   }
   return content
     .filter((p) => p.type === "text" && typeof p.text === "string")
     .map((p) => p.text)
     .join("");
+}
+
+function safeParseJson(raw: string | undefined): unknown {
+  if (!raw) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * OpenAI message list → AI SDK ModelMessage list, preserving the tool-call
+ * loop (assistant `tool_calls` → tool-call parts; `tool` role → tool-result
+ * parts). Coding agents (zero, aider, Codebuff…) are tool-loop clients — a
+ * text-only conversion silently breaks them (the model narrates "I'll run
+ * that" and no tool call ever arrives).
+ */
+function toModelMessages(input: OpenAIMessage[]): ModelMessage[] {
+  // OpenAI `tool` messages carry only tool_call_id; the SDK wants toolName.
+  const toolNames = new Map<string, string>();
+  const out: ModelMessage[] = [];
+  for (const m of input) {
+    if (m.role === "system") {
+      continue; // handled via `instructions`
+    }
+    if (m.role === "user") {
+      out.push({ role: "user", content: partsToText(m.content) });
+      continue;
+    }
+    if (m.role === "assistant") {
+      const text = partsToText(m.content);
+      const calls = (m.tool_calls ?? []).filter((c) => c.function?.name);
+      for (const c of calls) {
+        if (c.id) {
+          toolNames.set(c.id, c.function?.name ?? "");
+        }
+      }
+      if (calls.length === 0) {
+        out.push({ role: "assistant", content: text });
+        continue;
+      }
+      out.push({
+        role: "assistant",
+        content: [
+          ...(text ? [{ type: "text" as const, text }] : []),
+          ...calls.map((c) => ({
+            type: "tool-call" as const,
+            toolCallId: c.id ?? generateUUID(),
+            toolName: c.function?.name ?? "",
+            input: safeParseJson(c.function?.arguments),
+          })),
+        ],
+      });
+      continue;
+    }
+    out.push({
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: m.tool_call_id ?? "",
+          toolName: toolNames.get(m.tool_call_id ?? "") ?? m.name ?? "tool",
+          output: { type: "text", value: partsToText(m.content) },
+        },
+      ],
+    });
+  }
+  return out;
+}
+
+/**
+ * OpenAI function tools → AI SDK ToolSet. No `execute` — v1 is passthrough,
+ * the caller runs its own tools; the SDK returns the tool calls unexecuted.
+ */
+function toToolSet(
+  tools: OpenAIFunctionTool[] | undefined
+): ToolSet | undefined {
+  if (!Array.isArray(tools) || tools.length === 0) {
+    return;
+  }
+  const set: ToolSet = {};
+  for (const t of tools) {
+    const name = t.function?.name;
+    if (!name) {
+      continue;
+    }
+    set[name] = tool({
+      ...(t.function?.description
+        ? { description: t.function.description }
+        : {}),
+      inputSchema: jsonSchema(
+        t.function?.parameters ?? { type: "object", properties: {} }
+      ),
+    });
+  }
+  return Object.keys(set).length > 0 ? set : undefined;
+}
+
+function toToolChoice(
+  choice: OpenAIToolChoice | undefined
+): ToolChoice<ToolSet> | undefined {
+  if (choice === "auto" || choice === "none" || choice === "required") {
+    return choice;
+  }
+  const name = typeof choice === "object" ? choice?.function?.name : undefined;
+  return name ? { type: "tool", toolName: name } : undefined;
+}
+
+/** AI SDK tool calls → OpenAI response `tool_calls` array. */
+function toOpenAiToolCalls(
+  toolCalls: readonly { toolCallId: string; toolName: string; input: unknown }[]
+) {
+  return toolCalls.map((c) => ({
+    id: c.toolCallId,
+    type: "function" as const,
+    function: {
+      name: c.toolName,
+      arguments: JSON.stringify(c.input ?? {}),
+    },
+  }));
 }
 
 function mapFinishReason(reason: string): string {
@@ -57,6 +216,9 @@ function mapFinishReason(reason: string): string {
   }
   if (reason === "content-filter") {
     return "content_filter";
+  }
+  if (reason === "tool-calls") {
+    return "tool_calls";
   }
   return "stop";
 }
@@ -140,12 +302,15 @@ export async function POST(request: Request) {
     );
   }
 
-  // System messages → `instructions`; the rest → the model message list.
+  // System messages → `instructions`; the rest → the model message list
+  // (tool-call loop preserved — see toModelMessages).
   const system = body.messages
     .filter((m) => m.role === "system")
     .map((m) => partsToText(m.content))
     .join("\n\n");
-  const messages = body.messages
+  const messages = toModelMessages(body.messages);
+  // Plain-text view for the router heuristics (context size + phrasing).
+  const routerMessages = body.messages
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({
       role: m.role as "user" | "assistant",
@@ -160,16 +325,27 @@ export async function POST(request: Request) {
   // convention) and exposes the served model via `x-t2000-served-model` + the
   // usage records (the console's open-vs-frontier split reads those).
   const routed = isRouterModel(requested)
-    ? resolveRouterModel({ modelId: requested, messages, system })
+    ? resolveRouterModel({
+        modelId: requested,
+        messages: routerMessages,
+        system,
+      })
     : undefined;
   const model = routed?.served ?? requested;
 
   const confidential = isConfidentialModel(model);
   const maxOutputTokens = body.max_completion_tokens ?? body.max_tokens;
+  // Client-executed tools: no `execute` on any tool, so the SDK returns the
+  // tool calls unexecuted and the caller's own loop runs them (OpenAI
+  // convention — finish_reason "tool_calls").
+  const toolSet = toToolSet(body.tools);
+  const toolChoice = toolSet ? toToolChoice(body.tool_choice) : undefined;
   const shared = {
     model: getInferenceModel(model),
     ...(system ? { instructions: system } : {}),
     messages,
+    ...(toolSet ? { tools: toolSet } : {}),
+    ...(toolChoice ? { toolChoice } : {}),
     ...(typeof body.temperature === "number"
       ? { temperature: body.temperature }
       : {}),
@@ -278,7 +454,7 @@ export async function POST(request: Request) {
   // ── Non-streaming ──────────────────────────────────────────────────────────
   if (!body.stream) {
     try {
-      const { text, usage, finishReason, response } =
+      const { text, usage, finishReason, response, toolCalls } =
         await generateText(shared);
       await meter(usage);
       // Confidential calls return an x-receipt-id (TEE attestation receipt) —
@@ -309,8 +485,17 @@ export async function POST(request: Request) {
           choices: [
             {
               index: 0,
-              message: { role: "assistant", content: text },
-              finish_reason: mapFinishReason(finishReason),
+              message: {
+                role: "assistant",
+                content: text || null,
+                ...(toolCalls.length > 0
+                  ? { tool_calls: toOpenAiToolCalls(toolCalls) }
+                  : {}),
+              },
+              finish_reason:
+                toolCalls.length > 0
+                  ? "tool_calls"
+                  : mapFinishReason(finishReason),
             },
           ],
           usage: {
@@ -346,12 +531,47 @@ export async function POST(request: Request) {
       try {
         const result = streamText(shared);
         controller.enqueue(encoder.encode(chunk({ role: "assistant" }, null)));
-        for await (const delta of result.textStream) {
-          controller.enqueue(encoder.encode(chunk({ content: delta }, null)));
+        // fullStream (not textStream) — tool-call parts must reach the client
+        // as OpenAI `tool_calls` deltas or tool-loop callers hang on text-only
+        // narration. Each complete tool call ships as one delta (full
+        // arguments string; standard OpenAI clients accept that shape).
+        let toolCallIndex = 0;
+        for await (const part of result.fullStream) {
+          if (part.type === "text-delta") {
+            controller.enqueue(
+              encoder.encode(chunk({ content: part.text }, null))
+            );
+          } else if (part.type === "tool-call") {
+            controller.enqueue(
+              encoder.encode(
+                chunk(
+                  {
+                    tool_calls: [
+                      {
+                        index: toolCallIndex++,
+                        id: part.toolCallId,
+                        type: "function",
+                        function: {
+                          name: part.toolName,
+                          arguments: JSON.stringify(part.input ?? {}),
+                        },
+                      },
+                    ],
+                  },
+                  null
+                )
+              )
+            );
+          }
         }
         const finishReason = await result.finishReason;
         controller.enqueue(
-          encoder.encode(chunk({}, mapFinishReason(finishReason)))
+          encoder.encode(
+            chunk(
+              {},
+              toolCallIndex > 0 ? "tool_calls" : mapFinishReason(finishReason)
+            )
+          )
         );
 
         const usage = await result.usage;
