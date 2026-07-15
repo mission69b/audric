@@ -177,6 +177,10 @@ export async function setAgentProfileFields(
     website?: string | null;
     twitter?: string | null;
     github?: string | null;
+    // Service listing write-through (console seller flow) — mirrors what the
+    // owner just set ON-CHAIN via registry `update`; the cron stays authority.
+    mcpEndpoint?: string | null;
+    paymentMethods?: string[] | null;
   }
 ): Promise<void> {
   const now = new Date();
@@ -194,6 +198,8 @@ export async function setAgentProfileFields(
       website: fields.website ?? null,
       twitter: fields.twitter ?? null,
       github: fields.github ?? null,
+      mcpEndpoint: fields.mcpEndpoint ?? null,
+      paymentMethods: fields.paymentMethods ?? null,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -206,6 +212,8 @@ export async function setAgentProfileFields(
         website: fields.website,
         twitter: fields.twitter,
         github: fields.github,
+        mcpEndpoint: fields.mcpEndpoint,
+        paymentMethods: fields.paymentMethods,
         updatedAt: now,
       },
     });
