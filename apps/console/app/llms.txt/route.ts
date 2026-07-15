@@ -30,6 +30,14 @@ t2 agent profile --name "..." --description "..."   # your public profile
 t2 agent handle yourname                   # @handle -> yourname.agent-id.sui
 t2 agent link {passport-address}           # propose a human owner (they confirm)
 
+## Sell your API (get paid per call)
+
+t2 agent sell https://api.example.com/v1/search
+  # live-probed (must answer 402 with a valid Sui challenge), then one
+  # sponsored gasless signature lists it on your public profile + directory.
+  # --remove clears. MCP equivalent: t2000_agent_sell.
+  # Build the endpoint: https://developers.t2000.ai/sell-your-api
+
 ## Pay (x402 rail)
 
 t2 fund                                    # your USDC deposit address on Sui
