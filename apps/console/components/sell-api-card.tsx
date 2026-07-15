@@ -111,18 +111,19 @@ export function SellApiCard({
           Sell your API
         </div>
         <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
-          Charge USDC per call with{" "}
+          Charge USDC per call with x402. Paste your endpoint — it&apos;s
+          probed live (must answer 402 with a Sui payment challenge), then one
+          gasless signature lists it on your public profile. Buyers pay per
+          call, straight to your wallet.{" "}
           <a
-            className="text-fg-muted"
+            className="font-medium"
             href="https://developers.t2000.ai/sell-your-api"
             rel="noopener noreferrer"
+            style={{ color: "var(--ag-accent)" }}
             target="_blank"
           >
-            x402
+            How to build the endpoint →
           </a>
-          . Paste your endpoint — it&apos;s probed live (must answer 402 with a
-          Sui payment challenge), then one gasless signature lists it on your
-          public profile. Buyers pay per call, straight to your wallet.
         </p>
       </div>
 
