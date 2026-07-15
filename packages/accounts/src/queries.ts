@@ -579,6 +579,27 @@ export async function revokeApiKey(
   return rows.length > 0;
 }
 
+/** Rename a key (owner-scoped). Null/empty clears the label. Returns true
+ *  when a live row actually changed. */
+export async function renameApiKey(
+  id: string,
+  userId: string,
+  name: string | null
+): Promise<boolean> {
+  const rows = await db
+    .update(apiKey)
+    .set({ name })
+    .where(
+      and(
+        eq(apiKey.id, id),
+        eq(apiKey.userId, userId),
+        isNull(apiKey.revokedAt)
+      )
+    )
+    .returning({ id: apiKey.id });
+  return rows.length > 0;
+}
+
 /** Best-effort "last used" stamp (fire-and-forget from the auth path). */
 export async function touchApiKey(id: string): Promise<void> {
   await db

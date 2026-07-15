@@ -2,6 +2,7 @@ import {
   createApiKey,
   generateApiKey,
   listApiKeys,
+  renameApiKey,
   revokeApiKey,
 } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
@@ -75,6 +76,27 @@ export async function POST(request: Request) {
     createdAt: row.createdAt,
     key: secret,
   });
+}
+
+export async function PATCH(request: Request) {
+  const session = await getCurrentUser();
+  if (!session) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  let body: { id?: string; name?: string | null };
+  try {
+    body = (await request.json()) as { id?: string; name?: string | null };
+  } catch {
+    return Response.json({ error: "invalid body" }, { status: 400 });
+  }
+  if (!body.id) {
+    return Response.json({ error: "missing id" }, { status: 400 });
+  }
+
+  const name = body.name?.trim().slice(0, 64) || null;
+  const renamed = await renameApiKey(body.id, session.user.id, name);
+  return Response.json({ renamed });
 }
 
 export async function DELETE(request: Request) {

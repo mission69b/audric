@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Pencil } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ export function ApiKeysSection() {
   const [newSecret, setNewSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -60,6 +62,24 @@ export function ApiKeysSection() {
       setError(e instanceof Error ? e.message : "Couldn't create key.");
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function saveRename(id: string) {
+    const name = editName.trim() || null;
+    setEditingId(null);
+    try {
+      const res = await fetch("/api/keys", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name }),
+      });
+      if (!res.ok) {
+        throw new Error("failed");
+      }
+      await load();
+    } catch {
+      setError("Couldn't rename key.");
     }
   }
 
@@ -106,11 +126,45 @@ export function ApiKeysSection() {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  {k.name ? (
-                    <span className="truncate font-medium text-foreground text-xs">
-                      {k.name}
-                    </span>
-                  ) : null}
+                  {editingId === k.id ? (
+                    <input
+                      autoFocus
+                      className="h-6 w-36 rounded border border-border/60 bg-transparent px-1.5 text-foreground text-xs outline-none focus:border-border"
+                      maxLength={64}
+                      onBlur={() => saveRename(k.id)}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          saveRename(k.id);
+                        }
+                        if (e.key === "Escape") {
+                          setEditingId(null);
+                        }
+                      }}
+                      value={editName}
+                    />
+                  ) : (
+                    <button
+                      className="group flex min-w-0 items-center gap-1.5"
+                      onClick={() => {
+                        setEditingId(k.id);
+                        setEditName(k.name ?? "");
+                      }}
+                      title="Rename key"
+                      type="button"
+                    >
+                      {k.name ? (
+                        <span className="truncate font-medium text-foreground text-xs">
+                          {k.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs italic">
+                          unnamed
+                        </span>
+                      )}
+                      <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                    </button>
+                  )}
                   <span className="font-mono text-foreground/80 text-xs">
                     {k.keyPrefix}
                   </span>

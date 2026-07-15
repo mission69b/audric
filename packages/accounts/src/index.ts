@@ -18,6 +18,7 @@ export {
   listCreditLedger,
   recordApiUsage,
   recordCredit,
+  renameApiKey,
   revokeApiKey,
   setAgentArchived,
   setAgentOwnership,
