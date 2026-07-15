@@ -8,10 +8,6 @@
     {
       "path": "/api/cron/turn-metrics-pending-sweep",
       "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/portfolio-snapshot",
-      "schedule": "0 7 * * *"
     }
   ]
 }

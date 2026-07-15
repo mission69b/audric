@@ -9,12 +9,13 @@
  *
  * Order of precedence:
  *   1. Explicit `SUI_RPC_URL` env override
- *   2. BlockVision private endpoint — paid, much higher rate limits and
- *      lower p95 than the free public node (`BLOCKVISION_API_KEY` is
- *      required by env schema, so this branch always wins in production)
- *   3. Public Sui fullnode — defense-in-depth fallback that should never
- *      fire (the env gate in `lib/env.ts` rejects empty BLOCKVISION_API_KEY
- *      at boot)
+ *   2. BlockVision private endpoint — paid; only when `BLOCKVISION_API_KEY`
+ *      is set (OPTIONAL since the 2026-07-15 BlockVision cost teardown —
+ *      unset in prod, so this branch no longer fires)
+ *   3. Public Sui fullnode — the production default post-teardown.
+ *      NOTE: Sui JSON-RPC deactivates 2026-07-31; the legacy app's
+ *      remaining JSON-RPC paths need a sunset/migration decision before
+ *      then regardless of which endpoint serves them.
  *
  * IMPORTANT: this helper must NOT be imported from client components.
  * `env.BLOCKVISION_API_KEY` is server-only and the env proxy throws on

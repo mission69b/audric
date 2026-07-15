@@ -70,13 +70,15 @@ const serverSchema = z.object({
    * (direct Anthropic). */
   AI_GATEWAY_API_KEY: optionalString,
 
-  /** BlockVision Pro Indexer REST API key (Day 2b+). Required for the
-   * `balance_check` read tool: backs both Sui RPC routing (paid
-   * private endpoint) AND the portfolio fetcher (`fetchAddressPortfolio`).
-   * `BLOCKVISION_API_KEY=""` in audric/web prod silently degraded every
-   * BlockVision feature for 4 days (April 2026) — empty-string is
-   * invalid here, hence `requiredString` semantics. */
-  BLOCKVISION_API_KEY: requiredString,
+  /** BlockVision Pro Indexer REST API key — OPTIONAL since 2026-07-15
+   * (BlockVision cost teardown: the legacy app no longer justifies the
+   * paid plan). When absent, the engine's read tools degrade by design:
+   * wallet balances fall back to Sui RPC, stables price at $1,
+   * non-stable USD values report as null, and the DeFi position sweep
+   * returns partial/zero. Sui RPC routing falls back to the public
+   * fullnode (`lib/sui-rpc.ts`). Set the key again to restore priced
+   * portfolio reads — the wiring is intact. */
+  BLOCKVISION_API_KEY: optionalString,
 
   /** Optional Sui RPC URL override — defaults to BlockVision-routed
    * mainnet via `getSuiRpcUrl()`. Set this only to point at a custom
@@ -246,8 +248,10 @@ const serverSchema = z.object({
    * rotation covers both apps during the v0.7c soak window.
    *
    * **Why OPTIONAL (not required):** consumed by the `/api/cron/*` routes
-   * (turn-metrics cleanup/sweep, portfolio-snapshot). [S.375 — 2026-06-07]
-   * the `financial-context-snapshot` cron was removed (snapshot retired).
+   * (turn-metrics cleanup/sweep). [S.375 — 2026-06-07] the
+   * `financial-context-snapshot` cron was removed (snapshot retired);
+   * [2026-07-15] the `portfolio-snapshot` cron was removed with the
+   * BlockVision cost teardown.
    * Local dev / preview builds without crons configured must still boot;
    * the route's auth check returns 401 when the value is absent which
    * matches "no Vercel cron has invoked it" semantics. Production deploys
