@@ -20,6 +20,7 @@ const API_BASE_URL = "https://api.t2000.ai/v1";
 export function ApiKeysSection() {
   const [data, setData] = useState<KeysResponse | null>(null);
   const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
   const [newSecret, setNewSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -43,12 +44,17 @@ export function ApiKeysSection() {
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch("/api/keys", { method: "POST" });
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim() || undefined }),
+      });
       const j = await res.json();
       if (!res.ok) {
         throw new Error(j?.error ?? "Couldn't create key.");
       }
       setNewSecret(j.key);
+      setNewName("");
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't create key.");
@@ -99,8 +105,15 @@ export function ApiKeysSection() {
               key={k.id}
             >
               <div className="min-w-0">
-                <div className="font-mono text-foreground/80 text-xs">
-                  {k.keyPrefix}
+                <div className="flex items-center gap-2">
+                  {k.name ? (
+                    <span className="truncate font-medium text-foreground text-xs">
+                      {k.name}
+                    </span>
+                  ) : null}
+                  <span className="font-mono text-foreground/80 text-xs">
+                    {k.keyPrefix}
+                  </span>
                 </div>
                 <div className="text-[11px] text-muted-foreground">
                   {k.lastUsedAt
@@ -121,9 +134,23 @@ export function ApiKeysSection() {
         </div>
       )}
 
-      <Button className="mt-3" disabled={creating} onClick={createKey} size="sm">
-        {creating ? "Creating…" : "Create API key"}
-      </Button>
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          className="h-8 w-44 rounded-md border border-border/60 bg-transparent px-2.5 text-foreground text-xs outline-none placeholder:text-muted-foreground focus:border-border"
+          maxLength={64}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !creating) {
+              createKey();
+            }
+          }}
+          placeholder="Name (e.g. cursor, zero, ci)"
+          value={newName}
+        />
+        <Button disabled={creating} onClick={createKey} size="sm">
+          {creating ? "Creating…" : "Create API key"}
+        </Button>
+      </div>
 
       {error ? <p className="mt-2 text-red-500 text-xs">{error}</p> : null}
 

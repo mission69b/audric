@@ -34,7 +34,7 @@ export async function GET() {
   });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await getCurrentUser();
   if (!session) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -51,11 +51,20 @@ export async function POST() {
     );
   }
 
+  let name: string | undefined;
+  try {
+    const body = (await request.json()) as { name?: string };
+    name = body?.name?.trim().slice(0, 64) || undefined;
+  } catch {
+    // body optional
+  }
+
   const { secret, hashedKey, keyPrefix } = generateApiKey();
   const row = await createApiKey({
     userId: session.user.id,
     hashedKey,
     keyPrefix,
+    name,
   });
 
   // `key` is the plaintext secret — returned ONCE, never retrievable again.
