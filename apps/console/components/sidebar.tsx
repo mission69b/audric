@@ -18,23 +18,26 @@ import { cn } from "@/lib/utils";
 // block (monogram tile + @handle + copy-address), grouped nav, then the
 // two-balance money block — USDC → agent payments · Credit → Private Inference —
 // stated once, and Docs ↗. Sign-out lives in the top nav's wallet chip.
+// Card-path buyers (sign in → key → base URL) get Private Inference first;
+// agent/wallet surfaces stay one group down (item 10: progressive disclosure,
+// not removal).
 const NAV_GROUPS: {
   label: string;
   items: { href: string; label: string; icon: typeof LayoutGrid }[];
 }[] = [
-  {
-    label: "Your agents",
-    items: [
-      { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
-      { href: "/manage/agents", label: "My agents", icon: Bot },
-    ],
-  },
   {
     label: "Private Inference",
     items: [
       { href: "/manage/keys", label: "API keys", icon: KeyRound },
       { href: "/manage/usage", label: "Usage", icon: BarChart3 },
       { href: "/manage/models", label: "Models", icon: Boxes },
+    ],
+  },
+  {
+    label: "Your agents",
+    items: [
+      { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
+      { href: "/manage/agents", label: "My agents", icon: Bot },
     ],
   },
   {

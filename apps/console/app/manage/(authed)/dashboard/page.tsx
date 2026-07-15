@@ -2,6 +2,7 @@ import {
   getAgentProfile,
   getCreditBalanceMicros,
   listAgentsForOwner,
+  listApiKeys,
 } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import Link from "next/link";
@@ -52,14 +53,17 @@ export default async function OverviewPage() {
   if (!session) {
     redirect("/manage");
   }
-  const [balanceMicros, selfAgent, walletUsdc, ownership] = await Promise.all([
-    getCreditBalanceMicros(session.user.id),
-    getAgentProfile(session.user.id),
-    fetchWalletUsdc(session.user.id),
-    listAgentsForOwner(session.user.id),
-  ]);
+  const [balanceMicros, selfAgent, walletUsdc, ownership, apiKeys] =
+    await Promise.all([
+      getCreditBalanceMicros(session.user.id),
+      getAgentProfile(session.user.id),
+      fetchWalletUsdc(session.user.id),
+      listAgentsForOwner(session.user.id),
+      listApiKeys(session.user.id),
+    ]);
   const credit = (Math.floor(balanceMicros / 10_000) / 100).toFixed(2);
   const agentCount = ownership.owned.length + (selfAgent ? 1 : 0);
+  const liveKeys = apiKeys.filter((k) => !k.revokedAt).length;
 
   return (
     <>
@@ -67,6 +71,28 @@ export default async function OverviewPage() {
         sub="Your money and your agents, at a glance."
         title="Overview"
       />
+
+      {/* Card-path first-run (item 10): a fresh account's next step is a key —
+          the free daily allowance means it works at $0. */}
+      {liveKeys === 0 && (
+        <Link
+          className="ag-card ag-card--hover mb-3.5 flex flex-wrap items-center justify-between gap-3 px-[18px] py-[14px] no-underline"
+          href="/manage/keys"
+        >
+          <div>
+            <div className="font-semibold text-[13.5px] text-foreground">
+              Create your first API key
+            </div>
+            <div className="mt-0.5 text-[12px] text-fg-muted">
+              Free — includes a daily coding allowance on kimi-k2.7-code.
+              Point any OpenAI-compatible tool at api.t2000.ai/v1.
+            </div>
+          </div>
+          <span className="font-medium text-[13px]" style={{ color: "var(--ag-accent)" }}>
+            API keys →
+          </span>
+        </Link>
+      )}
 
       {/* Consent-first self-registration — visible until the Passport has an
           Agent ID (§II.15b.1: explicit, never silent). */}
@@ -78,18 +104,18 @@ export default async function OverviewPage() {
 
       <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-3">
         <StatCard
-          color="var(--ag-verify)"
-          href="/manage/billing"
-          label="USDC balance"
-          unit="wallet"
-          value={walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`}
-        />
-        <StatCard
           color="var(--ag-accent)"
           href="/manage/billing"
           label="Credit"
           unit="Private Inference + Audric"
           value={`$${credit}`}
+        />
+        <StatCard
+          color="var(--ag-verify)"
+          href="/manage/billing"
+          label="USDC balance"
+          unit="wallet · agent payments"
+          value={walletUsdc === null ? "—" : `$${walletUsdc.toFixed(2)}`}
         />
         <StatCard
           href="/manage/agents"
@@ -104,18 +130,18 @@ export default async function OverviewPage() {
         <span className="inline-flex items-center gap-2 text-[12.5px] text-fg-muted">
           <span
             className="size-[7px] rounded-full"
-            style={{ background: "var(--ag-verify)" }}
-          />
-          <b className="text-foreground">USDC</b> → on-chain agent payments
-          (x402, pay-per-call APIs).
-        </span>
-        <span className="inline-flex items-center gap-2 text-[12.5px] text-fg-muted">
-          <span
-            className="size-[7px] rounded-full"
             style={{ background: "var(--ag-accent)" }}
           />
           <b className="text-foreground">Credit</b> → model calls on Private
           Inference and in Audric chat — one shared balance.
+        </span>
+        <span className="inline-flex items-center gap-2 text-[12.5px] text-fg-muted">
+          <span
+            className="size-[7px] rounded-full"
+            style={{ background: "var(--ag-verify)" }}
+          />
+          <b className="text-foreground">USDC</b> → on-chain agent payments
+          (x402, pay-per-call APIs).
         </span>
       </div>
     </>
