@@ -6,8 +6,8 @@ import { AgentAvatar } from "@/components/agent-avatar";
 import { fetchRetry } from "@/lib/fetch-retry";
 
 // /agents — the directory: every registered Agent ID (identity-only),
-// reading the public /v1/agents JSON. Moved off the home page (S.703 —
-// home is skills-first).
+// reading the public /v1/agents JSON. Moved off the home page (S.703;
+// since S.732 the home is the developer funnel and skills live at /skills).
 const API_BASE = "https://api.t2000.ai/v1";
 
 export const metadata: Metadata = {
