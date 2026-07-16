@@ -85,7 +85,10 @@ export default async function HubPage() {
           </div>
           <p className="m-0 max-w-[340px] text-fg-subtle text-xs leading-relaxed">
             Live playbooks, served as plain markdown. Copy a card&apos;s prompt
-            into your agent — it reads the skill and follows it.
+            into your agent — or install the whole shelf:{" "}
+            <code className="font-mono text-foreground">
+              npx skills add mission69b/t2000-skills
+            </code>
           </p>
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -149,6 +152,46 @@ export default async function HubPage() {
               merged projects appear here with their own page, no deploy.
             </p>
           </a>
+        </div>
+
+        {/* The ecosystem, not a mirror: this shelf is the money/identity
+            rail; build-on-Sui skills are Mysten's, everything else lives on
+            skills.sh. We link out instead of duplicating (S.729 rethink). */}
+        <div
+          className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-5"
+          style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}
+        >
+          <div className="min-w-0">
+            <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
+              Building on Sui?
+            </div>
+            <p className="m-0 mt-1.5 max-w-[560px] text-[12.5px] text-muted-foreground leading-relaxed">
+              This shelf teaches agents to <em>transact</em> — wallet, identity,
+              payments. To <em>build</em> (Move, PTBs, object model, dApp Kit),
+              install the official Sui Agent Skills by Mysten Labs:{" "}
+              <code className="font-mono text-foreground">
+                npx skills add mystenlabs/skills --all
+              </code>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 font-mono text-[12px]">
+            <a
+              className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+              href="https://docs.sui.io/skills"
+              rel="noreferrer"
+              target="_blank"
+            >
+              docs.sui.io/skills ↗
+            </a>
+            <a
+              className="text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+              href="https://www.skills.sh"
+              rel="noreferrer"
+              target="_blank"
+            >
+              skills.sh ↗
+            </a>
+          </div>
         </div>
       </section>
 

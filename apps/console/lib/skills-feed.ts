@@ -173,7 +173,7 @@ export const PROJECTS_FALLBACK: ProjectEntry[] = [
         tags: ["reads", "grpc", "chain-state"],
         name: "Read the chain over gRPC",
         description:
-          "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient — the surface that replaces JSON-RPC (retired July 31, 2026).",
+          "Balances, objects, transactions, coin metadata, and names via SuiGrpcClient — the surface that replaces JSON-RPC (retired the week of July 20, 2026 on mainnet).",
         skillUrl: "https://t2000.ai/skills/sui-grpc",
       },
     ],
