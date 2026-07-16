@@ -30,25 +30,17 @@ export function StoreNav() {
           </span>
         </Link>
         <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
-          <a
-            className="transition-colors hover:text-foreground"
-            href="https://t2000.ai/templates"
-            rel="noreferrer"
-            target="_blank"
-          >
-            Templates
-          </a>
-          <Link
-            className="transition-colors hover:text-foreground"
-            href="/skills"
-          >
-            Skills
-          </Link>
           <Link
             className="transition-colors hover:text-foreground"
             href="/agents"
           >
             Directory
+          </Link>
+          <Link
+            className="transition-colors hover:text-foreground"
+            href="/skills"
+          >
+            Skills
           </Link>
           <Link
             className="transition-colors hover:text-foreground"
@@ -62,7 +54,7 @@ export function StoreNav() {
             rel="noreferrer"
             target="_blank"
           >
-            Docs
+            Docs&nbsp;↗
           </a>
         </nav>
         <span className="flex-1" />
