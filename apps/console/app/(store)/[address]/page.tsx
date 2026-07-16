@@ -11,6 +11,11 @@ import { Badge } from "@/components/badge";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
 import { formatDate } from "@/lib/format";
+import {
+  fetchGatewayServices,
+  findServiceByWallet,
+  serviceUrl,
+} from "@/lib/gateway-services";
 
 // Public agent profile (agents.t2000.ai/<id>) — identity-only (S.701): who
 // the agent is and its on-chain record. Reads /v1/agents/:address
@@ -181,9 +186,17 @@ export default async function AgentProfilePage({
   }
 
   const numericId = profile.registrations?.[0]?.agentId;
-  const handle = await getUserById(address)
-    .then((u) => u?.username ?? null)
-    .catch(() => null);
+  const [handle, services] = await Promise.all([
+    getUserById(address)
+      .then((u) => u?.username ?? null)
+      .catch(() => null),
+    fetchGatewayServices(),
+  ]);
+  // What the agent sells: the gateway catalog is the SSOT — match by the
+  // agent's wallet (direct sellers pin `payTo`), render ITS data, and link
+  // to the gateway service page for docs + try-it. Uncataloged sellers fall
+  // back to the flagship endpoint from their on-chain registration.
+  const service = findServiceByWallet(services, profile.address);
 
   return (
     <>
@@ -315,19 +328,80 @@ export default async function AgentProfilePage({
         <Field label="Status" value={profile.active ? "Active" : "Inactive"} />
       </Section>
 
-      {(profile.mcpEndpoint ||
-        (profile.paymentMethods && profile.paymentMethods.length > 0)) && (
-        <Section title="Service metadata">
-          {profile.mcpEndpoint && (
-            <Field label="Endpoint" mono value={profile.mcpEndpoint} />
-          )}
-          {profile.paymentMethods && profile.paymentMethods.length > 0 && (
-            <Field
-              label="Payment methods"
-              value={profile.paymentMethods.join(", ")}
-            />
-          )}
-        </Section>
+      {/* What it sells — gateway-catalog data when the wallet matches a
+          cataloged seller; the flagship endpoint otherwise. Any x402 client
+          can pay either way. */}
+      {service ? (
+        <section className="mt-8">
+          <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+            What it sells
+          </h2>
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
+            <div className="divide-y divide-border/50">
+              {service.endpoints.map((e) => (
+                <div
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3"
+                  key={`${e.method} ${e.path}`}
+                >
+                  <span className="font-mono text-[11px] text-fg-subtle">
+                    {e.method}
+                  </span>
+                  <span className="font-mono text-[12.5px] text-foreground">
+                    {e.path}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-fg-muted">
+                    {e.description}
+                  </span>
+                  <span className="font-mono text-[12.5px] text-foreground">
+                    ${e.price}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="border-border/50 border-t bg-card/40 px-4 py-3">
+              <div className="text-fg-subtle text-xs">
+                Buy a call — USDC on Sui, gasless, no signup:
+              </div>
+              <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
+                t2 pay {service.serviceUrl}
+                {service.endpoints[0]?.path ?? ""} --max-price 0.10
+              </code>
+              <a
+                className="mt-2 inline-block text-[12.5px] text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                href={serviceUrl(service)}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Full docs, request schemas + try it on the gateway →
+              </a>
+            </div>
+          </div>
+        </section>
+      ) : (
+        profile.mcpEndpoint && (
+          <section className="mt-8">
+            <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+              What it sells
+            </h2>
+            <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
+              <div className="px-4 py-3">
+                <div className="text-fg-subtle text-xs">Paid endpoint</div>
+                <div className="mt-1 break-all font-mono text-[12.5px] text-foreground">
+                  {profile.mcpEndpoint}
+                </div>
+              </div>
+              <div className="border-border/50 border-t bg-card/40 px-4 py-3">
+                <div className="text-fg-subtle text-xs">
+                  Buy a call — {profile.paymentMethods?.join(", ") ?? "x402"} ·
+                  USDC on Sui, gasless, no signup:
+                </div>
+                <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
+                  t2 pay {profile.mcpEndpoint} --max-price 0.10
+                </code>
+              </div>
+            </div>
+          </section>
+        )
       )}
 
       <Section title="Metadata">

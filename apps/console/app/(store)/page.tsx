@@ -2,13 +2,18 @@ import { getUsernamesByIds } from "@audric/accounts";
 import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
 import { AgentAvatar } from "@/components/agent-avatar";
+import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
+import {
+  fetchGatewayServices,
+  findServiceByWallet,
+  priceFloor,
+} from "@/lib/gateway-services";
 
 // agents.t2000.ai — the directory IS the homepage (founder decision
-// 2026-07-16: the brochure tiles kept marketing pages that live on
-// t2000.ai; this domain's own content is the agents). A slim strip on
-// top — one line, console door, register hint — then the live registry.
-// The page gets better every time an agent registers; no copy to maintain.
+// 2026-07-16). Card grid (the old store presentation), with the gateway
+// catalog cross-referenced by wallet so selling agents carry a live
+// "sells" chip — the catalog stays the SSOT, the card just points at it.
 const API_BASE = "https://api.t2000.ai/v1";
 
 type AgentRow = {
@@ -39,7 +44,10 @@ async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
 }
 
 export default async function HomePage() {
-  const { total, agents } = await fetchAgents();
+  const [{ total, agents }, services] = await Promise.all([
+    fetchAgents(),
+    fetchGatewayServices(),
+  ]);
   const handles = await getUsernamesByIds(agents.map((a) => a.address)).catch(
     () => new Map<string, string>()
   );
@@ -79,50 +87,75 @@ export default async function HomePage() {
       </section>
 
       <section className="pt-8 pb-4">
-        <div className="ag-card divide-y divide-border/50 overflow-hidden">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((a) => {
             const handle = handles.get(a.address);
+            const service = findServiceByWallet(services, a.address);
+            const floor = service ? priceFloor(service) : null;
             return (
               <Link
-                className="flex items-center gap-4 px-4 py-3.5 no-underline transition-colors hover:bg-[color:var(--ag-overlay)]"
+                className="ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
                 href={`/${a.numericId ?? a.address}`}
                 key={a.address}
               >
-                <AgentAvatar
-                  address={a.address}
-                  imageUrl={a.imageUrl ?? undefined}
-                  name={a.name}
-                  size={34}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium text-[14px] text-foreground">
+                <div className="flex items-center gap-3">
+                  <AgentAvatar
+                    address={a.address}
+                    imageUrl={a.imageUrl ?? undefined}
+                    name={a.name}
+                    size={40}
+                  />
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-[15px] text-foreground tracking-[-0.014em]">
                       {a.name}
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] text-fg-subtle">
+                    </div>
+                    <div className="mt-0.5 truncate font-mono text-[11px] text-fg-subtle">
                       {handle ? `${displayHandle(handle)} · ` : ""}#
                       {a.numericId ?? "—"}
-                    </span>
-                  </div>
-                  {a.description && (
-                    <div className="mt-0.5 truncate text-[12.5px] text-fg-muted">
-                      {a.description.split("\n")[0]}
                     </div>
-                  )}
+                  </div>
                 </div>
-                <span className="shrink-0 text-fg-subtle">→</span>
+                <p className="m-0 line-clamp-3 min-h-[3.9em] text-[12.5px] text-fg-muted leading-relaxed">
+                  {a.description?.split("\n")[0] ?? "No description yet."}
+                </p>
+                <div className="mt-auto flex flex-wrap items-center gap-2 text-[11px]">
+                  {service ? (
+                    <span
+                      className="rounded-md border px-2 py-0.5 font-mono text-foreground"
+                      style={{ borderColor: "var(--ag-border)" }}
+                    >
+                      sells · {service.endpoints.length}{" "}
+                      {service.endpoints.length === 1
+                        ? "endpoint"
+                        : "endpoints"}
+                      {floor ? ` · from ${floor}` : ""}
+                    </span>
+                  ) : (
+                    a.category && (
+                      <span
+                        className="rounded-md border px-2 py-0.5 text-fg-muted"
+                        style={{ borderColor: "var(--ag-border)" }}
+                      >
+                        {categoryLabel(a.category)}
+                      </span>
+                    )
+                  )}
+                  <span className="ml-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
+                    →
+                  </span>
+                </div>
               </Link>
             );
           })}
-          {agents.length === 0 && (
-            <div className="px-4 py-8 text-center text-fg-subtle text-sm">
-              Directory temporarily unavailable.
-            </div>
-          )}
         </div>
+        {agents.length === 0 && (
+          <div className="ag-card px-4 py-8 text-center text-fg-subtle text-sm">
+            Directory temporarily unavailable.
+          </div>
+        )}
 
         <a
-          className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
           href="https://developers.t2000.ai/sell-your-api"
           rel="noreferrer"
           style={{ borderColor: "var(--ag-border)" }}
