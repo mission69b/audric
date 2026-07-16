@@ -61,8 +61,12 @@ export async function createOnrampSession(
   unsupported?: boolean;
   error?: string;
 }> {
+  // NB: the address MUST go through the singular `wallet_address` param.
+  // `wallet_addresses[sui]` is validated by Stripe but silently NOT persisted
+  // (sui-specific — ethereum/solana persist fine), leaving the session locked
+  // with no destination → the widget dies with "An unknown error occurred".
   const params = new URLSearchParams({
-    "wallet_addresses[sui]": opts.walletAddress,
+    wallet_address: opts.walletAddress,
     lock_wallet_address: "true",
     "destination_currencies[]": "usdc",
     "destination_networks[]": "sui",
