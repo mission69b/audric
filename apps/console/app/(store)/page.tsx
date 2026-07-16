@@ -23,6 +23,7 @@ type AgentRow = {
   description?: string | null;
   category?: string | null;
   imageUrl?: string | null;
+  mcpEndpoint?: string | null;
 };
 
 async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
@@ -129,6 +130,14 @@ export default async function HomePage() {
                         ? "endpoint"
                         : "endpoints"}
                       {floor ? ` · from ${floor}` : ""}
+                    </span>
+                  ) : a.mcpEndpoint ? (
+                    // Uncataloged seller — the on-chain flagship endpoint.
+                    <span
+                      className="rounded-md border px-2 py-0.5 font-mono text-foreground"
+                      style={{ borderColor: "var(--ag-border)" }}
+                    >
+                      sells · paid endpoint
                     </span>
                   ) : (
                     a.category && (

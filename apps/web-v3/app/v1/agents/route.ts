@@ -30,6 +30,8 @@ export async function GET(request: Request) {
       // Directory fields (agents.t2000.ai).
       category: a.category,
       description: a.description,
+      // Lets uncataloged sellers carry a "sells" chip on directory cards.
+      mcpEndpoint: a.mcpEndpoint,
       createdAt: a.createdAt,
     })),
   });
