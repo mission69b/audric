@@ -52,9 +52,7 @@ export default async function HubPage() {
           Build with private AI. Give your agent money.
         </h1>
         <p className="mt-4 max-w-[600px] text-[15px] text-muted-foreground leading-relaxed">
-          The developer home for the t2000 rail: a private coding agent on open
-          models, a wallet your agent owns, an on-chain identity, and skills
-          that teach it to act.
+          A private coding agent. A wallet your agent owns. Free to start.
         </p>
 
         <div className="mt-7 grid gap-4 lg:grid-cols-2">
@@ -73,13 +71,7 @@ export default async function HubPage() {
               <CopyButton text={INSTALL_CMD} />
             </div>
             <p className="m-0 text-fg-subtle text-xs leading-relaxed">
-              <span className="text-foreground">t2 code</span> — the private
-              coding agent you can verify: open models by default, zero data
-              retention, telemetry stripped at the wire. Already have a tool?{" "}
-              <span className="font-mono">t2 connect</span>
-              {
-                " points Claude Code, Grok Build, aider, Codex & co at the same router. "
-              }
+              Open models, zero data retention.{" "}
               <a
                 className="underline underline-offset-4 transition-colors hover:text-foreground"
                 href="https://t2000.ai/code"
@@ -113,9 +105,7 @@ export default async function HubPage() {
               <CopyButton text={SETUP_PROMPT} />
             </div>
             <p className="m-0 text-fg-subtle text-xs leading-relaxed">
-              Paste into any agent that can run commands — it self-onboards a
-              wallet it owns, a free on-chain Agent ID, and spending limits.
-              Config-only; it never moves funds.{" "}
+              Paste into any agent — it sets up its own wallet and Agent ID.{" "}
               <a
                 className="underline underline-offset-4 transition-colors hover:text-foreground"
                 href="https://developers.t2000.ai/use-from-your-agent"
@@ -132,26 +122,27 @@ export default async function HubPage() {
       {/* Rails — the rooms of the house. */}
       <section className="border-border/50 border-t pt-10 pb-4">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {/* Templates. */}
-          <Link
+          {/* Templates (gallery lives on t2000.ai — the SELL surface). */}
+          <a
             className="ag-card group flex flex-col gap-3 p-6 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
-            href="/templates"
+            href="https://t2000.ai/templates"
+            rel="noreferrer"
+            target="_blank"
           >
             <div className="ag-eyebrow">{"// TEMPLATES"}</div>
             <div className="font-semibold text-[19px] text-foreground tracking-[-0.02em]">
-              Start router-wired
+              Start a project
             </div>
             <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
               <span className="font-mono text-foreground">
                 npm create t2-app@latest
               </span>{" "}
-              — an agent worker, an AI chat app, a Sui dApp. Private by default,
-              billing the router on first run.
+              — chat app, agent worker, Sui dApp.
             </p>
             <span className="mt-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
               Browse →
             </span>
-          </Link>
+          </a>
 
           {/* Skills shelf. */}
           <Link
@@ -163,9 +154,8 @@ export default async function HubPage() {
               Teach it the chain
             </div>
             <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
-              {skillCount} live playbooks across {projects.length} projects —
-              wallet, gasless USDC, x402 paid APIs, market data, storage. Plain
-              markdown; one-paste install.
+              {skillCount} live playbooks — wallet, payments, paid APIs.
+              One-paste install.
             </p>
             <div className="mt-auto flex items-center gap-2">
               <span className="flex items-center">
@@ -196,8 +186,7 @@ export default async function HubPage() {
               {total > 0 ? `${total} registered agents` : "The agent directory"}
             </div>
             <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
-              Every agent with an on-chain Agent ID — owner, handle,
-              kill-switch, receipt-backed reputation. Register free:{" "}
+              Every agent with an on-chain Agent ID. Register free:{" "}
               <span className="font-mono">t2 init</span>.
             </p>
             <span className="mt-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
@@ -215,8 +204,7 @@ export default async function HubPage() {
               Keys, usage, billing
             </div>
             <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
-              Sign in with Google, mint an API key, top up in USDC or by card,
-              watch usage per model — the one account behind every surface here.
+              Sign in with Google — keys, top-up, usage per model.
             </p>
             <span className="mt-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
               Open →

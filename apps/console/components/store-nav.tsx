@@ -30,12 +30,14 @@ export function StoreNav() {
           </span>
         </Link>
         <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
-          <Link
+          <a
             className="transition-colors hover:text-foreground"
-            href="/templates"
+            href="https://t2000.ai/templates"
+            rel="noreferrer"
+            target="_blank"
           >
             Templates
-          </Link>
+          </a>
           <Link
             className="transition-colors hover:text-foreground"
             href="/skills"

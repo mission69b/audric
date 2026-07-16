@@ -54,7 +54,7 @@ Live markdown playbooks agents read and follow — swaps, sends, paying APIs:
 
 npm create t2-app@latest my-app -- --template agent-worker|chat|sui-dapp
   # scaffolds AGENTS.md + plans/ + a .t2000 privacy pin; bills t2000/auto on
-  # first run. Catalog: https://agents.t2000.ai/templates
+  # first run. Gallery: https://t2000.ai/templates
   # docs: https://developers.t2000.ai/create-t2-app
 
 ## More
