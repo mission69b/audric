@@ -82,11 +82,11 @@ export default async function HubPage() {
               }
               <a
                 className="underline underline-offset-4 transition-colors hover:text-foreground"
-                href="https://developers.t2000.ai/t2-code"
+                href="https://t2000.ai/code"
                 rel="noreferrer"
                 target="_blank"
               >
-                Docs
+                Everything it does
               </a>{" "}
               ·{" "}
               <Link
