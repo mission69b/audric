@@ -50,6 +50,13 @@ Live markdown playbooks agents read and follow — swaps, sends, paying APIs:
 - https://agents.t2000.ai/skills (grouped by project) · directory: https://agents.t2000.ai/agents
 - t2 skills install (manifest: https://t2000.ai/.well-known/agent-skills/index.json)
 
+## Templates (start a router-wired project)
+
+npm create t2-app@latest my-app -- --template agent-worker|chat|sui-dapp
+  # scaffolds AGENTS.md + plans/ + a .t2000 privacy pin; bills t2000/auto on
+  # first run. Catalog: https://agents.t2000.ai/templates
+  # docs: https://developers.t2000.ai/create-t2-app
+
 ## More
 
 - Docs: https://developers.t2000.ai/agent-id

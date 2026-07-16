@@ -7,10 +7,10 @@ import { loadProjectsFeed } from "@/lib/skills-feed";
 // agents.t2000.ai — the DEVELOPER HOME (S.732 restructure, ratified
 // 2026-07-16). Three-surface rule: t2000.ai SELLS, developers.t2000.ai
 // EXPLAINS, this page is where you DO: install t2 code / connect your tool,
-// mint a key, onboard an agent wallet — then rails to skills, the directory,
-// and the console. The skills shelf lives at /skills; a /templates rail
-// joins once the first router-wired templates exist (never before —
-// earn-a-card).
+// mint a key, onboard an agent wallet — then rails to templates, skills,
+// the directory, and the console. The skills shelf lives at /skills; the
+// /templates rail earned its card 2026-07-16 (S.736: agent-worker · chat ·
+// sui-dapp, all router-wired).
 const API_BASE = "https://api.t2000.ai/v1";
 
 const SETUP_PROMPT =
@@ -131,7 +131,28 @@ export default async function HubPage() {
 
       {/* Rails — the rooms of the house. */}
       <section className="border-border/50 border-t pt-10 pb-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {/* Templates. */}
+          <Link
+            className="ag-card group flex flex-col gap-3 p-6 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
+            href="/templates"
+          >
+            <div className="ag-eyebrow">{"// TEMPLATES"}</div>
+            <div className="font-semibold text-[19px] text-foreground tracking-[-0.02em]">
+              Start router-wired
+            </div>
+            <p className="m-0 text-[12.5px] text-muted-foreground leading-relaxed">
+              <span className="font-mono text-foreground">
+                npm create t2-app@latest
+              </span>{" "}
+              — an agent worker, an AI chat app, a Sui dApp. Private by default,
+              billing the router on first run.
+            </p>
+            <span className="mt-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
+              Browse →
+            </span>
+          </Link>
+
           {/* Skills shelf. */}
           <Link
             className="ag-card group flex flex-col gap-3 p-6 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
