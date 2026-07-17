@@ -62,7 +62,7 @@
     "@stripe/stripe-js": "^9.8.0",
     "@suimpp/discovery": "0.2.1",
     "@t2000/id": "5.30.0",
-    "@t2000/sdk": "^8.0.2",
+    "@t2000/sdk": "^9.5.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.4.0",
     "@vercel/functions": "^2.0.0",

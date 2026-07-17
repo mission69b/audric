@@ -8,11 +8,13 @@ import Link from "next/link";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
+import { UseServiceTabs } from "@/components/use-service-tabs";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
 import { formatDate } from "@/lib/format";
 import {
   fetchGatewayServices,
+  fetchServiceStats,
   findServiceByWallet,
   serviceUrl,
 } from "@/lib/gateway-services";
@@ -197,6 +199,9 @@ export default async function AgentProfilePage({
   // to the gateway service page for docs + try-it. Uncataloged sellers fall
   // back to the flagship endpoint from their on-chain registration.
   const service = findServiceByWallet(services, profile.address);
+  // Receipts-derived sales history (the store-era trust strip, rebuilt on the
+  // payment ledger): sold · buyers · settled + the recent on-chain rows.
+  const stats = service ? await fetchServiceStats(service.id) : null;
 
   return (
     <>
@@ -358,24 +363,78 @@ export default async function AgentProfilePage({
                 </div>
               ))}
             </div>
-            <div className="border-border/50 border-t bg-card/40 px-4 py-3">
-              <div className="text-fg-subtle text-xs">
-                Buy a call — USDC on Sui, gasless, no signup:
-              </div>
-              <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
-                t2 pay {service.serviceUrl}
-                {service.endpoints[0]?.path ?? ""} --max-price 0.10
-              </code>
-              <a
-                className="mt-2 inline-block text-[12.5px] text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-                href={serviceUrl(service)}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Full docs, request schemas + try it on the gateway →
-              </a>
-            </div>
           </div>
+
+          {/* Use it — the 4-tab surface: browser try-it (Passport pays),
+              your-agent command/prompt, raw x402, and the Audric deep link. */}
+          <UseServiceTabs
+            direct={service.direct === true}
+            endpoints={service.endpoints}
+            gatewayDocsUrl={serviceUrl(service)}
+            serviceName={service.name}
+            serviceUrl={service.serviceUrl}
+          />
+
+          {/* Sales — receipts, not reviews. Every row is a payment the
+              ledger verified (proxied: logged at settle; direct:
+              chain-verified via /api/mpp/report). */}
+          {stats && stats.sold > 0 && (
+            <div className="mt-4 overflow-hidden rounded-2xl border border-border/50">
+              <div className="grid grid-cols-3 divide-x divide-border/50">
+                <div className="bg-card/40 px-4 py-3">
+                  <div className="text-fg-subtle text-xs">Sold</div>
+                  <div className="mt-0.5 font-mono text-[15px] text-foreground tabular-nums">
+                    {stats.sold}
+                  </div>
+                </div>
+                <div className="bg-card/40 px-4 py-3">
+                  <div className="text-fg-subtle text-xs">Distinct buyers</div>
+                  <div className="mt-0.5 font-mono text-[15px] text-foreground tabular-nums">
+                    {stats.buyers}
+                  </div>
+                </div>
+                <div className="bg-card/40 px-4 py-3">
+                  <div className="text-fg-subtle text-xs">Settled</div>
+                  <div className="mt-0.5 font-mono text-[15px] text-foreground tabular-nums">
+                    ${stats.settledUsd}
+                  </div>
+                </div>
+              </div>
+              <div className="border-border/50 border-t">
+                <div className="px-4 py-2 text-fg-subtle text-xs">
+                  Every sale, on-chain
+                </div>
+                <div className="divide-y divide-border/50">
+                  {stats.recent.map((r) => (
+                    <div
+                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2"
+                      key={`${r.digest ?? r.createdAt}-${r.endpoint}`}
+                    >
+                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-fg-muted">
+                        {r.endpoint}
+                      </span>
+                      <span className="font-mono text-[12px] text-foreground tabular-nums">
+                        ${r.amount}
+                      </span>
+                      <span className="text-[11px] text-fg-subtle">
+                        {formatDate(r.createdAt)}
+                      </span>
+                      {r.digest && (
+                        <a
+                          className="font-mono text-[11px] text-fg-subtle underline underline-offset-2 transition-colors hover:text-foreground"
+                          href={`https://suiscan.xyz/mainnet/tx/${r.digest}`}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          {r.digest.slice(0, 8)}… ↗
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       ) : (
         profile.mcpEndpoint && (

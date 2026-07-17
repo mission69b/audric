@@ -11,7 +11,42 @@ export type GatewayEndpoint = {
   path: string;
   description: string;
   price: string;
+  /** Known-good illustrative request body (gateway lib/sample-body.ts) —
+   *  seeds the try-it form so a first call isn't a guessed, paid 4xx. */
+  sampleBody?: string;
 };
+
+export type ServiceStats = {
+  sold: number;
+  buyers: number;
+  settledUsd: string;
+  recent: {
+    endpoint: string;
+    amount: string;
+    digest: string | null;
+    sender: string | null;
+    createdAt: string;
+  }[];
+};
+
+/** Receipts-derived per-service stats — every number comes from the payment
+ *  ledger (proxied rows logged by the gateway, direct rows chain-verified via
+ *  /api/mpp/report). Null on failure — the listing renders without the strip. */
+export async function fetchServiceStats(
+  serviceId: string
+): Promise<ServiceStats | null> {
+  try {
+    const res = await fetchRetry(`${GATEWAY}/api/mpp/stats/${serviceId}`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      return (await res.json()) as ServiceStats;
+    }
+  } catch {
+    // stats unreachable — callers render without them
+  }
+  return null;
+}
 
 export type GatewayService = {
   id: string;
