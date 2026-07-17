@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -220,48 +220,71 @@ function Spinner() {
 }
 
 // The three demo attachments (prototype attachItems): two image tiles (the second
-// mid-upload) and a PDF card. Purely presentational, matching the design.
+// mid-upload) and a PDF card. The tiles are presentational (no real files), but
+// each × removes its own tile the way the webapp removes a real attachment —
+// tracked in local state. Removing the last tile clears the whole demo strip via
+// the store toggle so the composer returns to its empty state.
+type AttachTile = "img" | "uploading" | "pdf";
+
 function AttachStrip() {
   const { colors } = useTheme();
+  const { toggleAttach } = useAppState();
+  const [tiles, setTiles] = useState<AttachTile[]>(["img", "uploading", "pdf"]);
+
+  const remove = (id: AttachTile) => {
+    const next = tiles.filter((t) => t !== id);
+    if (next.length === 0) {
+      toggleAttach();
+    } else {
+      setTiles(next);
+    }
+  };
+
   return (
     <View style={styles.attachStrip}>
-      <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-        <LinearGradient
-          colors={["#0ac7b4", "#6366f1"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.tileImg}
-        />
-        <TileRemove />
-      </View>
-      <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-        <LinearGradient
-          colors={["#0ac7b4", "#6366f1"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.tileImg}
-        />
-        <View style={styles.tileUploading}>
-          <Spinner />
+      {tiles.includes("img") ? (
+        <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+          <LinearGradient
+            colors={["#0ac7b4", "#6366f1"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tileImg}
+          />
+          <TileRemove onPress={() => remove("img")} />
         </View>
-        <TileRemove />
-      </View>
-      <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-        <View style={styles.tileFile}>
-          <FileText size={20} color={colors.mutedFg} strokeWidth={1.7} />
-          <Text style={[styles.tileBadge, { color: colors.mutedFg }]}>PDF</Text>
+      ) : null}
+      {tiles.includes("uploading") ? (
+        <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+          <LinearGradient
+            colors={["#0ac7b4", "#6366f1"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tileImg}
+          />
+          <View style={styles.tileUploading}>
+            <Spinner />
+          </View>
+          <TileRemove onPress={() => remove("uploading")} />
         </View>
-        <TileRemove />
-      </View>
+      ) : null}
+      {tiles.includes("pdf") ? (
+        <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
+          <View style={styles.tileFile}>
+            <FileText size={20} color={colors.mutedFg} strokeWidth={1.7} />
+            <Text style={[styles.tileBadge, { color: colors.mutedFg }]}>PDF</Text>
+          </View>
+          <TileRemove onPress={() => remove("pdf")} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function TileRemove() {
+function TileRemove({ onPress }: { onPress: () => void }) {
   return (
-    <View style={styles.tileRemove}>
+    <Pressable onPress={onPress} hitSlop={6} style={styles.tileRemove}>
       <X size={9} color="#fff" strokeWidth={3} />
-    </View>
+    </Pressable>
   );
 }
 

@@ -1,8 +1,11 @@
+import * as Clipboard from "expo-clipboard";
+import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ARTIFACT_LINES } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -30,12 +33,22 @@ export function ArtifactViewer() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { artifactOpen, closeArtifact } = useAppState();
+  const [copied, setCopied] = useState(false);
 
   const toolIcon = (Icon: typeof Undo2) => (
     <View style={styles.tool}>
       <Icon size={15} color={colors.mutedFg} strokeWidth={1.9} />
     </View>
   );
+
+  // Copy the artifact's actual visible text (title + body lines). The other
+  // toolbar icons are chrome for the read-only demo document; Copy is the one
+  // action backed by real content on screen, so it's the only one wired.
+  const onCopy = async () => {
+    await Clipboard.setStringAsync(`${TITLE}\n\n${ARTIFACT_LINES.join("\n")}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
 
   return (
     <Modal
@@ -82,7 +95,13 @@ export function ArtifactViewer() {
           {toolIcon(Undo2)}
           {toolIcon(Redo2)}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          {toolIcon(Copy)}
+          <Pressable onPress={onCopy} style={styles.tool}>
+            {copied ? (
+              <Check size={15} color={colors.tealLabel} strokeWidth={2.2} />
+            ) : (
+              <Copy size={15} color={colors.mutedFg} strokeWidth={1.9} />
+            )}
+          </Pressable>
           {toolIcon(Pencil)}
           {toolIcon(MessageSquare)}
         </ScrollView>

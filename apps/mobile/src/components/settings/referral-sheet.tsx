@@ -1,17 +1,23 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { REFERRAL_LINK, REFERRAL_STATS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import { BottomSheet } from "@/components/ui/sheet";
 import { Gift, Share2, X } from "@/components/ui/icon";
-import { Pressable } from "react-native";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
 // Refer & earn sheet (prototype REFERRAL). Give $10 / get $10 — share link + the
-// user's referral stats. Demo figures from the catalog; Share is presentational.
+// user's referral stats. Demo figures from the catalog; the Share button opens the
+// OS share sheet with the real referral link so it can actually be sent.
 export function ReferralSheet() {
   const { colors } = useTheme();
   const { referralSheet, closeReferral } = useAppState();
+
+  const onShare = () => {
+    Share.share({
+      message: `Join me on Audric and we both get $10 in credits: ${REFERRAL_LINK}`,
+    });
+  };
 
   return (
     <BottomSheet visible={referralSheet} onClose={closeReferral} maxHeightRatio={0.9}>
@@ -36,10 +42,10 @@ export function ReferralSheet() {
         <View style={[styles.linkBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
           <Text numberOfLines={1} style={[styles.link, { color: colors.fg }]}>{REFERRAL_LINK}</Text>
         </View>
-        <View style={[styles.shareBtn, { backgroundColor: colors.tealLabel }]}>
+        <Pressable onPress={onShare} style={[styles.shareBtn, { backgroundColor: colors.tealLabel }]}>
           <Share2 size={14} color="#fff" strokeWidth={2} />
           <Text style={styles.shareText}>Share</Text>
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.stats}>
