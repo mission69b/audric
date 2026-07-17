@@ -58,6 +58,8 @@ type CatalogService = {
   name: string;
   serviceUrl: string;
   direct?: boolean;
+  /** Direct sellers: 402 dialect probed at gateway ingest. */
+  dialect?: "x402" | "mpp-header";
   endpoints: CatalogEndpoint[];
 };
 
@@ -140,6 +142,18 @@ export async function payServiceCall(opts: {
     );
   }
   const { service, endpoint } = resolved;
+
+  // Passport is a zkLogin wallet — it can only safely pay x402 sellers (the
+  // chain verifies the payer's signature). Header-dialect sellers verify a
+  // personal-message signature THEMSELVES; zkLogin sigs fail that check
+  // AFTER the payment settled (JMPR, 2026-07-17: charged, no delivery).
+  // These sellers are filtered out of the model's catalog too — this is the
+  // fail-closed backstop, and the SDK enforces the same rule at pay time.
+  if (service.direct === true && service.dialect !== "x402") {
+    throw new Error(
+      `${service.name} only accepts a payment dialect that browser Passport wallets can't safely pay — nothing was paid. It can be used from the t2 CLI or an MCP agent wallet instead.`
+    );
+  }
 
   const catalogPrice = Number.parseFloat(endpoint.price);
   if (!Number.isFinite(catalogPrice) || catalogPrice <= 0) {

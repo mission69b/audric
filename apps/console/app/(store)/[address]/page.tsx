@@ -365,6 +365,7 @@ export default async function AgentProfilePage({
           {/* Use it — the 4-tab surface: browser try-it (Passport pays),
               your-agent command/prompt, raw x402, and the Audric deep link. */}
           <UseServiceTabs
+            dialect={service.dialect}
             direct={service.direct === true}
             endpoints={service.endpoints}
             gatewayDocsUrl={serviceUrl(service)}

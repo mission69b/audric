@@ -54,6 +54,11 @@ export type GatewayService = {
   serviceUrl: string;
   description: string;
   direct?: boolean;
+  /** Direct sellers: 402 dialect probed at ingest. Browser (Passport/zkLogin)
+   *  payments only work on `x402` — the header dialect verifies a
+   *  personal-message signature SELLER-side, which zkLogin sigs fail AFTER
+   *  the money moved (JMPR incident, 2026-07-17). */
+  dialect?: "x402" | "mpp-header";
   payTo?: string;
   endpoints: GatewayEndpoint[];
 };

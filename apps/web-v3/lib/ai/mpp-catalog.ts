@@ -63,6 +63,8 @@ type RawService = {
   serviceUrl?: string;
   categories?: string[];
   direct?: boolean;
+  /** Direct sellers: 402 dialect probed at gateway ingest. */
+  dialect?: "x402" | "mpp-header";
   endpoints?: CatalogEndpoint[];
 };
 
@@ -96,6 +98,15 @@ export async function getMppCatalog(): Promise<CatalogService[]> {
     const services = raw
       .flatMap((s): CatalogService[] => {
         if (!(s.id && s.name && s.serviceUrl && s.endpoints?.length)) {
+          return [];
+        }
+        // Passport is a zkLogin wallet — it can only safely pay x402 sellers
+        // (chain-verified signature). Header-dialect direct sellers verify a
+        // personal-message signature seller-side, which zkLogin sigs fail
+        // AFTER the payment settled (JMPR, 2026-07-17: charged, no results).
+        // Never offer what we'd refuse: drop them from the in-chat catalog.
+        // Fail closed on a missing stamp (pre-dialect entries).
+        if (s.direct === true && s.dialect !== "x402") {
           return [];
         }
         const endpoints = s.endpoints.filter((e) => {

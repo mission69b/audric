@@ -36,6 +36,7 @@ export function UseServiceTabs({
   serviceUrl,
   gatewayDocsUrl,
   direct,
+  dialect,
   endpoints,
 }: {
   /** Catalog id (mpp.t2000.ai) — keys the browser relay path. */
@@ -46,6 +47,8 @@ export function UseServiceTabs({
   /** mpp.t2000.ai/services/<id> — full docs + schemas. */
   gatewayDocsUrl: string;
   direct: boolean;
+  /** Direct sellers: the 402 dialect the gateway probed at ingest. */
+  dialect?: "x402" | "mpp-header";
   endpoints: GatewayEndpoint[];
 }) {
   const [tab, setTab] = useState<TabId>("try");
@@ -84,6 +87,14 @@ export function UseServiceTabs({
   const settleCopy = direct
     ? "Settles straight to the seller's wallet — no automatic refund."
     : "Proxied through the gateway — no charge if the call fails.";
+
+  // Passport is a zkLogin wallet: it can only safely pay x402 sellers (the
+  // chain verifies the payer's signature). Header-dialect sellers verify a
+  // personal-message signature THEMSELVES — zkLogin sigs fail that check
+  // AFTER the payment settled (JMPR, 2026-07-17: charged, no delivery).
+  // Fail closed on undefined (pre-stamp entries) — the SDK enforces the
+  // same rule at pay time, this just keeps the dead-end button off the page.
+  const browserPayable = !direct || dialect === "x402";
 
   // Direct sellers rarely serve CORS headers, so browser calls go through
   // the gateway's catalog-pinned pass-through relay (the payment still
@@ -147,7 +158,30 @@ export function UseServiceTabs({
       </div>
 
       <div className="p-4">
-        {tab === "try" && (
+        {tab === "try" && !browserPayable && (
+          <div>
+            <div className="font-medium text-foreground text-sm">
+              Not payable from a browser wallet yet
+            </div>
+            <p className="mt-1 max-w-prose text-fg-muted text-xs leading-relaxed">
+              This seller only accepts the MPP header payment dialect, which
+              browser Passport (zkLogin) wallets can't safely pay — the seller
+              can't verify the payment signature, so the charge would settle
+              without the service delivering. Pay it from a keypair wallet
+              instead: the CLI or your agent (next tab), or ask the seller to
+              add x402 support.
+            </p>
+            <button
+              className="ag-btn ag-btn--primary ag-btn--sm mt-3"
+              onClick={() => setTab("agent")}
+              type="button"
+            >
+              Use it from your agent instead
+            </button>
+          </div>
+        )}
+
+        {tab === "try" && browserPayable && (
           <div>
             {payable.length === 0 && (
               <p className="text-muted-foreground text-sm">
