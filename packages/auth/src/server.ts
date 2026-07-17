@@ -1,5 +1,8 @@
 import "server-only";
 import { EnokiClient } from "@mysten/enoki";
+import { Ed25519PublicKey } from "@mysten/sui/keypairs/ed25519";
+import { fromBase64 } from "@mysten/sui/utils";
+import type { ZkLoginSignatureInputs } from "@mysten/sui/zklogin";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 
 /**
@@ -88,6 +91,54 @@ export async function deriveAddress(jwt: string): Promise<string> {
   });
   const { address } = await client.getZkLogin({ jwt });
   return address;
+}
+
+/**
+ * Compute the zkLogin ZK proof from a verified JWT + the device's nonce inputs.
+ * Runs server-side (same Enoki key as deriveAddress) so the JWT never leaves the
+ * server; the proof is bound to the device's ephemeral public key via the nonce,
+ * so it's unusable without the on-device ephemeral secret. Native-send only.
+ */
+// Cap the Enoki zkProof call so a hung/slow proving service can't pin server
+// concurrency indefinitely — mirrors the sibling Google token fetch's 10s bound. The
+// SDK call takes no abort signal, so race it against a timeout and clear the timer on
+// whichever settles first.
+const ENOKI_ZKP_TIMEOUT_MS = 10_000;
+
+export async function createZkProof(input: {
+  jwt: string;
+  ephemeralPublicKey: string; // base64 of the device's Ed25519 public key
+  randomness: string;
+  maxEpoch: number;
+  network: "mainnet" | "testnet" | "devnet";
+}): Promise<ZkLoginSignatureInputs> {
+  const client = new EnokiClient({
+    apiKey: process.env.NEXT_PUBLIC_ENOKI_API_KEY ?? "",
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error("Enoki zkProof timed out")),
+      ENOKI_ZKP_TIMEOUT_MS
+    );
+  });
+  try {
+    const proof = await Promise.race([
+      client.createZkLoginZkp({
+        network: input.network,
+        jwt: input.jwt,
+        ephemeralPublicKey: new Ed25519PublicKey(
+          fromBase64(input.ephemeralPublicKey)
+        ),
+        randomness: input.randomness,
+        maxEpoch: input.maxEpoch,
+      }),
+      timeout,
+    ]);
+    return proof as ZkLoginSignatureInputs;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Mint the app-session token (HS256). `expiresAtMs` = the zkLogin window. */

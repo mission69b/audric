@@ -4,6 +4,7 @@
 export {
   type AudricSession,
   type AudricUser,
+  createZkProof,
   deriveAddress,
   getCurrentUser,
   mintSessionToken,

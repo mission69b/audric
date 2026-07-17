@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import {
+  createZkProof,
   deriveAddress,
   mintSessionToken,
   verifyGoogleJwt,
@@ -16,7 +17,10 @@ import { checkMobileAuthIpRateLimit, clientIp } from "@/lib/ratelimit";
 // here. We swap code→id_token using the client_secret (which never leaves the
 // server), then run the IDENTICAL verify + derive the web route uses — so the
 // same Google account yields the same Sui address on both surfaces (no wallet
-// fork). Nothing wallet-signing happens here: this returns identity only.
+// fork). This returns identity only — UNLESS the device also supplies its
+// nonce inputs (ephemeralPublicKey/randomness/maxEpoch), in which case we also
+// compute and return a device-bound zkProof (see Step 3 below); the Google
+// id_token itself never leaves this server either way.
 //
 // Hardening (mobile-auth review):
 //  • ignore any client-supplied redirectUri — the token-exchange redirect_uri is
@@ -106,10 +110,16 @@ export async function POST(request: NextRequest) {
 
   let code: unknown;
   let codeVerifier: unknown;
+  let ephemeralPublicKey: unknown;
+  let randomness: unknown;
+  let maxEpoch: unknown;
   try {
     const body = JSON.parse(raw);
     code = body.code;
     codeVerifier = body.codeVerifier;
+    ephemeralPublicKey = body.ephemeralPublicKey;
+    randomness = body.randomness;
+    maxEpoch = body.maxEpoch;
   } catch {
     return fail(400, "Bad request");
   }
@@ -129,7 +139,20 @@ export async function POST(request: NextRequest) {
   // (server env) can repoint it at an already-registered redirect URI when the
   // canonical one isn't in the Google Console yet (e.g. local "/auth/bridge").
   const bridgePath = env.MOBILE_AUTH_BRIDGE_PATH || "/api/mobile-auth/bridge";
-  const redirectUri = `${request.nextUrl.origin}${bridgePath}`;
+  // Behind a reverse proxy / tunnel / CDN (cloudflared in dev, Vercel in prod),
+  // `request.nextUrl.origin` resolves to the INTERNAL bind address (e.g.
+  // localhost:3002), not the public host Google actually saw. Google enforces
+  // byte-equality between this redirect_uri and the auth-request one, so rebuild
+  // the origin from the edge's forwarded host/proto when present. These headers
+  // are set by the trusted proxy, not the client; a spoofed value only yields a
+  // redirect_uri Google won't recognise (→ failed swap), never an open redirect
+  // (the bridge hard-codes its target to audric://callback).
+  const fwdHost = request.headers.get("x-forwarded-host");
+  const fwdProto = request.headers.get("x-forwarded-proto");
+  const origin = fwdHost
+    ? `${(fwdProto ?? "https").split(",")[0].trim()}://${fwdHost.split(",")[0].trim()}`
+    : request.nextUrl.origin;
+  const redirectUri = `${origin}${bridgePath}`;
 
   // 1) Swap the auth code for tokens (server-to-server, client_secret held here).
   let idToken: string;
@@ -187,6 +210,41 @@ export async function POST(request: NextRequest) {
   const expiresAt = Date.now() + MAX_SESSION_MS;
   const token = await mintSessionToken({ id: address, email }, expiresAt);
 
+  // Native send: if the device supplied its nonce inputs, compute the zkProof
+  // (server-side, JWT never leaves here) so it can sign transactions on-device.
+  let proof: unknown;
+  let proofMaxEpoch: number | undefined;
+  if (
+    typeof ephemeralPublicKey === "string" &&
+    typeof randomness === "string" &&
+    typeof maxEpoch === "number"
+  ) {
+    try {
+      const network = (env.NEXT_PUBLIC_SUI_NETWORK ?? "testnet") as
+        | "mainnet"
+        | "testnet"
+        | "devnet";
+      proof = await createZkProof({
+        jwt: idToken,
+        ephemeralPublicKey,
+        randomness,
+        maxEpoch,
+        network,
+      });
+      proofMaxEpoch = maxEpoch;
+    } catch (e) {
+      // Non-fatal: identity still returns; the app falls back to a read-only
+      // wallet if the proof can't be minted. Log the error MESSAGE only (never the
+      // JWT / request body — the Enoki/network message is safe) so a proof-mint
+      // failure is diagnosable instead of a silent read-only degrade.
+      console.error(
+        "[mobile-auth] zkProof mint failed (non-fatal):",
+        e instanceof Error ? e.message : String(e)
+      );
+      proof = undefined;
+    }
+  }
+
   // `aud`/`audMatch` are retained for the client's Phase-0 parity display;
   // audMatch is necessarily true here (verifyGoogleJwt already enforced it).
   return NextResponse.json({
@@ -196,5 +254,7 @@ export async function POST(request: NextRequest) {
     audMatch: true,
     token,
     expiresAt,
+    proof,
+    maxEpoch: proofMaxEpoch,
   });
 }
