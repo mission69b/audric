@@ -61,7 +61,9 @@ export async function POST(request: Request) {
       // Server-set meta from prepare (never client-supplied at submit).
       await setAgentProfileFields(address, {
         mcpEndpoint:
-          typeof res.meta.mcpEndpoint === "string" ? res.meta.mcpEndpoint : null,
+          typeof res.meta.mcpEndpoint === "string"
+            ? res.meta.mcpEndpoint
+            : null,
         paymentMethods: Array.isArray(res.meta.paymentMethods)
           ? (res.meta.paymentMethods as string[])
           : [],
