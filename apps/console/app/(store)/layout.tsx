@@ -32,6 +32,7 @@ export default function StoreLayout({
           <FooterCol
             links={[
               { label: "Directory", href: "/" },
+              { label: "Jobs", href: "/jobs" },
               { label: "Skills", href: "/skills" },
               { label: "Sell your API", href: "https://mpp.t2000.ai/sell" },
               { label: "Console", href: "/manage" },

@@ -12,7 +12,7 @@ import { CopyButton } from "@/components/copy-button";
 import { UseServiceTabs } from "@/components/use-service-tabs";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatWindow } from "@/lib/format";
 import {
   fetchGatewayServices,
   fetchServiceStats,
@@ -390,24 +390,85 @@ export default async function AgentProfilePage({
                   </span>
                   <span className="font-mono text-[12.5px] text-foreground">
                     ${e.price}
-                    <span className="text-fg-subtle text-[10px]">/call</span>
+                    <span className="text-fg-subtle text-[10px]">
+                      {service.escrow ? "/job" : "/call"}
+                    </span>
                   </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Use it — the 4-tab surface: browser try-it (Passport pays),
-              your-agent command/prompt, raw x402, and the Audric deep link. */}
-          <UseServiceTabs
-            dialect={service.dialect}
-            direct={service.direct === true}
-            endpoints={service.endpoints}
-            gatewayDocsUrl={serviceUrl(service)}
-            serviceId={service.id}
-            serviceName={service.name}
-            serviceUrl={service.serviceUrl}
-          />
+          {service.escrow ? (
+            /* Job-class listing (SPEC_A2A_ESCROW slice 2): no instant
+               try-it — funds go into the on-chain Job object, not a per-call
+               payment. Terms come from the seller's own 402 (gateway-probed);
+               settlement is release/reject/refund on the object. */
+            <div className="ag-card mt-4 overflow-hidden">
+              <div className="grid grid-cols-3 divide-x divide-border/50">
+                {(
+                  [
+                    [
+                      "Delivers in",
+                      formatWindow(service.escrow.deliverWithinMs),
+                    ],
+                    [
+                      "Review window",
+                      formatWindow(service.escrow.reviewWindowMs),
+                    ],
+                    [
+                      "If rejected",
+                      `${(service.escrow.rejectSplitBps / 100).toFixed(0)}% back`,
+                    ],
+                  ] as const
+                ).map(([k, v]) => (
+                  <div className="px-5 py-4" key={k}>
+                    <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
+                      {k}
+                    </div>
+                    <div className="mt-1.5 font-semibold text-[18px] text-foreground tabular-nums tracking-tight">
+                      {v}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-border/50 border-t bg-card/40 px-5 py-4">
+                <div className="text-fg-subtle text-xs">
+                  Fund a job — USDC locks in an on-chain escrow object and
+                  releases on delivery. No delivery by the deadline: you reclaim
+                  it all.
+                </div>
+                <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
+                  t2 job create {service.endpoints[0]?.price ?? "5"}{" "}
+                  {walletAddress} --spec brief.md
+                </code>
+                <p className="m-0 mt-2 text-[11.5px] text-fg-subtle leading-relaxed">
+                  Then{" "}
+                  <span className="font-mono">t2 job watch &lt;id&gt;</span>{" "}
+                  tracks it and prints your available action at every state —{" "}
+                  <Link
+                    className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+                    href="/jobs"
+                  >
+                    how jobs work
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Use it — the 4-tab surface: browser try-it (Passport pays),
+               your-agent command/prompt, raw x402, and the Audric deep link. */
+            <UseServiceTabs
+              dialect={service.dialect}
+              direct={service.direct === true}
+              endpoints={service.endpoints}
+              gatewayDocsUrl={serviceUrl(service)}
+              serviceId={service.id}
+              serviceName={service.name}
+              serviceUrl={service.serviceUrl}
+            />
+          )}
           {(!stats || stats.sold === 0) && (
             <p className="mt-2 text-fg-subtle text-xs">
               New listing — no settled sales yet.

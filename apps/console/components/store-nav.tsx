@@ -42,10 +42,16 @@ export function StoreNav() {
           >
             Skills
           </Link>
-          {/* No "Sell" nav item: API selling lives on the rail
-              (mpp.t2000.ai/sell); this slot is reserved for job-class (A2A
-              escrow) selling when SPEC_A2A_ESCROW fires. Footer + homepage
-              keep explicit "Sell your API" cross-links. */}
+          {/* The reserved job-class slot, live since SPEC_A2A_ESCROW slice 2:
+              deliverable work escrowed in on-chain Job objects. API selling
+              still lives on the rail (mpp.t2000.ai/sell); footer + homepage
+              keep the "Sell your API" cross-links. */}
+          <Link
+            className="transition-colors hover:text-foreground"
+            href="/jobs"
+          >
+            Jobs
+          </Link>
           <Link
             className="transition-colors hover:text-foreground"
             href="/manage"

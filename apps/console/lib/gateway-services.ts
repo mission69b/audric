@@ -61,6 +61,16 @@ export type GatewayService = {
   dialect?: "x402" | "mpp-header";
   payTo?: string;
   endpoints: GatewayEndpoint[];
+  /** Job-class (A2A escrow) listing — SPEC_A2A_ESCROW slice 2. Set when the
+   *  seller's 402 advertises escrow terms: buyers fund an on-chain Job
+   *  object (t2 job create) instead of paying per call, and the price is
+   *  per JOB. Escrow listings always belong to a CLAIMED wallet (the
+   *  gateway's claim gate requires a registered Agent ID). */
+  escrow?: {
+    deliverWithinMs: number;
+    reviewWindowMs: number;
+    rejectSplitBps: number;
+  };
 };
 
 export async function fetchGatewayServices(): Promise<GatewayService[]> {
