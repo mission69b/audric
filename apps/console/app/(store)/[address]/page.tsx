@@ -8,6 +8,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
+import { CopyButton } from "@/components/copy-button";
 import { UseServiceTabs } from "@/components/use-service-tabs";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
@@ -53,6 +54,13 @@ const NUMERIC_SEGMENT_RE = /^\d{1,10}$/;
 
 function short(v: string): string {
   return v.length > 16 ? `${v.slice(0, 8)}…${v.slice(-6)}` : v;
+}
+
+// The claim copy-prompt for the seller's coding agent (same distribution
+// pattern as the sell page / sellers.md): registering an Agent ID with the
+// payTo key IS the claim.
+function claimPrompt(payTo: string): string {
+  return `My API's x402 402 challenge pays ${payTo}. Using the machine that holds that wallet's key (~/.t2000/wallet.key or T2000_KEY), run \`npx @t2000/cli agent register\` to claim my store page at agents.t2000.ai/${payTo}, then \`npx @t2000/cli agent profile\` to set my display name and description. Show me the register digest.`;
 }
 
 function Field({
@@ -502,12 +510,14 @@ export default async function AgentProfilePage({
         )
       )}
 
-      {/* Unclaimed sellers: the claim CTA. Claiming = registering an Agent
-          ID on the payTo wallet — the existing register flows ARE the claim
-          mechanic; this page just reads the registry. */}
+      {/* Unclaimed sellers: the claim panel. Claiming = registering an Agent
+          ID signed BY the payTo wallet — only that key can prove control, so
+          the panel hands the seller the CLI path (Google sign-in can never
+          claim a keypair address; see the S.750 friction audit). The page
+          flips to Claimed on the next render once the registry row exists. */}
       {!profile && (
-        <div className="ag-card mt-8 flex flex-wrap items-center justify-between gap-3 p-5">
-          <div className="min-w-[260px] flex-1">
+        <div className="ag-card mt-8 grid gap-4 p-6">
+          <div>
             <div className="font-semibold text-[14px] text-foreground">
               Is this your API?
             </div>
@@ -517,16 +527,46 @@ export default async function AgentProfilePage({
               <span className="font-mono text-fg-muted">
                 {short(walletAddress)}
               </span>
-              . Claim it with that wallet to get a verified profile: custom
-              name, avatar, links, and browser management. Free and gasless —
-              sign in and register, or run{" "}
-              <span className="font-mono text-fg-muted">t2 agent register</span>{" "}
-              with the wallet key.
+              . Claiming it gets you a verified badge, custom name, avatar,
+              links, and browser management. Free and gasless. Only the wallet
+              your 402 pays can claim — run this where that key lives:
             </p>
           </div>
-          <Link className="ag-btn ag-btn--primary no-underline" href="/manage">
-            Claim this page →
-          </Link>
+          <div className="flex flex-wrap items-start gap-2">
+            <code
+              className="m-0 flex-1 basis-[280px] overflow-x-auto whitespace-nowrap rounded-md border px-3 py-2.5 font-mono text-[12px] text-foreground"
+              style={{ borderColor: "var(--ag-border)" }}
+            >
+              npx @t2000/cli agent register
+            </code>
+            <CopyButton
+              label="Copy command"
+              text="npx @t2000/cli agent register"
+            />
+          </div>
+          <div className="flex flex-wrap items-start gap-2">
+            <p
+              className="m-0 flex-1 basis-[280px] rounded-md border px-3 py-2.5 font-mono text-[11px] text-fg-subtle leading-[1.55]"
+              style={{ borderColor: "var(--ag-border)" }}
+            >
+              {claimPrompt(walletAddress)}
+            </p>
+            <CopyButton label="Copy prompt" text={claimPrompt(walletAddress)} />
+          </div>
+          <p className="m-0 text-[12px] text-fg-subtle leading-relaxed">
+            Or paste the prompt into the coding agent that runs your API — it
+            claims end to end. Refresh this page after: it flips to your claimed
+            profile automatically. Want to manage it from a browser with Google
+            sign-in? After claiming, run{" "}
+            <span className="font-mono text-fg-muted">
+              t2 agent link &lt;your-passport&gt;
+            </span>{" "}
+            and confirm once in{" "}
+            <Link className="font-medium text-foreground" href="/manage/agents">
+              Console → My agents
+            </Link>
+            .
+          </p>
         </div>
       )}
 
