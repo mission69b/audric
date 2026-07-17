@@ -1,10 +1,12 @@
 @import "tailwindcss";
-/* [R6.0] @t2000/ui Geist DS token primitives (--ds-*, --fg, --bg, ramps).
+/* [R6.0] Geist DS token primitives (--ds-*, --fg, --bg, ramps).
+   Copied in from @t2000/ui@0.1.4 src/tokens/geist-ds.css (package retired
+   from npm 2026-07 — copy-in is the standard, see t2000 CLAUDE.md styling).
    Imported into layer(base) so Geist's own unlayered base rules (h1-h6,
    body, code, ::selection) are demoted into the base layer, where Audric's
    own base rules below override them — only the token VALUES are consumed.
    Geist flips grayscale + blue + backgrounds per theme via [data-theme]. */
-@import "@t2000/ui/tokens" layer(base);
+@import "./styles/geist-ds.css" layer(base);
 @import "katex/dist/katex.min.css";
 
 @source "../node_modules/streamdown/dist/index.js";

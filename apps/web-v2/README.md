@@ -22,7 +22,6 @@ Audric is the consumer brand. The capabilities underneath ship from the **t2000*
 |---|---|
 | [`@t2000/engine`](https://npmjs.com/package/@t2000/engine) | The agent runtime — tools, reasoning, safety guards, memory. Streamed into the chat route. |
 | [`@t2000/sdk`](https://npmjs.com/package/@t2000/sdk) | Sui transaction builders (NAVI save/borrow, Cetus swap, transfers) + the token registry. |
-| `@t2000/ui` | Geist Design System tokens + themed shadcn primitives. This app consumes the **tokens**; the chat shell primitives stay forked from the Vercel template. |
 | [`@t2000/mcp`](https://npmjs.com/package/@t2000/mcp) | Multi-step skills, exposed as MCP prompts. |
 
 The app itself owns the surfaces a user touches: auth, persistence, the sponsored-transaction flow, and how the agent's output is rendered (chat, cards, canvases).
@@ -34,7 +33,7 @@ The app itself owns the surfaces a user touches: auth, persistence, the sponsore
 - **Auth** — zkLogin (Google OAuth → Sui address) through `@mysten/dapp-kit`; Enoki for gas sponsorship.
 - **Chain** — `@mysten/sui` v2.x + `@mysten/payment-kit`.
 - **Data** — Prisma → Neon Postgres; Upstash Redis for sessions; `@mysten-incubation/memwal` for agent memory.
-- **Styling** — Tailwind v4 + Geist Design System tokens (from `@t2000/ui`). Light by default with a class + `data-theme` theme switcher (`next-themes`). Type: New York Large + Geist + Departure Mono.
+- **Styling** — Tailwind v4 + Geist Design System tokens (copied in at `app/styles/geist-ds.css`; the `@t2000/ui` package was retired). Light by default with a class + `data-theme` theme switcher (`next-themes`). Type: New York Large + Geist + Departure Mono.
 - **Lint/format** — Biome (via `ultracite`).
 
 ## Local dev
