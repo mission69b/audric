@@ -498,8 +498,8 @@ importers:
         specifier: 5.30.0
         version: 5.30.0(typescript@5.9.3)
       '@t2000/sdk':
-        specifier: ^9.7.0
-        version: 9.7.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
+        specifier: ^9.7.1
+        version: 9.7.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))
       '@vercel/analytics':
         specifier: ^1.6.1
         version: 1.6.1(next@16.2.0(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.1(react@19.0.1))(react@19.0.1))(react@19.0.1)
@@ -3408,8 +3408,8 @@ packages:
   '@t2000/sdk@9.6.0':
     resolution: {integrity: sha512-D5WEVyqDmvhomZOlxnCW1tqxC23rUwVSUjmF4v4c6U7FrB4g4N4EQSFKUzHTyWOw5GiXoKq9t0kxFlXasPbzog==}
 
-  '@t2000/sdk@9.7.0':
-    resolution: {integrity: sha512-xkYRxQb2eBLkTh2opC0A4rzr5KDryqQaS3YEXOMGIz2HzKExeOY1stkcXkcCHmwenCM0+9VN9mttQ/arVkMpUA==}
+  '@t2000/sdk@9.7.1':
+    resolution: {integrity: sha512-xZB/D1NfhVAD+xbGdbiY1uFgvhtHkD/tLRrUcwlt0wGOAJcfq3F4dHOSzK5ecKXwzp5fxjiDl8S4+uRINqkuKQ==}
 
   '@tailwindcss/node@4.2.2':
     resolution: {integrity: sha512-pXS+wJ2gZpVXqFaUEjojq7jzMpTGf8rU6ipJz5ovJV6PUGmlJ+jvIwGrzdHdQ80Sg+wmQxUFuoW1UAAwHNEdFA==}
@@ -9587,7 +9587,7 @@ snapshots:
       - typescript
       - viem
 
-  '@t2000/sdk@9.7.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
+  '@t2000/sdk@9.7.1(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(axios@1.16.0)(express@5.2.1)(hono@4.12.12)(openapi-types@12.1.3)(typescript@5.9.3)(viem@2.47.6(typescript@5.9.3)(zod@3.25.76))':
     dependencies:
       '@cetusprotocol/aggregator-sdk': 1.4.8(axios@1.16.0)(typescript@5.9.3)
       '@mysten/payment-kit': 0.1.6(@mysten/sui@2.17.0(typescript@5.9.3))
