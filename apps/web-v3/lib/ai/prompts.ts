@@ -120,6 +120,8 @@ export const systemPrompt = ({
   walletAddress,
   artifactsActive,
   researchActive,
+  payServicesHint,
+  payServicesBlock,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
@@ -142,6 +144,12 @@ export const systemPrompt = ({
   /** Research-shaped turn → inject the multi-search directive so the model runs
    * several VISIBLE web_search steps then a cited synthesis. */
   researchActive?: boolean;
+  /** Always-on one-line paid-services capability hint (authed, catalog live) —
+   * routes needs like "find me a hotel" to find_paid_services. */
+  payServicesHint?: string;
+  /** The full `<paid_services>` catalog block — service-intent turns only
+   * (the pay_service offer-pending gate). See lib/ai/mpp-catalog.ts. */
+  payServicesBlock?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const recall = memoryRecall ? `\n\n${memoryRecall}` : "";
@@ -173,7 +181,12 @@ export const systemPrompt = ({
   // directives when it actually has the tool.
   const preferences = isAuthed ? `\n\n${preferencesPrompt}` : "";
   const research = researchActive ? `\n\n${researchPrompt}` : "";
-  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
+  // Paid services: the tiny hint rides every authed turn (discovery); the
+  // full catalog block only on service-intent turns (the pay_service gate).
+  const payServices = isAuthed
+    ? `${payServicesHint ? `\n\n${payServicesHint}` : ""}${payServicesBlock ? `\n\n${payServicesBlock}` : ""}`
+    : "";
+  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${payServices}${memory}${preferences}`;
 };
 
 export const preferencesPrompt = `Standing preferences (custom instructions): when the user states a LASTING directive about HOW you should respond — the language to reply in ("only speak German"), tone/length ("always be concise"), persona, what to call them, or output format — call \`set_preferences\` with the COMPLETE updated instruction set. These apply to EVERY future response automatically (they're injected as <custom_instructions> above), so do NOT use \`save_memory\` for them — memory is for FACTS recalled when relevant, which would miss a standing directive on an unrelated message.

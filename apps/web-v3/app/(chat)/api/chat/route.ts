@@ -26,7 +26,12 @@ import {
   getCapabilities,
   getModelPricing,
 } from "@/lib/ai/models";
-import { hasPaymentIntent } from "@/lib/ai/payment-intent";
+import {
+  getMppCatalog,
+  paidServicesHint,
+  paidServicesPromptBlock,
+} from "@/lib/ai/mpp-catalog";
+import { hasPaymentIntent, hasPayServiceIntent } from "@/lib/ai/payment-intent";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { scanChatImages } from "@/lib/ai/scan-chat-images";
@@ -42,10 +47,12 @@ import { cryptoMarket } from "@/lib/ai/tools/crypto-market";
 import { cryptoScreener } from "@/lib/ai/tools/crypto-screener";
 import { editDocument } from "@/lib/ai/tools/edit-document";
 import { editImage } from "@/lib/ai/tools/edit-image";
+import { findPaidServices } from "@/lib/ai/tools/find-paid-services";
 import { generateImage } from "@/lib/ai/tools/generate-image";
 import { generateVideo } from "@/lib/ai/tools/generate-video";
 import { imageSearch } from "@/lib/ai/tools/image-search";
 import { onchainTrending, tokenResearch } from "@/lib/ai/tools/onchain";
+import { payService } from "@/lib/ai/tools/pay-service";
 import { perpMarket } from "@/lib/ai/tools/perp-market";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { resolveSuins } from "@/lib/ai/tools/resolve-suins";
@@ -125,6 +132,8 @@ type ActiveTool =
   | "transaction_history"
   | "resolve_suins"
   | "send_transfer"
+  | "find_paid_services"
+  | "pay_service"
   | "save_memory"
   | "set_preferences";
 
@@ -386,6 +395,38 @@ export async function POST(request: Request) {
       isContinuation: isToolApprovalFlow,
     });
 
+    // Paid services (the pay_service surface — the store-era agent_pay
+    // pattern pointed at the mpp.t2000.ai catalog). Discovery is ambient:
+    // authed turns carry a one-line hint + the read-only find_paid_services
+    // tool (costs nothing, spends nothing) so "find me a hotel" routes to
+    // JMPR without magic words. The WRITE (pay_service + the full catalog
+    // block) stays structurally gated: explicit service phrasing, the reply
+    // to a pending priced offer, or a mid-purchase continuation — the S.609
+    // offer-pending gate. Real accounts only; confidential turns return
+    // before tools.
+    const priorAssistantText = (() => {
+      const msgs = messagesFromDb as unknown as Array<{
+        role?: string;
+        parts?: TextPart[];
+      }>;
+      for (let i = (msgs?.length ?? 0) - 1; i >= 0; i--) {
+        if (msgs?.[i]?.role === "assistant") {
+          return partsText(msgs[i].parts);
+        }
+      }
+      return "";
+    })();
+    const mppCatalog =
+      session?.user && !confidential ? await getMppCatalog() : [];
+    const payServiceIntent =
+      mppCatalog.length > 0 &&
+      hasPayServiceIntent({
+        text: recentUserText,
+        lastAssistantText: priorAssistantText,
+        catalogNames: mppCatalog.map((s) => s.name),
+        isContinuation: isToolApprovalFlow,
+      });
+
     // Video gate (2026-06-26 tool-confusion fix): expose generate_video ONLY on
     // video-intent turns. On an image/other turn the tool is absent → the model
     // structurally CANNOT mis-fire video instead of generate_image (the incident:
@@ -450,7 +491,7 @@ export async function POST(request: Request) {
     // Claude Sonnet for premium, the free model (Kimi) for free users — never the
     // Grok pick. Both verified to emit the send call. Sends are rare + high-stakes,
     // so reliability outweighs the routing default. (Off-Auto manual picks stand.)
-    if (routeDecision && paymentIntent) {
+    if (routeDecision && (paymentIntent || payServiceIntent)) {
       const sonnet = "anthropic/claude-sonnet-5";
       chatModel =
         canUsePremium && chatModels.some((m) => m.id === sonnet)
@@ -543,7 +584,10 @@ export async function POST(request: Request) {
     // the whole turn fails. Synthesize a benign "skipped" result so the
     // conversation continues (the model treats the user's chat reply as the
     // answer). Applies to history only — the new user message has no tool calls.
-    const CLIENT_TOOL_PART_TYPES = new Set(["tool-send_transfer"]);
+    const CLIENT_TOOL_PART_TYPES = new Set([
+      "tool-send_transfer",
+      "tool-pay_service",
+    ]);
     uiMessages = uiMessages.map((m) => ({
       ...m,
       parts: m.parts.map((p) => {
@@ -779,6 +823,14 @@ export async function POST(request: Request) {
                   // send_transfer (money WRITE) gated to payment-intent turns
                   // only (S.490). Reads (balance/history/resolve) stay always-on.
                   ...(paymentIntent ? (["send_transfer"] as ActiveTool[]) : []),
+                  // Paid-services surface: the catalog READ is ambient (when
+                  // the catalog is live), the WRITE is offer-gated (S.609).
+                  ...(mppCatalog.length > 0
+                    ? (["find_paid_services"] as ActiveTool[])
+                    : []),
+                  ...(payServiceIntent
+                    ? (["pay_service"] as ActiveTool[])
+                    : []),
                   ...(artifactsActive
                     ? ([
                         "createDocument",
@@ -833,6 +885,10 @@ export async function POST(request: Request) {
             walletAddress: session?.user?.id,
             artifactsActive,
             researchActive,
+            payServicesHint: paidServicesHint(mppCatalog),
+            payServicesBlock: payServiceIntent
+              ? paidServicesPromptBlock(mppCatalog)
+              : undefined,
           }),
           messages: modelMessages,
           // Step budget: research turns get a high budget for several visible
@@ -989,6 +1045,12 @@ export async function POST(request: Request) {
                   }),
                   resolve_suins: resolveSuins,
                   send_transfer: sendTransfer,
+                  // Paid services: catalog read (server-execute) + the pay
+                  // WRITE — client-executed like send_transfer (no execute
+                  // here); the browser resolves the endpoint from the live
+                  // catalog and signs on tap-to-confirm.
+                  find_paid_services: findPaidServices,
+                  pay_service: payService,
                   // Private Memory (§7c) — explicit capture; only when the user
                   // has memory ON this turn. Recall is automatic (model wrap).
                   ...(memoryOn

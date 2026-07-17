@@ -33,6 +33,7 @@ import { ImageSearchResults } from "./image-search-results";
 import { InlineImage, InlineImageLoading } from "./inline-image";
 import { InlineVideo, InlineVideoLoading } from "./inline-video";
 import { MessageActions } from "./message-actions";
+import { PayServiceTool } from "./pay-service-tool";
 import { PreviewAttachment } from "./preview-attachment";
 import { type CryptoMarketOutput, PriceCard } from "./price-card";
 import { PriceChart, type PriceHistoryOutput } from "./price-chart";
@@ -323,6 +324,10 @@ const PurePreviewMessage = ({
 
     if (type === "tool-send_transfer") {
       return <SendTransferTool key={part.toolCallId} part={part} />;
+    }
+
+    if (type === "tool-pay_service") {
+      return <PayServiceTool key={part.toolCallId} part={part} />;
     }
 
     if (type === "tool-save_memory") {

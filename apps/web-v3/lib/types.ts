@@ -6,9 +6,11 @@ import type { createDocument } from "./ai/tools/create-document";
 import type { cryptoHistory } from "./ai/tools/crypto-history";
 import type { cryptoMarket } from "./ai/tools/crypto-market";
 import type { editImage } from "./ai/tools/edit-image";
+import type { findPaidServices } from "./ai/tools/find-paid-services";
 import type { generateImage } from "./ai/tools/generate-image";
 import type { generateVideo } from "./ai/tools/generate-video";
 import type { imageSearch } from "./ai/tools/image-search";
+import type { payService } from "./ai/tools/pay-service";
 import type { perpMarket } from "./ai/tools/perp-market";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
 import type { resolveSuins } from "./ai/tools/resolve-suins";
@@ -57,6 +59,8 @@ type transactionHistoryTool = InferUITool<
 >;
 type resolveSuinsTool = InferUITool<typeof resolveSuins>;
 type sendTransferTool = InferUITool<typeof sendTransfer>;
+type findPaidServicesTool = InferUITool<typeof findPaidServices>;
+type payServiceTool = InferUITool<typeof payService>;
 type saveMemoryTool = InferUITool<ReturnType<typeof saveMemory>>;
 type generateImageTool = InferUITool<ReturnType<typeof generateImage>>;
 type editImageTool = InferUITool<ReturnType<typeof editImage>>;
@@ -85,6 +89,8 @@ export type ChatTools = {
   transaction_history: transactionHistoryTool;
   resolve_suins: resolveSuinsTool;
   send_transfer: sendTransferTool;
+  find_paid_services: findPaidServicesTool;
+  pay_service: payServiceTool;
   save_memory: saveMemoryTool;
 };
 

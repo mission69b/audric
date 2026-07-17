@@ -36,3 +36,46 @@ export function hasPaymentIntent(opts: {
   }
   return PAYMENT_VERBS.test(opts.text);
 }
+
+// ---------------------------------------------------------------------------
+// pay_service gate (the S.609 offer-pending pattern, pointed at the MPP
+// catalog). The full <paid_services> block + the pay_service tool enter a
+// turn only when one of these structural signals fires — the always-on
+// surface is just the one-line hint + the read-only find_paid_services tool.
+// ---------------------------------------------------------------------------
+
+const SERVICE_VERBS =
+  /\b(buy|purchase|hire|order|use|call|run|get|try|pay|book|search)\b[\s\S]{0,60}\b(service|api|endpoint|catalog|hotel|flight|jmpr)\b/i;
+
+export function hasPayServiceIntent(opts: {
+  /** The recent user text (typically the last 1–2 user turns). */
+  text: string;
+  /** The PREVIOUS assistant message's text (the potential offer). */
+  lastAssistantText?: string;
+  /** Display names of the catalog's listed services (live, server-fetched). */
+  catalogNames?: string[];
+  /** True on a tool-approval continuation (mid-flow confirm round-trip). */
+  isContinuation?: boolean;
+}): boolean {
+  if (opts.isContinuation) {
+    return true;
+  }
+  if (SERVICE_VERBS.test(opts.text)) {
+    return true;
+  }
+  // Offer-pending: the assistant just made a priced offer for a real listed
+  // service — keep the tool available for the user's reply, whatever its
+  // wording. Structural (catalog name + price), not phrasing-based.
+  if (
+    opts.lastAssistantText &&
+    opts.catalogNames &&
+    opts.catalogNames.length > 0
+  ) {
+    const assistant = opts.lastAssistantText.toLowerCase();
+    const namedService = opts.catalogNames.some((n) =>
+      assistant.includes(n.toLowerCase())
+    );
+    return namedService && /\$\s?\d/.test(assistant);
+  }
+  return false;
+}

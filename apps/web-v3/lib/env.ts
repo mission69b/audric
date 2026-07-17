@@ -99,6 +99,11 @@ const serverSchema = z.object({
   // via the t2000 gateway — that rail is x402-metered for agents). Unset → no
   // image strip (no boot failure). Server-only.
   BRAVE_API_KEY: optionalString,
+  // In-chat paid services (pay_service over the mpp.t2000.ai catalog) — kill
+  // switch, founder-ops pattern from the store era: "0"/"off"/"false" disables
+  // the whole surface (no catalog block, no tools, no offers) without a
+  // deploy. Fail-open (unset = enabled). Server-only.
+  AUDRIC_PAY_SERVICES: optionalString,
   // Image super-resolution (fal.ai) — OPTIONAL: enables the `upscale_image` tool
   // (fal `clarity-upscaler`, image→image — not on the Vercel Gateway's text→image
   // surface). Unset → the tool returns a graceful "not configured" notice (no
@@ -164,6 +169,7 @@ const runtimeEnv = {
   FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
   CMC_API_KEY: process.env.CMC_API_KEY,
   BRAVE_API_KEY: process.env.BRAVE_API_KEY,
+  AUDRIC_PAY_SERVICES: process.env.AUDRIC_PAY_SERVICES,
   FAL_API_KEY: process.env.FAL_API_KEY,
   PHALA_API_KEY: process.env.PHALA_API_KEY,
   CONFIDENTIAL_ATTESTATION_ENFORCE:
