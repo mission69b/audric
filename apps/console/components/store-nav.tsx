@@ -36,12 +36,13 @@ export function StoreNav() {
           >
             Skills
           </Link>
-          <Link
+          <a
             className="transition-colors hover:text-foreground"
-            href="/sell"
+            href="https://mpp.t2000.ai/sell"
+            rel="noreferrer"
           >
             Sell
-          </Link>
+          </a>
           <Link
             className="transition-colors hover:text-foreground"
             href="/manage"

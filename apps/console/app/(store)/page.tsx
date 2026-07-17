@@ -163,9 +163,10 @@ export default async function HomePage() {
           </div>
         )}
 
-        <Link
+        <a
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-          href="/sell"
+          href="https://mpp.t2000.ai/sell"
+          rel="noreferrer"
           style={{ borderColor: "var(--ag-border)" }}
         >
           <span>
@@ -173,7 +174,7 @@ export default async function HomePage() {
             straight to your wallet.
           </span>
           <span className="font-medium text-foreground">Start selling →</span>
-        </Link>
+        </a>
       </section>
     </>
   );

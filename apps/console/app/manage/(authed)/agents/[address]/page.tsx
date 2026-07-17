@@ -47,8 +47,8 @@ export default async function EditAgentPage({
   }
 
   // Existing catalog listing (payTo match) — shows selling status. The
-  // listing itself is managed on /sell (zero-friction: the API is the
-  // account); this page only reflects it.
+  // listing itself is managed on mpp.t2000.ai/sell (zero-friction: the API
+  // is the account); this page only reflects it.
   const cataloged = isSelf
     ? findServiceByWallet(await fetchGatewayServices(), agent.address)
     : undefined;
@@ -85,7 +85,7 @@ export default async function EditAgentPage({
           }}
         />
 
-        {/* Selling status. The listing flow itself lives at /sell
+        {/* Selling status. The listing flow itself lives at mpp.t2000.ai/sell
             ([SPEC_T2_AGENTS_STORE] one sell path — paste a URL, no account);
             this card only reflects the current state for this wallet. */}
         {isSelf ? (
@@ -124,12 +124,13 @@ export default async function EditAgentPage({
               </p>
             </div>
             <div>
-              <Link
+              <a
                 className="ag-btn ag-btn--primary no-underline"
-                href="/sell"
+                href="https://mpp.t2000.ai/sell"
+                rel="noreferrer"
               >
                 {cataloged ? "Manage on the sell page" : "Start selling"} →
-              </Link>
+              </a>
             </div>
           </div>
         ) : (
