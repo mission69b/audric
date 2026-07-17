@@ -30,11 +30,21 @@ export function StoreNav() {
           </span>
         </Link>
         <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
+          {/* The job-class slot, live since SPEC_A2A_ESCROW slice 2:
+              deliverable work escrowed in on-chain Job objects. */}
           <Link
             className="transition-colors hover:text-foreground"
-            href="/activity"
+            href="/jobs"
           >
-            Activity
+            Jobs
+          </Link>
+          {/* The full Agent ID registry — the store homepage lists SELLING
+              agents only (2026-07-18). */}
+          <Link
+            className="transition-colors hover:text-foreground"
+            href="/agents"
+          >
+            Directory
           </Link>
           <Link
             className="transition-colors hover:text-foreground"
@@ -42,15 +52,11 @@ export function StoreNav() {
           >
             Skills
           </Link>
-          {/* The reserved job-class slot, live since SPEC_A2A_ESCROW slice 2:
-              deliverable work escrowed in on-chain Job objects. API selling
-              still lives on the rail (mpp.t2000.ai/sell); footer + homepage
-              keep the "Sell your API" cross-links. */}
           <Link
             className="transition-colors hover:text-foreground"
-            href="/jobs"
+            href="/activity"
           >
-            Jobs
+            Activity
           </Link>
           <Link
             className="transition-colors hover:text-foreground"

@@ -1,16 +1,7 @@
-import { getUsernamesByIds } from "@audric/accounts";
-import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
-import { StoreGrid, type StoreRow } from "@/components/store-grid";
-import { fetchRetry } from "@/lib/fetch-retry";
-import {
-  fetchGatewayServices,
-  fetchRailStats,
-  fetchServiceStats,
-  type GatewayService,
-  priceFloor,
-  type ServiceStats,
-} from "@/lib/gateway-services";
+import { StoreGrid } from "@/components/store-grid";
+import { fetchRailStats, priceFloor } from "@/lib/gateway-services";
+import { loadStoreData } from "@/lib/store-rows";
 
 // agents.t2000.ai — the store homepage, restored to the t2000-design/agents
 // treatment (founder call 2026-07-18): display hero + three-ways-to-pay
@@ -20,115 +11,10 @@ import {
 // old blanket "auto-refund" ran on the custodial relay); delivered-% is
 // gone (not measurable for direct sellers). Every stat is rail truth —
 // the store keeps no ledger of its own.
-const API_BASE = "https://api.t2000.ai/v1";
-
-type AgentRow = {
-  address: string;
-  numericId?: number | null;
-  name: string;
-  description?: string | null;
-  category?: string | null;
-  imageUrl?: string | null;
-  mcpEndpoint?: string | null;
-};
-
-async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
-  try {
-    const res = await fetchRetry(`${API_BASE}/agents?limit=100&offset=0`, {
-      next: { revalidate: 60 },
-    });
-    if (res.ok) {
-      const data = (await res.json()) as {
-        total?: number;
-        agents?: AgentRow[];
-      };
-      return { total: data.total ?? 0, agents: data.agents ?? [] };
-    }
-  } catch {
-    // directory unavailable — render the empty state
-  }
-  return { total: 0, agents: [] };
-}
-
-function shortAddress(address: string): string {
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
-
-type Seller = GatewayService & { payTo: string };
-
-/** Assemble the unified grid: selling agents first (receipts-sorted), then
- *  unclaimed sellers, then the rest of the directory. */
-function buildRows(
-  agents: AgentRow[],
-  sellers: Seller[],
-  handles: Map<string, string>,
-  statsById: Map<string, ServiceStats | null>
-): StoreRow[] {
-  const serviceByWallet = new Map(
-    sellers.map((s) => [s.payTo.toLowerCase(), s])
-  );
-  const agentWallets = new Set(agents.map((a) => a.address.toLowerCase()));
-
-  const rows: StoreRow[] = agents.map((a) => {
-    const service = serviceByWallet.get(a.address.toLowerCase());
-    const stats = service ? statsById.get(service.id) : undefined;
-    const handle = handles.get(a.address);
-    return {
-      key: a.address,
-      href: `/${a.numericId ?? a.address}`,
-      name: a.name,
-      sub: `${handle ? `${displayHandle(handle)} · ` : ""}#${a.numericId ?? "—"}`,
-      description:
-        service?.description ??
-        a.description?.split("\n")[0] ??
-        "No description yet.",
-      address: a.address,
-      imageUrl: a.imageUrl,
-      category: a.category ?? null,
-      price: service ? priceFloor(service) : null,
-      perJob: Boolean(service?.escrow),
-      verified: Boolean(stats && stats.sold > 0),
-      sold: stats?.sold,
-      buyers: stats?.buyers,
-    };
-  });
-
-  // Sellers whose payTo isn't a registered agent — still real listings.
-  for (const s of sellers) {
-    const wallet = s.payTo.toLowerCase();
-    if (agentWallets.has(wallet)) {
-      continue;
-    }
-    const stats = statsById.get(s.id);
-    rows.push({
-      key: s.id,
-      href: `/${s.payTo}`,
-      name: s.name,
-      sub: shortAddress(s.payTo),
-      description: s.description,
-      address: s.payTo,
-      category: null,
-      price: priceFloor(s),
-      perJob: Boolean(s.escrow),
-      // Verified requires a CLAIMED wallet (registered Agent ID) + sales.
-      verified: false,
-      sold: stats?.sold,
-      buyers: stats?.buyers,
-    });
-  }
-
-  rows.sort((a, b) => {
-    const soldDiff = (b.sold ?? 0) - (a.sold ?? 0);
-    if (soldDiff !== 0) {
-      return soldDiff;
-    }
-    return (b.price ? 1 : 0) - (a.price ? 1 : 0);
-  });
-  if (rows[0] && (rows[0].sold ?? 0) > 0) {
-    rows[0].featured = true;
-  }
-  return rows;
-}
+//
+// THE STORE grid lists SELLING agents only (founder call 2026-07-18 late
+// morning: non-selling Agent IDs on the store read as misleading supply) —
+// the full registry lives at /agents, the Directory.
 
 const TICKER: [string, string, string][] = [
   ["Identity", "on-chain Agent IDs, receipt-backed", "live"],
@@ -147,29 +33,11 @@ const JOB_STEPS: [string, string][] = [
 ];
 
 export default async function HomePage() {
-  const [{ total, agents }, services, railStats] = await Promise.all([
-    fetchAgents(),
-    fetchGatewayServices(),
-    fetchRailStats(),
-  ]);
-  // The store showcases the AGENT economy only: direct sellers whose 402
-  // pays their own wallet (founder call 2026-07-17 late: the rail's proxied
-  // vendor catalog stays on mpp.t2000.ai/services — listing it here reads
-  // as a reseller catalog and dilutes the A2A story). flatMap so the
-  // narrowed `payTo` survives the filter for TypeScript.
-  const sellers: Seller[] = services.flatMap((s) =>
-    s.direct && s.payTo ? [{ ...s, payTo: s.payTo }] : []
-  );
-  const [handles, statsList] = await Promise.all([
-    getUsernamesByIds(agents.map((a) => a.address)).catch(
-      () => new Map<string, string>()
-    ),
-    Promise.all(sellers.map((s) => fetchServiceStats(s.id))),
-  ]);
-  const statsById = new Map<string, ServiceStats | null>(
-    sellers.map((s, i) => [s.id, statsList[i]])
-  );
-  const rows = buildRows(agents, sellers, handles, statsById);
+  const [{ total, rows, sellers, servicesCount, statsById }, railStats] =
+    await Promise.all([loadStoreData(), fetchRailStats()]);
+  // The store grid = agents with something to sell. Everyone else lives on
+  // the /agents directory.
+  const sellerRows = rows.filter((r) => r.price);
   const top = rows.find((r) => r.verified && (r.sold ?? 0) > 0);
   const topStats = top
     ? statsById.get(
@@ -328,7 +196,7 @@ export default async function HomePage() {
               ["Settled", railStats ? `$${railStats.totalVolume}` : "—"],
               ["Paying wallets", railStats?.uniqueWallets.toString() ?? "—"],
               ["Registered agents", total > 0 ? total.toLocaleString() : "—"],
-              ["Live services", services.length.toString()],
+              ["Live services", servicesCount.toString()],
             ] as const
           ).map(([label, value]) => (
             <div className="ag-card px-5 py-4" key={label}>
@@ -375,16 +243,44 @@ export default async function HomePage() {
             signup, no keys. Your agent just pays.
           </p>
         </div>
-        {rows.length > 0 ? (
-          <StoreGrid rows={rows} />
+        {sellerRows.length > 0 ? (
+          <StoreGrid rows={sellerRows} />
         ) : (
-          <div className="ag-card mt-4 px-4 py-8 text-center text-fg-subtle text-sm">
-            Directory temporarily unavailable.
+          <div className="ag-card mt-4 flex flex-wrap items-center justify-between gap-4 p-6">
+            <div>
+              <div className="font-semibold text-[14px] text-foreground">
+                The shelf is open — be the first agent selling.
+              </div>
+              <p className="m-0 mt-1 max-w-[520px] text-[12.5px] text-fg-subtle leading-relaxed">
+                Paste your API&apos;s URL, no account; buyers pay USDC per call
+                straight to your wallet. Escrowed jobs unlock with a claimed
+                Agent ID.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2.5">
+              <a
+                className="ag-btn ag-btn--primary ag-btn--sm"
+                href="https://mpp.t2000.ai/sell"
+                rel="noreferrer"
+              >
+                Sell a service
+              </a>
+              <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/jobs">
+                Sell a job
+              </Link>
+            </div>
           </div>
         )}
         <p className="mt-4 text-[12px] text-fg-subtle">
-          Looking for utilities (OpenAI, Brave, fal.ai, weather, search…)? The
-          rail proxies {services.length} services —{" "}
+          {total > 0 ? `${total} agents hold an on-chain Agent ID — ` : ""}
+          <Link
+            className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+            href="/agents"
+          >
+            browse the directory
+          </Link>
+          . Looking for utilities (OpenAI, Brave, fal.ai, weather, search…)? The
+          rail proxies {servicesCount} services —{" "}
           <a
             className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
             href="https://mpp.t2000.ai/services"

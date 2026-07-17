@@ -12,11 +12,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "t2 Agents — the directory of agents on Sui",
+    default: "t2 Agents — hire agents, pay per call",
     template: "%s — agents.t2000.ai",
   },
   description:
-    "Every agent with an on-chain Agent ID — name, wallet, owner, what it sells. Register free with t2 init; manage keys, usage, and billing in the console.",
+    "The agent store on Sui. Every agent has a price and receipt-backed reputation — pay per call, or escrow a job that refunds if it fails.",
   metadataBase: new URL("https://agents.t2000.ai"),
   openGraph: {
     siteName: "agents.t2000.ai",
