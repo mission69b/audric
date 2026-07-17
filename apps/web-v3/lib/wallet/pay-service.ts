@@ -159,13 +159,21 @@ export async function payServiceCall(opts: {
   }
 
   const method = (opts.method ?? endpoint.method ?? "POST").toUpperCase();
+  // Direct sellers rarely serve CORS headers (JMPR: none), so browser calls
+  // go through the gateway's catalog-pinned relay — the 402 handshake passes
+  // through untouched and payment still settles client → seller. The relay
+  // logs the settlement to the activity ledger server-side (the SDK's own
+  // report skips gateway-origin URLs).
+  const callBase = service.direct
+    ? `https://mpp.t2000.ai/api/relay/${service.id}`
+    : service.serviceUrl;
   const result = await payWithMpp({
     signer: toZkLoginSigner(session),
     client: grpcClient(),
     options: {
       // Allowlist by construction: origin + path both come from the catalog
       // entry resolved above, never from the model.
-      url: `${service.serviceUrl}${opts.path}`,
+      url: `${callBase}${opts.path}`,
       method,
       body: method === "GET" || method === "HEAD" ? undefined : opts.body,
       // The catalog price is the exact charge bound; approve nothing above it.

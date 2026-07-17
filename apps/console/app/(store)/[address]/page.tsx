@@ -371,6 +371,7 @@ export default async function AgentProfilePage({
             direct={service.direct === true}
             endpoints={service.endpoints}
             gatewayDocsUrl={serviceUrl(service)}
+            serviceId={service.id}
             serviceName={service.name}
             serviceUrl={service.serviceUrl}
           />

@@ -31,14 +31,17 @@ const TABS: { id: TabId; label: string }[] = [
 type Phase = "idle" | "confirm" | "paying" | "done" | "error";
 
 export function UseServiceTabs({
+  serviceId,
   serviceName,
   serviceUrl,
   gatewayDocsUrl,
   direct,
   endpoints,
 }: {
+  /** Catalog id (mpp.t2000.ai) — keys the browser relay path. */
+  serviceId: string;
   serviceName: string;
-  /** The service's own origin (catalog serviceUrl) — calls go HERE. */
+  /** The service's own origin (catalog serviceUrl) — CLI/curl calls go HERE. */
   serviceUrl: string;
   /** mpp.t2000.ai/services/<id> — full docs + schemas. */
   gatewayDocsUrl: string;
@@ -82,6 +85,13 @@ export function UseServiceTabs({
     ? "Settles straight to the seller's wallet — no automatic refund."
     : "Proxied through the gateway — no charge if the call fails.";
 
+  // Direct sellers rarely serve CORS headers, so browser calls go through
+  // the gateway's catalog-pinned pass-through relay (the payment still
+  // settles client → seller). CLI/curl callers use the seller origin.
+  const browserBase = direct
+    ? `https://mpp.t2000.ai/api/relay/${serviceId}`
+    : serviceUrl;
+
   const first = cheapest ?? payable[0] ?? endpoints[0];
   const cliCommand = first
     ? `t2 pay ${serviceUrl}${first.path} --method ${first.method}${
@@ -99,7 +109,7 @@ export function UseServiceTabs({
     setError("");
     try {
       const r = await tryEndpoint({
-        url: `${serviceUrl}${selected.path}`,
+        url: `${browserBase}${selected.path}`,
         method: selected.method,
         body: body.trim() || undefined,
         priceUsdc: selected.price,
