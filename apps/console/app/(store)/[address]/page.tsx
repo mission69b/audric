@@ -228,6 +228,26 @@ export default async function AgentProfilePage({
             >
               {profile.name}
             </h1>
+            {(stats?.sold ?? 0) > 0 && (
+              <span className="ag-verified">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  width="12"
+                >
+                  <path
+                    d="M3.5 8.5l3 3 6-7"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+                Verified
+              </span>
+            )}
             {!profile.active && <Badge variant="destructive">inactive</Badge>}
           </div>
           <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
@@ -282,65 +302,41 @@ export default async function AgentProfilePage({
           </div>
         )}
 
-      {/* The on-chain record (the scan view). */}
-      <Section title="Identity">
-        <Field
-          label="Agent ID"
-          value={numericId == null ? "—" : `#${numericId}`}
-        />
-        <Field
-          label="Chain"
-          value={profile.chain === "sui:mainnet" ? "Sui · mainnet" : "Sui"}
-        />
-        <Field
-          href={`${SUISCAN}/account/${profile.address}`}
-          label="Agent wallet"
-          mono
-          value={short(profile.address)}
-        />
-        {profile.owner ? (
-          <Field
-            href={`${SUISCAN}/account/${profile.owner}`}
-            label="Owner (Passport)"
-            mono
-            value={short(profile.owner)}
-          />
-        ) : (
-          <Field label="Owner" value="Autonomous (no linked owner)" />
-        )}
-        <Field
-          href={`${SUISCAN}/account/${profile.creator ?? profile.address}`}
-          label="Creator"
-          mono
-          value={short(profile.creator ?? profile.address)}
-        />
-        {profile.registry && (
-          <Field
-            href={`${SUISCAN}/object/${profile.registry}`}
-            label="Registry"
-            mono
-            value={short(profile.registry)}
-          />
-        )}
-        {profile.registerDigest && (
-          <Field
-            href={`${SUISCAN}/tx/${profile.registerDigest}`}
-            label="Created tx"
-            mono
-            value={short(profile.registerDigest)}
-          />
-        )}
-        <Field label="Status" value={profile.active ? "Active" : "Inactive"} />
-      </Section>
+      {/* Reputation strip — the store-era trust surface (S.608 design,
+          founder-requested back): every number derives from the payment
+          ledger (receipts, not reviews), rendered FIRST because the
+          marketplace story leads and the registry plumbing follows. */}
+      {service && stats && stats.sold > 0 && (
+        <div className="ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-4">
+          {(
+            [
+              ["Sold", String(stats.sold)],
+              ["Distinct buyers", String(stats.buyers)],
+              ["Settled", `$${stats.settledUsd}`],
+              ["Agent ID", numericId == null ? "—" : `#${numericId}`],
+            ] as const
+          ).map(([k, v], i) => (
+            <div
+              className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
+              key={k}
+            >
+              <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
+                {k}
+              </div>
+              <div className="mt-1.5 font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
+                {v}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* What it sells — gateway-catalog data when the wallet matches a
           cataloged seller; the flagship endpoint otherwise. Any x402 client
           can pay either way. */}
       {service ? (
         <section className="mt-8">
-          <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-            What it sells
-          </h2>
+          <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
             <div className="divide-y divide-border/50">
               {service.endpoints.map((e) => (
@@ -359,6 +355,7 @@ export default async function AgentProfilePage({
                   </span>
                   <span className="font-mono text-[12.5px] text-foreground">
                     ${e.price}
+                    <span className="text-fg-subtle text-[10px]">/call</span>
                   </span>
                 </div>
               ))}
@@ -375,64 +372,79 @@ export default async function AgentProfilePage({
             serviceName={service.name}
             serviceUrl={service.serviceUrl}
           />
+          {(!stats || stats.sold === 0) && (
+            <p className="mt-2 text-fg-subtle text-xs">
+              New listing — no settled sales yet.
+            </p>
+          )}
 
-          {/* Sales — receipts, not reviews. Every row is a payment the
-              ledger verified (proxied: logged at settle; direct:
-              chain-verified via /api/mpp/report). */}
-          {stats && stats.sold > 0 && (
-            <div className="mt-4 overflow-hidden rounded-2xl border border-border/50">
-              <div className="grid grid-cols-3 divide-x divide-border/50">
-                <div className="bg-card/40 px-4 py-3">
-                  <div className="text-fg-subtle text-xs">Sold</div>
-                  <div className="mt-0.5 font-mono text-[15px] text-foreground tabular-nums">
-                    {stats.sold}
-                  </div>
-                </div>
-                <div className="bg-card/40 px-4 py-3">
-                  <div className="text-fg-subtle text-xs">Distinct buyers</div>
-                  <div className="mt-0.5 font-mono text-[15px] text-foreground tabular-nums">
-                    {stats.buyers}
-                  </div>
-                </div>
-                <div className="bg-card/40 px-4 py-3">
-                  <div className="text-fg-subtle text-xs">Settled</div>
-                  <div className="mt-0.5 font-mono text-[15px] text-foreground tabular-nums">
-                    ${stats.settledUsd}
-                  </div>
-                </div>
+          {/* Recent activity — the store-era "Every sale, on-chain."
+              treatment over the payment ledger (proxied: logged at settle;
+              direct: chain-verified via /api/mpp/report). */}
+          {stats && stats.recent.length > 0 && (
+            <div className="mt-10">
+              <div className="ag-eyebrow">{"// RECENT ACTIVITY"}</div>
+              <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+                <h2
+                  className="ag-title"
+                  style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+                >
+                  Every sale, on-chain.
+                </h2>
+                <p className="m-0 max-w-[320px] text-fg-subtle text-xs leading-relaxed">
+                  The reputation above is computed from these settlements — each
+                  row links to its Sui transaction.
+                </p>
               </div>
-              <div className="border-border/50 border-t">
-                <div className="px-4 py-2 text-fg-subtle text-xs">
-                  Every sale, on-chain
-                </div>
-                <div className="divide-y divide-border/50">
-                  {stats.recent.map((r) => (
-                    <div
-                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2"
-                      key={`${r.digest ?? r.createdAt}-${r.endpoint}`}
+              <div className="ag-card mt-3 divide-y divide-border/50 overflow-hidden">
+                {stats.recent.map((r) => {
+                  const row = (
+                    <>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="text-emerald-500">✓</span>
+                        <span className="truncate font-mono text-[12px] text-muted-foreground">
+                          {r.endpoint}
+                        </span>
+                        {r.sender && (
+                          <span className="hidden truncate font-mono text-[11px] text-fg-subtle sm:inline">
+                            {short(r.sender)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-4">
+                        <span className="font-medium text-foreground">
+                          ${r.amount}
+                        </span>
+                        <span className="text-fg-subtle text-xs">
+                          {formatDate(r.createdAt)}
+                        </span>
+                        {r.digest && (
+                          <span className="text-fg-subtle text-xs underline decoration-border underline-offset-4">
+                            tx ↗
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  );
+                  return r.digest ? (
+                    <a
+                      className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-[color:var(--ag-overlay)]"
+                      href={`${SUISCAN}/tx/${r.digest}`}
+                      key={`${r.digest}-${r.endpoint}`}
+                      rel="noreferrer"
+                      target="_blank"
                     >
-                      <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-fg-muted">
-                        {r.endpoint}
-                      </span>
-                      <span className="font-mono text-[12px] text-foreground tabular-nums">
-                        ${r.amount}
-                      </span>
-                      <span className="text-[11px] text-fg-subtle">
-                        {formatDate(r.createdAt)}
-                      </span>
-                      {r.digest && (
-                        <a
-                          className="font-mono text-[11px] text-fg-subtle underline underline-offset-2 transition-colors hover:text-foreground"
-                          href={`https://suiscan.xyz/mainnet/tx/${r.digest}`}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          {r.digest.slice(0, 8)}… ↗
-                        </a>
-                      )}
+                      {row}
+                    </a>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                      key={`${r.createdAt}-${r.endpoint}`}
+                    >
+                      {row}
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -440,9 +452,7 @@ export default async function AgentProfilePage({
       ) : (
         profile.mcpEndpoint && (
           <section className="mt-8">
-            <h2 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-              What it sells
-            </h2>
+            <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
               <div className="px-4 py-3">
                 <div className="text-fg-subtle text-xs">Paid endpoint</div>
@@ -464,30 +474,95 @@ export default async function AgentProfilePage({
         )
       )}
 
-      <Section title="Metadata">
-        <Field
-          href={`${API_BASE}/agents/${profile.address}`}
-          label="Off-chain (registration-v1)"
-          value="View JSON →"
-        />
-        {profile.metadataUri ? (
-          <Field
-            label="On-chain metadata URI"
-            mono
-            value={profile.metadataUri}
-          />
-        ) : (
-          <Field
-            label="On-chain metadata URI"
-            value="— (DB-indexed; Walrus-pinned later)"
-          />
-        )}
-      </Section>
+      {/* The on-chain record (the scan view) — collapsed when the page has a
+          selling story to tell, open for identity-only agents (the store-era
+          <details> pattern). */}
+      <details className="group mt-8" open={!service}>
+        <summary className="cursor-pointer list-none font-medium text-muted-foreground text-xs uppercase tracking-wide transition-colors hover:text-foreground">
+          <span className="mr-1 inline-block transition-transform group-open:rotate-90">
+            ›
+          </span>
+          On-chain record
+        </summary>
 
-      <Section title="Timestamps">
-        <Field label="Created" value={formatDate(profile.createdAt)} />
-        <Field label="Last updated" value={formatDate(profile.updatedAt)} />
-      </Section>
+        <Section title="Identity">
+          <Field
+            label="Agent ID"
+            value={numericId == null ? "—" : `#${numericId}`}
+          />
+          <Field
+            label="Chain"
+            value={profile.chain === "sui:mainnet" ? "Sui · mainnet" : "Sui"}
+          />
+          <Field
+            href={`${SUISCAN}/account/${profile.address}`}
+            label="Agent wallet"
+            mono
+            value={short(profile.address)}
+          />
+          {profile.owner ? (
+            <Field
+              href={`${SUISCAN}/account/${profile.owner}`}
+              label="Owner (Passport)"
+              mono
+              value={short(profile.owner)}
+            />
+          ) : (
+            <Field label="Owner" value="Autonomous (no linked owner)" />
+          )}
+          <Field
+            href={`${SUISCAN}/account/${profile.creator ?? profile.address}`}
+            label="Creator"
+            mono
+            value={short(profile.creator ?? profile.address)}
+          />
+          {profile.registry && (
+            <Field
+              href={`${SUISCAN}/object/${profile.registry}`}
+              label="Registry"
+              mono
+              value={short(profile.registry)}
+            />
+          )}
+          {profile.registerDigest && (
+            <Field
+              href={`${SUISCAN}/tx/${profile.registerDigest}`}
+              label="Created tx"
+              mono
+              value={short(profile.registerDigest)}
+            />
+          )}
+          <Field
+            label="Status"
+            value={profile.active ? "Active" : "Inactive"}
+          />
+        </Section>
+
+        <Section title="Metadata">
+          <Field
+            href={`${API_BASE}/agents/${profile.address}`}
+            label="Off-chain (registration-v1)"
+            value="View JSON →"
+          />
+          {profile.metadataUri ? (
+            <Field
+              label="On-chain metadata URI"
+              mono
+              value={profile.metadataUri}
+            />
+          ) : (
+            <Field
+              label="On-chain metadata URI"
+              value="— (DB-indexed; Walrus-pinned later)"
+            />
+          )}
+        </Section>
+
+        <Section title="Timestamps">
+          <Field label="Created" value={formatDate(profile.createdAt)} />
+          <Field label="Last updated" value={formatDate(profile.updatedAt)} />
+        </Section>
+      </details>
     </>
   );
 }
