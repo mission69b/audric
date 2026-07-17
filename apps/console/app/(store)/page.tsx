@@ -6,8 +6,13 @@ import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
 import {
   fetchGatewayServices,
+  fetchRailPayments,
+  fetchRailVolume,
+  fetchServiceStats,
   findServiceByWallet,
+  type GatewayService,
   priceFloor,
+  type ServiceStats,
 } from "@/lib/gateway-services";
 
 // agents.t2000.ai — the directory IS the homepage (founder decision
@@ -44,14 +49,30 @@ async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
   return { total: 0, agents: [] };
 }
 
+function serviceHref(s: GatewayService): string {
+  // Store pages render for every payTo wallet (claimed or not); proxied
+  // gateway services have no wallet — link the rail's service page.
+  return s.payTo ? `/${s.payTo}` : `https://mpp.t2000.ai/services/${s.id}`;
+}
+
 export default async function HomePage() {
-  const [{ total, agents }, services] = await Promise.all([
-    fetchAgents(),
-    fetchGatewayServices(),
+  const [{ total, agents }, services, { total: settlements }, days] =
+    await Promise.all([
+      fetchAgents(),
+      fetchGatewayServices(),
+      fetchRailPayments(1),
+      fetchRailVolume(),
+    ]);
+  const [handles, statsList] = await Promise.all([
+    getUsernamesByIds(agents.map((a) => a.address)).catch(
+      () => new Map<string, string>()
+    ),
+    Promise.all(services.map((s) => fetchServiceStats(s.id))),
   ]);
-  const handles = await getUsernamesByIds(agents.map((a) => a.address)).catch(
-    () => new Map<string, string>()
+  const statsById = new Map<string, ServiceStats | null>(
+    services.map((s, i) => [s.id, statsList[i]])
   );
+  const weekVolume = days.reduce((n, d) => n + d.volume, 0);
 
   return (
     <>
@@ -87,8 +108,117 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="pt-8 pb-4">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* Live rail stats — the store keeps no ledger of its own; these are
+          the rail's numbers (payments log + catalog). */}
+      <section className="pt-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            ["Settlements", settlements.toLocaleString()],
+            ["Volume · 7d", `$${weekVolume.toFixed(2)}`],
+            ["Services live", String(services.length)],
+            ["Agents", total.toLocaleString()],
+          ].map(([label, value]) => (
+            <div className="ag-card px-4 py-3" key={label}>
+              <div className="font-semibold text-[20px] text-foreground tracking-[-0.02em]">
+                {value}
+              </div>
+              <div className="mt-0.5 text-[11px] text-fg-subtle uppercase tracking-wide">
+                {label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* What's selling — the rail catalog rendered store-side: every card
+          links to the seller's store page (claimed or not), where try-it,
+          reputation, and the sales feed live. */}
+      {services.length > 0 && (
+        <section className="pt-9">
+          <div className="ag-eyebrow">{"// WHAT'S SELLING"}</div>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h2
+              className="ag-title"
+              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+            >
+              Paid APIs, live on the rail.
+            </h2>
+            <p className="m-0 max-w-[340px] pb-1 text-fg-subtle text-xs leading-relaxed">
+              USDC per call, settled straight to the seller&apos;s wallet — sold
+              counts come from the on-chain payment log.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {services.map((s) => {
+              const floor = priceFloor(s);
+              const stats = statsById.get(s.id);
+              const href = serviceHref(s);
+              const card = (
+                <>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div className="truncate font-semibold text-[15px] text-foreground tracking-[-0.014em]">
+                      {s.name}
+                    </div>
+                    {floor && (
+                      <span className="shrink-0 font-mono text-[12px] text-fg-muted">
+                        from {floor}
+                      </span>
+                    )}
+                  </div>
+                  <p className="m-0 line-clamp-2 min-h-[2.6em] text-[12.5px] text-fg-muted leading-relaxed">
+                    {s.description}
+                  </p>
+                  <div className="mt-auto flex flex-wrap items-center gap-2 text-[11px]">
+                    <span
+                      className="rounded-md border px-2 py-0.5 font-mono text-foreground"
+                      style={{ borderColor: "var(--ag-border)" }}
+                    >
+                      {s.endpoints.length}{" "}
+                      {s.endpoints.length === 1 ? "endpoint" : "endpoints"}
+                    </span>
+                    {stats && stats.sold > 0 && (
+                      <span
+                        className="rounded-md border px-2 py-0.5 font-mono text-foreground"
+                        style={{ borderColor: "var(--ag-border)" }}
+                      >
+                        sold · {stats.sold}
+                      </span>
+                    )}
+                    {s.direct && (
+                      <span className="rounded-md border border-transparent px-2 py-0.5 text-fg-subtle">
+                        direct seller
+                      </span>
+                    )}
+                    <span className="ml-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
+                      →
+                    </span>
+                  </div>
+                </>
+              );
+              const className =
+                "ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30";
+              return href.startsWith("/") ? (
+                <Link className={className} href={href} key={s.id}>
+                  {card}
+                </Link>
+              ) : (
+                <a
+                  className={className}
+                  href={href}
+                  key={s.id}
+                  rel="noreferrer"
+                >
+                  {card}
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="pt-9 pb-4">
+        <div className="ag-eyebrow">{"// ALL AGENTS"}</div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {agents.map((a) => {
             const handle = handles.get(a.address);
             const service = findServiceByWallet(services, a.address);

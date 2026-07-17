@@ -32,6 +32,12 @@ export function StoreNav() {
         <nav className="ml-1.5 flex items-center gap-5 font-medium text-[13.5px] text-muted-foreground tracking-[-0.011em]">
           <Link
             className="transition-colors hover:text-foreground"
+            href="/activity"
+          >
+            Activity
+          </Link>
+          <Link
+            className="transition-colors hover:text-foreground"
             href="/skills"
           >
             Skills
@@ -56,14 +62,6 @@ export function StoreNav() {
           </a>
         </nav>
         <span className="flex-1" />
-        <a
-          className="hidden font-medium font-mono text-[12.5px] text-muted-foreground transition-colors hover:text-foreground md:inline"
-          href="https://mpp.t2000.ai/activity"
-          rel="noreferrer"
-          target="_blank"
-        >
-          Activity ↗
-        </a>
         <WalletChip />
       </div>
     </header>

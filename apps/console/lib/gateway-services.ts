@@ -77,6 +77,61 @@ export async function fetchGatewayServices(): Promise<GatewayService[]> {
   return [];
 }
 
+export type RailPayment = {
+  id: number;
+  /** Catalog service id — resolve to a store page via the services list. */
+  service: string;
+  endpoint: string;
+  amount: string;
+  digest: string | null;
+  sender: string | null;
+  createdAt: string;
+};
+
+/** The unified feed — every settlement the rail has logged (proxied rows at
+ *  settle time, direct rows chain-verified via /api/mpp/report). */
+export async function fetchRailPayments(
+  limit = 60
+): Promise<{ payments: RailPayment[]; total: number }> {
+  try {
+    const res = await fetchRetry(`${GATEWAY}/api/mpp/payments?limit=${limit}`, {
+      next: { revalidate: 30 },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as {
+        payments?: RailPayment[];
+        total?: number;
+      };
+      return { payments: data.payments ?? [], total: data.total ?? 0 };
+    }
+  } catch {
+    // feed unreachable — callers render the empty state
+  }
+  return { payments: [], total: 0 };
+}
+
+export type RailVolumeDay = {
+  date: string;
+  label: string;
+  count: number;
+  volume: number;
+};
+
+export async function fetchRailVolume(): Promise<RailVolumeDay[]> {
+  try {
+    const res = await fetchRetry(`${GATEWAY}/api/mpp/volume`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { days?: RailVolumeDay[] };
+      return data.days ?? [];
+    }
+  } catch {
+    // volume unreachable — callers render without the strip
+  }
+  return [];
+}
+
 export function findServiceByWallet(
   services: GatewayService[],
   address: string
