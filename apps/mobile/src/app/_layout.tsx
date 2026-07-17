@@ -1,3 +1,4 @@
+import "@/lib/polyfills";
 import {
   Geist_400Regular,
   Geist_500Medium,
