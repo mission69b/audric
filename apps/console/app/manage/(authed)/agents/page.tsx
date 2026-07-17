@@ -9,12 +9,21 @@ import {
   AgentActionButton,
   RestoreButton,
 } from "@/components/agent-action-dialog";
-import { AgentManageCard } from "@/components/agent-manage-card";
+import {
+  type AgentEarnings,
+  AgentManageCard,
+} from "@/components/agent-manage-card";
 import { ConfirmOwnershipButton } from "@/components/confirm-ownership-button";
 import { CopyButton } from "@/components/copy-button";
 import { PanelHead } from "@/components/panel-head";
 import { RegisterSelfCard } from "@/components/register-self-card";
 import { Badge } from "@/components/ui/badge";
+import {
+  fetchGatewayServices,
+  fetchServiceStats,
+  findServiceByWallet,
+} from "@/lib/gateway-services";
+import { fetchWalletUsdc } from "@/lib/wallet-usdc";
 
 function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -75,10 +84,35 @@ export default async function MyAgentsPage() {
   // The self-agent (§II.15a stage 3): the agent you ARE, not one you own.
   // listAgentsForOwner matches ownership LINKS only, so the Passport's own
   // registration is fetched separately.
-  const [{ owned, pending, archived }, selfAgent] = await Promise.all([
-    listAgentsForOwner(session.user.id),
-    getAgentProfile(session.user.id),
-  ]);
+  const [{ owned, pending, archived }, selfAgent, services] = await Promise.all(
+    [
+      listAgentsForOwner(session.user.id),
+      getAgentProfile(session.user.id),
+      fetchGatewayServices(),
+    ]
+  );
+
+  // Earnings at the LIST level (founder call 2026-07-17 late: no click-in
+  // needed) — live wallet USDC + rail sales for every row. Best-effort;
+  // rows render with "—" on RPC hiccups.
+  const earningsFor = async (address: string): Promise<AgentEarnings> => {
+    const cataloged = findServiceByWallet(services, address);
+    const [walletUsdc, stats] = await Promise.all([
+      fetchWalletUsdc(address),
+      cataloged ? fetchServiceStats(cataloged.id) : Promise.resolve(null),
+    ]);
+    return {
+      walletUsdc,
+      sold: stats?.sold ?? 0,
+      settledUsd: stats?.settledUsd ?? "0",
+    };
+  };
+  const rows = [
+    ...(selfAgent ? [selfAgent.address] : []),
+    ...owned.map((a) => a.address),
+  ];
+  const earningsList = await Promise.all(rows.map(earningsFor));
+  const earnings = new Map(rows.map((addr, i) => [addr, earningsList[i]]));
 
   // The agent registers itself from where it RUNS (its key must live with
   // it) — the console never mints agent keys (S.705: the browser create
@@ -95,7 +129,11 @@ export default async function MyAgentsPage() {
 
       <GroupLabel>You — your Passport, registered as an agent</GroupLabel>
       {selfAgent ? (
-        <AgentManageCard agent={selfAgent} fundable={false} />
+        <AgentManageCard
+          agent={selfAgent}
+          earnings={earnings.get(selfAgent.address)}
+          fundable={false}
+        />
       ) : (
         <RegisterSelfCard />
       )}
@@ -121,7 +159,11 @@ export default async function MyAgentsPage() {
       ) : (
         <div className="grid gap-3.5">
           {owned.map((a) => (
-            <AgentManageCard agent={a} key={a.address} />
+            <AgentManageCard
+              agent={a}
+              earnings={earnings.get(a.address)}
+              key={a.address}
+            />
           ))}
         </div>
       )}

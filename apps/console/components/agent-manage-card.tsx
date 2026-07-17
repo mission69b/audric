@@ -15,6 +15,14 @@ type Agent = {
   active: boolean;
 };
 
+/** Receipts-derived earnings summary, computed by the list page (wallet
+ *  USDC on-chain + rail sales stats). Null = not loaded / not applicable. */
+export type AgentEarnings = {
+  walletUsdc: number | null;
+  sold: number;
+  settledUsd: string;
+};
+
 function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
@@ -22,11 +30,13 @@ function short(a: string): string {
 export function AgentManageCard({
   agent,
   fundable = true,
+  earnings = null,
 }: {
   agent: Agent;
   /** False for the SELF row — funding your own Passport from itself is a
    *  no-op self-send (founder catch, first live test). */
   fundable?: boolean;
+  earnings?: AgentEarnings | null;
 }) {
   return (
     <div className="ag-card flex flex-wrap items-center gap-4 px-5 py-[18px]">
@@ -50,6 +60,21 @@ export function AgentManageCard({
             {short(agent.address)}
           </span>
         </div>
+        {earnings && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11.5px] text-fg-subtle">
+            <span>
+              {earnings.walletUsdc == null
+                ? "— USDC"
+                : `$${earnings.walletUsdc.toFixed(2)} USDC`}
+            </span>
+            {earnings.sold > 0 && (
+              <>
+                <span>sold · {earnings.sold}</span>
+                <span>settled · ${earnings.settledUsd}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
       {agent.active && (
         <span className="ag-verified px-2.5 py-0.5">

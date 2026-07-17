@@ -10,7 +10,6 @@ import {
   fetchRailVolume,
   fetchServiceStats,
   findServiceByWallet,
-  type GatewayService,
   priceFloor,
   type ServiceStats,
 } from "@/lib/gateway-services";
@@ -49,12 +48,6 @@ async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
   return { total: 0, agents: [] };
 }
 
-function serviceHref(s: GatewayService): string {
-  // Store pages render for every payTo wallet (claimed or not); proxied
-  // gateway services have no wallet — link the rail's service page.
-  return s.payTo ? `/${s.payTo}` : `https://mpp.t2000.ai/services/${s.id}`;
-}
-
 export default async function HomePage() {
   const [{ total, agents }, services, { total: settlements }, days] =
     await Promise.all([
@@ -63,14 +56,19 @@ export default async function HomePage() {
       fetchRailPayments(1),
       fetchRailVolume(),
     ]);
+  // The store showcases the AGENT economy only: direct sellers whose 402
+  // pays their own wallet (founder call 2026-07-17 late: the rail's proxied
+  // vendor catalog stays on mpp.t2000.ai/services — listing it here reads
+  // as a reseller catalog and dilutes the A2A story).
+  const sellers = services.filter((s) => s.direct && s.payTo);
   const [handles, statsList] = await Promise.all([
     getUsernamesByIds(agents.map((a) => a.address)).catch(
       () => new Map<string, string>()
     ),
-    Promise.all(services.map((s) => fetchServiceStats(s.id))),
+    Promise.all(sellers.map((s) => fetchServiceStats(s.id))),
   ]);
   const statsById = new Map<string, ServiceStats | null>(
-    services.map((s, i) => [s.id, statsList[i]])
+    sellers.map((s, i) => [s.id, statsList[i]])
   );
   const weekVolume = days.reduce((n, d) => n + d.volume, 0);
 
@@ -115,7 +113,7 @@ export default async function HomePage() {
           {[
             ["Settlements", settlements.toLocaleString()],
             ["Volume · 7d", `$${weekVolume.toFixed(2)}`],
-            ["Services live", String(services.length)],
+            ["Sellers", String(sellers.length)],
             ["Agents", total.toLocaleString()],
           ].map(([label, value]) => (
             <div className="ag-card px-4 py-3" key={label}>
@@ -130,31 +128,34 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* What's selling — the rail catalog rendered store-side: every card
-          links to the seller's store page (claimed or not), where try-it,
-          reputation, and the sales feed live. */}
-      {services.length > 0 && (
-        <section className="pt-9">
-          <div className="ag-eyebrow">{"// WHAT'S SELLING"}</div>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h2
-              className="ag-title"
-              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
-            >
-              Paid APIs, live on the rail.
-            </h2>
-            <p className="m-0 max-w-[340px] pb-1 text-fg-subtle text-xs leading-relaxed">
-              USDC per call, settled straight to the seller&apos;s wallet — sold
-              counts come from the on-chain payment log.
-            </p>
-          </div>
+      {/* What's selling — DIRECT sellers only (agent-run APIs whose 402 pays
+          their own wallet). The rail's proxied vendor catalog stays on
+          mpp.t2000.ai/services; here it would read as a reseller list. */}
+      <section className="pt-9">
+        <div className="ag-eyebrow">{"// WHAT'S SELLING"}</div>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <h2
+            className="ag-title"
+            style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+          >
+            Agent-run APIs.
+          </h2>
+          <p className="m-0 max-w-[340px] pb-1 text-fg-subtle text-xs leading-relaxed">
+            USDC per call, settled straight to the seller&apos;s own wallet —
+            sold counts come from the on-chain payment log.
+          </p>
+        </div>
+        {sellers.length > 0 ? (
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {services.map((s) => {
+            {sellers.map((s) => {
               const floor = priceFloor(s);
               const stats = statsById.get(s.id);
-              const href = serviceHref(s);
-              const card = (
-                <>
+              return (
+                <Link
+                  className="ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
+                  href={`/${s.payTo}`}
+                  key={s.id}
+                >
                   <div className="flex items-baseline justify-between gap-3">
                     <div className="truncate font-semibold text-[15px] text-foreground tracking-[-0.014em]">
                       {s.name}
@@ -184,37 +185,40 @@ export default async function HomePage() {
                         sold · {stats.sold}
                       </span>
                     )}
-                    {s.direct && (
-                      <span className="rounded-md border border-transparent px-2 py-0.5 text-fg-subtle">
-                        direct seller
-                      </span>
-                    )}
                     <span className="ml-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
                       →
                     </span>
                   </div>
-                </>
-              );
-              const className =
-                "ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30";
-              return href.startsWith("/") ? (
-                <Link className={className} href={href} key={s.id}>
-                  {card}
                 </Link>
-              ) : (
-                <a
-                  className={className}
-                  href={href}
-                  key={s.id}
-                  rel="noreferrer"
-                >
-                  {card}
-                </a>
               );
             })}
           </div>
-        </section>
-      )}
+        ) : (
+          <a
+            className="ag-card mt-4 flex flex-wrap items-center justify-between gap-2 p-5 text-[13px] text-muted-foreground no-underline transition-colors hover:text-foreground"
+            href="https://mpp.t2000.ai/sell"
+            rel="noreferrer"
+          >
+            <span>
+              No agent-run APIs live right now — be the first. Paste your URL,
+              no account; sales settle straight to your wallet.
+            </span>
+            <span className="font-medium text-foreground">Start selling →</span>
+          </a>
+        )}
+        <p className="mt-3 text-[12px] text-fg-subtle">
+          Looking for utilities (OpenAI, Brave, fal.ai, weather, search…)? The
+          rail proxies {services.length} services —{" "}
+          <a
+            className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+            href="https://mpp.t2000.ai/services"
+            rel="noreferrer"
+          >
+            browse them on mpp.t2000.ai
+          </a>
+          .
+        </p>
+      </section>
 
       <section className="pt-9 pb-4">
         <div className="ag-eyebrow">{"// ALL AGENTS"}</div>

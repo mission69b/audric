@@ -6,14 +6,6 @@ import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentEditForm } from "@/components/agent-edit-form";
-import { formatDate } from "@/lib/format";
-import {
-  fetchGatewayServices,
-  fetchServiceStats,
-  findServiceByWallet,
-  serviceUrl,
-} from "@/lib/gateway-services";
-import { fetchWalletUsdc } from "@/lib/wallet-usdc";
 
 // /manage/agents/[address] — the Edit-agent ROUTE (founder call, S.656:
 // a real page, not an inline expand). Guarded to the signed-in owner: the
@@ -49,21 +41,6 @@ export default async function EditAgentPage({
     notFound();
   }
 
-  // Existing catalog listing (payTo match) — shows selling status. The
-  // listing itself is managed on mpp.t2000.ai/sell (zero-friction: the API
-  // is the account); this page only reflects it. Owned (linked) agents show
-  // it too — the claimed payTo wallet is exactly what the human manages here.
-  const cataloged = findServiceByWallet(
-    await fetchGatewayServices(),
-    agent.address
-  );
-  // Earnings — receipts-derived sales from the rail's payment log, plus the
-  // wallet's live on-chain USDC. Both best-effort: the page renders without.
-  const [sales, walletUsdc] = await Promise.all([
-    cataloged ? fetchServiceStats(cataloged.id) : Promise.resolve(null),
-    fetchWalletUsdc(agent.address),
-  ]);
-
   return (
     <div className="max-w-[780px]">
       <Link
@@ -96,134 +73,17 @@ export default async function EditAgentPage({
           }}
         />
 
-        {/* Selling status. The listing flow itself lives at mpp.t2000.ai/sell
-            ([SPEC_T2_AGENTS_STORE] one sell path — paste a URL, no account);
-            this card only reflects the current state for this wallet. */}
-        {isSelf ? (
-          <div className="ag-card grid gap-3 p-6">
-            <div>
-              <div className="font-semibold text-[14.5px] text-foreground">
-                Sell your API
-              </div>
-              <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
-                {cataloged ? (
-                  <>
-                    This wallet sells{" "}
-                    <a
-                      className="font-medium"
-                      href={serviceUrl(cataloged)}
-                      rel="noopener noreferrer"
-                      style={{ color: "var(--ag-accent)" }}
-                      target="_blank"
-                    >
-                      {cataloged.name} →
-                    </a>{" "}
-                    ({cataloged.endpoints.length}{" "}
-                    {cataloged.endpoints.length === 1
-                      ? "endpoint"
-                      : "endpoints"}
-                    ). Re-probed daily; changed your prices or spec? Paste your
-                    URL on the sell page to refresh instantly.
-                  </>
-                ) : (
-                  <>
-                    Charge USDC per call with x402 — paste your endpoint URL,
-                    machines check it, and you&apos;re listed. No sign-up;
-                    payment settles straight to the wallet your 402 names.
-                  </>
-                )}
-              </p>
-            </div>
-            <div>
-              <a
-                className="ag-btn ag-btn--primary no-underline"
-                href="https://mpp.t2000.ai/sell"
-                rel="noreferrer"
-              >
-                {cataloged ? "Manage on the sell page" : "Start selling"} →
-              </a>
-            </div>
-          </div>
-        ) : (
-          agent.mcpEndpoint && (
-            <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-              Endpoint:{" "}
-              <span className="break-all text-fg-muted">
-                {agent.mcpEndpoint}
-              </span>{" "}
-              — set on-chain by the agent itself.
-            </p>
-          )
+        {/* No sell card, no earnings card here — selling lives on the rail
+            (mpp.t2000.ai/sell) and earnings surface at the LIST level
+            (/manage/agents rows; founder call 2026-07-17 late: no click-in
+            needed). This page is editing + on-chain controls only. */}
+        {agent.mcpEndpoint && (
+          <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
+            Endpoint:{" "}
+            <span className="break-all text-fg-muted">{agent.mcpEndpoint}</span>{" "}
+            — set on-chain by the agent itself.
+          </p>
         )}
-
-        {/* Earnings — the wallet's live USDC + receipts-derived sales from
-            the rail's payment log (the same rows the public store page
-            renders). The console never keeps a ledger of its own. */}
-        <div className="ag-card grid gap-4 p-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <div className="font-semibold text-[14.5px] text-foreground">
-              Earnings
-            </div>
-            <Link
-              className="font-mono text-[11.5px] text-fg-subtle no-underline transition-colors hover:text-foreground"
-              href={`/${agent.address}`}
-            >
-              public store page →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              [
-                "Wallet USDC",
-                walletUsdc == null ? "—" : `$${walletUsdc.toFixed(2)}`,
-              ],
-              ["Sold", sales ? String(sales.sold) : "0"],
-              ["Buyers", sales ? String(sales.buyers) : "0"],
-              ["Settled", sales ? `$${sales.settledUsd}` : "$0"],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <div className="font-semibold text-[18px] text-foreground tracking-[-0.02em]">
-                  {value}
-                </div>
-                <div className="mt-0.5 text-[11px] text-fg-subtle uppercase tracking-wide">
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
-          {sales && sales.recent.length > 0 ? (
-            <div
-              className="divide-y divide-border/50 rounded-lg border"
-              style={{ borderColor: "var(--ag-border)" }}
-            >
-              {sales.recent.slice(0, 5).map((r) => (
-                <div
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-[12.5px]"
-                  key={`${r.createdAt}-${r.endpoint}`}
-                >
-                  <span className="truncate font-mono text-muted-foreground">
-                    {r.endpoint}
-                  </span>
-                  <span className="flex shrink-0 items-center gap-3">
-                    <span className="font-medium text-foreground">
-                      ${r.amount}
-                    </span>
-                    <span className="text-fg-subtle text-xs">
-                      {formatDate(r.createdAt)}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="m-0 text-[12.5px] text-fg-subtle leading-relaxed">
-              No sales yet.{" "}
-              {cataloged
-                ? "The listing is live — sales settle straight to this wallet and show up here."
-                : "List an API and every settlement lands here, receipt-backed."}
-            </p>
-          )}
-        </div>
 
         {/* On-chain controls — BOTH on-chain actions live here, together
             (S.705: they were split across two pages and read as one thing).
