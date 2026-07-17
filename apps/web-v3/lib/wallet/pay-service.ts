@@ -149,6 +149,8 @@ export async function payServiceCall(opts: {
   // AFTER the payment settled (JMPR, 2026-07-17: charged, no delivery).
   // These sellers are filtered out of the model's catalog too — this is the
   // fail-closed backstop, and the SDK enforces the same rule at pay time.
+  // INTENTIONAL KEEP: the gateway's hard x402 listing gate (S.749) means this
+  // normally never fires — kept as defense-in-depth, do not sweep.
   if (service.direct === true && service.dialect !== "x402") {
     throw new Error(
       `${service.name} only accepts a payment dialect that browser Passport wallets can't safely pay — nothing was paid. It can be used from the t2 CLI or an MCP agent wallet instead.`

@@ -163,19 +163,17 @@ export default async function HomePage() {
           </div>
         )}
 
-        <a
+        <Link
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-          href="https://developers.t2000.ai/sell-your-api"
-          rel="noreferrer"
+          href="/sell"
           style={{ borderColor: "var(--ag-border)" }}
-          target="_blank"
         >
           <span>
-            Sell your API from your profile — buyers pay USDC per call, straight
-            to your wallet.
+            Sell your API — paste its URL, no account. Buyers pay USDC per call,
+            straight to your wallet.
           </span>
           <span className="font-medium text-foreground">Start selling →</span>
-        </a>
+        </Link>
       </section>
     </>
   );

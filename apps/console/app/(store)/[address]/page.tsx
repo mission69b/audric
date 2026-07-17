@@ -19,9 +19,12 @@ import {
   serviceUrl,
 } from "@/lib/gateway-services";
 
-// Public agent profile (agents.t2000.ai/<id>) — identity-only (S.701): who
-// the agent is and its on-chain record. Reads /v1/agents/:address
-// (ERC-8004 registration-v1).
+// Public agent page (agents.t2000.ai/<id or wallet>). Two sources compose:
+// the registry profile (claimed identity) and the gateway catalog (what the
+// wallet sells). [SPEC_T2_AGENTS_STORE] Zero-friction sellers have NO
+// registry record — their page renders from catalog data alone with an
+// "Unclaimed" chip + claim CTA (claiming = registering an Agent ID on the
+// payTo wallet).
 const API_BASE = "https://api.t2000.ai/v1";
 
 type Profile = {
@@ -135,15 +138,23 @@ export async function generateMetadata({
     address = byId.address;
   }
   const profile = await fetchProfile(address);
-  if (!profile) {
-    return { title: "Agent not found" };
+  if (profile) {
+    return {
+      title: profile.name,
+      description:
+        profile.description?.split("\n")[0] ??
+        "An autonomous agent with on-chain identity on t2 Agents.",
+    };
   }
-  return {
-    title: profile.name,
-    description:
-      profile.description?.split("\n")[0] ??
-      "An autonomous agent with on-chain identity on t2 Agents.",
-  };
+  // Unclaimed seller — the catalog entry is the page.
+  const service = findServiceByWallet(await fetchGatewayServices(), address);
+  if (service) {
+    return {
+      title: service.name,
+      description: service.description.split("\n")[0],
+    };
+  }
+  return { title: "Agent not found" };
 }
 
 export default async function AgentProfilePage({
@@ -176,10 +187,18 @@ export default async function AgentProfilePage({
   }
 
   const profile = await fetchProfile(address);
-  if (!profile) {
+  const services = await fetchGatewayServices();
+  // What the wallet sells: the gateway catalog is the SSOT — match by
+  // wallet (direct sellers pin `payTo`), render ITS data, and link to the
+  // gateway service page for docs + try-it.
+  const service = findServiceByWallet(services, profile?.address ?? address);
+  // Claimed = a registry profile exists for the wallet. Unclaimed sellers
+  // (zero-friction listings) render from the catalog entry alone.
+  if (!(profile || service)) {
     notFound();
   }
   if (
+    profile &&
     address === segment &&
     segment.startsWith("0x") &&
     profile.registrations?.[0]?.agentId != null
@@ -187,18 +206,15 @@ export default async function AgentProfilePage({
     permanentRedirect(`/${profile.registrations[0].agentId}`);
   }
 
-  const numericId = profile.registrations?.[0]?.agentId;
-  const [handle, services] = await Promise.all([
-    getUserById(address)
-      .then((u) => u?.username ?? null)
-      .catch(() => null),
-    fetchGatewayServices(),
-  ]);
-  // What the agent sells: the gateway catalog is the SSOT — match by the
-  // agent's wallet (direct sellers pin `payTo`), render ITS data, and link
-  // to the gateway service page for docs + try-it. Uncataloged sellers fall
-  // back to the flagship endpoint from their on-chain registration.
-  const service = findServiceByWallet(services, profile.address);
+  const walletAddress = profile?.address ?? address;
+  const displayName = profile?.name ?? service?.name ?? short(walletAddress);
+  const description = profile?.description ?? service?.description;
+  const numericId = profile?.registrations?.[0]?.agentId;
+  const handle = profile
+    ? await getUserById(address)
+        .then((u) => u?.username ?? null)
+        .catch(() => null)
+    : null;
   // Receipts-derived sales history (the store-era trust strip, rebuilt on the
   // payment ledger): sold · buyers · settled + the recent on-chain rows.
   const stats = service ? await fetchServiceStats(service.id) : null;
@@ -215,9 +231,9 @@ export default async function AgentProfilePage({
       {/* Header — monogram tile + display name + status. */}
       <div className="mt-6 flex flex-wrap items-start gap-5">
         <AgentAvatar
-          address={profile.address}
-          imageUrl={profile.image}
-          name={profile.name}
+          address={walletAddress}
+          imageUrl={profile?.image}
+          name={displayName}
           size={88}
         />
         <div className="min-w-[260px] flex-1">
@@ -226,9 +242,9 @@ export default async function AgentProfilePage({
               className="ag-title"
               style={{ fontSize: "clamp(30px, 4vw, 46px)" }}
             >
-              {profile.name}
+              {displayName}
             </h1>
-            {(stats?.sold ?? 0) > 0 && (
+            {profile && (stats?.sold ?? 0) > 0 && (
               <span className="ag-verified">
                 <svg
                   aria-hidden="true"
@@ -248,23 +264,34 @@ export default async function AgentProfilePage({
                 Verified
               </span>
             )}
-            {!profile.active && <Badge variant="destructive">inactive</Badge>}
+            {!profile && (
+              <span
+                className="rounded-md border px-2 py-0.5 font-mono text-[11px] text-fg-subtle"
+                style={{ borderColor: "var(--ag-border)" }}
+              >
+                Unclaimed
+              </span>
+            )}
+            {profile && !profile.active && (
+              <Badge variant="destructive">inactive</Badge>
+            )}
           </div>
           <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">
             {handle && <>{displayHandle(handle)} · </>}
             {numericId != null && <>#{numericId}</>}
-            {profile.category && <> · {categoryLabel(profile.category)}</>}
+            {profile?.category && <> · {categoryLabel(profile.category)}</>}
+            {!profile && <>{short(walletAddress)}</>}
           </div>
         </div>
       </div>
 
-      {profile.description && (
+      {description && (
         <p className="mt-3 max-w-2xl whitespace-pre-line text-muted-foreground">
-          {profile.description}
+          {description}
         </p>
       )}
 
-      {profile.links &&
+      {profile?.links &&
         (profile.links.website ||
           profile.links.twitter ||
           profile.links.github) && (
@@ -451,7 +478,7 @@ export default async function AgentProfilePage({
           )}
         </section>
       ) : (
-        profile.mcpEndpoint && (
+        profile?.mcpEndpoint && (
           <section className="mt-8">
             <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
@@ -475,95 +502,125 @@ export default async function AgentProfilePage({
         )
       )}
 
+      {/* Unclaimed sellers: the claim CTA. Claiming = registering an Agent
+          ID on the payTo wallet — the existing register flows ARE the claim
+          mechanic; this page just reads the registry. */}
+      {!profile && (
+        <div className="ag-card mt-8 flex flex-wrap items-center justify-between gap-3 p-5">
+          <div className="min-w-[260px] flex-1">
+            <div className="font-semibold text-[14px] text-foreground">
+              Is this your API?
+            </div>
+            <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
+              This page was created from the API&apos;s own 402 challenge — it
+              pays{" "}
+              <span className="font-mono text-fg-muted">
+                {short(walletAddress)}
+              </span>
+              . Claim it with that wallet to get a verified profile: custom
+              name, avatar, links, and browser management. Free and gasless —
+              sign in and register, or run{" "}
+              <span className="font-mono text-fg-muted">t2 agent register</span>{" "}
+              with the wallet key.
+            </p>
+          </div>
+          <Link className="ag-btn ag-btn--primary no-underline" href="/manage">
+            Claim this page →
+          </Link>
+        </div>
+      )}
+
       {/* The on-chain record (the scan view) — collapsed when the page has a
           selling story to tell, open for identity-only agents (the store-era
-          <details> pattern). */}
-      <details className="group mt-8" open={!service}>
-        <summary className="cursor-pointer list-none font-medium text-muted-foreground text-xs uppercase tracking-wide transition-colors hover:text-foreground">
-          <span className="mr-1 inline-block transition-transform group-open:rotate-90">
-            ›
-          </span>
-          On-chain record
-        </summary>
+          <details> pattern). Registry-backed, so claimed pages only. */}
+      {profile && (
+        <details className="group mt-8" open={!service}>
+          <summary className="cursor-pointer list-none font-medium text-muted-foreground text-xs uppercase tracking-wide transition-colors hover:text-foreground">
+            <span className="mr-1 inline-block transition-transform group-open:rotate-90">
+              ›
+            </span>
+            On-chain record
+          </summary>
 
-        <Section title="Identity">
-          <Field
-            label="Agent ID"
-            value={numericId == null ? "—" : `#${numericId}`}
-          />
-          <Field
-            label="Chain"
-            value={profile.chain === "sui:mainnet" ? "Sui · mainnet" : "Sui"}
-          />
-          <Field
-            href={`${SUISCAN}/account/${profile.address}`}
-            label="Agent wallet"
-            mono
-            value={short(profile.address)}
-          />
-          {profile.owner ? (
+          <Section title="Identity">
             <Field
-              href={`${SUISCAN}/account/${profile.owner}`}
-              label="Owner (Passport)"
-              mono
-              value={short(profile.owner)}
+              label="Agent ID"
+              value={numericId == null ? "—" : `#${numericId}`}
             />
-          ) : (
-            <Field label="Owner" value="Autonomous (no linked owner)" />
-          )}
-          <Field
-            href={`${SUISCAN}/account/${profile.creator ?? profile.address}`}
-            label="Creator"
-            mono
-            value={short(profile.creator ?? profile.address)}
-          />
-          {profile.registry && (
             <Field
-              href={`${SUISCAN}/object/${profile.registry}`}
-              label="Registry"
-              mono
-              value={short(profile.registry)}
+              label="Chain"
+              value={profile.chain === "sui:mainnet" ? "Sui · mainnet" : "Sui"}
             />
-          )}
-          {profile.registerDigest && (
             <Field
-              href={`${SUISCAN}/tx/${profile.registerDigest}`}
-              label="Created tx"
+              href={`${SUISCAN}/account/${profile.address}`}
+              label="Agent wallet"
               mono
-              value={short(profile.registerDigest)}
+              value={short(profile.address)}
             />
-          )}
-          <Field
-            label="Status"
-            value={profile.active ? "Active" : "Inactive"}
-          />
-        </Section>
+            {profile.owner ? (
+              <Field
+                href={`${SUISCAN}/account/${profile.owner}`}
+                label="Owner (Passport)"
+                mono
+                value={short(profile.owner)}
+              />
+            ) : (
+              <Field label="Owner" value="Autonomous (no linked owner)" />
+            )}
+            <Field
+              href={`${SUISCAN}/account/${profile.creator ?? profile.address}`}
+              label="Creator"
+              mono
+              value={short(profile.creator ?? profile.address)}
+            />
+            {profile.registry && (
+              <Field
+                href={`${SUISCAN}/object/${profile.registry}`}
+                label="Registry"
+                mono
+                value={short(profile.registry)}
+              />
+            )}
+            {profile.registerDigest && (
+              <Field
+                href={`${SUISCAN}/tx/${profile.registerDigest}`}
+                label="Created tx"
+                mono
+                value={short(profile.registerDigest)}
+              />
+            )}
+            <Field
+              label="Status"
+              value={profile.active ? "Active" : "Inactive"}
+            />
+          </Section>
 
-        <Section title="Metadata">
-          <Field
-            href={`${API_BASE}/agents/${profile.address}`}
-            label="Off-chain (registration-v1)"
-            value="View JSON →"
-          />
-          {profile.metadataUri ? (
+          <Section title="Metadata">
             <Field
-              label="On-chain metadata URI"
-              mono
-              value={profile.metadataUri}
+              href={`${API_BASE}/agents/${profile.address}`}
+              label="Off-chain (registration-v1)"
+              value="View JSON →"
             />
-          ) : (
-            <Field
-              label="On-chain metadata URI"
-              value="— (DB-indexed; Walrus-pinned later)"
-            />
-          )}
-        </Section>
+            {profile.metadataUri ? (
+              <Field
+                label="On-chain metadata URI"
+                mono
+                value={profile.metadataUri}
+              />
+            ) : (
+              <Field
+                label="On-chain metadata URI"
+                value="— (DB-indexed; Walrus-pinned later)"
+              />
+            )}
+          </Section>
 
-        <Section title="Timestamps">
-          <Field label="Created" value={formatDate(profile.createdAt)} />
-          <Field label="Last updated" value={formatDate(profile.updatedAt)} />
-        </Section>
-      </details>
+          <Section title="Timestamps">
+            <Field label="Created" value={formatDate(profile.createdAt)} />
+            <Field label="Last updated" value={formatDate(profile.updatedAt)} />
+          </Section>
+        </details>
+      )}
     </>
   );
 }

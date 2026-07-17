@@ -6,7 +6,6 @@ import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentEditForm } from "@/components/agent-edit-form";
-import { SellApiCard } from "@/components/sell-api-card";
 import {
   fetchGatewayServices,
   findServiceByWallet,
@@ -47,8 +46,9 @@ export default async function EditAgentPage({
     notFound();
   }
 
-  // Existing MPP catalog listing (payTo match) — drives the SellApiCard's
-  // catalog step (list vs re-submit). Self-agent only; degrades to null.
+  // Existing catalog listing (payTo match) — shows selling status. The
+  // listing itself is managed on /sell (zero-friction: the API is the
+  // account); this page only reflects it.
   const cataloged = isSelf
     ? findServiceByWallet(await fetchGatewayServices(), agent.address)
     : undefined;
@@ -85,15 +85,53 @@ export default async function EditAgentPage({
           }}
         />
 
-        {/* Seller flow (S.716): registry `update` is signer == agent, so only
-            the SELF-agent's listing is editable here. Owned third-party
-            agents set their endpoint themselves (their key signs). */}
+        {/* Selling status. The listing flow itself lives at /sell
+            ([SPEC_T2_AGENTS_STORE] one sell path — paste a URL, no account);
+            this card only reflects the current state for this wallet. */}
         {isSelf ? (
-          <SellApiCard
-            address={agent.address}
-            catalogUrl={cataloged ? serviceUrl(cataloged) : null}
-            currentEndpoint={agent.mcpEndpoint ?? null}
-          />
+          <div className="ag-card grid gap-3 p-6">
+            <div>
+              <div className="font-semibold text-[14.5px] text-foreground">
+                Sell your API
+              </div>
+              <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
+                {cataloged ? (
+                  <>
+                    This wallet sells{" "}
+                    <a
+                      className="font-medium"
+                      href={serviceUrl(cataloged)}
+                      rel="noopener noreferrer"
+                      style={{ color: "var(--ag-accent)" }}
+                      target="_blank"
+                    >
+                      {cataloged.name} →
+                    </a>{" "}
+                    ({cataloged.endpoints.length}{" "}
+                    {cataloged.endpoints.length === 1
+                      ? "endpoint"
+                      : "endpoints"}
+                    ). Re-probed daily; changed your prices or spec? Paste your
+                    URL on the sell page to refresh instantly.
+                  </>
+                ) : (
+                  <>
+                    Charge USDC per call with x402 — paste your endpoint URL,
+                    machines check it, and you&apos;re listed. No sign-up;
+                    payment settles straight to the wallet your 402 names.
+                  </>
+                )}
+              </p>
+            </div>
+            <div>
+              <Link
+                className="ag-btn ag-btn--primary no-underline"
+                href="/sell"
+              >
+                {cataloged ? "Manage on the sell page" : "Start selling"} →
+              </Link>
+            </div>
+          </div>
         ) : (
           agent.mcpEndpoint && (
             <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">

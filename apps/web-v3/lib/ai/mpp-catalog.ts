@@ -106,6 +106,9 @@ export async function getMppCatalog(): Promise<CatalogService[]> {
         // AFTER the payment settled (JMPR, 2026-07-17: charged, no results).
         // Never offer what we'd refuse: drop them from the in-chat catalog.
         // Fail closed on a missing stamp (pre-dialect entries).
+        // INTENTIONAL KEEP: the gateway now refuses to LIST header-only
+        // sellers at all (hard x402 gate, S.749), so this normally never
+        // fires — kept as defense-in-depth against stale caches.
         if (s.direct === true && s.dialect !== "x402") {
           return [];
         }

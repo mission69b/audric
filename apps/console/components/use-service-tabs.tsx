@@ -94,6 +94,8 @@ export function UseServiceTabs({
   // AFTER the payment settled (JMPR, 2026-07-17: charged, no delivery).
   // Fail closed on undefined (pre-stamp entries) — the SDK enforces the
   // same rule at pay time, this just keeps the dead-end button off the page.
+  // INTENTIONAL KEEP: header-only sellers can no longer be LISTED (hard x402
+  // gate at gateway ingest, S.749) — kept as defense-in-depth, do not sweep.
   const browserPayable = !direct || dialect === "x402";
 
   // Direct sellers rarely serve CORS headers, so browser calls go through

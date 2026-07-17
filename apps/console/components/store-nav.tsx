@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { WalletChip } from "@/components/wallet-chip";
 
-// The 62px site header — shared by the public hub (directory) AND the
+// The 62px site header — shared by the public store (directory) AND the
 // signed-in console (the design keeps this nav on top of /manage; the console
 // grid sits under it). No server session reads: the wallet chip hydrates from
 // localStorage client-side.
@@ -35,6 +35,12 @@ export function StoreNav() {
             href="/skills"
           >
             Skills
+          </Link>
+          <Link
+            className="transition-colors hover:text-foreground"
+            href="/sell"
+          >
+            Sell
           </Link>
           <Link
             className="transition-colors hover:text-foreground"
