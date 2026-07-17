@@ -1,3 +1,6 @@
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import type { ZkProof } from "@/lib/wallet/keys";
+import { loadPendingAuth } from "@/auth/pending-auth";
 import { exchangeUrl, serverRedirectUri } from "./config";
 import type { AuthCode } from "./google";
 
@@ -11,6 +14,10 @@ export type DerivedIdentity = {
   token: string;
   /** Epoch ms when the session token expires (7-day cap, server-set). */
   expiresAt: number;
+  /** The zkLogin proof, present only when the pending nonce inputs were sent. */
+  proof?: ZkProof;
+  /** The maxEpoch bound into the proof — required alongside `proof` to sign. */
+  maxEpoch?: number;
 };
 
 /**
@@ -23,6 +30,15 @@ export async function exchangeForAddress({
   code,
   codeVerifier,
 }: AuthCode): Promise<DerivedIdentity> {
+  // When a pending zkLogin handoff exists, derive its ephemeral PUBLIC key
+  // (never the secret) and send the nonce inputs so the server can mint a
+  // zkLogin proof alongside the identity. Old-shape callers (no pending)
+  // keep sending exactly the old body via the spread below.
+  const pending = await loadPendingAuth();
+  const ephemeralPublicKey = pending
+    ? Ed25519Keypair.fromSecretKey(pending.ephemeralSecret).getPublicKey().toBase64()
+    : undefined;
+
   const res = await fetch(exchangeUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -30,6 +46,13 @@ export async function exchangeForAddress({
       code,
       codeVerifier,
       redirectUri: serverRedirectUri(),
+      ...(pending
+        ? {
+            ephemeralPublicKey,
+            randomness: pending.randomness,
+            maxEpoch: pending.maxEpoch,
+          }
+        : {}),
     }),
   });
 
@@ -40,6 +63,8 @@ export async function exchangeForAddress({
     audMatch?: boolean;
     token?: string;
     expiresAt?: number;
+    proof?: unknown;
+    maxEpoch?: number;
     error?: string;
   };
 
@@ -56,5 +81,7 @@ export async function exchangeForAddress({
     audMatch: Boolean(data.audMatch),
     token: data.token,
     expiresAt: typeof data.expiresAt === "number" ? data.expiresAt : 0,
+    proof: data.proof as ZkProof | undefined,
+    maxEpoch: data.maxEpoch,
   };
 }

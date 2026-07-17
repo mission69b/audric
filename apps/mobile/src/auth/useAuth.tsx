@@ -10,9 +10,11 @@ import {
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { generateAPIUrl } from "@/lib/api-url";
+import { clearWalletKeys, saveWalletKeys } from "@/lib/wallet/keys";
 import { authenticate } from "./biometrics";
 import { type DerivedIdentity, exchangeForAddress } from "./exchange";
 import { AuthCancelled, authorizeWithGoogle } from "./google";
+import { clearPendingAuth, loadPendingAuth } from "./pending-auth";
 import {
   authHeader,
   clearSession,
@@ -102,6 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("signing-in");
     try {
       const code = await authorizeWithGoogle();
+      // Loaded after authorizeWithGoogle (which is what writes it) and before
+      // the exchange: the ephemeral secret deliberately never round-trips
+      // through the exchange response, so it must come from the on-device
+      // pending handoff, not from `derived`.
+      const pending = await loadPendingAuth();
       const derived = await exchangeForAddress(code);
       const next: StoredSession = {
         address: derived.address,
@@ -113,6 +120,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await saveSession(next);
       setSession(next);
       setLastDerived(derived);
+      // Persisting the signing keys is a NON-FATAL enhancement — the server
+      // already falls back to a read-only wallet when it can't mint a proof,
+      // so a SecureStore write failure here must not negate an otherwise
+      // successful sign-in. Degrade to read-only; never surface it as a
+      // sign-in error.
+      try {
+        if (derived.proof && derived.maxEpoch != null && pending) {
+          await saveWalletKeys({
+            ephemeralSecret: pending.ephemeralSecret,
+            proof: derived.proof,
+            maxEpoch: derived.maxEpoch,
+            address: derived.address,
+            expiresAt: pending.expiresAt,
+          });
+        } else {
+          // No fresh proof this sign-in → clear any PRIOR account's wallet keys.
+          // Leaving them would let a send sign from the wrong wallet: session B could
+          // display B's balance while the on-device keys still belong to account A.
+          // Degrade to read-only until the next proof-bearing sign-in instead.
+          await clearWalletKeys();
+        }
+        // Single-use per sign-in: once the ephemeral secret is durably
+        // persisted into wallet-keys (or there was nothing to persist), the
+        // transient pending copy must be cleared.
+        await clearPendingAuth();
+      } catch (keyErr) {
+        // Setup failed partway → clear rather than leave a stale/partial key set that
+        // could belong to a different account than this session.
+        await clearWalletKeys().catch(() => {});
+        console.warn(
+          "[auth] wallet-key setup failed (continuing read-only):",
+          keyErr instanceof Error ? keyErr.message : String(keyErr)
+        );
+      }
       setStatus("signed-in");
     } catch (e) {
       // A user-cancelled browser session is not an error — restore prior state.
@@ -127,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await clearSession();
+    await clearWalletKeys();
     setSession(null);
     setLastDerived(null);
     setError(null);

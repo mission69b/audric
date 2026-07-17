@@ -3,6 +3,8 @@
 // device — the secret lives only on the exchange server. Set these in
 // apps/mobile/.env.local (see .env.example). Expo inlines EXPO_PUBLIC_* at build.
 
+import { SUI_NETWORK } from "@/lib/audric-web";
+
 const required = (name: string, v: string | undefined): string => {
   if (!v) {
     throw new Error(
@@ -75,9 +77,12 @@ export const enokiApiKey = (): string =>
     process.env.EXPO_PUBLIC_ENOKI_API_KEY
   );
 
-/** zkLogin network — must match web-v3 (mainnet). */
-export const enokiNetwork = (): "mainnet" | "testnet" | "devnet" => {
-  const v = process.env.EXPO_PUBLIC_ENOKI_NETWORK?.trim() || "mainnet";
-  if (v === "testnet" || v === "devnet") return v;
-  return "mainnet";
-};
+/**
+ * zkLogin nonce network — MUST equal the broadcast network (`SUI_NETWORK`, read from
+ * EXPO_PUBLIC_SUI_NETWORK). mainnet and testnet keep SEPARATE epoch counters, so if the
+ * nonce network diverged from the broadcast network the `maxEpoch` would be scoped to the
+ * wrong chain and every send would fail. Deriving both from the single `SUI_NETWORK`
+ * resolver removes any chance of divergence (the old separate EXPO_PUBLIC_ENOKI_NETWORK
+ * var is gone).
+ */
+export const enokiNetwork = (): "mainnet" | "testnet" => SUI_NETWORK;
