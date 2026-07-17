@@ -48,13 +48,23 @@ export function UseServiceTabs({
   const [tab, setTab] = useState<TabId>("try");
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
-  // Default to the cheapest payable endpoint — the natural "taste it" call.
+  // Browser-payable: priced under the cap AND a concrete path — templated
+  // paths ({booking_id}) need a real id the browser form can't invent.
   const payable = endpoints.filter((e) => {
     const p = Number.parseFloat(e.price);
-    return Number.isFinite(p) && p > 0 && p <= TRY_IT_CAP_USD;
+    return (
+      Number.isFinite(p) &&
+      p > 0 &&
+      p <= TRY_IT_CAP_USD &&
+      !e.path.includes("{")
+    );
   });
+  // Default to an endpoint with a known-good sample body (a first call
+  // should never be a guessed, paid 4xx), cheapest as the tiebreak.
   const cheapest = [...payable].sort(
-    (a, b) => Number.parseFloat(a.price) - Number.parseFloat(b.price)
+    (a, b) =>
+      (b.sampleBody ? 1 : 0) - (a.sampleBody ? 1 : 0) ||
+      Number.parseFloat(a.price) - Number.parseFloat(b.price)
   )[0];
   const [selected, setSelected] = useState<GatewayEndpoint | undefined>(
     cheapest
@@ -72,7 +82,7 @@ export function UseServiceTabs({
     ? "Settles straight to the seller's wallet — no automatic refund."
     : "Proxied through the gateway — no charge if the call fails.";
 
-  const first = payable[0] ?? endpoints[0];
+  const first = cheapest ?? payable[0] ?? endpoints[0];
   const cliCommand = first
     ? `t2 pay ${serviceUrl}${first.path} --method ${first.method}${
         first.sampleBody ? ` --data '${first.sampleBody}'` : ""
