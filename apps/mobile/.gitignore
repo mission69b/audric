@@ -31,7 +31,8 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+# Trailing `*` also catches `-backup` / dated copies (e.g. .env.local.h1ch9-backup).
+.env*.local*
 
 # typescript
 *.tsbuildinfo

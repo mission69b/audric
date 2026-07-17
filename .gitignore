@@ -12,7 +12,9 @@ dist/
 
 # env
 .env
-.env*.local
+# Trailing `*` also catches `-backup` / dated copies (e.g. .env.local.funkii-backup),
+# which the bare `.env*.local` glob misses because they end AFTER `.local`.
+.env*.local*
 
 # editors
 .vscode/

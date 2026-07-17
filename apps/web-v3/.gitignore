@@ -18,7 +18,8 @@ yarn-error.log*
 .turbo
 .env
 .vercel
-.env*.local
+# Trailing `*` also catches `-backup` / dated copies (e.g. .env.local.h1ch9-rewire-backup).
+.env*.local*
 /test-results/
 /playwright-report/
 /blob-report/
