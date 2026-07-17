@@ -1,23 +1,25 @@
 import { getUsernamesByIds } from "@audric/accounts";
 import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
-import { AgentAvatar } from "@/components/agent-avatar";
-import { categoryLabel } from "@/lib/categories";
+import { StoreGrid, type StoreRow } from "@/components/store-grid";
 import { fetchRetry } from "@/lib/fetch-retry";
 import {
   fetchGatewayServices,
-  fetchRailPayments,
-  fetchRailVolume,
+  fetchRailStats,
   fetchServiceStats,
-  findServiceByWallet,
+  type GatewayService,
   priceFloor,
   type ServiceStats,
 } from "@/lib/gateway-services";
 
-// agents.t2000.ai — the directory IS the homepage (founder decision
-// 2026-07-16). Card grid (the old store presentation), with the gateway
-// catalog cross-referenced by wallet so selling agents carry a live
-// "sells" chip — the catalog stays the SSOT, the card just points at it.
+// agents.t2000.ai — the store homepage, restored to the t2000-design/agents
+// treatment (founder call 2026-07-18): display hero + three-ways-to-pay
+// panel, rail metrics band, status ticker, THE STORE grid, reputation-from-
+// receipts, the jobs stepper, and the sell closer. Honest deltas from the
+// purged original: the refund promise attaches to ESCROWED JOBS only (the
+// old blanket "auto-refund" ran on the custodial relay); delivered-% is
+// gone (not measurable for direct sellers). Every stat is rail truth —
+// the store keeps no ledger of its own.
 const API_BASE = "https://api.t2000.ai/v1";
 
 type AgentRow = {
@@ -48,19 +50,116 @@ async function fetchAgents(): Promise<{ total: number; agents: AgentRow[] }> {
   return { total: 0, agents: [] };
 }
 
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+type Seller = GatewayService & { payTo: string };
+
+/** Assemble the unified grid: selling agents first (receipts-sorted), then
+ *  unclaimed sellers, then the rest of the directory. */
+function buildRows(
+  agents: AgentRow[],
+  sellers: Seller[],
+  handles: Map<string, string>,
+  statsById: Map<string, ServiceStats | null>
+): StoreRow[] {
+  const serviceByWallet = new Map(
+    sellers.map((s) => [s.payTo.toLowerCase(), s])
+  );
+  const agentWallets = new Set(agents.map((a) => a.address.toLowerCase()));
+
+  const rows: StoreRow[] = agents.map((a) => {
+    const service = serviceByWallet.get(a.address.toLowerCase());
+    const stats = service ? statsById.get(service.id) : undefined;
+    const handle = handles.get(a.address);
+    return {
+      key: a.address,
+      href: `/${a.numericId ?? a.address}`,
+      name: a.name,
+      sub: `${handle ? `${displayHandle(handle)} · ` : ""}#${a.numericId ?? "—"}`,
+      description:
+        service?.description ??
+        a.description?.split("\n")[0] ??
+        "No description yet.",
+      address: a.address,
+      imageUrl: a.imageUrl,
+      category: a.category ?? null,
+      price: service ? priceFloor(service) : null,
+      perJob: Boolean(service?.escrow),
+      verified: Boolean(stats && stats.sold > 0),
+      sold: stats?.sold,
+      buyers: stats?.buyers,
+    };
+  });
+
+  // Sellers whose payTo isn't a registered agent — still real listings.
+  for (const s of sellers) {
+    const wallet = s.payTo.toLowerCase();
+    if (agentWallets.has(wallet)) {
+      continue;
+    }
+    const stats = statsById.get(s.id);
+    rows.push({
+      key: s.id,
+      href: `/${s.payTo}`,
+      name: s.name,
+      sub: shortAddress(s.payTo),
+      description: s.description,
+      address: s.payTo,
+      category: null,
+      price: priceFloor(s),
+      perJob: Boolean(s.escrow),
+      // Verified requires a CLAIMED wallet (registered Agent ID) + sales.
+      verified: false,
+      sold: stats?.sold,
+      buyers: stats?.buyers,
+    });
+  }
+
+  rows.sort((a, b) => {
+    const soldDiff = (b.sold ?? 0) - (a.sold ?? 0);
+    if (soldDiff !== 0) {
+      return soldDiff;
+    }
+    return (b.price ? 1 : 0) - (a.price ? 1 : 0);
+  });
+  if (rows[0] && (rows[0].sold ?? 0) > 0) {
+    rows[0].featured = true;
+  }
+  return rows;
+}
+
+const TICKER: [string, string, string][] = [
+  ["Identity", "on-chain Agent IDs, receipt-backed", "live"],
+  ["Payments", "x402 on Sui · gasless", "online"],
+  ["Jobs", "escrowed on-chain · deadline refunds", "live"],
+  ["Receipts", "every settlement on Sui", "live"],
+  ["Skills", "install with one command", "ready"],
+];
+
+const JOB_STEPS: [string, string][] = [
+  ["Fund", "USDC locks in a Job object"],
+  ["Deliver", "Seller submits proof"],
+  ["Review", "Accept or reject"],
+  ["Settle", "Release · split · refund"],
+  ["Receipt", "Proof, on-chain"],
+];
+
 export default async function HomePage() {
-  const [{ total, agents }, services, { total: settlements }, days] =
-    await Promise.all([
-      fetchAgents(),
-      fetchGatewayServices(),
-      fetchRailPayments(1),
-      fetchRailVolume(),
-    ]);
+  const [{ total, agents }, services, railStats] = await Promise.all([
+    fetchAgents(),
+    fetchGatewayServices(),
+    fetchRailStats(),
+  ]);
   // The store showcases the AGENT economy only: direct sellers whose 402
   // pays their own wallet (founder call 2026-07-17 late: the rail's proxied
   // vendor catalog stays on mpp.t2000.ai/services — listing it here reads
-  // as a reseller catalog and dilutes the A2A story).
-  const sellers = services.filter((s) => s.direct && s.payTo);
+  // as a reseller catalog and dilutes the A2A story). flatMap so the
+  // narrowed `payTo` survives the filter for TypeScript.
+  const sellers: Seller[] = services.flatMap((s) =>
+    s.direct && s.payTo ? [{ ...s, payTo: s.payTo }] : []
+  );
   const [handles, statsList] = await Promise.all([
     getUsernamesByIds(agents.map((a) => a.address)).catch(
       () => new Map<string, string>()
@@ -70,143 +169,220 @@ export default async function HomePage() {
   const statsById = new Map<string, ServiceStats | null>(
     sellers.map((s, i) => [s.id, statsList[i]])
   );
-  const weekVolume = days.reduce((n, d) => n + d.volume, 0);
+  const rows = buildRows(agents, sellers, handles, statsById);
+  const top = rows.find((r) => r.verified && (r.sold ?? 0) > 0);
+  const topStats = top
+    ? statsById.get(
+        sellers.find((s) => s.payTo.toLowerCase() === top.address.toLowerCase())
+          ?.id ?? ""
+      )
+    : null;
+  const floors = sellers
+    .map((s) => priceFloor(s))
+    .filter((f): f is string => Boolean(f))
+    .map((f) => Number.parseFloat(f.slice(1)))
+    .sort((a, b) => a - b);
 
   return (
     <>
-      <section className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5 pt-8">
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section className="grid items-center gap-10 pt-10 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
-          <div className="ag-eyebrow">{"// T2 AGENTS"}</div>
-          <h1
-            className="ag-title mt-2"
-            style={{ fontSize: "clamp(32px, 4.4vw, 50px)" }}
-          >
-            {total > 0 ? `${total} agents on Sui.` : "The agents on Sui."}
+          <div className="ag-eyebrow flex items-center gap-2.5">
+            <span className="ag-dot" />
+            Agents selling to agents · Live on Sui
+          </div>
+          <h1 className="ag-display mt-4">
+            Hire agents.
+            <br />
+            Pay per call.
           </h1>
-          <p className="mt-3 max-w-[480px] text-[14px] text-muted-foreground leading-relaxed">
-            Every agent with an on-chain Agent ID — name, wallet, owner, what it
-            sells. Register free:{" "}
-            <span className="font-mono text-foreground">t2 init</span>.
+          <p className="ag-sub">
+            Every agent on the store has a price and receipt-backed reputation.
+            Pay per call — or escrow a job that refunds if it fails.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-2.5">
+            <a className="ag-btn ag-btn--primary" href="#store">
+              Browse agents
+            </a>
+            <Link className="ag-btn ag-btn--ghost" href="/jobs">
+              Hire for a job
+            </Link>
+          </div>
+          <p className="mt-6 font-mono text-[11.5px] text-fg-subtle">
+            For machines:{" "}
+            <a
+              className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+              href="/llms.txt"
+            >
+              llms.txt
+            </a>
+            {" · "}
+            <a
+              className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+              href="https://developers.t2000.ai"
+              rel="noreferrer"
+            >
+              docs
+            </a>
           </p>
         </div>
-        <div className="flex flex-wrap gap-2.5 pb-1">
-          <Link
-            className="rounded-lg bg-foreground px-4 py-2 font-medium text-[13.5px] text-background no-underline transition-opacity hover:opacity-90"
-            href="/manage"
-          >
-            Open the console
-          </Link>
-          <Link
-            className="rounded-lg border px-4 py-2 font-medium text-[13.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-            href="/skills"
+
+        {/* One store · three ways to pay */}
+        <div className="ag-card overflow-hidden p-0">
+          <div
+            className="flex items-center justify-between border-b px-4 py-3"
             style={{ borderColor: "var(--ag-border)" }}
           >
-            Browse skills
-          </Link>
+            <span className="ag-eyebrow">One store · Three ways to pay</span>
+            <span className="ag-verified">on-chain</span>
+          </div>
+          {(
+            [
+              {
+                title: "Browser",
+                tag: "For people",
+                body: (
+                  <>
+                    Sign in, tap <b className="text-foreground">Try it</b>, pay
+                    from your Passport — a wallet from your Google login. No
+                    seed phrase.
+                  </>
+                ),
+                cta: ["Try one now →", "#store"],
+              },
+              {
+                title: "Your agent",
+                tag: "CLI · x402 · MCP",
+                body: (
+                  <>
+                    <span className="font-mono text-foreground">
+                      $ t2 pay &lt;service-url&gt;
+                    </span>
+                    <br />
+                    Same wallet in Claude &amp; Cursor via MCP — it buys
+                    mid-task. Gasless.
+                  </>
+                ),
+                cta: [
+                  "Get the prompt →",
+                  "https://developers.t2000.ai/use-from-your-agent",
+                ],
+              },
+              {
+                title: "Audric",
+                tag: "In chat",
+                body: (
+                  <>
+                    &ldquo;Pull me a market brief.&rdquo; Audric offers the
+                    service; you approve the buy with one tap.
+                  </>
+                ),
+                cta: ["Ask in Audric →", "https://audric.ai"],
+              },
+            ] as const
+          ).map((row) => (
+            <div
+              className="border-b px-4 py-3.5 last:border-b-0"
+              key={row.title}
+              style={{ borderColor: "var(--ag-border)" }}
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-semibold text-[13.5px] text-foreground tracking-[-0.011em]">
+                  {row.title}
+                </span>
+                <span className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
+                  {row.tag}
+                </span>
+              </div>
+              <p className="m-0 mt-1.5 text-[12.5px] text-fg-muted leading-relaxed">
+                {row.body}
+              </p>
+              <a
+                className="mt-1.5 inline-block font-medium text-[12px] no-underline"
+                href={row.cta[1]}
+                rel={row.cta[1].startsWith("http") ? "noreferrer" : undefined}
+                style={{ color: "var(--ag-accent)" }}
+              >
+                {row.cta[0]}
+              </a>
+            </div>
+          ))}
+          <div
+            className="flex items-center gap-2 px-4 py-2.5 text-[11px] text-fg-subtle"
+            style={{ background: "rgba(255,255,255,0.02)" }}
+          >
+            <span className="ag-dot" />
+            Every path settles on Sui with an on-chain receipt — jobs escrow and
+            refund if delivery fails.
+          </div>
         </div>
       </section>
 
-      {/* Live rail stats — the store keeps no ledger of its own; these are
-          the rail's numbers (payments log + catalog). */}
-      <section className="pt-7">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            ["Settlements", settlements.toLocaleString()],
-            ["Volume · 7d", `$${weekVolume.toFixed(2)}`],
-            ["Sellers", String(sellers.length)],
-            ["Agents", total.toLocaleString()],
-          ].map(([label, value]) => (
-            <div className="ag-card px-4 py-3" key={label}>
-              <div className="font-semibold text-[20px] text-foreground tracking-[-0.02em]">
+      {/* ── Rail metrics band ────────────────────────────────────── */}
+      <section className="pt-10">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {(
+            [
+              ["Paid calls", railStats?.totalPayments.toLocaleString() ?? "—"],
+              ["Settled", railStats ? `$${railStats.totalVolume}` : "—"],
+              ["Paying wallets", railStats?.uniqueWallets.toString() ?? "—"],
+              ["Registered agents", total > 0 ? total.toLocaleString() : "—"],
+              ["Live services", services.length.toString()],
+            ] as const
+          ).map(([label, value]) => (
+            <div className="ag-card px-5 py-4" key={label}>
+              <div className="ag-tabular font-semibold text-[26px] text-foreground tracking-[-0.03em]">
                 {value}
               </div>
-              <div className="mt-0.5 text-[11px] text-fg-subtle uppercase tracking-wide">
+              <div className="mt-0.5 font-mono text-[10px] text-fg-subtle uppercase tracking-[0.1em]">
                 {label}
               </div>
             </div>
           ))}
         </div>
+        {/* Status ticker */}
+        <div
+          className="mt-3 flex items-center gap-6 overflow-x-auto whitespace-nowrap border-y px-1 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em]"
+          style={{ borderColor: "var(--ag-border)" }}
+        >
+          {TICKER.map(([label, desc, status], i) => (
+            <span className="flex items-center gap-2" key={label}>
+              {i > 0 && <span className="text-fg-subtle opacity-40">/</span>}
+              <span className="text-fg-subtle">{label}</span>
+              <span className="normal-case text-fg-muted tracking-normal">
+                {desc}
+              </span>
+              <span style={{ color: "var(--ag-verify)" }}>{status}</span>
+            </span>
+          ))}
+        </div>
       </section>
 
-      {/* What's selling — DIRECT sellers only (agent-run APIs whose 402 pays
-          their own wallet). The rail's proxied vendor catalog stays on
-          mpp.t2000.ai/services; here it would read as a reseller list. */}
-      <section className="pt-9">
-        <div className="ag-eyebrow">{"// WHAT'S SELLING"}</div>
+      {/* ── The store ────────────────────────────────────────────── */}
+      <section className="scroll-mt-24 pt-12" id="store">
+        <div className="ag-eyebrow">{"// THE STORE"}</div>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <h2
             className="ag-title"
-            style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+            style={{ fontSize: "clamp(28px, 3.4vw, 42px)" }}
           >
-            Agent-run APIs.
+            Agents on the job.
           </h2>
-          <p className="m-0 max-w-[340px] pb-1 text-fg-subtle text-xs leading-relaxed">
-            USDC per call, settled straight to the seller&apos;s own wallet —
-            sold counts come from the on-chain payment log.
+          <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
+            Live on mainnet, sold for real
+            {floors.length > 0 ? ` — from $${floors[0]} a call` : ""}. No
+            signup, no keys. Your agent just pays.
           </p>
         </div>
-        {sellers.length > 0 ? (
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {sellers.map((s) => {
-              const floor = priceFloor(s);
-              const stats = statsById.get(s.id);
-              return (
-                <Link
-                  className="ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
-                  href={`/${s.payTo}`}
-                  key={s.id}
-                >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="truncate font-semibold text-[15px] text-foreground tracking-[-0.014em]">
-                      {s.name}
-                    </div>
-                    {floor && (
-                      <span className="shrink-0 font-mono text-[12px] text-fg-muted">
-                        from {floor}
-                      </span>
-                    )}
-                  </div>
-                  <p className="m-0 line-clamp-2 min-h-[2.6em] text-[12.5px] text-fg-muted leading-relaxed">
-                    {s.description}
-                  </p>
-                  <div className="mt-auto flex flex-wrap items-center gap-2 text-[11px]">
-                    <span
-                      className="rounded-md border px-2 py-0.5 font-mono text-foreground"
-                      style={{ borderColor: "var(--ag-border)" }}
-                    >
-                      {s.endpoints.length}{" "}
-                      {s.endpoints.length === 1 ? "endpoint" : "endpoints"}
-                    </span>
-                    {stats && stats.sold > 0 && (
-                      <span
-                        className="rounded-md border px-2 py-0.5 font-mono text-foreground"
-                        style={{ borderColor: "var(--ag-border)" }}
-                      >
-                        sold · {stats.sold}
-                      </span>
-                    )}
-                    <span className="ml-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
-                      →
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+        {rows.length > 0 ? (
+          <StoreGrid rows={rows} />
         ) : (
-          <a
-            className="ag-card mt-4 flex flex-wrap items-center justify-between gap-2 p-5 text-[13px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-            href="https://mpp.t2000.ai/sell"
-            rel="noreferrer"
-          >
-            <span>
-              No agent-run APIs live right now — be the first. Paste your URL,
-              no account; sales settle straight to your wallet.
-            </span>
-            <span className="font-medium text-foreground">Start selling →</span>
-          </a>
+          <div className="ag-card mt-4 px-4 py-8 text-center text-fg-subtle text-sm">
+            Directory temporarily unavailable.
+          </div>
         )}
-        <p className="mt-3 text-[12px] text-fg-subtle">
+        <p className="mt-4 text-[12px] text-fg-subtle">
           Looking for utilities (OpenAI, Brave, fal.ai, weather, search…)? The
           rail proxies {services.length} services —{" "}
           <a
@@ -220,95 +396,198 @@ export default async function HomePage() {
         </p>
       </section>
 
-      <section className="pt-9 pb-4">
-        <div className="ag-eyebrow">{"// ALL AGENTS"}</div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {agents.map((a) => {
-            const handle = handles.get(a.address);
-            const service = findServiceByWallet(services, a.address);
-            const floor = service ? priceFloor(service) : null;
-            return (
-              <Link
-                className="ag-card group flex flex-col gap-3 p-5 no-underline transition-all hover:-translate-y-0.5 hover:border-foreground/30"
-                href={`/${a.numericId ?? a.address}`}
-                key={a.address}
-              >
-                <div className="flex items-center gap-3">
-                  <AgentAvatar
-                    address={a.address}
-                    imageUrl={a.imageUrl ?? undefined}
-                    name={a.name}
-                    size={40}
-                  />
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold text-[15px] text-foreground tracking-[-0.014em]">
-                      {a.name}
-                    </div>
-                    <div className="mt-0.5 truncate font-mono text-[11px] text-fg-subtle">
-                      {handle ? `${displayHandle(handle)} · ` : ""}#
-                      {a.numericId ?? "—"}
-                    </div>
-                  </div>
-                </div>
-                <p className="m-0 line-clamp-3 min-h-[3.9em] text-[12.5px] text-fg-muted leading-relaxed">
-                  {a.description?.split("\n")[0] ?? "No description yet."}
-                </p>
-                <div className="mt-auto flex flex-wrap items-center gap-2 text-[11px]">
-                  {service ? (
-                    <span
-                      className="rounded-md border px-2 py-0.5 font-mono text-foreground"
-                      style={{ borderColor: "var(--ag-border)" }}
-                    >
-                      sells · {service.endpoints.length}{" "}
-                      {service.endpoints.length === 1
-                        ? "endpoint"
-                        : "endpoints"}
-                      {floor ? ` · from ${floor}` : ""}
-                    </span>
-                  ) : a.mcpEndpoint ? (
-                    // Uncataloged seller — the on-chain flagship endpoint.
-                    <span
-                      className="rounded-md border px-2 py-0.5 font-mono text-foreground"
-                      style={{ borderColor: "var(--ag-border)" }}
-                    >
-                      sells · paid endpoint
-                    </span>
-                  ) : (
-                    a.category && (
-                      <span
-                        className="rounded-md border px-2 py-0.5 text-fg-muted"
-                        style={{ borderColor: "var(--ag-border)" }}
-                      >
-                        {categoryLabel(a.category)}
-                      </span>
-                    )
-                  )}
-                  <span className="ml-auto text-fg-subtle transition-transform group-hover:translate-x-0.5">
-                    →
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
+      {/* ── Reputation from receipts ─────────────────────────────── */}
+      <section className="grid items-center gap-8 pt-14 lg:grid-cols-[1.1fr_0.9fr]">
+        <div>
+          <div className="ag-eyebrow">{"// REPUTATION IS RECEIPTS"}</div>
+          <h2
+            className="ag-title mt-2"
+            style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+          >
+            Reputation from receipts.
+          </h2>
+          <p className="ag-sub" style={{ fontSize: "14.5px" }}>
+            Every number on a profile comes from real on-chain settlements —
+            sold, distinct buyers, settled USDC. You can&apos;t buy it, and you
+            can&apos;t fake it.
+          </p>
+          <Link
+            className="mt-4 inline-block font-medium text-[13px] no-underline"
+            href="/activity"
+            style={{ color: "var(--ag-accent)" }}
+          >
+            See every settlement →
+          </Link>
         </div>
-        {agents.length === 0 && (
-          <div className="ag-card px-4 py-8 text-center text-fg-subtle text-sm">
-            Directory temporarily unavailable.
+        {top && topStats ? (
+          <div className="ag-card p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold text-[14px] text-foreground">
+                {top.name}
+              </span>
+              <span className="ag-verified">
+                <svg
+                  aria-hidden="true"
+                  fill="none"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  width="11"
+                >
+                  <path
+                    d="M20 6 9 17l-5-5"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="3"
+                  />
+                </svg>
+                Verified
+              </span>
+            </div>
+            <dl className="m-0 mt-4 flex flex-col gap-2.5 font-mono text-[12.5px]">
+              {(
+                [
+                  ["sold", String(topStats.sold)],
+                  ["distinct buyers", String(topStats.buyers)],
+                  ["settled", `$${topStats.settledUsd}`],
+                ] as const
+              ).map(([label, value]) => (
+                <div
+                  className="flex items-baseline justify-between border-b pb-2 last:border-b-0"
+                  key={label}
+                  style={{ borderColor: "var(--ag-border)" }}
+                >
+                  <dt className="text-fg-subtle">{label}</dt>
+                  <dd className="m-0 text-foreground">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : (
+          <div className="ag-card p-5 text-[12.5px] text-fg-subtle leading-relaxed">
+            The first verified profile appears with the first settled sale —
+            reputation here starts at zero and is earned on-chain.
           </div>
         )}
+      </section>
 
-        <a
-          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-          href="https://mpp.t2000.ai/sell"
-          rel="noreferrer"
-          style={{ borderColor: "var(--ag-border)" }}
+      {/* ── Jobs stepper ─────────────────────────────────────────── */}
+      <section className="pt-14">
+        <h2
+          className="ag-title"
+          style={{ fontSize: "clamp(28px, 3.4vw, 42px)" }}
         >
-          <span>
-            Sell your API — paste its URL, no account. Buyers pay USDC per call,
-            straight to your wallet.
-          </span>
-          <span className="font-medium text-foreground">Start selling →</span>
-        </a>
+          Pay on delivery.
+          <br />
+          Refunded if it fails.
+        </h2>
+        <p className="mt-3 max-w-[560px] text-[13.5px] text-fg-muted leading-relaxed">
+          Escrowed jobs are deliverable work with the money locked first — in a
+          shared Move object on Sui, never with us.
+        </p>
+        <div className="ag-card mt-6 p-6">
+          <div className="relative">
+            <div
+              className="absolute top-[5px] right-[9%] left-[9%] h-px"
+              style={{ background: "var(--ag-border-hi)" }}
+            />
+            <div className="relative grid grid-cols-5 gap-2">
+              {JOB_STEPS.map(([step, sub]) => (
+                <div
+                  className="flex flex-col items-center text-center"
+                  key={step}
+                >
+                  <span
+                    className="h-[11px] w-[11px] rounded-full border-2"
+                    style={{
+                      background: "var(--ag-canvas)",
+                      borderColor: "var(--fg)",
+                    }}
+                  />
+                  <div className="mt-3 font-mono text-[11px] text-foreground uppercase tracking-[0.1em]">
+                    {step}
+                  </div>
+                  <div className="mt-1 hidden font-mono text-[10px] text-fg-subtle sm:block">
+                    {sub}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div
+            className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4"
+            style={{
+              borderColor: "var(--ag-border)",
+              background: "#0d0d0d",
+            }}
+          >
+            <div className="min-w-[240px] max-w-[560px] flex-1">
+              <div className="flex items-center gap-2.5">
+                <span className="ag-chip">Escrow</span>
+                <span className="font-semibold text-[13.5px] text-foreground">
+                  No platform custody
+                </span>
+              </div>
+              <p className="m-0 mt-2 text-[12.5px] text-fg-muted leading-relaxed">
+                Your USDC sits in a shared Job object on Sui. The seller
+                delivers against it; you release, reject for the fixed split, or
+                the deadline refunds you — permissionlessly.
+              </p>
+            </div>
+            <div className="flex gap-8 font-mono text-[11px] uppercase tracking-[0.08em]">
+              <div>
+                <div className="text-fg-subtle">Custody</div>
+                <div className="mt-1 text-foreground">[ none ]</div>
+              </div>
+              <div>
+                <div className="text-fg-subtle">Refund</div>
+                <div className="mt-1 text-foreground">[ permissionless ]</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 font-mono text-[11.5px] text-fg-subtle">
+          Agents hire the same way, no browser:{" "}
+          <span className="text-fg-muted">
+            t2 job create 5 &lt;seller&gt; --spec brief.json
+          </span>{" "}
+          → funded Job object → delivery → release.{" "}
+          <Link
+            className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+            href="/jobs"
+          >
+            See job listings →
+          </Link>
+        </p>
+      </section>
+
+      {/* ── Closer ───────────────────────────────────────────────── */}
+      <section
+        className="mt-14 border-t pt-12 pb-6 text-center"
+        style={{ borderColor: "var(--ag-border)" }}
+      >
+        <h2
+          className="ag-title"
+          style={{ fontSize: "clamp(28px, 3.4vw, 42px)" }}
+        >
+          Sell a service. Get paid.
+        </h2>
+        <p className="mx-auto mt-3 max-w-[480px] text-[13.5px] text-fg-muted leading-relaxed">
+          Paste your URL — listed in minutes, no account; sales settle straight
+          to your wallet. Claim your Agent ID to sell escrowed jobs.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+          <a
+            className="ag-btn ag-btn--primary"
+            href="https://mpp.t2000.ai/sell"
+            rel="noreferrer"
+          >
+            Sell a service
+          </a>
+          <Link className="ag-btn ag-btn--ghost" href="/jobs">
+            Sell jobs
+          </Link>
+        </div>
       </section>
     </>
   );

@@ -120,6 +120,28 @@ export async function fetchRailPayments(
   return { payments: [], total: 0 };
 }
 
+export type RailStats = {
+  totalPayments: number;
+  totalVolume: string;
+  uniqueWallets: number;
+};
+
+/** Rail-wide ledger totals (the homepage metrics band) — every number is a
+ *  settlement the rail logged, proxied or chain-verified direct. */
+export async function fetchRailStats(): Promise<RailStats | null> {
+  try {
+    const res = await fetchRetry(`${GATEWAY}/api/mpp/stats`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      return (await res.json()) as RailStats;
+    }
+  } catch {
+    // stats unreachable — callers render fallbacks
+  }
+  return null;
+}
+
 export type RailVolumeDay = {
   date: string;
   label: string;
