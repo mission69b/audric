@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { QR_CELLS, WALLET_ADDRESS } from "@/app-state/catalog";
+import { QR_CELLS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
-import { Copy, X } from "@/components/ui/icon";
+import { useAuth } from "@/auth/useAuth";
+import { CopyPill } from "@/components/ui/copy-pill";
+import { X } from "@/components/ui/icon";
 import { BottomSheet } from "@/components/ui/sheet";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
@@ -11,12 +13,16 @@ import { fonts } from "@/theme/tokens";
 const QR_MODULE = 8;
 const QR_DARK = "#0b0b0b";
 
-// The Receive bottom sheet (prototype RECEIVE SHEET). A fake-but-stable QR matrix,
-// the full wallet address with a copy affordance, and a network-safety note. Copy
-// is inert (mock UI); address comes from the wallet catalog.
+// The Receive bottom sheet (prototype RECEIVE SHEET). The address shown/copied is
+// the REAL signed-in wallet address (session.address) — never a catalog constant —
+// so a deposit can never land at a stale placeholder address. Copy writes it to the
+// clipboard. (The QR matrix is still the prototype's fixed pattern; it is decorative
+// and does NOT encode the address — copy is the funded path.)
 export function ReceiveSheet() {
   const { colors } = useTheme();
   const { receiveSheet, closeReceive } = useAppState();
+  const { session } = useAuth();
+  const address = session?.address ?? "";
 
   return (
     <BottomSheet visible={receiveSheet} onClose={closeReceive} maxHeightRatio={0.9}>
@@ -51,12 +57,9 @@ export function ReceiveSheet() {
 
           <View style={[styles.addrBar, { backgroundColor: colors.muted }]}>
             <Text numberOfLines={1} style={[styles.addr, { color: colors.secondaryFg }]}>
-              {WALLET_ADDRESS}
+              {address}
             </Text>
-            <Pressable style={styles.copyBtn} hitSlop={6}>
-              <Copy size={14} color={colors.tealLabel} strokeWidth={1.9} />
-              <Text style={[styles.copyText, { color: colors.tealLabel }]}>Copy</Text>
-            </Pressable>
+            <CopyPill value={address} />
           </View>
 
           <Text style={[styles.note, { color: colors.mutedFg }]}>

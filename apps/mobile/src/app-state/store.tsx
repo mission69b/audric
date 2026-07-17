@@ -21,6 +21,8 @@ import { authHeader } from "@/auth/session";
 import { useAuth } from "@/auth/useAuth";
 import { generateAPIUrl } from "@/lib/api-url";
 import type { ChatMessage } from "@/lib/types";
+import { resolveRecipient } from "@/lib/wallet/recipient";
+import { sendSui } from "@/lib/wallet/send";
 
 // A faithful port of the mobile prototype's single `Component` state machine
 // (`Audric Mobile Design Brief/Audric Mobile.dc.html`). The prototype runs the
@@ -33,17 +35,13 @@ import type { ChatMessage } from "@/lib/types";
 
 export type Tab = "chat" | "wallet" | "settings";
 export type Visibility = "private" | "public";
-export type SendStage = "confirm" | "sending" | "success";
+export type SendStage = "confirm" | "sending" | "success" | "error";
 export type ConfirmKind = "delete" | "purge" | "forget" | "signout" | null;
 
 // The chat message model is now the Vercel AI SDK `ChatMessage` (role + parts[],
 // see `@/lib/types`) — the same wire shape as web-v3. Text turns stream real text
 // parts; the prototype's demo surfaces (wallet/image/video/artifact) ride along as
 // typed `metadata.demo` on an assistant message so the whole thread is ONE list.
-
-// Demo wallet figures — identical to the prototype.
-export const SPENDABLE_USDC = 124.5;
-export const GAS_SUI = 0.82;
 
 // Onboarding entry (see AGENTS/CLAUDE Phase-0). The real zkLogin `gate` is the
 // production sign-in, so once a user reaches the app they are ALREADY signed in —
@@ -136,12 +134,16 @@ type Store = {
   openReceive: () => void;
   closeReceive: () => void;
   stage: SendStage;
+  recipientInput: string;
+  setRecipientInput: (v: string) => void;
+  resolvedTo: string | null;
   amount: number;
-  incAmount: () => void;
-  decAmount: () => void;
-  recipient: string;
-  toggleRecipient: () => void;
-  confirmSend: () => void;
+  amountText: string;
+  setAmountText: (t: string) => void;
+  digest: string | null;
+  sendError: string | null;
+  confirmSend: () => Promise<void>;
+  retrySend: () => void;
 
   // settings
   settingsView: "home" | "billing";
@@ -354,8 +356,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [sendSheet, setSendSheet] = useState(false);
   const [receiveSheet, setReceiveSheet] = useState(false);
   const [stage, setStage] = useState<SendStage>("confirm");
-  const [amount, setAmount] = useState(25);
-  const [recipient, setRecipient] = useState("alice.audric");
+  const [recipientInput, setRecipientInput] = useState("");
+  const [resolvedTo, setResolvedTo] = useState<string | null>(null);
+  const [amountText, setAmountText] = useState("");
+  const amount = Number(amountText) || 0;
+  const [digest, setDigest] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const [settingsView, setSettingsView] = useState<"home" | "billing">("home");
   const [plansSheet, setPlansSheet] = useState(false);
@@ -384,7 +390,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [nudge, setNudge] = useState(false);
 
   const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+  // Bumped on every openSend/closeSend. A confirmSend snapshots it and gates its
+  // state writes, so a send whose sheet was dismissed + reopened mid-flight can't
+  // clobber the fresh session's stage/digest/error when it finally settles.
+  const sendGenRef = useRef(0);
 
   // --- Real AI transport (Vercel AI SDK) ------------------------------------
   // The text conversation streams through the provider seam via the Expo Router
@@ -512,7 +522,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   useEffect(
     () => () => {
       if (replyTimer.current) clearTimeout(replyTimer.current);
-      if (sendTimer.current) clearTimeout(sendTimer.current);
     },
     []
   );
@@ -785,12 +794,73 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [newChat, cancelPending]
   );
 
-  const confirmSend = useCallback(() => {
-    if (amount > SPENDABLE_USDC) return;
-    setStage("sending");
-    if (sendTimer.current) clearTimeout(sendTimer.current);
-    sendTimer.current = setTimeout(() => setStage("success"), 1400);
-  }, [amount]);
+  const changeRecipient = useCallback((v: string) => {
+    setRecipientInput(v);
+    // Editing the recipient invalidates any prior resolution — otherwise Retry
+    // would skip re-resolution and silently send to the previously resolved address.
+    setResolvedTo(null);
+  }, []);
+
+  const changeAmount = useCallback((t: string) => {
+    // Keep only digits and a single decimal point so fractional SUI stays typable;
+    // a naive Number()-roundtrip on the raw text would strip a trailing "." mid-entry.
+    const cleaned = t.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+    setAmountText(cleaned);
+  }, []);
+
+  const confirmSend = useCallback(async () => {
+    // Double-tap defense (web-v3 parity: the confirm button is disabled while a
+    // send is in flight). The in-flight ref drops a second tap before it can
+    // reach sendSui — the executor also reserves its dedup lock before broadcast,
+    // but this ref stops a second tap from ever getting that far.
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    const gen = sendGenRef.current;
+    setSendError(null);
+    let to = resolvedTo;
+    try {
+      if (!to) {
+        const r = await resolveRecipient(recipientInput);
+        to = r.address;
+        if (sendGenRef.current === gen) setResolvedTo(r.address);
+      }
+      // The recipient resolve above is async, so the session could have been
+      // dismissed/reopened while it ran. Gate the broadcast itself (not just the UI
+      // writes): if this is no longer the live send session, abort BEFORE signing or
+      // broadcasting — never move money for a torn-down session.
+      if (sendGenRef.current !== gen) {
+        return;
+      }
+      setStage("sending");
+      // Pass the raw text (exact base-unit parse happens in sendSui — no pre-rounded
+      // float) and the authenticated address (sendSui rejects a stale wrong-account key
+      // set). `?? ""` → empty never matches on-device keys, so it fails closed.
+      const { digest: d } = await sendSui({
+        to,
+        amount: amountText,
+        expectedAddress: session?.address ?? "",
+      });
+      if (sendGenRef.current === gen) {
+        setDigest(d);
+        setStage("success");
+      }
+    } catch (e) {
+      // The dedup lock is owned entirely by the executor (sendSui) — the store must
+      // NEVER touch it. Clearing it here would re-enable a second broadcast after an
+      // ambiguous post-broadcast failure. Only the UI writes are generation-gated.
+      if (sendGenRef.current === gen) {
+        setSendError(e instanceof Error ? e.message : "Send failed.");
+        setStage("error");
+      }
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, [recipientInput, resolvedTo, amountText, session?.address]);
+
+  const retrySend = useCallback(() => {
+    setSendError(null);
+    setStage("confirm");
+  }, []);
 
   const doConfirm = useCallback(() => {
     setConfirmKind((k) => {
@@ -876,27 +946,33 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setWallet: setWalletView,
       sendSheet,
       openSend: () => {
-        if (sendTimer.current) clearTimeout(sendTimer.current);
+        sendGenRef.current += 1;
         setSendSheet(true);
         setStage("confirm");
-        setAmount(25);
-        setRecipient("alice.audric");
+        setRecipientInput("");
+        setResolvedTo(null);
+        setAmountText("");
+        setDigest(null);
+        setSendError(null);
       },
       closeSend: () => {
-        if (sendTimer.current) clearTimeout(sendTimer.current);
+        sendGenRef.current += 1;
         setSendSheet(false);
       },
       receiveSheet,
       openReceive: () => setReceiveSheet(true),
       closeReceive: () => setReceiveSheet(false),
       stage,
+      recipientInput,
+      setRecipientInput: changeRecipient,
+      resolvedTo,
       amount,
-      incAmount: () => setAmount((a) => Math.min(1000, a + 25)),
-      decAmount: () => setAmount((a) => Math.max(25, a - 25)),
-      recipient,
-      toggleRecipient: () =>
-        setRecipient((r) => (r === "alice.audric" ? "0x9a3f…c1d2" : "alice.audric")),
+      amountText,
+      setAmountText: changeAmount,
+      digest,
+      sendError,
       confirmSend,
+      retrySend,
 
       settingsView,
       setSettings: setSettingsView,
@@ -984,9 +1060,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       sendSheet,
       receiveSheet,
       stage,
+      recipientInput,
+      resolvedTo,
       amount,
-      recipient,
+      amountText,
+      changeRecipient,
+      changeAmount,
+      digest,
+      sendError,
       confirmSend,
+      retrySend,
       settingsView,
       plansSheet,
       billAsset,

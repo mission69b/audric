@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { WALLET_ADDRESS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
+import { authenticate, useBiometricCapability } from "@/auth/biometrics";
+import { useAuth } from "@/auth/useAuth";
+import { CopyPill } from "@/components/ui/copy-pill";
+import { AUDRIC_PRIVACY_URL, AUDRIC_TERMS_URL, openAudricWeb } from "@/lib/audric-web";
 import {
   AudricMark,
-  Copy,
   EyeOff,
   Lock,
   ScanFace,
@@ -79,8 +81,15 @@ function Welcome() {
           <Text style={[styles.primaryText, { color: colors.bg }]}>Get started</Text>
         </Pressable>
         <Text style={[styles.terms, { color: colors.mutedFg }]}>
-          By continuing you agree to the <Text style={{ color: colors.fg }}>Terms</Text> and{" "}
-          <Text style={{ color: colors.fg }}>Privacy Policy</Text>.
+          By continuing you agree to the{" "}
+          <Text style={{ color: colors.fg }} onPress={() => openAudricWeb(AUDRIC_TERMS_URL)}>
+            Terms
+          </Text>{" "}
+          and{" "}
+          <Text style={{ color: colors.fg }} onPress={() => openAudricWeb(AUDRIC_PRIVACY_URL)}>
+            Privacy Policy
+          </Text>
+          .
         </Text>
         <Pressable onPress={finishOnboarding} hitSlop={6} style={styles.skip}>
           <Text style={[styles.skipText, { color: colors.mutedFg }]}>Skip for now</Text>
@@ -149,6 +158,7 @@ function Privacy() {
 function WalletReady() {
   const { colors } = useTheme();
   const { openReceive, onboardNext } = useAppState();
+  const { session } = useAuth();
   const insets = useSafeAreaInsets();
 
   return (
@@ -175,9 +185,9 @@ function WalletReady() {
           <View style={[styles.addrRow, { borderTopColor: colors.border }]}>
             <Wallet size={14} color={colors.mutedFg} strokeWidth={1.8} />
             <Text numberOfLines={1} style={[styles.addr, { color: colors.mutedFg }]}>
-              {WALLET_ADDRESS}
+              {session?.address ?? "—"}
             </Text>
-            <Text style={[styles.copy, { color: colors.tealLabel }]}>Copy</Text>
+            <CopyPill value={session?.address} size={13} />
           </View>
         </View>
       </View>
@@ -196,7 +206,21 @@ function WalletReady() {
 function FaceId() {
   const { colors } = useTheme();
   const { finishOnboarding } = useAppState();
+  const { setLockEnabled } = useAuth();
+  const cap = useBiometricCapability();
   const insets = useSafeAreaInsets();
+
+  // Actually arm the biometric app-lock: confirm with a live biometric prompt (so
+  // we never enable a lock the user can't pass), persist the pref, then finish. If
+  // the device has no enrolled biometrics, or the prompt is cancelled, we still
+  // finish onboarding — the user is never trapped on this step.
+  const onEnable = async () => {
+    if (cap?.available) {
+      const ok = await authenticate(`Turn on ${cap.label} lock`);
+      if (ok) await setLockEnabled(true);
+    }
+    finishOnboarding();
+  };
 
   return (
     <View style={styles.fill}>
@@ -211,7 +235,7 @@ function FaceId() {
         </Text>
       </View>
       <View style={[styles.bottom, styles.bottomGap, { paddingBottom: insets.bottom + 30 }]}>
-        <Pressable onPress={finishOnboarding} style={[styles.primaryBtn, { backgroundColor: colors.fg }]}>
+        <Pressable onPress={onEnable} style={[styles.primaryBtn, { backgroundColor: colors.fg }]}>
           <Text style={[styles.primaryText, { color: colors.bg }]}>Enable Face ID</Text>
         </Pressable>
         <Pressable onPress={finishOnboarding} style={styles.ghostBtn}>

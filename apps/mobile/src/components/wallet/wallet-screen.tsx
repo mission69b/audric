@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { TRANSACTIONS } from "@/app-state/catalog";
-import { GAS_SUI, SPENDABLE_USDC, useAppState } from "@/app-state/store";
+import { useAppState } from "@/app-state/store";
+import { openExternal, suiscanTxUrl } from "@/lib/audric-web";
+import { timeAgo, useBalance, useTransactions } from "@/lib/wallet-data";
 import {
   ArrowDown,
   ArrowDownLeft,
@@ -12,11 +13,15 @@ import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
 // The wallet tab (prototype WALLET header + home). Balance card (spendable USDC +
-// gas SUI), Receive / Send actions, and the recent-activity list. Reached from
-// the drawer (P3); Send/Receive open their sheets (mounted in the shell).
+// gas SUI) and recent-activity list are LIVE on-chain reads for the signed-in
+// address (`useBalance` / `useTransactions`); "—" / an empty list show while
+// loading or on a soft-fail. Receive / Send open their sheets (Send is a Phase-0
+// mock). Reached from the drawer (P3).
 export function WalletScreen() {
   const { colors } = useTheme();
   const { setTab, openReceive, openSend } = useAppState();
+  const { usdc, sui } = useBalance();
+  const { transactions } = useTransactions();
 
   return (
     <View style={styles.flex}>
@@ -47,7 +52,7 @@ export function WalletScreen() {
               <Text style={[styles.assetName, { color: colors.fg }]}>USDC</Text>
             </View>
             <Text style={[styles.balUsdc, { color: colors.fg }]}>
-              {SPENDABLE_USDC.toFixed(2)}
+              {usdc != null ? usdc.toFixed(2) : "—"}
             </Text>
           </View>
           <View style={styles.balRow}>
@@ -59,7 +64,9 @@ export function WalletScreen() {
               </Text>
               <Text style={[styles.assetNameMuted, { color: colors.mutedFg }]}>SUI</Text>
             </View>
-            <Text style={[styles.balSui, { color: colors.mutedFg }]}>{GAS_SUI.toFixed(2)}</Text>
+            <Text style={[styles.balSui, { color: colors.mutedFg }]}>
+              {sui != null ? sui.toFixed(2) : "—"}
+            </Text>
           </View>
         </View>
 
@@ -83,40 +90,61 @@ export function WalletScreen() {
         <View>
           <Text style={[styles.sectionLabel, { color: colors.mutedFg }]}>RECENT ACTIVITY</Text>
           <View style={[styles.txCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {TRANSACTIONS.map((tx, i) => (
-              <View
-                key={tx.id}
-                style={[
-                  styles.txRow,
-                  i < TRANSACTIONS.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.border,
-                  },
-                ]}
-              >
-                <View style={[styles.txIcon, { backgroundColor: colors.muted }]}>
-                  {tx.out ? (
-                    <ArrowUpRight size={15} color={colors.secondaryFg} strokeWidth={2} />
-                  ) : (
-                    <ArrowDownLeft size={15} color={colors.secondaryFg} strokeWidth={2} />
-                  )}
-                </View>
-                <View style={styles.txMid}>
-                  <Text numberOfLines={1} style={[styles.txLabel, { color: colors.fg }]}>
-                    {tx.label}
-                  </Text>
-                  <View style={styles.txSub}>
-                    <Text style={[styles.txTime, { color: colors.mutedFg }]}>{tx.time}</Text>
-                    <Text style={[styles.txDot, { color: colors.mutedFg }]}>·</Text>
-                    <View style={styles.txScan}>
-                      <Text style={[styles.txScanText, { color: colors.tealLabel }]}>Suiscan</Text>
-                      <ArrowUpRight size={9} color={colors.tealLabel} strokeWidth={2.4} />
-                    </View>
-                  </View>
-                </View>
-                <Text style={[styles.txAmt, { color: colors.fg }]}>{tx.amt}</Text>
+            {transactions.length === 0 ? (
+              <View style={styles.txEmpty}>
+                <Text style={[styles.txEmptyText, { color: colors.mutedFg }]}>
+                  No activity yet.
+                </Text>
               </View>
-            ))}
+            ) : (
+              transactions.map((tx, i) => {
+                const out = tx.direction === "out";
+                const amt =
+                  tx.amount != null ? `${out ? "−" : "+"}${tx.amount.toFixed(2)}` : "—";
+                return (
+                  <View
+                    key={tx.digest}
+                    style={[
+                      styles.txRow,
+                      i < transactions.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.txIcon, { backgroundColor: colors.muted }]}>
+                      {out ? (
+                        <ArrowUpRight size={15} color={colors.secondaryFg} strokeWidth={2} />
+                      ) : (
+                        <ArrowDownLeft size={15} color={colors.secondaryFg} strokeWidth={2} />
+                      )}
+                    </View>
+                    <View style={styles.txMid}>
+                      <Text numberOfLines={1} style={[styles.txLabel, { color: colors.fg }]}>
+                        {tx.label}
+                      </Text>
+                      <View style={styles.txSub}>
+                        <Text style={[styles.txTime, { color: colors.mutedFg }]}>
+                          {timeAgo(tx.timestamp)}
+                        </Text>
+                        <Text style={[styles.txDot, { color: colors.mutedFg }]}>·</Text>
+                        <Pressable
+                          onPress={() => openExternal(suiscanTxUrl(tx.digest))}
+                          hitSlop={6}
+                          style={styles.txScan}
+                        >
+                          <Text style={[styles.txScanText, { color: colors.tealLabel }]}>
+                            Suiscan
+                          </Text>
+                          <ArrowUpRight size={9} color={colors.tealLabel} strokeWidth={2.4} />
+                        </Pressable>
+                      </View>
+                    </View>
+                    <Text style={[styles.txAmt, { color: colors.fg }]}>{amt}</Text>
+                  </View>
+                );
+              })
+            )}
           </View>
         </View>
       </ScrollView>
@@ -221,4 +249,6 @@ const styles = StyleSheet.create({
   txScan: { flexDirection: "row", alignItems: "center", gap: 3 },
   txScanText: { fontFamily: fonts.regular, fontSize: 11 },
   txAmt: { fontFamily: fonts.monoSemibold, fontSize: 13 },
+  txEmpty: { paddingVertical: 22, alignItems: "center" },
+  txEmptyText: { fontFamily: fonts.regular, fontSize: 12.5 },
 });

@@ -1,24 +1,23 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import {
-  COMING_SOON,
-  CREDIT_USD,
-  SHORT_ADDRESS,
-  TOPUPS,
-  USER_EMAIL,
-  USER_HANDLE,
-  WALLET_ADDRESS,
-} from "@/app-state/catalog";
+import * as Clipboard from "expo-clipboard";
+import { COMING_SOON, CREDIT_USD, TOPUPS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import { authenticate, useBiometricCapability } from "@/auth/biometrics";
 import { useAuth } from "@/auth/useAuth";
-import { openAudricWeb } from "@/lib/audric-web";
+import {
+  AUDRIC_DEVELOPERS_URL,
+  AUDRIC_PRIVACY_URL,
+  AUDRIC_TERMS_URL,
+  openAudricWeb,
+} from "@/lib/audric-web";
+import { displayHandle, expiresLabel } from "@/lib/identity";
+import { CopyPill } from "@/components/ui/copy-pill";
 import {
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Copy,
   CreditCard,
   ExternalLink,
   Fingerprint,
@@ -98,7 +97,7 @@ function SectionLabel({ children, tight }: { children: string; tight?: boolean }
 
 function SettingsHome() {
   const { colors } = useTheme();
-  const { signOut } = useAuth();
+  const { session, signOut } = useAuth();
   const {
     openHandle,
     memoryOn,
@@ -118,7 +117,7 @@ function SettingsHome() {
           <View style={[styles.idRow, { borderBottomColor: colors.border }]}>
             <View style={styles.avatar} />
             <View style={styles.idMid}>
-              <Text style={[styles.idName, { color: colors.fg }]}>{USER_HANDLE}</Text>
+              <Text style={[styles.idName, { color: colors.fg }]}>{displayHandle(session)}</Text>
               <Text style={[styles.idSub, { color: colors.mutedFg }]}>
                 Non-custodial · zkLogin wallet
               </Text>
@@ -141,9 +140,9 @@ function SettingsHome() {
           <View style={[styles.kvRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.kvKey, { color: colors.mutedFg }]}>Wallet address</Text>
             <Text numberOfLines={1} style={[styles.kvVal, styles.kvMono, { color: colors.fg }]}>
-              {WALLET_ADDRESS}
+              {session?.address ?? "—"}
             </Text>
-            <Copy size={14} color={colors.tealLabel} strokeWidth={1.9} />
+            <CopyPill value={session?.address} label={false} />
           </View>
           <View style={[styles.kvRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.kvKey, { color: colors.mutedFg }]}>Network</Text>
@@ -151,11 +150,15 @@ function SettingsHome() {
           </View>
           <View style={[styles.kvRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.kvKey, { color: colors.mutedFg }]}>Sign-in email</Text>
-            <Text numberOfLines={1} style={[styles.kvVal, { color: colors.fg }]}>{USER_EMAIL}</Text>
+            <Text numberOfLines={1} style={[styles.kvVal, { color: colors.fg }]}>
+              {session?.email ?? "—"}
+            </Text>
           </View>
           <View style={styles.kvRow}>
             <Text style={[styles.kvKey, { color: colors.mutedFg }]}>Session</Text>
-            <Text style={[styles.kvVal, { color: colors.fg }]}>Expires in 7d</Text>
+            <Text style={[styles.kvVal, { color: colors.fg }]}>
+              {expiresLabel(session) ? `Expires ${expiresLabel(session)}` : "—"}
+            </Text>
           </View>
         </View>
       </View>
@@ -213,7 +216,7 @@ function SettingsHome() {
             </View>
             <ChevronRight size={17} color={colors.mutedFg} strokeWidth={2} />
           </Pressable>
-          <View style={styles.actionRow}>
+          <Pressable onPress={() => openAudricWeb(AUDRIC_DEVELOPERS_URL)} style={styles.actionRow}>
             <WandSparkles size={18} color={colors.mutedFg} strokeWidth={1.7} />
             <View style={styles.rowFlex}>
               <Text style={[styles.rowTitle, { color: colors.fg }]}>Developer API</Text>
@@ -222,7 +225,7 @@ function SettingsHome() {
               </Text>
             </View>
             <ChevronRight size={17} color={colors.mutedFg} strokeWidth={2} />
-          </View>
+          </Pressable>
         </View>
       </View>
 
@@ -267,8 +270,12 @@ function SettingsHome() {
             </View>
           ))}
           <View style={[styles.legalRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.legalLink, { color: colors.tealLabel }]}>Privacy Policy</Text>
-            <Text style={[styles.legalLink, { color: colors.tealLabel }]}>Terms</Text>
+            <Pressable onPress={() => openAudricWeb(AUDRIC_PRIVACY_URL)} hitSlop={6}>
+              <Text style={[styles.legalLink, { color: colors.tealLabel }]}>Privacy Policy</Text>
+            </Pressable>
+            <Pressable onPress={() => openAudricWeb(AUDRIC_TERMS_URL)} hitSlop={6}>
+              <Text style={[styles.legalLink, { color: colors.tealLabel }]}>Terms</Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -358,6 +365,7 @@ function SecuritySection() {
 
 function Billing() {
   const { colors } = useTheme();
+  const { session } = useAuth();
   const {
     billAsset,
     setBillAsset,
@@ -428,12 +436,9 @@ function Billing() {
           </Text>
           <View style={[styles.addrBar, { backgroundColor: colors.muted }]}>
             <Text numberOfLines={1} style={[styles.addr, { color: colors.secondaryFg }]}>
-              {SHORT_ADDRESS}
+              {session?.address ?? "—"}
             </Text>
-            <View style={styles.linkBtn}>
-              <Copy size={13} color={colors.tealLabel} strokeWidth={1.9} />
-              <Text style={[styles.copyText, { color: colors.tealLabel }]}>Copy</Text>
-            </View>
+            <CopyPill value={session?.address} size={13} />
           </View>
           <View style={[styles.assetTabs, { backgroundColor: colors.muted }]}>
             {(["USDC", "USDsui"] as const).map((a) => {

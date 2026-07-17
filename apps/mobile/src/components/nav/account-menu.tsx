@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { CREDIT_USD, HELP_ITEMS, SHORT_ADDRESS, USER_HANDLE } from "@/app-state/catalog";
-import { SPENDABLE_USDC, useAppState } from "@/app-state/store";
+import { CREDIT_USD, HELP_ITEMS } from "@/app-state/catalog";
+import { useAppState } from "@/app-state/store";
+import { useAuth } from "@/auth/useAuth";
+import { HELP_LINKS, openExternal } from "@/lib/audric-web";
+import { displayHandle, shortAddress } from "@/lib/identity";
+import { useBalance } from "@/lib/wallet-data";
 import { BottomSheet } from "@/components/ui/sheet";
 import { ChevronDown, ChevronRight, CreditCard, HelpCircle, LogOut, Moon, Settings, Sun } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
@@ -14,10 +18,12 @@ const AVATAR_STOPS = ["#0ac7b4", "#0f766e", "#1e293b"] as const;
 
 // Account menu (prototype ACCOUNT sheet), opened from the drawer footer. Passport
 // identity header, a three-up stats strip, and the account actions. Sign out is
-// presentational (faithful to the prototype — no auth backend yet).
+// wired to the real auth backend (clears the stored session via useAuth).
 export function AccountMenu() {
   const { colors, isDark, toggle } = useTheme();
   const { accountMenu, closeAccount, setTab, openPlans } = useAppState();
+  const { session, signOut } = useAuth();
+  const { usdc } = useBalance();
   const [helpOpen, setHelpOpen] = useState(false);
 
   const goSettings = () => {
@@ -40,8 +46,8 @@ export function AccountMenu() {
           style={styles.avatar}
         />
         <View style={styles.idText}>
-          <Text style={[styles.handle, { color: colors.fg }]}>{USER_HANDLE}</Text>
-          <Text style={[styles.addr, { color: colors.mutedFg }]}>{SHORT_ADDRESS}</Text>
+          <Text style={[styles.handle, { color: colors.fg }]}>{displayHandle(session)}</Text>
+          <Text style={[styles.addr, { color: colors.mutedFg }]}>{shortAddress(session?.address)}</Text>
         </View>
       </View>
 
@@ -57,7 +63,9 @@ export function AccountMenu() {
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
-          <Text style={[styles.statValueMono, { color: colors.tealLabel }]}>{SPENDABLE_USDC.toFixed(2)}</Text>
+          <Text style={[styles.statValueMono, { color: colors.tealLabel }]}>
+            {usdc != null ? usdc.toFixed(2) : "—"}
+          </Text>
           <Text style={[styles.statLabel, { color: colors.mutedFg }]}>Passport USDC</Text>
         </View>
       </View>
@@ -87,7 +95,14 @@ export function AccountMenu() {
         {helpOpen ? (
           <View style={[styles.submenu, { borderColor: colors.border }]}>
             {HELP_ITEMS.map((h) => (
-              <Pressable key={h} style={styles.subRow}>
+              <Pressable
+                key={h}
+                style={styles.subRow}
+                onPress={() => {
+                  const url = HELP_LINKS[h];
+                  if (url) openExternal(url);
+                }}
+              >
                 <Text style={[styles.subLabel, { color: colors.mutedFg }]}>{h}</Text>
               </Pressable>
             ))}
@@ -100,7 +115,10 @@ export function AccountMenu() {
           icon={<LogOut size={18} color={SIGNOUT} strokeWidth={1.8} />}
           label="Sign out"
           labelColor={SIGNOUT}
-          onPress={() => {}}
+          onPress={() => {
+            closeAccount();
+            void signOut();
+          }}
           colors={colors}
         />
       </View>

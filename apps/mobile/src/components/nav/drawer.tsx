@@ -18,8 +18,10 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { USER_HANDLE } from "@/app-state/catalog";
-import { SPENDABLE_USDC, useAppState } from "@/app-state/store";
+import { useAppState } from "@/app-state/store";
+import { useAuth } from "@/auth/useAuth";
+import { displayHandle } from "@/lib/identity";
+import { useBalance } from "@/lib/wallet-data";
 import {
   AudricMark,
   ChevronUp,
@@ -40,6 +42,8 @@ export function Drawer() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { session } = useAuth();
+  const { usdc } = useBalance();
   const {
     drawerOpen,
     closeDrawer,
@@ -199,7 +203,7 @@ export function Drawer() {
               <Text style={[styles.footText, { color: colors.fg }]}>Wallet</Text>
               <View style={[styles.dot, { backgroundColor: colors.teal }]} />
               <Text style={[styles.footAmt, { color: colors.mutedFg }]}>
-                {SPENDABLE_USDC.toFixed(2)}
+                {usdc != null ? usdc.toFixed(2) : "—"}
               </Text>
             </Pressable>
             <Pressable onPress={() => setTab("settings")} style={styles.footRow}>
@@ -229,7 +233,7 @@ export function Drawer() {
               >
                 <View style={styles.avatar} />
                 <View style={styles.accountMid}>
-                  <Text style={[styles.accountName, { color: colors.fg }]}>{USER_HANDLE}</Text>
+                  <Text style={[styles.accountName, { color: colors.fg }]}>{displayHandle(session)}</Text>
                   <Text style={[styles.accountSub, { color: colors.mutedFg }]}>Free plan</Text>
                 </View>
                 <ChevronUp size={16} color={colors.mutedFg} strokeWidth={2} />
