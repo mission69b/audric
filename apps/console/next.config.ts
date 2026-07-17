@@ -7,14 +7,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async redirects() {
     // SPEC_HUB_V1: the retail pages (/join, /browse, /tasks) were deleted —
-    // stale links land on the hub home; /sell points at the docs.
+    // stale links land on the hub home. (/sell is a real page again as of
+    // SPEC_T2_AGENTS_STORE Phase 1 — the zero-friction listing flow.)
     return [
       { source: "/buy", destination: "/", permanent: false },
-      {
-        source: "/sell",
-        destination: "https://developers.t2000.ai/agent-id",
-        permanent: false,
-      },
       {
         source: "/manage/create",
         destination: "/manage/agents",
