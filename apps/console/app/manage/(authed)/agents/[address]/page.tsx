@@ -7,6 +7,11 @@ import { ActiveToggle } from "@/components/active-toggle";
 import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentEditForm } from "@/components/agent-edit-form";
 import { SellApiCard } from "@/components/sell-api-card";
+import {
+  fetchGatewayServices,
+  findServiceByWallet,
+  serviceUrl,
+} from "@/lib/gateway-services";
 
 // /manage/agents/[address] — the Edit-agent ROUTE (founder call, S.656:
 // a real page, not an inline expand). Guarded to the signed-in owner: the
@@ -41,6 +46,12 @@ export default async function EditAgentPage({
   if (!agent) {
     notFound();
   }
+
+  // Existing MPP catalog listing (payTo match) — drives the SellApiCard's
+  // catalog step (list vs re-submit). Self-agent only; degrades to null.
+  const cataloged = isSelf
+    ? findServiceByWallet(await fetchGatewayServices(), agent.address)
+    : undefined;
 
   return (
     <div className="max-w-[780px]">
@@ -78,7 +89,11 @@ export default async function EditAgentPage({
             the SELF-agent's listing is editable here. Owned third-party
             agents set their endpoint themselves (their key signs). */}
         {isSelf ? (
-          <SellApiCard currentEndpoint={agent.mcpEndpoint ?? null} />
+          <SellApiCard
+            address={agent.address}
+            catalogUrl={cataloged ? serviceUrl(cataloged) : null}
+            currentEndpoint={agent.mcpEndpoint ?? null}
+          />
         ) : (
           agent.mcpEndpoint && (
             <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">

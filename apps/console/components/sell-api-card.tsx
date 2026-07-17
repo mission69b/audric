@@ -16,6 +16,15 @@ import { useState } from "react";
 // profile immediately. No human review in the loop.
 
 type ProbeIssue = { code?: string; severity?: string; message?: string };
+type CatalogGate = { gate: string; ok: boolean; detail: string };
+type CatalogResponse = {
+  ok?: boolean;
+  gates?: CatalogGate[];
+  serviceId?: string;
+  url?: string;
+  removed?: boolean;
+  error?: string;
+};
 type PrepareResponse = {
   nonce?: string;
   txBytes?: string;
@@ -36,8 +45,14 @@ function errText(e: PrepareResponse["error"], fallback: string): string {
 
 export function SellApiCard({
   currentEndpoint,
+  address,
+  catalogUrl,
 }: {
   currentEndpoint: string | null;
+  /** The agent's wallet — what the catalog submit validates against on-chain. */
+  address: string;
+  /** mpp.t2000.ai service page when already cataloged, else null. */
+  catalogUrl: string | null;
 }) {
   const router = useRouter();
   const [endpoint, setEndpoint] = useState(currentEndpoint ?? "");
@@ -48,6 +63,33 @@ export function SellApiCard({
     amount: string | null;
     currency: string | null;
   } | null>(null);
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+
+  // [SPEC_CATALOG_SELF_LISTING] Second, optional hop: the MPP catalog.
+  // Signature-free by design — the gateway re-probes the ON-CHAIN endpoint
+  // and verifies the 402 pays THIS wallet, so the on-chain record (which the
+  // user just signed for) is the authorization.
+  async function submitToCatalog() {
+    setCatalogBusy(true);
+    setCatalog(null);
+    try {
+      const res = await fetch("https://mpp.t2000.ai/api/catalog/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      const cj = (await res.json().catch(() => ({}))) as CatalogResponse;
+      setCatalog(cj);
+      if (cj.ok) {
+        router.refresh();
+      }
+    } catch {
+      setCatalog({ ok: false, error: "Catalog unreachable — try again." });
+    } finally {
+      setCatalogBusy(false);
+    }
+  }
 
   async function run(nextEndpoint: string, mode: "listing" | "removing") {
     const session = loadSession();
@@ -111,10 +153,10 @@ export function SellApiCard({
           Sell your API
         </div>
         <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
-          Charge USDC per call with x402. Paste your endpoint — it&apos;s
-          probed live (must answer 402 with a Sui payment challenge), then one
-          gasless signature lists it on your public profile. Buyers pay per
-          call, straight to your wallet.{" "}
+          Charge USDC per call with x402. Paste your endpoint — it&apos;s probed
+          live (must answer 402 with a Sui payment challenge), then one gasless
+          signature lists it on your public profile. Buyers pay per call,
+          straight to your wallet.{" "}
           <a
             className="font-medium"
             href="https://developers.t2000.ai/sell-your-api"
@@ -155,9 +197,14 @@ export function SellApiCard({
       )}
 
       {listed && (
-        <p className="m-0 font-mono text-[11.5px] leading-[1.55]" style={{ color: "var(--ag-verify)" }}>
+        <p
+          className="m-0 font-mono text-[11.5px] leading-[1.55]"
+          style={{ color: "var(--ag-verify)" }}
+        >
           ✓ Live probe passed
-          {listed.amount ? ` — ${listed.amount} ${listed.currency ?? "USDC"} per call` : ""}
+          {listed.amount
+            ? ` — ${listed.amount} ${listed.currency ?? "USDC"} per call`
+            : ""}
           . Listed on your public profile.
         </p>
       )}
@@ -186,9 +233,95 @@ export function SellApiCard({
 
       <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
         {"// Buyers call it with "}
-        <span className="text-fg-muted">t2 pay {endpoint.trim() || "<your-endpoint>"}</span>
+        <span className="text-fg-muted">
+          t2 pay {endpoint.trim() || "<your-endpoint>"}
+        </span>
         {" — or any x402 client."}
       </p>
+
+      {(currentEndpoint || listed) && (
+        <div className="grid gap-3 border-border border-t pt-4">
+          <div>
+            <div className="font-semibold text-[13px] text-foreground">
+              MPP catalog
+            </div>
+            <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
+              {catalogUrl ? (
+                <>
+                  Listed in the{" "}
+                  <a
+                    className="font-medium"
+                    href={catalogUrl}
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--ag-accent)" }}
+                    target="_blank"
+                  >
+                    MPP catalog →
+                  </a>{" "}
+                  Re-probed daily; re-submit after changing your endpoint or
+                  prices.
+                </>
+              ) : (
+                <>
+                  Also list on mpp.t2000.ai, where every installed agent
+                  discovers services. Machine-gated: your endpoint is re-probed
+                  and the 402 must pay this wallet. Serve OpenAPI with
+                  x-payment-info at /openapi.json to list multiple endpoints.
+                </>
+              )}
+            </p>
+          </div>
+
+          {catalog?.gates && (
+            <ul className="m-0 grid list-none gap-1.5 p-0">
+              {catalog.gates.map((gate) => (
+                <li
+                  className={`font-mono text-[11.5px] leading-[1.5] ${gate.ok ? "" : "text-destructive"}`}
+                  key={gate.gate}
+                  style={gate.ok ? { color: "var(--ag-verify)" } : undefined}
+                >
+                  {gate.ok ? "✓" : "✗"} {gate.gate}: {gate.detail}
+                </li>
+              ))}
+            </ul>
+          )}
+          {catalog?.ok && catalog.url && (
+            <p
+              className="m-0 font-mono text-[11.5px] leading-[1.55]"
+              style={{ color: "var(--ag-verify)" }}
+            >
+              ✓ Listed —{" "}
+              <a
+                className="font-medium"
+                href={catalog.url}
+                rel="noopener noreferrer"
+                style={{ color: "var(--ag-verify)" }}
+                target="_blank"
+              >
+                {catalog.url.replace("https://", "")}
+              </a>
+            </p>
+          )}
+          {catalog?.error && !catalog.gates && (
+            <span className="text-destructive text-xs">{catalog.error}</span>
+          )}
+
+          <div>
+            <button
+              className="ag-btn ag-btn--ghost text-xs disabled:opacity-50"
+              disabled={catalogBusy || busy !== "idle"}
+              onClick={submitToCatalog}
+              type="button"
+            >
+              {catalogBusy
+                ? "Running the gates…"
+                : catalogUrl
+                  ? "Re-submit to catalog"
+                  : "List in MPP catalog"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
