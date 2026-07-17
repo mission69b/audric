@@ -36,13 +36,10 @@ export function StoreNav() {
           >
             Skills
           </Link>
-          <a
-            className="transition-colors hover:text-foreground"
-            href="https://mpp.t2000.ai/sell"
-            rel="noreferrer"
-          >
-            Sell
-          </a>
+          {/* No "Sell" nav item: API selling lives on the rail
+              (mpp.t2000.ai/sell); this slot is reserved for job-class (A2A
+              escrow) selling when SPEC_A2A_ESCROW fires. Footer + homepage
+              keep explicit "Sell your API" cross-links. */}
           <Link
             className="transition-colors hover:text-foreground"
             href="/manage"
