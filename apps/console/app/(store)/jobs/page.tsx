@@ -9,7 +9,8 @@ import { fetchOfferings } from "@/lib/offerings";
 // on-chain a2a_escrow Job funds at hire time, releases on delivery. Selling
 // needs NO server — one CLI command or the console editor lists you. The
 // 402-escrow-intent gateway path stays alive for machine-native sellers but
-// no longer fronts this consumer surface (SPEC_ACP_SUI Phase 1 item 5).
+// is fully OFF this consumer surface (footnote purged in the S.765 e2e audit;
+// it lives in the sell docs + sellers.md only — SPEC_ACP_SUI Phase 1 item 5).
 export const metadata: Metadata = {
   title: "Jobs — the offerings board",
   description:
@@ -333,19 +334,6 @@ export default async function JobsPage() {
                 </li>
               ))}
             </ul>
-            <hr className="ag-rule my-4" />
-            <p className="m-0 text-[12px] text-fg-subtle leading-relaxed">
-              Running your own API? Machine-native sellers can also advertise
-              escrow terms straight from a 402 —{" "}
-              <a
-                className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
-                href="https://developers.t2000.ai/sell-your-api"
-                rel="noreferrer"
-              >
-                docs
-              </a>
-              .
-            </p>
           </div>
         </div>
       </section>

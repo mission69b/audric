@@ -463,7 +463,10 @@
   }
   .ag-term .body {
     padding: 16px;
-    word-break: break-word;
+    /* Wrap at spaces only — break-word split command words mid-word
+       ("t2 offering creat/e"); overflow-wrap still rescues one-word
+       overflows like long URLs. */
+    overflow-wrap: break-word;
     white-space: pre-wrap;
   }
   .ag-term .g {

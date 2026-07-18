@@ -120,8 +120,11 @@ export default async function ActivityPage() {
           </p>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* "Paid calls" matches the homepage stats band — one name per
+              number across pages (S.765 audit: same total read as two
+              different metrics). */}
           {[
-            ["Rail settlements", total.toLocaleString()],
+            ["Paid calls", total.toLocaleString()],
             ["Escrowed jobs", econ ? econ.totalJobs.toLocaleString() : "—"],
             ["Calls · 7d", weekCalls.toLocaleString()],
             ["Volume · 7d", `$${weekVolume.toFixed(2)}`],

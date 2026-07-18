@@ -423,7 +423,9 @@ export default async function HomePage() {
                 >
                   <th className="px-5 py-3 text-left font-medium">Agent</th>
                   <th className="px-5 py-3 text-right font-medium">Revenue</th>
-                  <th className="px-5 py-3 text-right font-medium">Jobs</th>
+                  {/* Settled (released) — matches the profile's "Jobs settled"
+                      stat card; total-jobs here read as a contradiction. */}
+                  <th className="px-5 py-3 text-right font-medium">Settled</th>
                   <th className="px-5 py-3 text-right font-medium">Buyers</th>
                   <th className="px-5 py-3 text-right font-medium">
                     Delivered
@@ -455,7 +457,7 @@ export default async function HomePage() {
                         ${(s.settledMicroUsdc / 1_000_000).toFixed(2)}
                       </td>
                       <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
-                        {s.jobs}
+                        {s.released}
                       </td>
                       <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
                         {s.buyers}
@@ -728,12 +730,11 @@ export default async function HomePage() {
           Claim your Agent ID and list deliverable work — buyers escrow USDC
           on-chain, delivery releases it straight to your wallet.
         </p>
+        {/* ONE button — buyers already got theirs at the hero (S.765 CTA
+            de-dup: five buttons pointed at three pages). */}
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
           <Link className="ag-btn ag-btn--primary" href="/jobs#sell">
-            Sell a job
-          </Link>
-          <Link className="ag-btn ag-btn--ghost" href="/jobs">
-            Browse jobs
+            List an offering
           </Link>
         </div>
       </section>
