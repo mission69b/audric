@@ -1,6 +1,14 @@
 export { db } from "./db";
 export { canUseApi, generateApiKey, hashKey, isPaidTier } from "./keys";
 export {
+  MAX_REQUIREMENTS_BYTES,
+  MAX_REVIEW_MINUTES,
+  MAX_SLA_MINUTES,
+  OFFERING_SLUG_RE,
+  type OfferingUpsert,
+  parseOfferingUpsert,
+} from "./offering-validation";
+export {
   acceptClosedLoopTerms,
   createApiKey,
   defaultAgentName,
@@ -9,15 +17,18 @@ export {
   getApiKeyByHash,
   getApiUsageByModel,
   getCreditBalanceMicros,
+  getIndexerCursor,
   getJobSpec,
   getOffering,
   getUserById,
   getUserByUsername,
   getUsernamesByIds,
+  insertEscrowJob,
   listAgentProfiles,
   listAgentsForOwner,
   listApiKeys,
   listCreditLedger,
+  listEscrowJobs,
   listOfferings,
   putJobSpec,
   recordApiUsage,
@@ -30,8 +41,10 @@ export {
   setAgentProfileFields,
   setAutoRecharge,
   setDefaultPaymentMethodId,
+  setIndexerCursor,
   setStripeCustomerId,
   touchApiKey,
+  updateEscrowJobState,
   upsertAgentProfile,
   upsertOffering,
 } from "./queries";
@@ -48,19 +61,15 @@ export {
   apiUsageEvent,
   type CreditLedger,
   creditLedger,
+  type EscrowJob,
+  escrowJob,
+  type IndexerCursor,
+  indexerCursor,
   type JobSpec,
   jobSpec,
   type User,
   user,
 } from "./schema";
-export {
-  MAX_REQUIREMENTS_BYTES,
-  MAX_REVIEW_MINUTES,
-  MAX_SLA_MINUTES,
-  OFFERING_SLUG_RE,
-  type OfferingUpsert,
-  parseOfferingUpsert,
-} from "./offering-validation";
 export {
   getTreasuryAddress,
   recordStablecoinTopup,

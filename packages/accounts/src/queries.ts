@@ -24,6 +24,9 @@ import {
   apiKey,
   apiUsageEvent,
   creditLedger,
+  type EscrowJob,
+  escrowJob,
+  indexerCursor,
   jobSpec,
   type User,
   user,
@@ -748,4 +751,133 @@ export async function touchApiKey(id: string): Promise<void> {
     .update(apiKey)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKey.id, id));
+}
+
+// ── Escrow job index (t2 ACP Phase 1 item 4 — provider inbox) ───────────────
+// Written ONLY by the web-v3 event indexer; read by /v1/jobs. The chain is
+// the source of truth; this is a queryable read-model.
+
+export async function getIndexerCursor(
+  name: string
+): Promise<string | undefined> {
+  const [row] = await db
+    .select({ value: indexerCursor.value })
+    .from(indexerCursor)
+    .where(eq(indexerCursor.name, name))
+    .limit(1);
+  return row?.value;
+}
+
+export async function setIndexerCursor(
+  name: string,
+  value: string
+): Promise<void> {
+  await db
+    .insert(indexerCursor)
+    .values({ name, value, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: indexerCursor.name,
+      set: { value, updatedAt: new Date() },
+    });
+}
+
+/** Insert the row for a JobCreated event (idempotent — replays no-op). */
+export async function insertEscrowJob(row: {
+  jobId: string;
+  buyer: string;
+  seller: string;
+  amountMicroUsdc: number;
+  feeBps: number;
+  rejectSplitBps: number;
+  deliverByMs: number;
+  reviewWindowMs: number;
+  createdTxDigest: string;
+  createdAtMs: number;
+}): Promise<void> {
+  await db
+    .insert(escrowJob)
+    .values({ ...row, state: "funded", updatedAtMs: row.createdAtMs })
+    .onConflictDoNothing();
+}
+
+// funded → delivered → released | rejected; funded → refunded. Rank guards
+// against event replays regressing a settled row.
+const STATE_RANK: Record<string, number> = {
+  funded: 0,
+  delivered: 1,
+  released: 2,
+  rejected: 2,
+  refunded: 2,
+};
+
+/** Apply a lifecycle transition (idempotent; ignores rank regressions). */
+export async function updateEscrowJobState(
+  jobId: string,
+  state: "delivered" | "released" | "rejected" | "refunded",
+  fields: {
+    timestampMs: number;
+    deliveryHash?: string;
+    feeAmountMicroUsdc?: number;
+    byTimeout?: boolean;
+  }
+): Promise<void> {
+  const [current] = await db
+    .select({ state: escrowJob.state })
+    .from(escrowJob)
+    .where(eq(escrowJob.jobId, jobId))
+    .limit(1);
+  if (!current) {
+    return; // event for a job created before this indexer's cursor epoch
+  }
+  if ((STATE_RANK[state] ?? 0) <= (STATE_RANK[current.state] ?? 0)) {
+    return;
+  }
+  await db
+    .update(escrowJob)
+    .set({
+      state,
+      updatedAtMs: fields.timestampMs,
+      ...(fields.deliveryHash !== undefined && {
+        deliveryHash: fields.deliveryHash,
+      }),
+      ...(fields.feeAmountMicroUsdc !== undefined && {
+        feeAmountMicroUsdc: fields.feeAmountMicroUsdc,
+      }),
+      ...(fields.byTimeout !== undefined && { byTimeout: fields.byTimeout }),
+    })
+    .where(eq(escrowJob.jobId, jobId));
+}
+
+/** The inbox / activity query: jobs by seller and/or buyer, newest first. */
+export async function listEscrowJobs(opts: {
+  seller?: string;
+  buyer?: string;
+  state?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<{ jobs: EscrowJob[]; total: number }> {
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
+  const offset = Math.max(opts.offset ?? 0, 0);
+  const conditions: (SQL | undefined)[] = [];
+  if (opts.seller) {
+    conditions.push(eq(escrowJob.seller, opts.seller));
+  }
+  if (opts.buyer) {
+    conditions.push(eq(escrowJob.buyer, opts.buyer));
+  }
+  if (opts.state) {
+    conditions.push(eq(escrowJob.state, opts.state));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, [{ value: total }]] = await Promise.all([
+    db
+      .select()
+      .from(escrowJob)
+      .where(where)
+      .orderBy(desc(escrowJob.createdAtMs))
+      .limit(limit)
+      .offset(offset),
+    db.select({ value: count() }).from(escrowJob).where(where),
+  ]);
+  return { jobs: rows, total };
 }

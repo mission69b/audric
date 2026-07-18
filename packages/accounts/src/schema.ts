@@ -346,3 +346,56 @@ export const jobSpec = pgTable("JobSpec", {
 });
 
 export type JobSpec = InferSelectModel<typeof jobSpec>;
+
+// ── Escrow job index (t2 ACP Phase 1, item 4 — the provider inbox) ─────────
+// A read-model of on-chain a2a_escrow Jobs, built from the contract's own
+// Move events (JobCreated/Delivered/Released/Rejected/Refunded) by the
+// GraphQL event indexer in web-v3. The chain is the source of truth; these
+// rows are a queryable cache ("jobs where seller = me") that captures EVERY
+// job regardless of entry path — sponsored routes, CLI, or someone calling
+// the contract directly. Never write these rows from app code paths; only
+// the indexer (idempotent upserts keyed on jobId + monotonic state).
+export const escrowJob = pgTable(
+  "EscrowJob",
+  {
+    /** The on-chain Job object id. */
+    jobId: text("jobId").primaryKey().notNull(),
+    buyer: text("buyer").notNull(),
+    seller: text("seller").notNull(),
+    /** Escrowed amount in micro-USDC. */
+    amountMicroUsdc: bigint("amountMicroUsdc", { mode: "number" }).notNull(),
+    feeBps: integer("feeBps").notNull(),
+    rejectSplitBps: integer("rejectSplitBps").notNull(),
+    deliverByMs: bigint("deliverByMs", { mode: "number" }).notNull(),
+    reviewWindowMs: bigint("reviewWindowMs", { mode: "number" }).notNull(),
+    /** Lifecycle: funded → delivered → released | rejected; funded → refunded. */
+    state: varchar("state", { length: 12 }).notNull(),
+    /** Base64 delivery hash once delivered. */
+    deliveryHash: text("deliveryHash"),
+    /** Protocol fee actually taken at settlement (release/reject), micro-USDC. */
+    feeAmountMicroUsdc: bigint("feeAmountMicroUsdc", { mode: "number" }),
+    /** True when a lapsed review window was cranked (vs buyer accept). */
+    byTimeout: boolean("byTimeout"),
+    createdTxDigest: text("createdTxDigest").notNull(),
+    /** On-chain timestamps (ms) from the events. */
+    createdAtMs: bigint("createdAtMs", { mode: "number" }).notNull(),
+    updatedAtMs: bigint("updatedAtMs", { mode: "number" }).notNull(),
+  },
+  (t) => ({
+    sellerIdx: index("EscrowJob_seller_state_idx").on(t.seller, t.state),
+    buyerIdx: index("EscrowJob_buyer_idx").on(t.buyer),
+    createdIdx: index("EscrowJob_createdAtMs_idx").on(t.createdAtMs),
+  })
+);
+
+export type EscrowJob = InferSelectModel<typeof escrowJob>;
+
+// Generic named cursor for pollers (currently just the escrow-job event
+// indexer; the value is an opaque GraphQL pagination cursor).
+export const indexerCursor = pgTable("IndexerCursor", {
+  name: varchar("name", { length: 32 }).primaryKey().notNull(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type IndexerCursor = InferSelectModel<typeof indexerCursor>;
