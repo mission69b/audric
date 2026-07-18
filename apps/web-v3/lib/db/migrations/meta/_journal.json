@@ -141,6 +141,13 @@
       "when": 1783665625549,
       "tag": "0019_drop_price_usdc",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784346172176,
+      "tag": "0020_happy_hedge_knight",
+      "breakpoints": true
     }
   ]
 }

@@ -282,3 +282,67 @@ export const agentProfile = pgTable(
 );
 
 export type AgentProfile = InferSelectModel<typeof agentProfile>;
+
+// ── Offerings (t2 ACP Phase 1 — SPEC_ACP_SUI §4.1) ──────────────────────────
+// A structured, fixed-price unit of deliverable work attached to an Agent ID.
+// THE seller primitive: sellers register offerings (name/price/SLA/schema),
+// buyers fund a2a_escrow Jobs against them. Registry data lives here (D-2:
+// DB now, chain-anchor later); the MONEY is always on-chain in the Job.
+export const agentOffering = pgTable(
+  "AgentOffering",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    /** The selling agent's Sui address (= its Agent ID). */
+    agentAddress: text("agentAddress")
+      .notNull()
+      .references(() => agentProfile.address),
+    /** Machine name, unique per agent — `t2 job create --offering <slug>`. */
+    slug: varchar("slug", { length: 48 }).notNull(),
+    name: varchar("name", { length: 80 }).notNull(),
+    description: text("description").notNull(),
+    /** Fixed price in micro-USDC (1 USDC = 1_000_000) — exact, no float. */
+    priceMicroUsdc: bigint("priceMicroUsdc", { mode: "number" }).notNull(),
+    /** Delivery SLA in minutes → the Job's deliver-by deadline at create. */
+    slaMinutes: integer("slaMinutes").notNull(),
+    /** Buyer review window (minutes) after delivery; lapse = auto-release. */
+    reviewWindowMinutes: integer("reviewWindowMinutes").notNull().default(1440),
+    /** Buyer share (bps) if they reject — fixed into the Job at create. */
+    rejectSplitBps: integer("rejectSplitBps").notNull().default(8000),
+    /** What the buyer must provide: a JSON-schema object (validated at buy
+     *  time) or a free-text string. Null = no requirements. */
+    requirements: json("requirements").$type<unknown>(),
+    /** What the buyer receives (deliverable description). */
+    deliverable: text("deliverable").notNull(),
+    /** Retire = soft-delete (existing funded jobs keep settling on-chain). */
+    retiredAt: timestamp("retiredAt"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    agentSlugUnique: uniqueIndex("AgentOffering_agent_slug_unique").on(
+      t.agentAddress,
+      t.slug
+    ),
+    agentIdx: index("AgentOffering_agentAddress_idx").on(t.agentAddress),
+    liveIdx: index("AgentOffering_retiredAt_createdAt_idx").on(
+      t.retiredAt,
+      t.createdAt
+    ),
+  })
+);
+
+export type AgentOffering = InferSelectModel<typeof agentOffering>;
+
+// Content-addressed job-spec store (t2 ACP Phase 1). The buyer's requirements
+// payload, keyed by its sha256 — the SAME hash the buyer pins on-chain as the
+// Job's `spec_hash`, so the content is tamper-evident (recompute + compare).
+// This is the readable side of the spec channel until/unless specs move to
+// Walrus; the hash contract wouldn't change.
+export const jobSpec = pgTable("JobSpec", {
+  /** sha256 hex (no 0x) of the exact UTF-8 content. */
+  hash: varchar("hash", { length: 64 }).primaryKey().notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type JobSpec = InferSelectModel<typeof jobSpec>;

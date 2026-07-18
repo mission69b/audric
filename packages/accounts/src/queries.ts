@@ -6,20 +6,25 @@ import {
   desc,
   eq,
   gte,
+  ilike,
   inArray,
   isNotNull,
   isNull,
   or,
+  type SQL,
   sum,
 } from "drizzle-orm";
 import { db } from "./db";
 import {
+  type AgentOffering,
   type AgentProfile,
   type ApiKey,
+  agentOffering,
   agentProfile,
   apiKey,
   apiUsageEvent,
   creditLedger,
+  jobSpec,
   type User,
   user,
 } from "./schema";
@@ -346,6 +351,143 @@ export async function listAgentProfiles(opts?: {
     db.select({ value: count() }).from(agentProfile).where(where),
   ]);
   return { agents: rows, total: totalRow?.value ?? 0 };
+}
+
+// ── Offerings (t2 ACP Phase 1 — SPEC_ACP_SUI §4.1) ──────────────────────────
+
+/** Live offerings, newest first. Optional per-agent filter + naive text
+ *  search (name/description ilike) — the `t2 browse` read path. */
+export async function listOfferings(opts?: {
+  agentAddress?: string;
+  search?: string;
+  includeRetired?: boolean;
+  limit?: number;
+  offset?: number;
+}): Promise<{ offerings: AgentOffering[]; total: number }> {
+  const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
+  const offset = Math.max(opts?.offset ?? 0, 0);
+  const conditions: (SQL | undefined)[] = [];
+  if (!opts?.includeRetired) {
+    conditions.push(isNull(agentOffering.retiredAt));
+  }
+  if (opts?.agentAddress) {
+    conditions.push(eq(agentOffering.agentAddress, opts.agentAddress));
+  }
+  if (opts?.search) {
+    const q = `%${opts.search.replaceAll(/[%_]/g, "")}%`;
+    conditions.push(
+      or(
+        ilike(agentOffering.name, q),
+        ilike(agentOffering.description, q),
+        ilike(agentOffering.deliverable, q)
+      )
+    );
+  }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, [totalRow]] = await Promise.all([
+    db
+      .select()
+      .from(agentOffering)
+      .where(where)
+      .orderBy(desc(agentOffering.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db.select({ value: count() }).from(agentOffering).where(where),
+  ]);
+  return { offerings: rows, total: totalRow?.value ?? 0 };
+}
+
+export async function getOffering(
+  agentAddress: string,
+  slug: string
+): Promise<AgentOffering | undefined> {
+  const [row] = await db
+    .select()
+    .from(agentOffering)
+    .where(
+      and(
+        eq(agentOffering.agentAddress, agentAddress),
+        eq(agentOffering.slug, slug)
+      )
+    )
+    .limit(1);
+  return row;
+}
+
+/** Create or update an offering (keyed agent+slug). Re-listing a retired slug
+ *  revives it. Auth (agent signature) is the caller's job. */
+export async function upsertOffering(offering: {
+  agentAddress: string;
+  slug: string;
+  name: string;
+  description: string;
+  priceMicroUsdc: number;
+  slaMinutes: number;
+  reviewWindowMinutes: number;
+  rejectSplitBps: number;
+  requirements: unknown;
+  deliverable: string;
+}): Promise<AgentOffering> {
+  const now = new Date();
+  const [row] = await db
+    .insert(agentOffering)
+    .values({ ...offering, updatedAt: now })
+    .onConflictDoUpdate({
+      target: [agentOffering.agentAddress, agentOffering.slug],
+      set: {
+        name: offering.name,
+        description: offering.description,
+        priceMicroUsdc: offering.priceMicroUsdc,
+        slaMinutes: offering.slaMinutes,
+        reviewWindowMinutes: offering.reviewWindowMinutes,
+        rejectSplitBps: offering.rejectSplitBps,
+        requirements: offering.requirements,
+        deliverable: offering.deliverable,
+        retiredAt: null,
+        updatedAt: now,
+      },
+    })
+    .returning();
+  return row;
+}
+
+/** Soft-retire an offering (funded jobs keep settling on-chain regardless).
+ *  Returns false when the agent has no such offering. */
+export async function retireOffering(
+  agentAddress: string,
+  slug: string
+): Promise<boolean> {
+  const rows = await db
+    .update(agentOffering)
+    .set({ retiredAt: new Date(), updatedAt: new Date() })
+    .where(
+      and(
+        eq(agentOffering.agentAddress, agentAddress),
+        eq(agentOffering.slug, slug),
+        isNull(agentOffering.retiredAt)
+      )
+    )
+    .returning({ id: agentOffering.id });
+  return rows.length > 0;
+}
+
+/** Store a job-spec payload under its sha256 (idempotent — content-addressed,
+ *  same hash = same content). The buyer pins this hash on-chain as the Job's
+ *  `spec_hash`, so readers can verify integrity by recomputing. */
+export async function putJobSpec(hash: string, content: string): Promise<void> {
+  await db
+    .insert(jobSpec)
+    .values({ hash, content })
+    .onConflictDoNothing({ target: jobSpec.hash });
+}
+
+export async function getJobSpec(hash: string): Promise<string | undefined> {
+  const [row] = await db
+    .select()
+    .from(jobSpec)
+    .where(eq(jobSpec.hash, hash))
+    .limit(1);
+  return row?.content;
 }
 
 // ── Credit rail (Phase 5) ────────────────────────────────────────────────────

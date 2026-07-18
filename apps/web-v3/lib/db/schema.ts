@@ -20,14 +20,18 @@ import {
 // `@/lib/db/schema` imports keep working unchanged. Migrations are still
 // orchestrated here (drizzle.config reads this file, which surfaces the tables).
 export {
+  type AgentOffering,
   type AgentProfile,
   type ApiKey,
   type ApiUsageEvent,
+  agentOffering,
   agentProfile,
   apiKey,
   apiUsageEvent,
   type CreditLedger,
   creditLedger,
+  type JobSpec,
+  jobSpec,
   type User,
   user,
 } from "@audric/accounts/schema";
