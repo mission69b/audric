@@ -79,7 +79,7 @@ type FeedRow = {
 
 export default async function HomePage() {
   const [
-    { total, rows, sellers, servicesCount, statsById },
+    { total, rows, sellers, servicesCount, statsById, offeringNames },
     railStats,
     econ,
     topSellers,
@@ -434,6 +434,7 @@ export default async function HomePage() {
                   const row = rowByAddress.get(s.seller.toLowerCase());
                   const name =
                     row?.name ??
+                    offeringNames.get(s.seller.toLowerCase()) ??
                     `${s.seller.slice(0, 8)}…${s.seller.slice(-4)}`;
                   return (
                     <tr

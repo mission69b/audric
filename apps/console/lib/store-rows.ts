@@ -9,6 +9,7 @@ import {
   priceFloor,
   type ServiceStats,
 } from "@/lib/gateway-services";
+import { fetchOfferings } from "@/lib/offerings";
 
 // Row assembly shared by the store homepage (sellers only) and the /agents
 // directory (everyone). One builder so the two surfaces can never disagree
@@ -53,12 +54,15 @@ function shortAddress(address: string): string {
 }
 
 /** Selling agents first (receipts-sorted), then unclaimed sellers, then the
- *  rest of the directory. `verified` = claimed wallet + ≥1 settled sale. */
+ *  rest of the directory. `verified` = claimed wallet + ≥1 settled sale.
+ *  An agent sells via the gateway catalog (per-call) OR via ACP offerings
+ *  (per-job) — either gives it a price on the store. */
 export function buildRows(
   agents: AgentRow[],
   sellers: Seller[],
   handles: Map<string, string>,
-  statsById: Map<string, ServiceStats | null>
+  statsById: Map<string, ServiceStats | null>,
+  offeringFloors: Map<string, number> = new Map()
 ): StoreRow[] {
   const serviceByWallet = new Map(
     sellers.map((s) => [s.payTo.toLowerCase(), s])
@@ -69,6 +73,7 @@ export function buildRows(
     const service = serviceByWallet.get(a.address.toLowerCase());
     const stats = service ? statsById.get(service.id) : undefined;
     const handle = handles.get(a.address);
+    const offeringFloor = offeringFloors.get(a.address.toLowerCase());
     return {
       key: a.address,
       href: `/${a.numericId ?? a.address}`,
@@ -81,8 +86,10 @@ export function buildRows(
       address: a.address,
       imageUrl: a.imageUrl,
       category: a.category ?? null,
-      price: service ? priceFloor(service) : null,
-      perJob: Boolean(service?.escrow),
+      price:
+        (service ? priceFloor(service) : null) ??
+        (offeringFloor == null ? null : `$${offeringFloor}`),
+      perJob: Boolean(service?.escrow) || (!service && offeringFloor != null),
       verified: Boolean(stats && stats.sold > 0),
       sold: stats?.sold,
       buyers: stats?.buyers,
@@ -133,10 +140,14 @@ export async function loadStoreData(): Promise<{
   sellers: Seller[];
   servicesCount: number;
   statsById: Map<string, ServiceStats | null>;
+  /** Live-offering seller → display name (Scan name fallback for sellers
+   *  the directory list doesn't carry, e.g. deactivated agents). */
+  offeringNames: Map<string, string>;
 }> {
-  const [{ total, agents }, services] = await Promise.all([
+  const [{ total, agents }, services, offerings] = await Promise.all([
     fetchAgents(),
     fetchGatewayServices(),
+    fetchOfferings(),
   ]);
   // The store showcases the AGENT economy only: direct sellers whose 402
   // pays their own wallet (founder call 2026-07-17 late: the rail's proxied
@@ -155,11 +166,29 @@ export async function loadStoreData(): Promise<{
   const statsById = new Map<string, ServiceStats | null>(
     sellers.map((s, i) => [s.id, statsList[i]])
   );
+  // ACP offerings (t2 ACP Phase 1) make an agent a seller too: floor price
+  // per agent for the store grid + a name fallback for the Scan table.
+  const offeringFloors = new Map<string, number>();
+  const offeringNames = new Map<string, string>();
+  for (const o of offerings) {
+    if (o.retired) {
+      continue;
+    }
+    const key = o.agent.toLowerCase();
+    const floor = offeringFloors.get(key);
+    if (floor == null || o.priceUsdc < floor) {
+      offeringFloors.set(key, o.priceUsdc);
+    }
+    if (o.agentName) {
+      offeringNames.set(key, o.agentName);
+    }
+  }
   return {
     total,
-    rows: buildRows(agents, sellers, handles, statsById),
+    rows: buildRows(agents, sellers, handles, statsById, offeringFloors),
     sellers,
     servicesCount: services.length,
     statsById,
+    offeringNames,
   };
 }
