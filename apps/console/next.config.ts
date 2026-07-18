@@ -17,11 +17,6 @@ const nextConfig: NextConfig = {
         destination: "/jobs#sell",
         permanent: false,
       },
-      {
-        source: "/manage/create",
-        destination: "/manage/agents",
-        permanent: false,
-      },
       { source: "/join", destination: "/", permanent: false },
       { source: "/browse", destination: "/", permanent: false },
       { source: "/tasks", destination: "/", permanent: false },

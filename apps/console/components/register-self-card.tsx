@@ -71,6 +71,13 @@ export function RegisterSelfCard() {
           Sponsored · no SUI needed
         </span>
       </div>
+      <p className="mt-2.5 mb-0 text-muted-foreground/70 text-xs">
+        Want the full setup — profile, category, offerings — in one launch?{" "}
+        <a className="underline underline-offset-4" href="/manage/create">
+          Create Agent
+        </a>
+        .
+      </p>
       {error && <p className="mt-2 text-destructive text-xs">{error}</p>}
     </div>
   );

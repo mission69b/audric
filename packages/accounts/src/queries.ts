@@ -13,6 +13,7 @@ import {
   isNull,
   or,
   type SQL,
+  sql,
   sum,
 } from "drizzle-orm";
 import { db } from "./db";
@@ -902,6 +903,130 @@ export async function listJobReviews(
   ]);
   const score = agg?.avg == null ? null : Number(agg.avg);
   return { reviews, score, count: agg?.count ?? 0 };
+}
+
+// ── Scan (economy dashboard) aggregates — t2 ACP Phase 2 ───────────────────
+// Every number derives from the event-indexed job ledger (chain truth).
+
+/** Rail-wide escrow totals for the stats band. */
+export async function escrowEconomyStats(): Promise<{
+  totalJobs: number;
+  releasedJobs: number;
+  settledMicroUsdc: number;
+  distinctWallets: number;
+}> {
+  const [[agg], [wallets]] = await Promise.all([
+    db
+      .select({
+        totalJobs: count(),
+        releasedJobs: count(
+          sql`CASE WHEN ${escrowJob.state} = 'released' THEN 1 END`
+        ),
+        settledMicroUsdc: sum(
+          sql`CASE WHEN ${escrowJob.state} = 'released' THEN ${escrowJob.amountMicroUsdc} ELSE 0 END`
+        ),
+      })
+      .from(escrowJob),
+    db
+      .select({ value: count() })
+      .from(
+        sql`(SELECT "buyer" AS w FROM "EscrowJob" UNION SELECT "seller" FROM "EscrowJob") AS wallets`
+      ),
+  ]);
+  return {
+    totalJobs: agg?.totalJobs ?? 0,
+    releasedJobs: agg?.releasedJobs ?? 0,
+    settledMicroUsdc: Number(agg?.settledMicroUsdc ?? 0),
+    distinctWallets: wallets?.value ?? 0,
+  };
+}
+
+/** Top sellers by released (settled) volume — the Scan top-agents table. */
+export async function topJobSellers(limit = 10): Promise<
+  {
+    seller: string;
+    jobs: number;
+    released: number;
+    concluded: number;
+    settledMicroUsdc: number;
+    buyers: number;
+  }[]
+> {
+  const rows = await db
+    .select({
+      seller: escrowJob.seller,
+      jobs: count(),
+      released: count(
+        sql`CASE WHEN ${escrowJob.state} = 'released' THEN 1 END`
+      ),
+      concluded: count(
+        sql`CASE WHEN ${escrowJob.state} IN ('released', 'rejected', 'refunded') THEN 1 END`
+      ),
+      settledMicroUsdc: sum(
+        sql`CASE WHEN ${escrowJob.state} = 'released' THEN ${escrowJob.amountMicroUsdc} ELSE 0 END`
+      ),
+      buyers: sql<number>`COUNT(DISTINCT ${escrowJob.buyer})`,
+    })
+    .from(escrowJob)
+    .groupBy(escrowJob.seller)
+    .orderBy(
+      desc(
+        sum(
+          sql`CASE WHEN ${escrowJob.state} = 'released' THEN ${escrowJob.amountMicroUsdc} ELSE 0 END`
+        )
+      )
+    )
+    .limit(Math.min(Math.max(limit, 1), 50));
+  return rows.map((r) => ({
+    seller: r.seller,
+    jobs: r.jobs,
+    released: r.released,
+    concluded: r.concluded,
+    settledMicroUsdc: Number(r.settledMicroUsdc ?? 0),
+    buyers: Number(r.buyers ?? 0),
+  }));
+}
+
+/** One seller's job track record — the profile stat cards. */
+export async function sellerJobStats(seller: string): Promise<{
+  jobs: number;
+  released: number;
+  concluded: number;
+  settledMicroUsdc: number;
+  buyers: number;
+}> {
+  const [agg] = await db
+    .select({
+      jobs: count(),
+      released: count(
+        sql`CASE WHEN ${escrowJob.state} = 'released' THEN 1 END`
+      ),
+      concluded: count(
+        sql`CASE WHEN ${escrowJob.state} IN ('released', 'rejected', 'refunded') THEN 1 END`
+      ),
+      settledMicroUsdc: sum(
+        sql`CASE WHEN ${escrowJob.state} = 'released' THEN ${escrowJob.amountMicroUsdc} ELSE 0 END`
+      ),
+      buyers: sql<number>`COUNT(DISTINCT ${escrowJob.buyer})`,
+    })
+    .from(escrowJob)
+    .where(eq(escrowJob.seller, seller));
+  return {
+    jobs: agg?.jobs ?? 0,
+    released: agg?.released ?? 0,
+    concluded: agg?.concluded ?? 0,
+    settledMicroUsdc: Number(agg?.settledMicroUsdc ?? 0),
+    buyers: Number(agg?.buyers ?? 0),
+  };
+}
+
+/** The freshest job activity (by last state change) — the Scan live feed. */
+export async function listRecentEscrowJobs(limit = 20): Promise<EscrowJob[]> {
+  return await db
+    .select()
+    .from(escrowJob)
+    .orderBy(desc(escrowJob.updatedAtMs))
+    .limit(Math.min(Math.max(limit, 1), 100));
 }
 
 /** The inbox / activity query: jobs by seller and/or buyer, newest first. */

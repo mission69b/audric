@@ -1,6 +1,15 @@
+import {
+  escrowEconomyStats,
+  listRecentEscrowJobs,
+  topJobSellers,
+} from "@audric/accounts";
 import Link from "next/link";
 import { StoreGrid } from "@/components/store-grid";
-import { fetchRailStats, priceFloor } from "@/lib/gateway-services";
+import {
+  fetchRailPayments,
+  fetchRailStats,
+  priceFloor,
+} from "@/lib/gateway-services";
 import { loadStoreData } from "@/lib/store-rows";
 
 // agents.t2000.ai — the store homepage, restored to the t2000-design/agents
@@ -15,6 +24,10 @@ import { loadStoreData } from "@/lib/store-rows";
 // THE STORE grid lists SELLING agents only (founder call 2026-07-18 late
 // morning: non-selling Agent IDs on the store read as misleading supply) —
 // the full registry lives at /agents, the Directory.
+
+// Scan is a live dashboard — regenerate at most every 30s (same cadence as
+// /activity; the DB aggregates + rail fetches re-run on regeneration).
+export const revalidate = 30;
 
 const TICKER: [string, string, string][] = [
   ["Identity", "on-chain Agent IDs, receipt-backed", "live"],
@@ -32,9 +45,93 @@ const JOB_STEPS: [string, string][] = [
   ["Receipt", "Proof, on-chain"],
 ];
 
+function timeAgo(ms: number): string {
+  const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (s < 60) {
+    return `${s}s ago`;
+  }
+  if (s < 3600) {
+    return `${Math.floor(s / 60)}m ago`;
+  }
+  if (s < 86_400) {
+    return `${Math.floor(s / 3600)}h ago`;
+  }
+  return `${Math.floor(s / 86_400)}d ago`;
+}
+
+const JOB_STATE_LABEL: Record<string, string> = {
+  funded: "Job funded",
+  delivered: "Work delivered",
+  released: "Job settled",
+  rejected: "Delivery rejected",
+  refunded: "Escrow refunded",
+};
+
+type FeedRow = {
+  key: string;
+  atMs: number;
+  kind: "job" | "call";
+  label: string;
+  detail: string;
+  amount: string;
+  href: string | null;
+};
+
 export default async function HomePage() {
-  const [{ total, rows, sellers, servicesCount, statsById }, railStats] =
-    await Promise.all([loadStoreData(), fetchRailStats()]);
+  const [
+    { total, rows, sellers, servicesCount, statsById },
+    railStats,
+    econ,
+    topSellers,
+    recentJobs,
+    { payments: railPayments },
+  ] = await Promise.all([
+    loadStoreData(),
+    fetchRailStats(),
+    escrowEconomyStats().catch(() => null),
+    topJobSellers(8).catch(() => []),
+    listRecentEscrowJobs(12).catch(() => []),
+    fetchRailPayments(12),
+  ]);
+
+  // The live feed — job lifecycle events + x402 settlements, interleaved by
+  // time. Job rows link to the escrow object; call rows to their Sui tx.
+  const feed: FeedRow[] = [
+    ...recentJobs.map(
+      (j): FeedRow => ({
+        key: `job-${j.jobId}-${j.state}`,
+        atMs: j.updatedAtMs,
+        kind: "job",
+        label: JOB_STATE_LABEL[j.state] ?? j.state,
+        detail: `${j.seller.slice(0, 8)}…${j.seller.slice(-4)}`,
+        amount: `$${(j.amountMicroUsdc / 1_000_000).toFixed(2)}`,
+        href: `https://suiscan.xyz/mainnet/object/${j.jobId}`,
+      })
+    ),
+    ...railPayments.map(
+      (p): FeedRow => ({
+        key: `call-${p.id}`,
+        atMs: new Date(p.createdAt).getTime(),
+        kind: "call",
+        label: "API call paid",
+        detail: p.endpoint,
+        amount: `$${p.amount}`,
+        href: p.digest ? `https://suiscan.xyz/mainnet/tx/${p.digest}` : null,
+      })
+    ),
+  ]
+    .sort((a, b) => b.atMs - a.atMs)
+    .slice(0, 14);
+
+  // Names for the top-sellers table come from the same rows the store
+  // renders — one builder, no drift.
+  const rowByAddress = new Map(rows.map((r) => [r.address.toLowerCase(), r]));
+
+  // Settled = escrow releases + x402 call volume. Both are receipts; no
+  // pass-through inflation (the aGDP honesty line).
+  const settledUsd =
+    (econ ? econ.settledMicroUsdc / 1_000_000 : 0) +
+    (railStats ? Number.parseFloat(railStats.totalVolume) || 0 : 0);
   // The store grid = agents with something to sell. Everyone else lives on
   // the /agents directory.
   const sellerRows = rows.filter((r) => r.price);
@@ -187,16 +284,25 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Rail metrics band ────────────────────────────────────── */}
+      {/* ── Scan: the economy stats band (t2 ACP Phase 2) ─────────────
+          Every number receipt- or chain-derived: settled = escrow releases +
+          x402 call volume; jobs + wallets from the event-indexed job ledger;
+          agents from the on-chain registry. No aGDP-style inflation. */}
       <section className="pt-10">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {(
             [
+              [
+                "Settled USDC",
+                econ || railStats ? `$${settledUsd.toFixed(2)}` : "—",
+              ],
+              ["Escrowed jobs", econ ? econ.totalJobs.toLocaleString() : "—"],
               ["Paid calls", railStats?.totalPayments.toLocaleString() ?? "—"],
-              ["Settled", railStats ? `$${railStats.totalVolume}` : "—"],
-              ["Paying wallets", railStats?.uniqueWallets.toString() ?? "—"],
+              [
+                "Active wallets",
+                econ ? econ.distinctWallets.toLocaleString() : "—",
+              ],
               ["Registered agents", total > 0 ? total.toLocaleString() : "—"],
-              ["Live services", servicesCount.toString()],
             ] as const
           ).map(([label, value]) => (
             <div className="ag-card px-5 py-4" key={label}>
@@ -289,6 +395,156 @@ export default async function HomePage() {
           .
         </p>
       </section>
+
+      {/* ── Top agents — ranked by RELEASED escrow volume (real money,
+          chain-settled). Delivered rate = released / concluded jobs. */}
+      {topSellers.length > 0 && (
+        <section className="pt-14">
+          <div className="ag-eyebrow">{"// TOP AGENTS"}</div>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h2
+              className="ag-title"
+              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+            >
+              Earning on-chain.
+            </h2>
+            <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
+              Ranked by settled escrow volume — every dollar released from a Job
+              object on Sui.
+            </p>
+          </div>
+          <div className="ag-card mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr
+                  className="border-b font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]"
+                  style={{ borderColor: "var(--ag-border)" }}
+                >
+                  <th className="px-5 py-3 text-left font-medium">Agent</th>
+                  <th className="px-5 py-3 text-right font-medium">Revenue</th>
+                  <th className="px-5 py-3 text-right font-medium">Jobs</th>
+                  <th className="px-5 py-3 text-right font-medium">Buyers</th>
+                  <th className="px-5 py-3 text-right font-medium">
+                    Delivered
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {topSellers.map((s) => {
+                  const row = rowByAddress.get(s.seller.toLowerCase());
+                  const name =
+                    row?.name ??
+                    `${s.seller.slice(0, 8)}…${s.seller.slice(-4)}`;
+                  return (
+                    <tr
+                      className="border-b last:border-b-0"
+                      key={s.seller}
+                      style={{ borderColor: "var(--ag-border)" }}
+                    >
+                      <td className="px-5 py-3">
+                        <Link
+                          className="font-medium text-foreground no-underline hover:underline"
+                          href={row?.href ?? `/${s.seller}`}
+                        >
+                          {name}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono tabular-nums">
+                        ${(s.settledMicroUsdc / 1_000_000).toFixed(2)}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
+                        {s.jobs}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
+                        {s.buyers}
+                      </td>
+                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
+                        {s.concluded > 0
+                          ? `${Math.round((s.released / s.concluded) * 100)}%`
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* ── Live transactions — job lifecycle + x402 settlements,
+          interleaved. Each row links to its on-chain proof. */}
+      {feed.length > 0 && (
+        <section className="pt-14">
+          <div className="ag-eyebrow">{"// LIVE TRANSACTIONS"}</div>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h2
+              className="ag-title"
+              style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
+            >
+              The economy, settling.
+            </h2>
+            <Link
+              className="pb-1 font-medium text-[13px] no-underline"
+              href="/activity"
+              style={{ color: "var(--ag-accent)" }}
+            >
+              Full activity feed →
+            </Link>
+          </div>
+          <div className="ag-card mt-4 divide-y divide-border/50 overflow-hidden">
+            {feed.map((f) => {
+              const inner = (
+                <>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className="size-1.5 shrink-0 rounded-full"
+                      style={{
+                        background:
+                          f.kind === "job"
+                            ? "var(--ag-accent)"
+                            : "var(--ag-verify)",
+                      }}
+                    />
+                    <span className="shrink-0 font-medium text-[12.5px] text-foreground">
+                      {f.label}
+                    </span>
+                    <span className="truncate font-mono text-[11.5px] text-fg-subtle">
+                      {f.detail}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-4">
+                    <span className="font-mono text-[12.5px] text-foreground tabular-nums">
+                      {f.amount}
+                    </span>
+                    <span className="w-[64px] text-right font-mono text-[11px] text-fg-subtle">
+                      {timeAgo(f.atMs)}
+                    </span>
+                  </div>
+                </>
+              );
+              return f.href ? (
+                <a
+                  className="flex items-center justify-between gap-4 px-4 py-2.5 transition-colors hover:bg-[color:var(--ag-overlay)]"
+                  href={f.href}
+                  key={f.key}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {inner}
+                </a>
+              ) : (
+                <div
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                  key={f.key}
+                >
+                  {inner}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Reputation from receipts ─────────────────────────────── */}
       <section className="grid items-center gap-8 pt-14 lg:grid-cols-[1.1fr_0.9fr]">
