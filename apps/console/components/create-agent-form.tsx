@@ -7,6 +7,7 @@ import {
   LAUNCH_STEPS,
   type LaunchStep,
   launchAgent,
+  slugifyOffering,
 } from "@/lib/launch-agent";
 
 // Create Agent — the composition moment (t2 ACP Phase 2, SPEC_ACP_SUI §5.1).
@@ -37,6 +38,51 @@ function short(a: string): string {
   return `${a.slice(0, 8)}…${a.slice(-6)}`;
 }
 
+// Mirror the /api/agent/profile caps — the launch pipeline mints the Agent ID
+// BEFORE the profile write, so anything the server would reject must be
+// caught here or a failed launch strands a bare, nameless ID on-chain.
+const MAX_NAME = 80;
+const MAX_DESC = 600;
+
+function validHttpsUrl(url: string): boolean {
+  if (url.length > 512) {
+    return false;
+  }
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+type FieldErrors = { name?: string; description?: string; imageUrl?: string };
+
+function validateIdentity(i: {
+  name: string;
+  description: string;
+  imageUrl: string;
+}): FieldErrors {
+  const errors: FieldErrors = {};
+  const name = i.name.trim();
+  if (name.length < 2) {
+    errors.name = "Give your agent a name (at least 2 characters).";
+  } else if (name.length > MAX_NAME) {
+    errors.name = `Name is too long (max ${MAX_NAME} characters).`;
+  }
+  const description = i.description.trim();
+  if (description.length === 0) {
+    errors.description =
+      "Say what this agent does — buyers see it on your profile.";
+  } else if (description.length > MAX_DESC) {
+    errors.description = `Description is too long (max ${MAX_DESC} characters).`;
+  }
+  const imageUrl = i.imageUrl.trim();
+  if (imageUrl && !validHttpsUrl(imageUrl)) {
+    errors.imageUrl = "Avatar must be a valid https:// URL.";
+  }
+  return errors;
+}
+
 function formatSla(minutes: number): string {
   if (minutes % 1440 === 0) {
     return `${minutes / 1440}d`;
@@ -50,10 +96,12 @@ function formatSla(minutes: number): string {
 function Field({
   label,
   hint,
+  error,
   children,
 }: {
   label: string;
   hint?: string;
+  error?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -68,6 +116,7 @@ function Field({
         )}
       </span>
       {children}
+      {error && <span className="text-[12px] text-destructive">{error}</span>}
     </label>
   );
 }
@@ -109,9 +158,11 @@ function Ready({ children }: { children: React.ReactNode }) {
 }
 
 function OfferingDraftForm({
+  existingSlugs,
   onAdd,
   onCancel,
 }: {
+  existingSlugs: string[];
   onAdd: (o: DraftOffering) => void;
   onCancel: () => void;
 }) {
@@ -124,13 +175,27 @@ function OfferingDraftForm({
   const [error, setError] = useState("");
 
   function add() {
+    // Mirror the server validator (parseOfferingUpsert) — a draft that would
+    // 400 at launch time must be rejected here, at add time.
     const priceUsdc = Number.parseFloat(price);
     if (!name.trim()) {
       setError("Give the offering a name.");
       return;
     }
-    if (!Number.isFinite(priceUsdc) || priceUsdc <= 0 || priceUsdc > 50) {
+    if (slugifyOffering(name).length < 2) {
+      setError("The name needs at least 2 letters or numbers.");
+      return;
+    }
+    if (existingSlugs.includes(slugifyOffering(name))) {
+      setError("You already added an offering with this name.");
+      return;
+    }
+    if (!Number.isFinite(priceUsdc) || priceUsdc < 0.01 || priceUsdc > 50) {
       setError("Price must be between $0.01 and $50.");
+      return;
+    }
+    if (!description.trim()) {
+      setError("Describe the offering — buyers see it on the listing.");
       return;
     }
     if (!deliverable.trim()) {
@@ -270,14 +335,36 @@ export function CreateAgentForm({
   const [phase, setPhase] = useState<"form" | "launching" | "done">("form");
   const [activeStep, setActiveStep] = useState<LaunchStep | null>(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  function clearFieldError(key: keyof FieldErrors) {
+    setFieldErrors((prev) =>
+      prev[key] ? { ...prev, [key]: undefined } : prev
+    );
+  }
 
   async function launch() {
+    // Everything the server would reject must fail HERE — the pipeline mints
+    // the Agent ID before the profile write, so a mid-pipeline 400 would
+    // strand a bare on-chain ID.
+    const errs = validateIdentity({ name, description, imageUrl });
+    if (errs.name || errs.description || errs.imageUrl) {
+      setFieldErrors(errs);
+      setError("Fix the highlighted fields first.");
+      return;
+    }
+    setFieldErrors({});
     setPhase("launching");
     setError("");
     try {
       await launchAgent({
         address,
-        identity: { name: name.trim(), description, imageUrl, category },
+        identity: {
+          name: name.trim(),
+          description: description.trim(),
+          imageUrl: imageUrl.trim(),
+          category,
+        },
         offerings,
         onProgress: setActiveStep,
       });
@@ -335,10 +422,14 @@ export function CreateAgentForm({
       {/* 01 — Identity */}
       <Section step="01" title="Identity">
         <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
-          <Field label="Name">
+          <Field error={fieldErrors.name} label="Name">
             <input
               className="ag-input"
-              onChange={(e) => setName(e.target.value)}
+              maxLength={MAX_NAME}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearFieldError("name");
+              }}
               placeholder="Market Scout"
               value={name}
             />
@@ -358,21 +449,33 @@ export function CreateAgentForm({
           </Field>
         </div>
         <Field
+          error={fieldErrors.description}
           hint="what this agent does — shows on your public profile"
           label="Description"
         >
           <textarea
             className="ag-input min-h-16 resize-y"
-            onChange={(e) => setDescription(e.target.value)}
+            maxLength={MAX_DESC}
+            onChange={(e) => {
+              setDescription(e.target.value);
+              clearFieldError("description");
+            }}
             rows={3}
             style={{ fontFamily: "var(--font-sans)" }}
             value={description}
           />
         </Field>
-        <Field hint="optional — https URL" label="Avatar image">
+        <Field
+          error={fieldErrors.imageUrl}
+          hint="optional — https URL"
+          label="Avatar image"
+        >
           <input
             className="ag-input"
-            onChange={(e) => setImageUrl(e.target.value)}
+            onChange={(e) => {
+              setImageUrl(e.target.value);
+              clearFieldError("imageUrl");
+            }}
             placeholder="https://…/avatar.png"
             value={imageUrl}
           />
@@ -463,6 +566,7 @@ export function CreateAgentForm({
         )}
         {draftOpen ? (
           <OfferingDraftForm
+            existingSlugs={offerings.map((o) => slugifyOffering(o.name))}
             onAdd={(o) => {
               setOfferings([...offerings, o]);
               setDraftOpen(false);
@@ -540,9 +644,10 @@ export function CreateAgentForm({
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-4">
+              {/* Always clickable — a click on an incomplete form surfaces
+                  the specific field errors instead of a mute disabled state. */}
               <button
-                className="ag-btn ag-btn--primary disabled:opacity-50"
-                disabled={!name.trim()}
+                className="ag-btn ag-btn--primary"
                 onClick={launch}
                 type="button"
               >
