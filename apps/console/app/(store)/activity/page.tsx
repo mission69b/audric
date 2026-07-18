@@ -1,11 +1,15 @@
-import { escrowEconomyStats, listRecentEscrowJobs } from "@audric/accounts";
+import {
+  escrowEconomyStats,
+  getAgentNamesByAddresses,
+  listRecentEscrowJobs,
+} from "@audric/accounts";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { formatDate, shortAddress } from "@/lib/format";
 import {
   fetchGatewayServices,
   fetchRailPayments,
-  fetchRailVolume,
+  fetchRailStats,
   type GatewayService,
 } from "@/lib/gateway-services";
 
@@ -60,17 +64,27 @@ function sellerHref(service: GatewayService | undefined): string | null {
 }
 
 export default async function ActivityPage() {
-  const [{ payments, total }, days, services, econ, recentJobs] =
+  const [{ payments, total }, railStats, services, econ, recentJobs] =
     await Promise.all([
       fetchRailPayments(60),
-      fetchRailVolume(),
+      fetchRailStats(),
       fetchGatewayServices(),
       escrowEconomyStats().catch(() => null),
       listRecentEscrowJobs(40).catch(() => []),
     ]);
   const byId = new Map(services.map((s) => [s.id, s]));
-  const weekCalls = days.reduce((n, d) => n + d.count, 0);
-  const weekVolume = days.reduce((n, d) => n + d.volume, 0);
+  // All-time settled = escrow releases + x402 call volume (same composition
+  // as the homepage's Settled USDC — one name per number across pages).
+  const settledUsd =
+    (econ ? econ.settledMicroUsdc / 1_000_000 : 0) +
+    (railStats ? Number.parseFloat(railStats.totalVolume) || 0 : 0);
+
+  // Job parties with registered Agent IDs render by name, not raw address.
+  const names = await getAgentNamesByAddresses(
+    recentJobs.flatMap((j) => [j.seller, j.buyer])
+  ).catch(() => new Map<string, { name: string; numericId: number | null }>());
+  const nameOf = (address: string): string =>
+    names.get(address.toLowerCase())?.name ?? shortAddress(address);
 
   const feed: FeedRow[] = [
     ...recentJobs.map(
@@ -80,7 +94,7 @@ export default async function ActivityPage() {
         kind: "job",
         title: JOB_STATE_LABEL[j.state] ?? j.state,
         titleHref: `/${j.seller}`,
-        detail: shortAddress(j.jobId),
+        detail: nameOf(j.seller),
         sender: j.buyer,
         amount: (j.amountMicroUsdc / 1_000_000).toFixed(2),
         proofHref: `${SUISCAN}/object/${j.jobId}`,
@@ -114,20 +128,24 @@ export default async function ActivityPage() {
             Every settlement, on-chain.
           </h1>
           <p className="m-0 max-w-[380px] pb-1 text-fg-subtle text-xs leading-relaxed">
-            The store keeps no private ledger — escrowed jobs come from the
-            contract&apos;s own events, calls from the rail&apos;s payment log,
-            and every reputation number is computed from these rows.
+            Escrowed jobs and paid calls, each linked to its on-chain proof.
+            Every reputation number is computed from these rows.
           </p>
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {/* "Paid calls" matches the homepage stats band — one name per
-              number across pages (S.765 audit: same total read as two
-              different metrics). */}
+          {/* All-time numbers, names matching the homepage stats band — one
+              name per number across pages (S.765 audit). */}
           {[
+            [
+              "Settled USDC",
+              econ || railStats ? `$${settledUsd.toFixed(2)}` : "—",
+            ],
             ["Paid calls", total.toLocaleString()],
             ["Escrowed jobs", econ ? econ.totalJobs.toLocaleString() : "—"],
-            ["Calls · 7d", weekCalls.toLocaleString()],
-            ["Volume · 7d", `$${weekVolume.toFixed(2)}`],
+            [
+              "Active wallets",
+              econ ? econ.distinctWallets.toLocaleString() : "—",
+            ],
           ].map(([label, value]) => (
             <div className="ag-card px-4 py-3" key={label}>
               <div className="font-semibold text-[20px] text-foreground tracking-[-0.02em]">
@@ -186,7 +204,9 @@ export default async function ActivityPage() {
                 </span>
                 {row.sender && (
                   <span className="hidden truncate font-mono text-[11px] text-fg-subtle md:inline">
-                    {shortAddress(row.sender)}
+                    {row.kind === "job"
+                      ? nameOf(row.sender)
+                      : shortAddress(row.sender)}
                   </span>
                 )}
               </div>

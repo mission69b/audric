@@ -139,20 +139,18 @@ export async function POST(request: Request) {
   // that the escrow actually RELEASED to the seller.
   await syncEscrowJobsIfStale();
   let job = await getEscrowJob(jobId);
-  if (job && job.state !== "released") {
-    // "release, then immediately review" is the NORMAL flow — the CLI even
-    // prints the review hint right after release. The debounced sync-on-read
-    // can be up to 15s stale at that moment, so before rejecting on a
-    // non-terminal state, force one real sync and re-read. Costs one GraphQL
-    // walk only on the miss path; never on the happy path.
-    if (job.state === "funded" || job.state === "delivered") {
-      try {
-        await syncEscrowJobs();
-      } catch {
-        // Degraded GraphQL — fall through and judge on the stale row.
-      }
-      job = await getEscrowJob(jobId);
+  // "release, then immediately review" is the NORMAL flow — the CLI even
+  // prints the review hint right after release. The debounced sync-on-read
+  // can be up to 15s stale at that moment, so before rejecting on a
+  // non-terminal state, force one real sync and re-read. Costs one GraphQL
+  // walk only on the miss path; never on the happy path.
+  if (job && (job.state === "funded" || job.state === "delivered")) {
+    try {
+      await syncEscrowJobs();
+    } catch {
+      // Degraded GraphQL — fall through and judge on the stale row.
     }
+    job = await getEscrowJob(jobId);
   }
   if (!job) {
     return openAiError(

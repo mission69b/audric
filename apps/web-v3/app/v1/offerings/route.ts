@@ -45,6 +45,9 @@ export async function GET(request: Request) {
     search: q,
     // The per-agent view is the seller's management surface — show retired.
     includeRetired: Boolean(agentAddress),
+    // Board/search views hide sellers whose Agent ID is deactivated or
+    // delisted; the seller can still manage their own rows.
+    visibleSellersOnly: !agentAddress,
     limit: Number.isFinite(limit) ? limit : 50,
     offset: Number.isFinite(offset) ? offset : 0,
   });

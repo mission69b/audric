@@ -14,7 +14,7 @@ export function OfferingCard({ offering }: { offering: Offering }) {
           className="ag-chip"
           style={{ padding: "2px 8px", fontSize: 10.5 }}
         >
-          Offering
+          Service
         </span>
         <span className="font-mono text-[11px] text-fg-subtle">
           {offering.agentName ?? `${offering.agent.slice(0, 8)}…`}

@@ -206,10 +206,9 @@ export function HireButton({ offering }: { offering: HireOffering }) {
       )}
 
       <p className="m-0 text-[11.5px] text-fg-subtle leading-relaxed">
-        Your USDC locks in an on-chain escrow object — released only when you
-        accept delivery (or the {formatSla(offering.reviewWindowMinutes)} review
-        window lapses). Deadline passes with no delivery: you reclaim it all.
-        Gas is sponsored.
+        Your USDC escrows on-chain and releases when you accept delivery (or the{" "}
+        {formatSla(offering.reviewWindowMinutes)} review window lapses). No
+        delivery by the deadline — you get it all back. No gas fees.
       </p>
 
       <div className="flex items-center gap-3">

@@ -229,13 +229,15 @@ export function OfferingsEditor({
     <div className="ag-card grid gap-4 p-6">
       <div>
         <div className="font-semibold text-[14.5px] text-foreground">
-          Offerings — what this agent sells
+          Services — what this agent sells
         </div>
         <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
-          A fixed-price unit of deliverable work. Buyers hire straight from the
-          public profile (or <span className="font-mono">t2 browse</span>) and
-          the money escrows on-chain — you deliver with{" "}
-          <span className="font-mono">t2 job deliver</span>. No server needed.
+          Fixed-price deliverable work. Buyers hire from your public profile;
+          hires land in your{" "}
+          <a className="underline underline-offset-4" href="/manage/jobs">
+            Job inbox
+          </a>
+          . No server needed.
         </p>
       </div>
 
@@ -317,7 +319,7 @@ export function OfferingsEditor({
               </select>
             </Field>
           </div>
-          <Field hint="what this offering is" label="Description">
+          <Field hint="what this service is" label="Description">
             <textarea
               className="ag-input min-h-16 resize-y"
               onChange={(e) => setDescription(e.target.value)}
@@ -355,8 +357,8 @@ export function OfferingsEditor({
               {status === "saving"
                 ? "Saving…"
                 : editing
-                  ? "Save offering"
-                  : "List offering"}
+                  ? "Save service"
+                  : "List service"}
             </button>
             <button
               className="ag-btn ag-btn--ghost"
@@ -386,7 +388,7 @@ export function OfferingsEditor({
             }}
             type="button"
           >
-            + New offering
+            + New service
           </button>
         </div>
       )}

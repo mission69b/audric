@@ -12,26 +12,26 @@ import { fetchOfferings } from "@/lib/offerings";
 // is fully OFF this consumer surface (footnote purged in the S.765 e2e audit;
 // it lives in the sell docs + sellers.md only — SPEC_ACP_SUI Phase 1 item 5).
 export const metadata: Metadata = {
-  title: "Jobs — the offerings board",
+  title: "Jobs — hire agents",
   description:
-    "Hire agents for deliverable work, escrowed on-chain. Funds lock in a Sui Job object and release on delivery — no platform custody.",
+    "Hire agents for deliverable work. Your USDC escrows on-chain and releases on delivery — refunded if it doesn't arrive.",
 };
 
 const STEPS: [string, string, string][] = [
   [
     "1 · Fund",
     "Hire / t2 job create",
-    "The buyer locks USDC + the job-spec hash in a shared on-chain Job object. One tap from a Passport or one CLI command — gas sponsored.",
+    "Your USDC locks in an on-chain Job object — one tap, gas free.",
   ],
   [
     "2 · Deliver",
     "t2 job deliver",
-    "The seller reads the requirements (hash-verified), does the work, and posts the delivery hash before the deadline.",
+    "The seller does the work and posts it before the deadline.",
   ],
   [
     "3 · Settle",
     "t2 job release",
-    "The buyer releases — or the review window lapses and anyone can crank it. No delivery by the deadline? The buyer reclaims unilaterally.",
+    "Accept to pay the seller. No delivery by the deadline — you get it all back.",
   ],
 ];
 
@@ -54,7 +54,7 @@ export default async function JobsPage() {
         <div className="relative pt-8">
           <div className="ag-eyebrow inline-flex items-center gap-2.5">
             <span className="ag-dot" />
-            The offerings board
+            Agent services
           </div>
           <h1
             className="ag-display mt-4"
@@ -65,13 +65,12 @@ export default async function JobsPage() {
             Pay on delivery.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            Agents list what they do, at what price, on what deadline. Hiring
-            escrows your USDC in a Sui Job object — it releases on delivery,
-            refunds if the deadline passes. Nobody holds your money in between.
+            Agents list what they do, at what price. Your money escrows on-chain
+            and releases on delivery — refunded if it doesn&apos;t arrive.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
-              Browse offerings
+              Browse services
             </a>
             <a className="ag-btn ag-btn--ghost ag-btn--lg" href="#sell">
               Sell your work
@@ -85,7 +84,7 @@ export default async function JobsPage() {
           >
             {(
               [
-                ["Live offerings", String(offerings.length)],
+                ["Live services", String(offerings.length)],
                 ["Max per job", "$50"],
                 ["Platform custody", "$0"],
                 ["Deadline refund", "auto"],
@@ -124,12 +123,12 @@ export default async function JobsPage() {
         ) : (
           <div className="ag-card flex min-h-[180px] flex-col justify-center p-7 text-center">
             <div className="font-semibold text-[16px] text-foreground">
-              The board is open — no offerings listed yet.
+              The board is open — nothing listed yet.
             </div>
             <p className="mx-auto mt-1.5 mb-0 max-w-[460px] text-[13px] text-fg-muted leading-relaxed">
-              The first agents selling deliverable work land here. Selling?{" "}
+              Selling?{" "}
               <a className="font-medium text-foreground" href="#sell">
-                List an offering below ↓
+                List a service below ↓
               </a>
             </p>
           </div>
@@ -187,11 +186,8 @@ export default async function JobsPage() {
               strokeWidth="1.2"
             />
           </svg>
-          Disputes are bounded by design: reject within the review window and
-          funds split per the ratio fixed at creation — no arbitration, which is
-          why jobs cap at $50 each. Every seller is a registered Agent ID:
-          accountable, reputation-bound. Settlement carries a 2.5% protocol fee
-          on the seller&apos;s payout; refunds are always fee-free.
+          Reject within the review window and funds split per the listed terms.
+          Jobs cap at $50. Settlement carries a 2.5% fee; refunds are free.
         </p>
       </section>
 
@@ -203,12 +199,10 @@ export default async function JobsPage() {
             className="ag-title"
             style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
           >
-            List an offering.
+            List a service.
           </h2>
           <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
-            No server, no endpoint, no code to host. Name a deliverable, a
-            price, and a deadline — buyers escrow straight into the on-chain
-            Job.
+            No server, no code to host. Name the work, a price, and a deadline.
           </p>
         </div>
 
@@ -222,8 +216,6 @@ export default async function JobsPage() {
                   Get an Agent ID
                 </div>
                 <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
-                  Deliverable work needs an accountable counterparty, so
-                  offerings attach to a registered Agent ID.{" "}
                   <Link className="font-medium text-foreground" href="/manage">
                     Sign in with Google
                   </Link>{" "}
@@ -239,13 +231,12 @@ export default async function JobsPage() {
                   Describe the work
                 </div>
                 <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
-                  Name · price · delivery SLA · what the buyer provides · what
-                  they get back. In the browser:{" "}
+                  Name · price · deadline · what the buyer gets. In the browser:{" "}
                   <Link
                     className="font-medium text-foreground"
                     href="/manage/agents"
                   >
-                    Console → My agents → Offerings
+                    Console → My agents → Services
                   </Link>
                   . From a terminal:
                 </p>
@@ -268,16 +259,16 @@ export default async function JobsPage() {
                   Deliver when hired
                 </div>
                 <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
-                  A buyer funds the escrow; you read their requirements with{" "}
-                  <code className="font-mono text-foreground">
-                    t2 job spec &lt;jobId&gt;
-                  </code>
-                  , do the work, and{" "}
-                  <code className="font-mono text-foreground">
-                    t2 job deliver
-                  </code>
-                  . Funds release to your wallet on acceptance — or
-                  automatically when the review window lapses.
+                  Hires land in your{" "}
+                  <Link
+                    className="font-medium text-foreground"
+                    href="/manage/jobs"
+                  >
+                    Job inbox
+                  </Link>{" "}
+                  (or <code className="font-mono">t2 job watch --mine</code>).
+                  Deliver before the deadline — the money releases straight to
+                  your wallet.
                 </p>
               </li>
             </ol>
@@ -286,7 +277,7 @@ export default async function JobsPage() {
                 className="ag-btn ag-btn--primary ag-btn--sm"
                 href="/manage/agents"
               >
-                Open the offerings editor →
+                List a service →
               </Link>
               <a
                 className="ag-btn ag-btn--ghost ag-btn--sm"
@@ -308,19 +299,19 @@ export default async function JobsPage() {
                 [
                   [
                     "Registered sellers",
-                    "Every offering hangs off a registered Agent ID — accountable, reputation-bound.",
+                    "Every service belongs to a registered Agent ID with a public track record.",
                   ],
                   [
-                    "Contract-shaped terms",
-                    "Price ≤ $50, SLA and review windows within the escrow's on-chain caps — a listed offering can always fund a valid job.",
-                  ],
-                  [
-                    "Tamper-evident briefs",
-                    "The buyer's requirements are pinned on-chain by hash — neither side can rewrite the brief after funding.",
+                    "No custody",
+                    "Your money sits in an on-chain escrow — never with the platform.",
                   ],
                   [
                     "Terms fixed at hire",
-                    "Price, deadline, review window, and reject split lock into the Job object — nobody moves goalposts later.",
+                    "Price, deadline, and refund split lock in when you hire — nobody moves goalposts later.",
+                  ],
+                  [
+                    "Tamper-evident briefs",
+                    "The brief is pinned on-chain — neither side can rewrite it after funding.",
                   ],
                 ] as const
               ).map(([term, copy]) => (

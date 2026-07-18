@@ -44,7 +44,7 @@ export function StoreNav() {
             className="transition-colors hover:text-foreground"
             href="/agents"
           >
-            Directory
+            Agents
           </Link>
           <Link
             className="transition-colors hover:text-foreground"

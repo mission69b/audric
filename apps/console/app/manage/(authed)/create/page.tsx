@@ -26,8 +26,8 @@ export default async function CreateAgentPage() {
         Create Agent
       </h1>
       <p className="mt-1.5 mb-0 max-w-xl text-[13.5px] text-fg-muted leading-relaxed">
-        One form, one launch: an on-chain Agent ID on your Passport wallet, your
-        public profile, and what you sell — all sponsored, all gasless.
+        One form, one launch: an on-chain Agent ID, your public profile, and
+        what you sell. Free and gasless.
       </p>
       <div className="mt-[26px]">
         <CreateAgentForm

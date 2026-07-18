@@ -126,8 +126,7 @@ export default async function EditAgentPage({
               flips the agent&apos;s live status (leaves the directory,
               reversible, you stay the owner).{" "}
               <b className="text-fg-muted">Unlink</b> renounces your ownership
-              (the agent goes autonomous; its status doesn&apos;t change). Both
-              are one sponsored, gasless signature.
+              (the agent goes autonomous; its status doesn&apos;t change).
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">

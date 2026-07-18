@@ -1,6 +1,11 @@
-import { getJobReview, getJobSpec } from "@audric/accounts";
+import {
+  getAgentNamesByAddresses,
+  getJobReview,
+  getJobSpec,
+} from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { getJob, getSuiClient } from "@t2000/sdk";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   BuyerDecision,
@@ -96,9 +101,24 @@ function short(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
-function fmtWhen(ms: number): string {
-  return new Date(ms).toISOString().replace("T", " ").slice(0, 16);
+/** "due in 5h" beats a raw timestamp — the row's job is telling you whether
+ *  you need to act NOW. */
+function dueIn(ms: number): string {
+  const left = ms - Date.now();
+  if (left <= 0) {
+    return "deadline passed";
+  }
+  const hours = Math.floor(left / 3_600_000);
+  if (hours >= 48) {
+    return `due in ${Math.floor(hours / 24)}d`;
+  }
+  if (hours >= 1) {
+    return `due in ${hours}h`;
+  }
+  return `due in ${Math.max(1, Math.floor(left / 60_000))}m`;
 }
+
+type Counterparty = { label: string; href: string };
 
 function StateChip({ state }: { state: ApiJob["state"] }) {
   const tone =
@@ -113,17 +133,18 @@ function StateChip({ state }: { state: ApiJob["state"] }) {
 function JobRow({
   job,
   side,
+  counterparty,
   requirements,
   delivery,
   review,
 }: {
   job: ApiJob;
   side: "seller" | "buyer";
+  counterparty: Counterparty;
   requirements: string | null;
   delivery: string | null;
   review?: { stars: number; text: string | null } | null;
 }) {
-  const counterparty = side === "seller" ? job.buyer : job.seller;
   const awaitingMe =
     (side === "seller" &&
       job.state === "funded" &&
@@ -138,17 +159,18 @@ function JobRow({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <StateChip state={job.state} />
+          <Link
+            className="font-medium text-[13px] text-foreground no-underline hover:underline"
+            href={counterparty.href}
+          >
+            {counterparty.label}
+          </Link>
           <span className="ag-tabular font-mono text-[13px] text-foreground">
             ${job.amountUsdc.toFixed(2)} USDC
           </span>
-          <span className="font-mono text-[11.5px] text-fg-subtle">
-            {side === "seller" ? "from" : "to"} {short(counterparty)}
-          </span>
         </div>
         <div className="flex items-center gap-3 font-mono text-[11px] text-fg-subtle">
-          {job.state === "funded" && (
-            <span>deliver by {fmtWhen(job.deliverByMs)}</span>
-          )}
+          {job.state === "funded" && <span>{dueIn(job.deliverByMs)}</span>}
           <a
             className="underline decoration-border underline-offset-4 hover:text-foreground"
             href={`${SUISCAN}/object/${job.jobId}`}
@@ -182,8 +204,8 @@ function JobRow({
             </pre>
           ) : (
             <p className="m-0 text-[12px] text-fg-subtle">
-              Delivered out-of-band — the on-chain hash commits to the content
-              the seller handed you.
+              Delivered outside the store — the on-chain hash proves what the
+              seller handed you.
             </p>
           )}
         </div>
@@ -275,28 +297,38 @@ export default async function JobInboxPage() {
       })
   );
 
+  // Counterparties render as named links to their agent page, not raw 0x….
+  const names = await getAgentNamesByAddresses([
+    ...selling.map((j) => j.buyer),
+    ...buying.map((j) => j.seller),
+  ]).catch(() => new Map<string, { name: string; numericId: number | null }>());
+  const counterpartyOf = (address: string): Counterparty => {
+    const hit = names.get(address.toLowerCase());
+    return {
+      label: hit?.name ?? short(address),
+      href: `/${hit?.numericId ?? address}`,
+    };
+  };
+
   return (
     <div className="max-w-[860px]">
       <PanelHead
-        sub="Escrowed hires on your Passport — deliver what you sell, settle what you bought. Every verb is one sponsored signature."
+        sub="Deliver what you sell. Settle what you bought."
         title="Job inbox"
       />
       <div className="grid gap-4">
-        <Section
-          sub="Jobs hiring you. Deliver before the deadline — the escrow releases to you when the buyer accepts (or their review window lapses)."
-          title="Selling"
-        >
+        <Section sub="Deliver before the deadline to get paid." title="Selling">
           {selling.length === 0 ? (
             <p
               className="m-0 border-t px-5 py-4 text-[13px] text-fg-subtle"
               style={{ borderColor: "var(--ag-border)" }}
             >
-              No hires yet. Buyers fund jobs from your public profile's
-              offerings.
+              No hires yet — buyers hire from your public profile.
             </p>
           ) : (
             selling.map((j) => (
               <JobRow
+                counterparty={counterpartyOf(j.buyer)}
                 delivery={null}
                 job={j}
                 key={j.jobId}
@@ -307,7 +339,7 @@ export default async function JobInboxPage() {
           )}
         </Section>
         <Section
-          sub="Jobs you funded. Accept to release the escrow, reject within the review window to split per the terms — and rate released work (it builds the seller's receipt-backed reputation)."
+          sub="Accept to pay the seller — or reject within the review window."
           title="Buying"
         >
           {buying.length === 0 ? (
@@ -315,11 +347,16 @@ export default async function JobInboxPage() {
               className="m-0 border-t px-5 py-4 text-[13px] text-fg-subtle"
               style={{ borderColor: "var(--ag-border)" }}
             >
-              Nothing hired yet — browse the jobs board to hire an agent.
+              Nothing hired yet —{" "}
+              <Link className="underline underline-offset-4" href="/jobs">
+                browse agent services
+              </Link>
+              .
             </p>
           ) : (
             buying.map((j) => (
               <JobRow
+                counterparty={counterpartyOf(j.seller)}
                 delivery={deliveryById.get(j.jobId) ?? null}
                 job={j}
                 key={j.jobId}

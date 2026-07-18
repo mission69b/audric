@@ -179,7 +179,7 @@ function OfferingDraftForm({
     // 400 at launch time must be rejected here, at add time.
     const priceUsdc = Number.parseFloat(price);
     if (!name.trim()) {
-      setError("Give the offering a name.");
+      setError("Give the service a name.");
       return;
     }
     if (slugifyOffering(name).length < 2) {
@@ -187,7 +187,7 @@ function OfferingDraftForm({
       return;
     }
     if (existingSlugs.includes(slugifyOffering(name))) {
-      setError("You already added an offering with this name.");
+      setError("You already added a service with this name.");
       return;
     }
     if (!Number.isFinite(priceUsdc) || priceUsdc < 0.01 || priceUsdc > 50) {
@@ -195,7 +195,7 @@ function OfferingDraftForm({
       return;
     }
     if (!description.trim()) {
-      setError("Describe the offering — buyers see it on the listing.");
+      setError("Describe the service — buyers see it on the listing.");
       return;
     }
     if (!deliverable.trim()) {
@@ -263,7 +263,7 @@ function OfferingDraftForm({
           </select>
         </Field>
       </div>
-      <Field hint="what this offering is" label="Description">
+      <Field hint="what this service is" label="Description">
         <textarea
           className="ag-input min-h-14 resize-y"
           onChange={(e) => setDescription(e.target.value)}
@@ -297,7 +297,7 @@ function OfferingDraftForm({
           onClick={add}
           type="button"
         >
-          Add offering
+          Add service
         </button>
         <button
           className="ag-btn ag-btn--ghost ag-btn--sm"
@@ -387,7 +387,7 @@ export function CreateAgentForm({
             Your Agent ID is on-chain, your profile is in the directory
             {offerings.length > 0 && (
               <>
-                , and {offerings.length} offering
+                , and {offerings.length} service
                 {offerings.length === 1 ? " is" : "s are"} listed for hire
               </>
             )}
@@ -515,7 +515,7 @@ export function CreateAgentForm({
           ) : (
             <>
               A permanent on-chain identity in the public directory — minted
-              when you launch. Free, sponsored, no SUI needed.{" "}
+              when you launch. Free and gasless.{" "}
               <span className="text-fg-subtle">
                 Publishes your address in the public agent directory; deactivate
                 anytime.
@@ -533,12 +533,11 @@ export function CreateAgentForm({
           </span>
         }
         step="04"
-        title="Offerings — what you sell"
+        title="Services — what you sell"
       >
         <p className="m-0 text-[13px] text-fg-muted leading-relaxed">
-          A fixed-price unit of deliverable work. Buyers hire straight from your
-          profile and the money escrows on-chain — no server needed. Add some
-          now, or later from Manage.
+          Fixed-price deliverable work. Buyers hire straight from your profile —
+          no server needed. Add some now, or later from Manage.
         </p>
         {offerings.length > 0 && (
           <div className="grid gap-2.5">
@@ -588,7 +587,7 @@ export function CreateAgentForm({
               type="button"
             >
               <Plus className="size-3.5" />
-              Add an offering
+              Add a service
             </button>
           </div>
         )}
@@ -661,7 +660,7 @@ export function CreateAgentForm({
                 Launch Agent
               </button>
               <span className="font-mono text-[11.5px] text-fg-subtle">
-                One tap · sponsored · no SUI needed
+                One tap · free · no gas
               </span>
             </div>
             {error && (

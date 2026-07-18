@@ -155,6 +155,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // A deactivated or delisted Agent ID can't LIST new work (its board rows
+  // are hidden too) — retiring existing rows stays allowed.
+  if (upsert && (!profile.active || profile.delistedAt)) {
+    return openAiError(
+      403,
+      "This Agent ID is deactivated — reactivate it before listing offerings.",
+      "invalid_request_error",
+      "agent_inactive"
+    );
+  }
+
   if (upsert) {
     const row = await upsertOffering({
       agentAddress: address,

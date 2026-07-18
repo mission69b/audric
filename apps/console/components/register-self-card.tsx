@@ -13,8 +13,7 @@ export function RegisterSelfCard() {
         Create your agent
       </div>
       <p className="mt-1.5 max-w-xl text-muted-foreground text-sm leading-relaxed">
-        One form: name and profile, a free on-chain Agent ID on your Passport,
-        and what you sell — all sponsored, all gasless.{" "}
+        One form: name and profile, a free on-chain Agent ID, and what you sell.{" "}
         <span className="text-muted-foreground/70">
           Lists your address in the public directory; deactivate anytime.
         </span>
@@ -23,9 +22,7 @@ export function RegisterSelfCard() {
         <Button asChild size="sm">
           <a href="/manage/create">Create Agent</a>
         </Button>
-        <span className="text-muted-foreground/60 text-xs">
-          Sponsored · no SUI needed
-        </span>
+        <span className="text-muted-foreground/60 text-xs">Free · no gas</span>
       </div>
     </div>
   );

@@ -95,6 +95,14 @@ export default async function HomePage() {
     fetchRailPayments(12),
   ]);
 
+  // Names for the top-sellers table + live feed come from the same rows the
+  // store renders — one builder, no drift.
+  const rowByAddress = new Map(rows.map((r) => [r.address.toLowerCase(), r]));
+  const sellerName = (address: string): string =>
+    rowByAddress.get(address.toLowerCase())?.name ??
+    offeringNames.get(address.toLowerCase()) ??
+    `${address.slice(0, 8)}…${address.slice(-4)}`;
+
   // The live feed — job lifecycle events + x402 settlements, interleaved by
   // time. Job rows link to the escrow object; call rows to their Sui tx.
   const feed: FeedRow[] = [
@@ -104,7 +112,7 @@ export default async function HomePage() {
         atMs: j.updatedAtMs,
         kind: "job",
         label: JOB_STATE_LABEL[j.state] ?? j.state,
-        detail: `${j.seller.slice(0, 8)}…${j.seller.slice(-4)}`,
+        detail: sellerName(j.seller),
         amount: `$${(j.amountMicroUsdc / 1_000_000).toFixed(2)}`,
         href: `https://suiscan.xyz/mainnet/object/${j.jobId}`,
       })
@@ -123,10 +131,6 @@ export default async function HomePage() {
   ]
     .sort((a, b) => b.atMs - a.atMs)
     .slice(0, 14);
-
-  // Names for the top-sellers table come from the same rows the store
-  // renders — one builder, no drift.
-  const rowByAddress = new Map(rows.map((r) => [r.address.toLowerCase(), r]));
 
   // Settled = escrow releases + x402 call volume. Both are receipts; no
   // pass-through inflation (the aGDP honesty line).
@@ -151,9 +155,18 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section className="grid items-center gap-10 pt-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <div>
+      {/* ── Hero — over the radial glow (the original agents design). ── */}
+      <section className="relative grid items-center gap-10 pt-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div
+          aria-hidden="true"
+          className="-top-24 pointer-events-none absolute right-0 h-[460px] w-[560px] max-w-full"
+          style={{
+            background:
+              "radial-gradient(46% 46% at 60% 40%, rgba(0,114,245,0.14) 0%, transparent 70%)",
+            filter: "blur(20px)",
+          }}
+        />
+        <div className="relative">
           <div className="ag-eyebrow flex items-center gap-2.5">
             <span className="ag-dot" />
             Agents selling to agents · Live on Sui
@@ -195,7 +208,7 @@ export default async function HomePage() {
         </div>
 
         {/* One store · three ways to pay */}
-        <div className="ag-card overflow-hidden p-0">
+        <div className="ag-card relative overflow-hidden p-0">
           <div
             className="flex items-center justify-between border-b px-4 py-3"
             style={{ borderColor: "var(--ag-border)" }}
@@ -382,7 +395,7 @@ export default async function HomePage() {
             className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
             href="/agents"
           >
-            browse the directory
+            browse all agents
           </Link>
           . Looking for utilities (OpenAI, Brave, fal.ai, weather, search…)? The
           rail proxies {servicesCount} services —{" "}
@@ -435,10 +448,7 @@ export default async function HomePage() {
               <tbody>
                 {topSellers.map((s) => {
                   const row = rowByAddress.get(s.seller.toLowerCase());
-                  const name =
-                    row?.name ??
-                    offeringNames.get(s.seller.toLowerCase()) ??
-                    `${s.seller.slice(0, 8)}…${s.seller.slice(-4)}`;
+                  const name = sellerName(s.seller);
                   return (
                     <tr
                       className="border-b last:border-b-0"
@@ -561,9 +571,8 @@ export default async function HomePage() {
             Reputation from receipts.
           </h2>
           <p className="ag-sub" style={{ fontSize: "14.5px" }}>
-            Every number on a profile comes from real on-chain settlements —
-            sold, distinct buyers, settled USDC. You can&apos;t buy it, and you
-            can&apos;t fake it.
+            Every number on a profile comes from real on-chain settlements. You
+            can&apos;t buy it, and you can&apos;t fake it.
           </p>
           <Link
             className="mt-4 inline-block font-medium text-[13px] no-underline"
@@ -636,8 +645,8 @@ export default async function HomePage() {
           Refunded if it fails.
         </h2>
         <p className="mt-3 max-w-[560px] text-[13.5px] text-fg-muted leading-relaxed">
-          Escrowed jobs are deliverable work with the money locked first — in a
-          shared Move object on Sui, never with us.
+          The money locks on-chain before work starts. Delivery releases it — no
+          delivery, you&apos;re refunded.
         </p>
         <div className="ag-card mt-6 p-6">
           <div className="relative">
@@ -683,9 +692,8 @@ export default async function HomePage() {
                 </span>
               </div>
               <p className="m-0 mt-2 text-[12.5px] text-fg-muted leading-relaxed">
-                Your USDC sits in a shared Job object on Sui. The seller
-                delivers against it; you release, reject for the fixed split, or
-                the deadline refunds you — permissionlessly.
+                Your USDC sits in a Job object on Sui — never with us. Release
+                it, reject for the fixed split, or let the deadline refund you.
               </p>
             </div>
             <div className="flex gap-8 font-mono text-[11px] uppercase tracking-[0.08em]">
@@ -727,14 +735,14 @@ export default async function HomePage() {
           Sell your work. Get paid.
         </h2>
         <p className="mx-auto mt-3 max-w-[480px] text-[13.5px] text-fg-muted leading-relaxed">
-          Claim your Agent ID and list deliverable work — buyers escrow USDC
-          on-chain, delivery releases it straight to your wallet.
+          Claim your Agent ID and list what you do. Delivery pays straight to
+          your wallet.
         </p>
         {/* ONE button — buyers already got theirs at the hero (S.765 CTA
             de-dup: five buttons pointed at three pages). */}
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
           <Link className="ag-btn ag-btn--primary" href="/jobs#sell">
-            List an offering
+            List a service
           </Link>
         </div>
       </section>

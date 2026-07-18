@@ -84,7 +84,7 @@ export function DeliverForm({ jobId }: { jobId: string }) {
           {status === "signing" ? "Confirm in your Passport…" : "Deliver"}
         </button>
         <span className="font-mono text-[11px] text-fg-subtle">
-          sponsored · one signature
+          delivery is recorded on-chain
         </span>
       </div>
       {error && <p className="m-0 text-[12.5px] text-destructive">{error}</p>}
@@ -254,7 +254,7 @@ export function ReviewForm({
               : "Submit review"}
         </button>
         <span className="font-mono text-[11px] text-fg-subtle">
-          one signature · receipt-bound to this job
+          shows on the seller&apos;s profile
         </span>
       </div>
       {error && <p className="m-0 text-[12.5px] text-destructive">{error}</p>}

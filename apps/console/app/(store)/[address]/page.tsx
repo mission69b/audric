@@ -1,4 +1,5 @@
 import {
+  getAgentNamesByAddresses,
   getAgentProfileByNumericId,
   getUserById,
   getUserByUsername,
@@ -14,6 +15,7 @@ import { Badge } from "@/components/badge";
 import { CopyButton } from "@/components/copy-button";
 import { HireButton } from "@/components/hire-button";
 import { ProfileTabs } from "@/components/profile-tabs";
+import { UseAgentPrompt } from "@/components/use-agent-prompt";
 import { UseServiceTabs } from "@/components/use-service-tabs";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
@@ -254,6 +256,13 @@ export default async function AgentProfilePage({
       total: 0,
     })),
   ]);
+  // Buyers with registered Agent IDs render by name, not raw address.
+  const buyerNames = await getAgentNamesByAddresses([
+    ...jobReviews.reviews.map((r) => r.buyer),
+    ...engagements.map((j) => j.buyer),
+  ]).catch(() => new Map<string, { name: string; numericId: number | null }>());
+  const buyerLabel = (address: string): string =>
+    buyerNames.get(address.toLowerCase())?.name ?? short(address);
 
   return (
     <>
@@ -375,10 +384,9 @@ export default async function AgentProfilePage({
           background: "rgba(255,255,255,0.02)",
         }}
       >
-        Community-operated agent — t2 does not run, verify, or endorse it.
-        Numbers on this page are receipt- and chain-derived; everything else is
-        the operator&apos;s own claim. Escrowed jobs protect your payment, not
-        the quality of the work.
+        Community-operated agent — t2 doesn&apos;t run or endorse it. The
+        numbers on this page come from on-chain receipts; everything else is the
+        operator&apos;s own claim.
       </div>
 
       {/* Job track record — stat cards from the event-indexed escrow ledger
@@ -452,7 +460,7 @@ export default async function AgentProfilePage({
       {offerings.length > 0 && (
         <section className="scroll-mt-24" id="offerings">
           <div className="mt-8">
-            <div className="ag-eyebrow">{"// WHAT I OFFER"}</div>
+            <div className="ag-eyebrow">{"// SERVICES"}</div>
             <div className="mt-3 grid gap-4">
               {offerings.map((o) => (
                 <div className="ag-card p-5" key={o.slug}>
@@ -492,20 +500,32 @@ export default async function AgentProfilePage({
                   </div>
                   <hr className="ag-rule my-4" />
                   <div className="grid gap-3">
-                    <HireButton
-                      offering={{
-                        agent: o.agent,
-                        slug: o.slug,
-                        name: o.name,
-                        priceUsdc: o.priceUsdc,
-                        slaMinutes: o.slaMinutes,
-                        reviewWindowMinutes: o.reviewWindowMinutes,
-                        requirements: o.requirements,
-                      }}
-                    />
-                    <code className="block overflow-x-auto whitespace-nowrap font-mono text-[11.5px] text-fg-subtle">
-                      t2 job create --agent {walletAddress} --offering {o.slug}
-                    </code>
+                    {profile?.active === false ? (
+                      <p className="m-0 text-[12.5px] text-fg-subtle">
+                        This agent is inactive — hiring is paused.
+                      </p>
+                    ) : (
+                      <>
+                        <HireButton
+                          offering={{
+                            agent: o.agent,
+                            slug: o.slug,
+                            name: o.name,
+                            priceUsdc: o.priceUsdc,
+                            slaMinutes: o.slaMinutes,
+                            reviewWindowMinutes: o.reviewWindowMinutes,
+                            requirements: o.requirements,
+                          }}
+                        />
+                        <UseAgentPrompt
+                          agent={walletAddress}
+                          agentId={numericId ?? null}
+                          name={o.name}
+                          priceUsdc={o.priceUsdc}
+                          slug={o.slug}
+                        />
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -559,7 +579,7 @@ export default async function AgentProfilePage({
                                 {"☆".repeat(5 - r.stars)}
                               </span>
                               <span className="font-mono text-[11px] text-fg-subtle">
-                                {short(r.buyer)}
+                                {buyerLabel(r.buyer)}
                               </span>
                               <span className="text-fg-subtle text-xs">
                                 {formatDate(r.createdAt.toISOString())}
@@ -584,9 +604,7 @@ export default async function AgentProfilePage({
                     </div>
                   ) : (
                     <p className="m-0 text-[12.5px] text-fg-subtle">
-                      No reviews yet — they land here when a buyer releases a
-                      job and rates it (
-                      <span className="font-mono">t2 job review</span>).
+                      No reviews yet — buyers rate a job after it settles.
                     </p>
                   ),
               },
@@ -619,7 +637,7 @@ export default async function AgentProfilePage({
                               {j.state}
                             </span>
                             <span className="truncate font-mono text-[11.5px] text-fg-subtle">
-                              {short(j.jobId)} · buyer {short(j.buyer)}
+                              {short(j.jobId)} · buyer {buyerLabel(j.buyer)}
                             </span>
                           </div>
                           <div className="flex shrink-0 items-center gap-4">
@@ -637,8 +655,8 @@ export default async function AgentProfilePage({
                     </div>
                   ) : (
                     <p className="m-0 text-[12.5px] text-fg-subtle">
-                      No escrowed jobs yet — each hire creates an on-chain Job
-                      object and shows up here through its lifecycle.
+                      No jobs yet — every hire shows up here with its on-chain
+                      record.
                     </p>
                   ),
               },
@@ -700,8 +718,7 @@ export default async function AgentProfilePage({
                     </div>
                   ) : (
                     <p className="m-0 text-[12.5px] text-fg-subtle">
-                      No per-call sales yet — instant x402 settlements land here
-                      with their Sui transaction links.
+                      No per-call sales yet.
                     </p>
                   ),
               },

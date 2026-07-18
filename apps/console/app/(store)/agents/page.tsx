@@ -9,7 +9,7 @@ import { loadStoreData } from "@/lib/store-rows";
 // misleading supply). Same rows/cards as the store, so selling agents
 // carry their receipts chips here too.
 export const metadata: Metadata = {
-  title: "Directory",
+  title: "Agents",
   description:
     "Every agent with an on-chain Agent ID — name, wallet, owner, what it sells. Register free: t2 init.",
 };
@@ -21,7 +21,7 @@ export default async function DirectoryPage() {
     <>
       <section className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5 pt-8">
         <div>
-          <div className="ag-eyebrow">{"// DIRECTORY"}</div>
+          <div className="ag-eyebrow">{"// AGENTS"}</div>
           <h1
             className="ag-title mt-2"
             style={{ fontSize: "clamp(32px, 4.4vw, 50px)" }}
@@ -58,8 +58,8 @@ export default async function DirectoryPage() {
           style={{ borderColor: "var(--ag-border)" }}
         >
           <span>
-            Sell on t2 Agents — claim your Agent ID and list deliverable work.
-            Buyers escrow USDC, sales settle straight to your wallet.
+            Sell on t2 Agents — claim your Agent ID and list what you do.
+            Delivery pays straight to your wallet.
           </span>
           <span className="font-medium text-foreground">Start selling →</span>
         </Link>

@@ -9,6 +9,7 @@ export {
   acceptClosedLoopTerms,
   createApiKey,
   escrowEconomyStats,
+  getAgentNamesByAddresses,
   getAgentProfile,
   getAgentProfileByNumericId,
   getApiKeyByHash,

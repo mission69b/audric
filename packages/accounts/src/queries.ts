@@ -318,6 +318,32 @@ export async function setAgentArchived(
     .where(eq(agentProfile.address, address));
 }
 
+/** Display name + numeric id per address (lowercased keys) — the lookup
+ *  every feed/inbox surface uses to render an agent instead of a raw 0x…. */
+export async function getAgentNamesByAddresses(
+  addresses: string[]
+): Promise<Map<string, { name: string; numericId: number | null }>> {
+  const unique = [...new Set(addresses.map((a) => a.toLowerCase()))];
+  if (unique.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({
+      address: agentProfile.address,
+      name: agentProfile.name,
+      displayName: agentProfile.displayName,
+      numericId: agentProfile.numericId,
+    })
+    .from(agentProfile)
+    .where(inArray(agentProfile.address, unique));
+  return new Map(
+    rows.map((r) => [
+      r.address.toLowerCase(),
+      { name: r.displayName ?? r.name, numericId: r.numericId },
+    ])
+  );
+}
+
 export async function getAgentProfile(
   address: string
 ): Promise<AgentProfile | undefined> {
@@ -368,6 +394,11 @@ export async function listOfferings(opts?: {
   agentAddress?: string;
   search?: string;
   includeRetired?: boolean;
+  /** Board/search views: only list offerings whose seller is an active,
+   *  non-delisted Agent ID (a deactivated agent shouldn't keep selling).
+   *  The per-agent management view passes false — a seller can always see
+   *  and retire their own rows. */
+  visibleSellersOnly?: boolean;
   limit?: number;
   offset?: number;
 }): Promise<{ offerings: AgentOffering[]; total: number }> {
@@ -376,6 +407,22 @@ export async function listOfferings(opts?: {
   const conditions: (SQL | undefined)[] = [];
   if (!opts?.includeRetired) {
     conditions.push(isNull(agentOffering.retiredAt));
+  }
+  if (opts?.visibleSellersOnly) {
+    conditions.push(
+      inArray(
+        agentOffering.agentAddress,
+        db
+          .select({ address: agentProfile.address })
+          .from(agentProfile)
+          .where(
+            and(
+              eq(agentProfile.active, true),
+              isNull(agentProfile.delistedAt)
+            )
+          )
+      )
+    );
   }
   if (opts?.agentAddress) {
     conditions.push(eq(agentOffering.agentAddress, opts.agentAddress));
