@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 import {
   getAgentProfile,
+  OFFERING_SLUG_RE,
+  type OfferingUpsert,
+  parseOfferingUpsert,
   retireOffering,
   upsertOffering,
 } from "@audric/accounts";
@@ -23,114 +26,14 @@ import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 // Auth: challenge nonce + personal-message signature bound to
 // sha256(canonical payload) so a captured signature can't be replayed with a
 // different offering. The agent must hold a registered Agent ID (the same
-// accountability gate as gateway claims).
-
-// Contract-shaped bounds — an offering that can't fund a valid a2a_escrow Job
-// is rejected at LIST time, not discovered at buy time.
-const MAX_SLA_MINUTES = 365 * 24 * 60; // MAX_DELIVER_HORIZON_MS
-const MAX_REVIEW_MINUTES = 30 * 24 * 60; // MAX_REVIEW_WINDOW_MS
-const MAX_REQUIREMENTS_BYTES = 8 * 1024;
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,47}$/;
+// accountability gate as gateway claims). Validation lives in
+// @audric/accounts `parseOfferingUpsert` — shared with the console's
+// owner-session editor.
 
 function offeringPayloadSha256(payload: unknown): string {
   return createHash("sha256")
     .update(JSON.stringify(payload), "utf8")
     .digest("hex");
-}
-
-type UpsertPayload = {
-  slug: string;
-  name: string;
-  description: string;
-  priceUsdc: number;
-  slaMinutes: number;
-  reviewWindowMinutes: number;
-  rejectSplitBps: number;
-  requirements: unknown;
-  deliverable: string;
-};
-
-function parseUpsert(raw: unknown): { ok: true; p: UpsertPayload } | string {
-  const b = raw as Record<string, unknown>;
-  const slug = String(b?.slug ?? "")
-    .trim()
-    .toLowerCase();
-  if (!SLUG_RE.test(slug)) {
-    return "slug must be 2-48 chars of [a-z0-9-], starting alphanumeric.";
-  }
-  const name = String(b?.name ?? "").trim();
-  if (name.length === 0 || name.length > 80) {
-    return "name is required (max 80 chars).";
-  }
-  const description = String(b?.description ?? "").trim();
-  if (description.length === 0 || description.length > 2000) {
-    return "description is required (max 2000 chars).";
-  }
-  const deliverable = String(b?.deliverable ?? "").trim();
-  if (deliverable.length === 0 || deliverable.length > 1000) {
-    return "deliverable is required (max 1000 chars).";
-  }
-  const priceUsdc = Number(b?.priceUsdc);
-  if (
-    !Number.isFinite(priceUsdc) ||
-    priceUsdc < 0.01 ||
-    priceUsdc > MAX_JOB_USDC
-  ) {
-    return `priceUsdc must be between 0.01 and ${MAX_JOB_USDC} (the escrow job cap).`;
-  }
-  const slaMinutes = Number(b?.slaMinutes);
-  if (
-    !Number.isInteger(slaMinutes) ||
-    slaMinutes < 5 ||
-    slaMinutes > MAX_SLA_MINUTES
-  ) {
-    return `slaMinutes must be an integer between 5 and ${MAX_SLA_MINUTES}.`;
-  }
-  const reviewWindowMinutes = Number(b?.reviewWindowMinutes ?? 1440);
-  if (
-    !Number.isInteger(reviewWindowMinutes) ||
-    reviewWindowMinutes < 0 ||
-    reviewWindowMinutes > MAX_REVIEW_MINUTES
-  ) {
-    return `reviewWindowMinutes must be an integer between 0 and ${MAX_REVIEW_MINUTES}.`;
-  }
-  const rejectSplitBps = Number(b?.rejectSplitBps ?? 8000);
-  if (
-    !Number.isInteger(rejectSplitBps) ||
-    rejectSplitBps < 0 ||
-    rejectSplitBps > 10_000
-  ) {
-    return "rejectSplitBps must be an integer between 0 and 10000.";
-  }
-  const requirements = b?.requirements ?? null;
-  if (requirements !== null) {
-    const isText = typeof requirements === "string";
-    const isSchema =
-      typeof requirements === "object" && !Array.isArray(requirements);
-    if (!(isText || isSchema)) {
-      return "requirements must be a string (free text) or a JSON-schema object.";
-    }
-    if (
-      Buffer.byteLength(JSON.stringify(requirements), "utf8") >
-      MAX_REQUIREMENTS_BYTES
-    ) {
-      return `requirements too large (max ${MAX_REQUIREMENTS_BYTES} bytes).`;
-    }
-  }
-  return {
-    ok: true,
-    p: {
-      slug,
-      name,
-      description,
-      priceUsdc,
-      slaMinutes,
-      reviewWindowMinutes,
-      rejectSplitBps,
-      requirements,
-      deliverable,
-    },
-  };
 }
 
 export async function POST(request: Request) {
@@ -190,10 +93,10 @@ export async function POST(request: Request) {
 
   // Validate the payload BEFORE consuming the nonce — a rejected payload
   // shouldn't burn the challenge (the client can fix and retry).
-  let upsert: UpsertPayload | undefined;
+  let upsert: OfferingUpsert | undefined;
   let retireSlug: string | undefined;
   if (action === "upsert") {
-    const parsed = parseUpsert(payload);
+    const parsed = parseOfferingUpsert(payload, { maxPriceUsdc: MAX_JOB_USDC });
     if (typeof parsed === "string") {
       return openAiError(
         400,
@@ -202,12 +105,12 @@ export async function POST(request: Request) {
         "invalid_offering"
       );
     }
-    upsert = parsed.p;
+    upsert = parsed.offering;
   } else {
     retireSlug = String((payload as Record<string, unknown>)?.slug ?? "")
       .trim()
       .toLowerCase();
-    if (!SLUG_RE.test(retireSlug)) {
+    if (!OFFERING_SLUG_RE.test(retireSlug)) {
       return openAiError(
         400,
         "payload.slug is required.",

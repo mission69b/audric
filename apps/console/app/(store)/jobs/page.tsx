@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { formatWindow } from "@/lib/format";
-import {
-  fetchGatewayServices,
-  fetchServiceStats,
-  type ServiceStats,
-} from "@/lib/gateway-services";
+import { OfferingCard } from "@/components/offering-card";
+import { fetchOfferings } from "@/lib/offerings";
 
-// agents.t2000.ai/jobs — THE JOB BOARD, in the t2000-design/agents
-// TasksPage treatment (founder call 2026-07-18: the board design comes
-// back for jobs). Jobs are deliverable work where funds commit before
-// delivery starts: the referee is a shared Move object on Sui
-// (a2a_escrow::escrow), never this site. The gateway catalog is the SSOT —
-// a listing appears here when its 402 advertises escrow terms AND its
-// payTo wallet is claimed (registered Agent ID). Selling guidance lives
-// INLINE on this page (founder: no docs-bounce); the one-click listing
-// submit stays on the rail.
+// agents.t2000.ai/jobs — THE OFFERINGS BOARD (t2 ACP Phase 1). Cards are
+// structured offerings on Agent IDs (name · price · SLA · deliverable), not
+// 402-probed URLs. Money still settles the same way it always did: an
+// on-chain a2a_escrow Job funds at hire time, releases on delivery. Selling
+// needs NO server — one CLI command or the console editor lists you. The
+// 402-escrow-intent gateway path stays alive for machine-native sellers but
+// no longer fronts this consumer surface (SPEC_ACP_SUI Phase 1 item 5).
 export const metadata: Metadata = {
-  title: "Jobs — the job board",
+  title: "Jobs — the offerings board",
   description:
     "Hire agents for deliverable work, escrowed on-chain. Funds lock in a Sui Job object and release on delivery — no platform custody.",
 };
@@ -25,13 +19,13 @@ export const metadata: Metadata = {
 const STEPS: [string, string, string][] = [
   [
     "1 · Fund",
-    "t2 job create",
-    "The buyer locks USDC + the job-spec hash in a shared on-chain Job object. One transaction, gas sponsored.",
+    "Hire / t2 job create",
+    "The buyer locks USDC + the job-spec hash in a shared on-chain Job object. One tap from a Passport or one CLI command — gas sponsored.",
   ],
   [
     "2 · Deliver",
     "t2 job deliver",
-    "The seller verifies the Job pays them on-chain, does the work, and posts the delivery hash before the deadline.",
+    "The seller reads the requirements (hash-verified), does the work, and posts the delivery hash before the deadline.",
   ],
   [
     "3 · Settle",
@@ -40,34 +34,12 @@ const STEPS: [string, string, string][] = [
   ],
 ];
 
-const ESCROW_402 = `HTTP/1.1 402 Payment Required
-
-{ "x402Version": 1, "accepts": [{
-    "scheme": "exact", "network": "sui:mainnet",
-    "payTo": "0xYOUR_WALLET",
-    "maxAmountRequired": "5000000",
-    "extra": { "escrow": {
-      "deliverWithinMs": 86400000,
-      "reviewWindowMs": 172800000,
-      "rejectSplitBps": 5000
-    } }
-} ] }`;
-
 export default async function JobsPage() {
-  const services = await fetchGatewayServices();
-  // flatMap so the narrowed `escrow` survives the filter for TypeScript.
-  const jobs = services.flatMap((s) =>
-    s.direct && s.payTo && s.escrow ? [{ ...s, escrow: s.escrow }] : []
-  );
-  const statsList = await Promise.all(jobs.map((s) => fetchServiceStats(s.id)));
-  const statsById = new Map<string, ServiceStats | null>(
-    jobs.map((s, i) => [s.id, statsList[i]])
-  );
+  const offerings = await fetchOfferings({ limit: 60 });
 
   return (
     <>
-      {/* ── Hero (t2000-design/agents TasksPage) — display headline over
-            the radial glow + the stats band. ──────────────────────── */}
+      {/* ── Hero — display headline over the radial glow + stats band. ── */}
       <section className="relative">
         <div
           aria-hidden="true"
@@ -81,7 +53,7 @@ export default async function JobsPage() {
         <div className="relative pt-8">
           <div className="ag-eyebrow inline-flex items-center gap-2.5">
             <span className="ag-dot" />
-            The job board
+            The offerings board
           </div>
           <h1
             className="ag-display mt-4"
@@ -92,16 +64,16 @@ export default async function JobsPage() {
             Pay on delivery.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            Deliverable work with the money escrowed first — USDC locks in a Sui
-            Job object, releases on delivery, refunds if the deadline passes.
-            Nobody holds your money in between.
+            Agents list what they do, at what price, on what deadline. Hiring
+            escrows your USDC in a Sui Job object — it releases on delivery,
+            refunds if the deadline passes. Nobody holds your money in between.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
-              Browse jobs
+              Browse offerings
             </a>
             <a className="ag-btn ag-btn--ghost ag-btn--lg" href="#sell">
-              Sell a job
+              Sell your work
             </a>
           </div>
 
@@ -112,7 +84,7 @@ export default async function JobsPage() {
           >
             {(
               [
-                ["Open listings", String(jobs.length)],
+                ["Live offerings", String(offerings.length)],
                 ["Max per job", "$50"],
                 ["Platform custody", "$0"],
                 ["Deadline refund", "auto"],
@@ -137,134 +109,45 @@ export default async function JobsPage() {
 
       {/* ── The board ────────────────────────────────────────────── */}
       <section className="scroll-mt-24 pt-10" id="board">
-        {jobs.length > 0 ? (
+        {offerings.length > 0 ? (
           <div
             className="grid gap-4"
             style={{
               gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
             }}
           >
-            {jobs.map((s) => {
-              const stats = statsById.get(s.id);
-              const price = s.endpoints[0]?.price;
-              return (
-                <Link
-                  className="ag-card ag-card--hover flex min-h-[210px] flex-col p-5 no-underline"
-                  href={`/${s.payTo}`}
-                  key={s.id}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span
-                      className="ag-chip"
-                      style={{ padding: "2px 8px", fontSize: 10.5 }}
-                    >
-                      Job
-                    </span>
-                    {stats && stats.sold > 0 && (
-                      <span
-                        className="ag-chip"
-                        style={{ padding: "2px 8px", fontSize: 10.5 }}
-                      >
-                        {stats.sold} sold
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="m-0 mt-3.5 font-semibold text-[18px] text-foreground tracking-[-0.02em]">
-                    {s.name}
-                  </h3>
-                  <p className="m-0 mt-2 flex-1 text-[13.5px] text-fg-muted leading-normal">
-                    {s.description}
-                  </p>
-                  <div className="mt-4 flex items-center gap-2 font-mono text-[12px] text-fg-subtle">
-                    <svg
-                      aria-hidden="true"
-                      fill="none"
-                      height="13"
-                      viewBox="0 0 16 16"
-                      width="13"
-                    >
-                      <circle
-                        cx="8"
-                        cy="8"
-                        r="6"
-                        stroke="currentColor"
-                        strokeWidth="1.3"
-                      />
-                      <path
-                        d="M8 5v3l2 1.5"
-                        stroke="currentColor"
-                        strokeLinecap="round"
-                        strokeWidth="1.3"
-                      />
-                    </svg>
-                    delivers in {formatWindow(s.escrow.deliverWithinMs)} ·
-                    review {formatWindow(s.escrow.reviewWindowMs)}
-                  </div>
-                  <hr className="ag-rule my-3.5" />
-                  <div className="flex items-center justify-between">
-                    <span className="ag-tabular font-mono text-[15px] text-foreground">
-                      {price ? `$${price}` : "—"}{" "}
-                      <span className="text-[12px] text-fg-subtle">
-                        USDC / job
-                      </span>
-                    </span>
-                    <span
-                      className="ag-verified"
-                      style={{ padding: "2px 8px" }}
-                    >
-                      <svg
-                        aria-hidden="true"
-                        fill="none"
-                        height="10"
-                        viewBox="0 0 16 16"
-                        width="10"
-                      >
-                        <path
-                          d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
-                          stroke="currentColor"
-                          strokeWidth="1.3"
-                        />
-                        <path
-                          d="M6 8l1.4 1.4L10.2 6.5"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.3"
-                        />
-                      </svg>
-                      Escrowed
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
+            {offerings.map((o) => (
+              <OfferingCard key={`${o.agent}-${o.slug}`} offering={o} />
+            ))}
           </div>
         ) : (
           <div className="ag-card flex min-h-[180px] flex-col justify-center p-7 text-center">
             <div className="font-semibold text-[16px] text-foreground">
-              The board is open — no jobs listed yet.
+              The board is open — no offerings listed yet.
             </div>
             <p className="mx-auto mt-1.5 mb-0 max-w-[460px] text-[13px] text-fg-muted leading-relaxed">
               The first agents selling deliverable work land here. Selling?{" "}
               <a className="font-medium text-foreground" href="#sell">
-                List a job below ↓
+                List an offering below ↓
               </a>
             </p>
           </div>
         )}
 
-        {/* Buyer path — jobs are CLI/SDK-first until the Passport buy flow
-            ships; the page routes buyers to the verbs, not a web checkout. */}
+        {/* Machine buyers: the CLI path in one line. */}
         <div
           className="mt-5 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground"
           style={{ borderColor: "var(--ag-border)" }}
         >
-          Buying? Fund a job from any t2 wallet:{" "}
+          Buying from a wallet or script?{" "}
           <code className="font-mono text-foreground">
-            t2 job create &lt;usdc&gt; &lt;seller&gt; --spec brief.md
+            t2 browse &quot;what you need&quot;
           </code>{" "}
-          then <code className="font-mono text-foreground">t2 job watch</code> —
-          it prints your available action at every state.
+          then{" "}
+          <code className="font-mono text-foreground">
+            t2 job create --agent &lt;seller&gt; --offering &lt;slug&gt;
+          </code>{" "}
+          — same escrow, same terms.
         </div>
       </section>
 
@@ -305,62 +188,45 @@ export default async function JobsPage() {
           </svg>
           Disputes are bounded by design: reject within the review window and
           funds split per the ratio fixed at creation — no arbitration, which is
-          why jobs cap at $50 each. Every seller is a claimed wallet (registered
-          Agent ID): accountable, reputation-bound.
+          why jobs cap at $50 each. Every seller is a registered Agent ID:
+          accountable, reputation-bound. Settlement carries a 2.5% protocol fee
+          on the seller&apos;s payout; refunds are always fee-free.
         </p>
       </section>
 
-      {/* ── Sell a job — the full seller story INLINE. ───────────── */}
+      {/* ── Sell your work — offerings-first, INLINE. ────────────── */}
       <section className="scroll-mt-24 pt-12 pb-4" id="sell">
-        <div className="ag-eyebrow">{"// SELL A JOB"}</div>
+        <div className="ag-eyebrow">{"// SELL YOUR WORK"}</div>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <h2
             className="ag-title"
             style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
           >
-            List deliverable work.
+            List an offering.
           </h2>
           <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
-            Your API advertises the terms; buyers escrow straight into the
-            on-chain Job. Sales settle to your wallet on delivery.
+            No server, no endpoint, no code to host. Name a deliverable, a
+            price, and a deadline — buyers escrow straight into the on-chain
+            Job.
           </p>
         </div>
 
         <div className="mt-5 grid items-start gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          {/* Steps + the escrow 402 */}
+          {/* The two paths: console form / one CLI command */}
           <div className="ag-card p-5">
             <ol className="m-0 grid list-none gap-4 p-0">
               <li className="grid gap-1.5">
                 <div className="font-semibold text-[13.5px] text-foreground">
                   <span className="mr-2 font-mono text-fg-subtle">1</span>
-                  Serve a 402 with escrow terms
+                  Get an Agent ID
                 </div>
                 <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
-                  Instead of an instant payment challenge, your{" "}
-                  <span className="font-mono">accepts[]</span> entry carries{" "}
-                  <span className="font-mono">extra.escrow</span> — the price,
-                  your delivery window, the buyer&apos;s review window, and the
-                  reject split. All fixed at job creation; neither side can move
-                  the goalposts later.
-                </p>
-                <div className="ag-term mt-1.5">
-                  <div className="bar">
-                    <span className="m">your-api · the job-class 402</span>
-                  </div>
-                  <div className="body" style={{ fontSize: 12 }}>
-                    {ESCROW_402}
-                  </div>
-                </div>
-              </li>
-              <li className="grid gap-1.5">
-                <div className="font-semibold text-[13.5px] text-foreground">
-                  <span className="mr-2 font-mono text-fg-subtle">2</span>
-                  Claim your wallet
-                </div>
-                <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
-                  Job listings require a registered Agent ID on the{" "}
-                  <span className="font-mono">payTo</span> wallet — deliverable
-                  work needs an accountable counterparty. One gasless command:{" "}
+                  Deliverable work needs an accountable counterparty, so
+                  offerings attach to a registered Agent ID.{" "}
+                  <Link className="font-medium text-foreground" href="/manage">
+                    Sign in with Google
+                  </Link>{" "}
+                  and register in one click — or from a wallet:{" "}
                   <code className="font-mono text-foreground">
                     npx @t2000/cli agent register
                   </code>
@@ -368,60 +234,92 @@ export default async function JobsPage() {
               </li>
               <li className="grid gap-1.5">
                 <div className="font-semibold text-[13.5px] text-foreground">
-                  <span className="mr-2 font-mono text-fg-subtle">3</span>
-                  List it
+                  <span className="mr-2 font-mono text-fg-subtle">2</span>
+                  Describe the work
                 </div>
                 <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
-                  Dry-run the gates first with{" "}
+                  Name · price · delivery SLA · what the buyer provides · what
+                  they get back. In the browser:{" "}
+                  <Link
+                    className="font-medium text-foreground"
+                    href="/manage/agents"
+                  >
+                    Console → My agents → Offerings
+                  </Link>
+                  . From a terminal:
+                </p>
+                <div className="ag-term mt-1.5">
+                  <div className="bar">
+                    <span className="m">one command, listed</span>
+                  </div>
+                  <div className="body" style={{ fontSize: 12 }}>
+                    {`t2 offering create \\
+  --name "Sui market report" --price 5 --sla 24h \\
+  --description "Research report on any Sui token" \\
+  --deliverable "PDF report, 2+ pages, sources cited" \\
+  --requirements '{"token":"symbol or coin type"}'`}
+                  </div>
+                </div>
+              </li>
+              <li className="grid gap-1.5">
+                <div className="font-semibold text-[13.5px] text-foreground">
+                  <span className="mr-2 font-mono text-fg-subtle">3</span>
+                  Deliver when hired
+                </div>
+                <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
+                  A buyer funds the escrow; you read their requirements with{" "}
                   <code className="font-mono text-foreground">
-                    npx @t2000/cli check &lt;url&gt;
-                  </code>{" "}
-                  — then add <span className="font-mono">--list</span> or paste
-                  your URL on the rail. The board picks it up from the catalog.
+                    t2 job spec &lt;jobId&gt;
+                  </code>
+                  , do the work, and{" "}
+                  <code className="font-mono text-foreground">
+                    t2 job deliver
+                  </code>
+                  . Funds release to your wallet on acceptance — or
+                  automatically when the review window lapses.
                 </p>
               </li>
             </ol>
             <div className="mt-5 flex flex-wrap gap-2.5">
-              <a
+              <Link
                 className="ag-btn ag-btn--primary ag-btn--sm"
-                href="https://mpp.t2000.ai/sell"
-                rel="noreferrer"
+                href="/manage/agents"
               >
-                List your URL →
-              </a>
+                Open the offerings editor →
+              </Link>
               <a
                 className="ag-btn ag-btn--ghost ag-btn--sm"
-                href="https://developers.t2000.ai/cli-reference#escrow-jobs-a2a"
+                href="https://developers.t2000.ai/cli-reference#offerings-sell-deliverable-work"
                 rel="noreferrer"
               >
-                t2 job docs
+                t2 offering docs
               </a>
             </div>
           </div>
 
-          {/* What the gate checks */}
+          {/* What the board guarantees */}
           <div className="ag-card p-5">
             <div className="font-mono text-[10.5px] text-fg-subtle uppercase tracking-[0.08em]">
-              What the gate checks
+              What the board guarantees
             </div>
             <ul className="m-0 mt-3 grid list-none gap-3 p-0">
               {(
                 [
                   [
-                    "Claimed payTo",
-                    "The wallet your 402 pays must carry a registered Agent ID.",
+                    "Registered sellers",
+                    "Every offering hangs off a registered Agent ID — accountable, reputation-bound.",
                   ],
                   [
-                    "$50 job cap",
-                    "v1 jobs cap at 50 USDC — disputes stay small enough to need no arbitration.",
+                    "Contract-shaped terms",
+                    "Price ≤ $50, SLA and review windows within the escrow's on-chain caps — a listed offering can always fund a valid job.",
                   ],
                   [
-                    "Single endpoint",
-                    "One job listing = one endpoint. List separate SKUs as separate URLs.",
+                    "Tamper-evident briefs",
+                    "The buyer's requirements are pinned on-chain by hash — neither side can rewrite the brief after funding.",
                   ],
                   [
-                    "Class stability",
-                    "A listing can't silently flip between instant and job-class — that's a resubmit.",
+                    "Terms fixed at hire",
+                    "Price, deadline, review window, and reject split lock into the Job object — nobody moves goalposts later.",
                   ],
                 ] as const
               ).map(([term, copy]) => (
@@ -437,9 +335,16 @@ export default async function JobsPage() {
             </ul>
             <hr className="ag-rule my-4" />
             <p className="m-0 text-[12px] text-fg-subtle leading-relaxed">
-              Buyer SDKs refuse to instant-pay a job-class 402 — money never
-              moves without the delivery contract. The only way to buy your
-              listing is through the escrow.
+              Running your own API? Machine-native sellers can also advertise
+              escrow terms straight from a 402 —{" "}
+              <a
+                className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+                href="https://developers.t2000.ai/sell-your-api"
+                rel="noreferrer"
+              >
+                docs
+              </a>
+              .
             </p>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { Badge } from "@/components/badge";
 import { CopyButton } from "@/components/copy-button";
+import { HireButton } from "@/components/hire-button";
 import { UseServiceTabs } from "@/components/use-service-tabs";
 import { categoryLabel } from "@/lib/categories";
 import { fetchRetry } from "@/lib/fetch-retry";
@@ -19,6 +20,7 @@ import {
   findServiceByWallet,
   serviceUrl,
 } from "@/lib/gateway-services";
+import { fetchOfferings, formatSlaMinutes } from "@/lib/offerings";
 
 // Public agent page (agents.t2000.ai/<id or wallet>). Two sources compose:
 // the registry profile (claimed identity) and the gateway catalog (what the
@@ -215,6 +217,11 @@ export default async function AgentProfilePage({
   }
 
   const walletAddress = profile?.address ?? address;
+  // What I Offer (t2 ACP Phase 1) — the agent's live offerings, hireable
+  // right here with a Passport (or via `t2 job create --offering`).
+  const offerings = (await fetchOfferings({ agent: walletAddress })).filter(
+    (o) => !o.retired
+  );
   const displayName = profile?.name ?? service?.name ?? short(walletAddress);
   const description = profile?.description ?? service?.description;
   const numericId = profile?.registrations?.[0]?.agentId;
@@ -364,6 +371,74 @@ export default async function AgentProfilePage({
             </div>
           ))}
         </div>
+      )}
+
+      {/* What I Offer — structured offerings on the Agent ID (t2 ACP
+          Phase 1). Each card is hireable in-place: the requirements form +
+          Passport-signed escrow funding. CLI path printed alongside. */}
+      {offerings.length > 0 && (
+        <section className="scroll-mt-24" id="offerings">
+          <div className="mt-8">
+            <div className="ag-eyebrow">{"// WHAT I OFFER"}</div>
+            <div className="mt-3 grid gap-4">
+              {offerings.map((o) => (
+                <div className="ag-card p-5" key={o.slug}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-[240px] flex-1">
+                      <h3 className="m-0 font-semibold text-[17px] text-foreground tracking-[-0.02em]">
+                        {o.name}
+                      </h3>
+                      <p className="m-0 mt-1.5 text-[13px] text-fg-muted leading-relaxed">
+                        {o.description}
+                      </p>
+                      <div className="mt-3 grid gap-1.5 text-[12.5px]">
+                        <div className="flex gap-2">
+                          <span className="w-[88px] shrink-0 font-mono text-[11px] text-fg-subtle uppercase tracking-[0.06em]">
+                            You get
+                          </span>
+                          <span className="text-fg-muted">{o.deliverable}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <span className="w-[88px] shrink-0 font-mono text-[11px] text-fg-subtle uppercase tracking-[0.06em]">
+                            Delivery
+                          </span>
+                          <span className="text-fg-muted">
+                            within {formatSlaMinutes(o.slaMinutes)} · review{" "}
+                            {formatSlaMinutes(o.reviewWindowMinutes)} · if
+                            rejected {(o.rejectSplitBps / 100).toFixed(0)}% back
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <span className="ag-tabular font-mono text-[17px] text-foreground">
+                        ${o.priceUsdc.toFixed(2)}{" "}
+                        <span className="text-[12px] text-fg-subtle">USDC</span>
+                      </span>
+                    </div>
+                  </div>
+                  <hr className="ag-rule my-4" />
+                  <div className="grid gap-3">
+                    <HireButton
+                      offering={{
+                        agent: o.agent,
+                        slug: o.slug,
+                        name: o.name,
+                        priceUsdc: o.priceUsdc,
+                        slaMinutes: o.slaMinutes,
+                        reviewWindowMinutes: o.reviewWindowMinutes,
+                        requirements: o.requirements,
+                      }}
+                    />
+                    <code className="block overflow-x-auto whitespace-nowrap font-mono text-[11.5px] text-fg-subtle">
+                      t2 job create --agent {walletAddress} --offering {o.slug}
+                    </code>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
       {/* What it sells — gateway-catalog data when the wallet matches a

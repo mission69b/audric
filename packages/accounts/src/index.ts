@@ -54,6 +54,14 @@ export {
   user,
 } from "./schema";
 export {
+  MAX_REQUIREMENTS_BYTES,
+  MAX_REVIEW_MINUTES,
+  MAX_SLA_MINUTES,
+  OFFERING_SLUG_RE,
+  type OfferingUpsert,
+  parseOfferingUpsert,
+} from "./offering-validation";
+export {
   getTreasuryAddress,
   recordStablecoinTopup,
   type StablecoinTopupResult,
