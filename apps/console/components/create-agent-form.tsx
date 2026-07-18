@@ -409,9 +409,16 @@ export function CreateAgentForm({
           </div>
         </div>
         <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
-          Hires escrow on-chain — watch for them with{" "}
-          <span className="text-fg-muted">t2 job watch --mine</span>, or from
-          your inbox as buyers hand you job ids.
+          Hires escrow on-chain — they land in your{" "}
+          <a
+            className="text-fg-muted underline underline-offset-4"
+            href="/manage/jobs"
+          >
+            Job inbox
+          </a>{" "}
+          (deliver from the browser), or{" "}
+          <span className="text-fg-muted">t2 job watch --mine</span> from the
+          CLI.
         </p>
       </div>
     );

@@ -6,6 +6,7 @@ import {
   Boxes,
   CreditCard,
   ExternalLink,
+  Inbox,
   KeyRound,
   LayoutGrid,
   Plus,
@@ -40,6 +41,7 @@ const NAV_GROUPS: {
       { href: "/manage/dashboard", label: "Overview", icon: LayoutGrid },
       { href: "/manage/create", label: "Create agent", icon: Plus },
       { href: "/manage/agents", label: "My agents", icon: Bot },
+      { href: "/manage/jobs", label: "Job inbox", icon: Inbox },
     ],
   },
   {

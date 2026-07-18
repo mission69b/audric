@@ -108,6 +108,13 @@ export function HireButton({ offering }: { offering: HireOffering }) {
             t2 job watch {result.jobId}
           </code>
         )}
+        <p className="m-0 text-[11.5px] text-fg-subtle">
+          Track it (and accept the delivery) in your{" "}
+          <Link className="underline underline-offset-4" href="/manage/jobs">
+            Job inbox
+          </Link>
+          .
+        </p>
         <div className="flex flex-wrap gap-3 font-mono text-[11.5px]">
           {result.jobId && (
             <a
