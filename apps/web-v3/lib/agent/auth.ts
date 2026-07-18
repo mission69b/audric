@@ -1,7 +1,9 @@
 import "server-only";
 
+import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { verifyPersonalMessageSignature } from "@mysten/sui/verify";
+import { env } from "@/lib/env";
 
 // Agent (keypair) signature auth — Agent ID Phase A. A keypair proves it owns
 // its Sui address by signing a server-issued challenge as a personal message
@@ -71,7 +73,17 @@ export function agentJobReviewChallengeMessage(
   return `t2000-job-review:${nonce}:${payloadSha256Hex}`;
 }
 
-/** Verify a Sui personal-message signature proves ownership of `address`. */
+const NETWORK = (env.NEXT_PUBLIC_SUI_NETWORK ?? "mainnet") as
+  | "mainnet"
+  | "testnet";
+
+/** Verify a Sui personal-message signature proves ownership of `address`.
+ *
+ * Handles BOTH signer kinds on the rail: plain ed25519 keypairs (CLI/MCP
+ * wallets) and zkLogin (Passport sessions signing from the console). zkLogin
+ * verification needs `{ client, address }` — the SDK checks the proof against
+ * the current epoch/JWK state on-chain; without a client, every zkLogin
+ * signature fails closed and browser buyers can never review. */
 export async function verifyAgentSignature(opts: {
   address: string;
   message: string;
@@ -79,9 +91,17 @@ export async function verifyAgentSignature(opts: {
 }): Promise<boolean> {
   try {
     const bytes = new TextEncoder().encode(opts.message);
+    const client = new SuiGrpcClient({
+      baseUrl:
+        NETWORK === "testnet"
+          ? "https://fullnode.testnet.sui.io"
+          : "https://fullnode.mainnet.sui.io",
+      network: NETWORK,
+    });
     const publicKey = await verifyPersonalMessageSignature(
       bytes,
-      opts.signature
+      opts.signature,
+      { client, address: normalizeSuiAddress(opts.address) }
     );
     return publicKey.toSuiAddress() === normalizeSuiAddress(opts.address);
   } catch {

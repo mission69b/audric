@@ -865,6 +865,17 @@ export async function getEscrowJob(
 
 // ── Job reviews (t2 ACP Phase 1 item 6) ─────────────────────────────────────
 
+/** The review on one job, if any — the console prefills the buyer's edit
+ *  form with it (one review per job; re-submit edits). */
+export async function getJobReview(jobId: string): Promise<JobReview | null> {
+  const [row] = await db
+    .select()
+    .from(jobReview)
+    .where(eq(jobReview.jobId, jobId))
+    .limit(1);
+  return row ?? null;
+}
+
 /** One review per released job; re-submitting edits stars/text. */
 export async function upsertJobReview(row: {
   jobId: string;

@@ -1,8 +1,12 @@
-import { getJobSpec } from "@audric/accounts";
+import { getJobReview, getJobSpec } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { getJob, getSuiClient } from "@t2000/sdk";
 import { redirect } from "next/navigation";
-import { BuyerDecision, DeliverForm } from "@/components/job-action-panel";
+import {
+  BuyerDecision,
+  DeliverForm,
+  ReviewForm,
+} from "@/components/job-action-panel";
 import { PanelHead } from "@/components/panel-head";
 import { fetchRetry } from "@/lib/fetch-retry";
 
@@ -111,11 +115,13 @@ function JobRow({
   side,
   requirements,
   delivery,
+  review,
 }: {
   job: ApiJob;
   side: "seller" | "buyer";
   requirements: string | null;
   delivery: string | null;
+  review?: { stars: number; text: string | null } | null;
 }) {
   const counterparty = side === "seller" ? job.buyer : job.seller;
   const awaitingMe =
@@ -189,6 +195,10 @@ function JobRow({
         ) : (
           <BuyerDecision jobId={job.jobId} />
         ))}
+
+      {side === "buyer" && job.state === "released" && (
+        <ReviewForm existing={review ?? null} jobId={job.jobId} />
+      )}
     </div>
   );
 }
@@ -246,6 +256,24 @@ export default async function JobInboxPage() {
         deliveryById.set(j.jobId, await loadDelivery(j.deliveryHash as string));
       })
   );
+  // Existing reviews prefill the buyer's edit form on released rows.
+  const reviewById = new Map<
+    string,
+    { stars: number; text: string | null } | null
+  >();
+  await Promise.all(
+    buying
+      .filter((j) => j.state === "released")
+      .slice(0, 10)
+      .map(async (j) => {
+        try {
+          const r = await getJobReview(j.jobId);
+          reviewById.set(j.jobId, r ? { stars: r.stars, text: r.text } : null);
+        } catch {
+          reviewById.set(j.jobId, null);
+        }
+      })
+  );
 
   return (
     <div className="max-w-[860px]">
@@ -279,7 +307,7 @@ export default async function JobInboxPage() {
           )}
         </Section>
         <Section
-          sub="Jobs you funded. Accept to release the escrow, or reject within the review window to split per the terms."
+          sub="Jobs you funded. Accept to release the escrow, reject within the review window to split per the terms — and rate released work (it builds the seller's receipt-backed reputation)."
           title="Buying"
         >
           {buying.length === 0 ? (
@@ -296,6 +324,7 @@ export default async function JobInboxPage() {
                 job={j}
                 key={j.jobId}
                 requirements={null}
+                review={reviewById.get(j.jobId) ?? null}
                 side="buyer"
               />
             ))

@@ -16,6 +16,7 @@ export {
   getCreditBalanceMicros,
   getEscrowJob,
   getIndexerCursor,
+  getJobReview,
   getJobSpec,
   getOffering,
   getUserById,
