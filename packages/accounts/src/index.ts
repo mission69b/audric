@@ -17,6 +17,7 @@ export {
   getApiKeyByHash,
   getApiUsageByModel,
   getCreditBalanceMicros,
+  getEscrowJob,
   getIndexerCursor,
   getJobSpec,
   getOffering,
@@ -29,6 +30,7 @@ export {
   listApiKeys,
   listCreditLedger,
   listEscrowJobs,
+  listJobReviews,
   listOfferings,
   putJobSpec,
   recordApiUsage,
@@ -46,6 +48,7 @@ export {
   touchApiKey,
   updateEscrowJobState,
   upsertAgentProfile,
+  upsertJobReview,
   upsertOffering,
 } from "./queries";
 export {
@@ -65,6 +68,8 @@ export {
   escrowJob,
   type IndexerCursor,
   indexerCursor,
+  type JobReview,
+  jobReview,
   type JobSpec,
   jobSpec,
   type User,

@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   and,
+  avg,
   count,
   desc,
   eq,
@@ -27,6 +28,8 @@ import {
   type EscrowJob,
   escrowJob,
   indexerCursor,
+  type JobReview,
+  jobReview,
   jobSpec,
   type User,
   user,
@@ -846,6 +849,59 @@ export async function updateEscrowJobState(
       ...(fields.byTimeout !== undefined && { byTimeout: fields.byTimeout }),
     })
     .where(eq(escrowJob.jobId, jobId));
+}
+
+export async function getEscrowJob(
+  jobId: string
+): Promise<EscrowJob | undefined> {
+  const [row] = await db
+    .select()
+    .from(escrowJob)
+    .where(eq(escrowJob.jobId, jobId))
+    .limit(1);
+  return row;
+}
+
+// ── Job reviews (t2 ACP Phase 1 item 6) ─────────────────────────────────────
+
+/** One review per released job; re-submitting edits stars/text. */
+export async function upsertJobReview(row: {
+  jobId: string;
+  seller: string;
+  buyer: string;
+  stars: number;
+  text: string | null;
+}): Promise<JobReview> {
+  const [saved] = await db
+    .insert(jobReview)
+    .values(row)
+    .onConflictDoUpdate({
+      target: jobReview.jobId,
+      set: { stars: row.stars, text: row.text, updatedAt: new Date() },
+    })
+    .returning();
+  return saved;
+}
+
+/** A seller's reviews (newest first) + the aggregate score. */
+export async function listJobReviews(
+  seller: string,
+  limit = 50
+): Promise<{ reviews: JobReview[]; score: number | null; count: number }> {
+  const [reviews, [agg]] = await Promise.all([
+    db
+      .select()
+      .from(jobReview)
+      .where(eq(jobReview.seller, seller))
+      .orderBy(desc(jobReview.createdAt))
+      .limit(Math.min(Math.max(limit, 1), 100)),
+    db
+      .select({ avg: avg(jobReview.stars), count: count() })
+      .from(jobReview)
+      .where(eq(jobReview.seller, seller)),
+  ]);
+  const score = agg?.avg == null ? null : Number(agg.avg);
+  return { reviews, score, count: agg?.count ?? 0 };
 }
 
 /** The inbox / activity query: jobs by seller and/or buyer, newest first. */

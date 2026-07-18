@@ -60,6 +60,17 @@ export function agentOfferingChallengeMessage(
   return `t2000-agent-offering:${nonce}:${payloadSha256Hex}`;
 }
 
+/** The message to sign to review a RELEASED escrow Job (t2 ACP Phase 1 —
+ *  receipt-bound star reviews, the Job object id is the receipt). Bound to
+ *  nonce + a sha256 of the canonical review payload {jobId, stars, text}, so
+ *  a captured signature can't be replayed with different stars or text. */
+export function agentJobReviewChallengeMessage(
+  nonce: string,
+  payloadSha256Hex: string
+): string {
+  return `t2000-job-review:${nonce}:${payloadSha256Hex}`;
+}
+
 /** Verify a Sui personal-message signature proves ownership of `address`. */
 export async function verifyAgentSignature(opts: {
   address: string;

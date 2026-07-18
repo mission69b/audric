@@ -390,6 +390,36 @@ export const escrowJob = pgTable(
 
 export type EscrowJob = InferSelectModel<typeof escrowJob>;
 
+// ── Job reviews (t2 ACP Phase 1, item 6) ────────────────────────────────────
+// Receipt-bound star reviews on RELEASED escrow Jobs — the store-era pattern
+// (one review per settlement, buyer-signed, upsert to edit) rebuilt on the
+// Job object id as the binding key. Eligibility is proven against the CHAIN
+// at write time (job exists, state == released, signer == buyer, buyer !=
+// seller) — a review can never exist without the money having moved.
+export const jobReview = pgTable(
+  "JobReview",
+  {
+    /** The released Job object id — the receipt. One review per job. */
+    jobId: text("jobId").primaryKey().notNull(),
+    seller: text("seller").notNull(),
+    buyer: text("buyer").notNull(),
+    /** 1–5. */
+    stars: integer("stars").notNull(),
+    /** Optional short review text (≤400 chars, enforced at the API). */
+    text: text("text"),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (t) => ({
+    sellerIdx: index("JobReview_seller_createdAt_idx").on(
+      t.seller,
+      t.createdAt
+    ),
+  })
+);
+
+export type JobReview = InferSelectModel<typeof jobReview>;
+
 // Generic named cursor for pollers (currently just the escrow-job event
 // indexer; the value is an opaque GraphQL pagination cursor).
 export const indexerCursor = pgTable("IndexerCursor", {

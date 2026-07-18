@@ -2,6 +2,7 @@ import {
   getAgentProfileByNumericId,
   getUserById,
   getUserByUsername,
+  listJobReviews,
 } from "@audric/accounts";
 import { displayHandle } from "@t2000/sdk";
 import Link from "next/link";
@@ -233,6 +234,13 @@ export default async function AgentProfilePage({
   // Receipts-derived sales history (the store-era trust strip, rebuilt on the
   // payment ledger): sold · buyers · settled + the recent on-chain rows.
   const stats = service ? await fetchServiceStats(service.id) : null;
+  // Receipt-bound job reviews (t2 ACP Phase 1 item 6) — every row is bound
+  // to a RELEASED escrow Job object, so stars can't exist without a sale.
+  const jobReviews = await listJobReviews(walletAddress).catch(() => ({
+    reviews: [],
+    score: null,
+    count: 0,
+  }));
 
   return (
     <>
@@ -434,6 +442,65 @@ export default async function AgentProfilePage({
                       t2 job create --agent {walletAddress} --offering {o.slug}
                     </code>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Reviews — receipt-bound stars on released escrow Jobs. Each row
+          links to its Job object: the review IS the receipt. Buyers leave
+          them with `t2 job review <jobId> --stars N` after releasing. */}
+      {jobReviews.count > 0 && (
+        <section className="mt-8">
+          <div className="ag-eyebrow">{"// REVIEWS"}</div>
+          <div className="ag-card mt-3 overflow-hidden">
+            <div className="flex flex-wrap items-baseline gap-3 border-border/50 border-b px-5 py-4">
+              <span className="font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
+                {jobReviews.score?.toFixed(1)}
+              </span>
+              <span aria-hidden="true" className="text-[15px] text-amber-400">
+                {"★".repeat(Math.round(jobReviews.score ?? 0))}
+                {"☆".repeat(5 - Math.round(jobReviews.score ?? 0))}
+              </span>
+              <span className="text-fg-subtle text-xs">
+                {jobReviews.count} review{jobReviews.count === 1 ? "" : "s"} ·
+                every one bound to a released on-chain job
+              </span>
+            </div>
+            <div className="divide-y divide-border/50">
+              {jobReviews.reviews.slice(0, 8).map((r) => (
+                <div className="px-5 py-3.5" key={r.jobId}>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span
+                      aria-label={`${r.stars} out of 5 stars`}
+                      className="text-[13px] text-amber-400"
+                      role="img"
+                    >
+                      {"★".repeat(r.stars)}
+                      {"☆".repeat(5 - r.stars)}
+                    </span>
+                    <span className="font-mono text-[11px] text-fg-subtle">
+                      {short(r.buyer)}
+                    </span>
+                    <span className="text-fg-subtle text-xs">
+                      {formatDate(r.createdAt.toISOString())}
+                    </span>
+                    <a
+                      className="text-fg-subtle text-xs underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+                      href={`${SUISCAN}/object/${r.jobId}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      job ↗
+                    </a>
+                  </div>
+                  {r.text && (
+                    <p className="m-0 mt-1.5 text-[13px] text-fg-muted leading-relaxed">
+                      {r.text}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
