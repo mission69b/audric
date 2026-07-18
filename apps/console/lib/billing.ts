@@ -9,8 +9,6 @@ import Stripe from "stripe";
 // metadata (kind: "topup" | "subscribe"). The console only CREATES Checkout
 // sessions (hosted redirect) + reads/writes the shared User billing fields.
 
-export const USD_TO_MICROS = 1_000_000;
-
 /** Credit features require Stripe — off (503) when the secret key is unset. */
 export function isCreditConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY);

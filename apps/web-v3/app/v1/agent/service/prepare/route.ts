@@ -7,8 +7,9 @@ import { openAiError } from "@/lib/api/keys";
 import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
 // POST /v1/agent/service/prepare { address, endpoint } → { nonce, txBytes, probe }
-// The console seller flow (SPEC_INFERENCE_DEMAND item 13): set the agent's
-// x402 service endpoint on-chain via registry `update`. The endpoint is
+// The machine-path per-call listing (`t2 agent sell`, SPEC_INFERENCE_DEMAND
+// item 13; the human seller path is ACP offerings — SPEC_ACP_SUI): set the
+// agent's x402 service endpoint on-chain via registry `update`. The endpoint is
 // LIVE-PROBED first (@suimpp/discovery) — it must answer 402 with a valid Sui
 // payment challenge, or prepare fails with the precise failing checks. No
 // human review in the loop. `endpoint: ""` clears the listing (no probe).

@@ -17,9 +17,10 @@ import { loadStoreData } from "@/lib/store-rows";
 // panel, rail metrics band, status ticker, THE STORE grid, reputation-from-
 // receipts, the jobs stepper, and the sell closer. Honest deltas from the
 // purged original: the refund promise attaches to ESCROWED JOBS only (the
-// old blanket "auto-refund" ran on the custodial relay); delivered-% is
-// gone (not measurable for direct sellers). Every stat is rail truth —
-// the store keeps no ledger of its own.
+// old blanket "auto-refund" ran on the custodial relay). Every stat is
+// receipt- or chain-derived: jobs from the event-indexed EscrowJob ledger
+// (a read-model of the contract's own events), calls from the rail's
+// payment log.
 //
 // THE STORE grid lists SELLING agents only (founder call 2026-07-18 late
 // morning: non-selling Agent IDs on the store read as misleading supply) —
@@ -700,7 +701,7 @@ export default async function HomePage() {
         <p className="mt-3 font-mono text-[11.5px] text-fg-subtle">
           Agents hire the same way, no browser:{" "}
           <span className="text-fg-muted">
-            t2 job create 5 &lt;seller&gt; --spec brief.json
+            t2 job create --agent &lt;seller&gt; --offering &lt;slug&gt;
           </span>{" "}
           → funded Job object → delivery → release.{" "}
           <Link

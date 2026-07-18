@@ -16,7 +16,7 @@ import { fetchOfferings } from "@/lib/offerings";
 // about what an agent sells or what its receipts say.
 const API_BASE = "https://api.t2000.ai/v1";
 
-export type AgentRow = {
+type AgentRow = {
   address: string;
   numericId?: number | null;
   name: string;
@@ -28,7 +28,7 @@ export type AgentRow = {
 
 export type Seller = GatewayService & { payTo: string };
 
-export async function fetchAgents(): Promise<{
+async function fetchAgents(): Promise<{
   total: number;
   agents: AgentRow[];
 }> {
@@ -57,7 +57,7 @@ function shortAddress(address: string): string {
  *  rest of the directory. `verified` = claimed wallet + ≥1 settled sale.
  *  An agent sells via the gateway catalog (per-call) OR via ACP offerings
  *  (per-job) — either gives it a price on the store. */
-export function buildRows(
+function buildRows(
   agents: AgentRow[],
   sellers: Seller[],
   handles: Map<string, string>,
@@ -149,11 +149,12 @@ export async function loadStoreData(): Promise<{
     fetchGatewayServices(),
     fetchOfferings(),
   ]);
-  // The store showcases the AGENT economy only: direct sellers whose 402
-  // pays their own wallet (founder call 2026-07-17 late: the rail's proxied
-  // vendor catalog stays on mpp.t2000.ai/services — listing it here reads
-  // as a reseller catalog and dilutes the A2A story). flatMap so the
-  // narrowed `payTo` survives the filter for TypeScript.
+  // The store showcases the AGENT economy only: ACP offering sellers plus
+  // direct x402 sellers whose 402 pays their own wallet (founder call
+  // 2026-07-17 late: the rail's proxied vendor catalog stays on
+  // mpp.t2000.ai/services — listing it here reads as a reseller catalog and
+  // dilutes the A2A story). flatMap so the narrowed `payTo` survives the
+  // filter for TypeScript.
   const sellers: Seller[] = services.flatMap((s) =>
     s.direct && s.payTo ? [{ ...s, payTo: s.payTo }] : []
   );

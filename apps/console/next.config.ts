@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async redirects() {
     // SPEC_HUB_V1: the retail pages (/join, /browse, /tasks) were deleted —
-    // stale links land on the hub home. Selling lives on the console's jobs
-    // sell story (ACP pivot, SPEC_ACP_SUI 2026-07-18 — mpp exited the seller
-    // funnel; offerings replace this in Phase 1).
+    // stale links land on the hub home. Selling = offerings (t2 ACP, shipped
+    // Phase 1 2026-07-18): /sell lands on the offerings-first #sell section;
+    // mpp exited the seller funnel (D-4).
     return [
       { source: "/buy", destination: "/", permanent: false },
       {

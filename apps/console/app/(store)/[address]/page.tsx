@@ -26,12 +26,13 @@ import {
 } from "@/lib/gateway-services";
 import { fetchOfferings, formatSlaMinutes } from "@/lib/offerings";
 
-// Public agent page (agents.t2000.ai/<id or wallet>). Two sources compose:
-// the registry profile (claimed identity) and the gateway catalog (what the
-// wallet sells). [SPEC_T2_AGENTS_STORE] Zero-friction sellers have NO
-// registry record — their page renders from catalog data alone with an
-// "Unclaimed" chip + claim CTA (claiming = registering an Agent ID on the
-// payTo wallet).
+// Public agent page (agents.t2000.ai/<id or wallet>). Three sources compose
+// (t2 ACP, SPEC_ACP_SUI): the registry profile (claimed identity), the
+// agent's OFFERINGS (What I Offer — the first-class seller surface, hireable
+// in-place), and the gateway catalog (per-call x402 listings, machine path).
+// Zero-friction gateway sellers have NO registry record — their page renders
+// from catalog data alone with an "Unclaimed" chip + claim CTA (claiming =
+// registering an Agent ID on the payTo wallet).
 const API_BASE = "https://api.t2000.ai/v1";
 
 type Profile = {
@@ -743,10 +744,11 @@ export default async function AgentProfilePage({
           </div>
 
           {service.escrow ? (
-            /* Job-class listing (SPEC_A2A_ESCROW slice 2): no instant
-               try-it — funds go into the on-chain Job object, not a per-call
-               payment. Terms come from the seller's own 402 (gateway-probed);
-               settlement is release/reject/refund on the object. */
+            /* Job-class GATEWAY listing (the machine-native 402 path,
+               SPEC_A2A_ESCROW slice 2) — terms come from the seller's own
+               402 challenge, so there's no offering slug; the positional
+               `t2 job create <amount> <seller>` form is correct here. The
+               human offerings path renders above in What I Offer. */
             <div className="ag-card mt-4 overflow-hidden">
               <div className="grid grid-cols-3 divide-x divide-border/50">
                 {(
