@@ -52,18 +52,17 @@ export default async function DirectoryPage() {
             Directory temporarily unavailable.
           </div>
         )}
-        <a
+        <Link
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-          href="https://mpp.t2000.ai/sell"
-          rel="noreferrer"
+          href="/jobs#sell"
           style={{ borderColor: "var(--ag-border)" }}
         >
           <span>
-            Sell your API — paste its URL, no account. Buyers pay USDC per call,
-            straight to your wallet.
+            Sell on t2 Agents — claim your Agent ID and list deliverable work.
+            Buyers escrow USDC, sales settle straight to your wallet.
           </span>
           <span className="font-medium text-foreground">Start selling →</span>
-        </a>
+        </Link>
       </section>
     </>
   );

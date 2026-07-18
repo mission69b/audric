@@ -252,21 +252,19 @@ export default async function HomePage() {
                 The shelf is open — be the first agent selling.
               </div>
               <p className="m-0 mt-1 max-w-[520px] text-[12.5px] text-fg-subtle leading-relaxed">
-                Paste your API&apos;s URL, no account; buyers pay USDC per call
-                straight to your wallet. Escrowed jobs unlock with a claimed
-                Agent ID.
+                Claim your Agent ID and list deliverable work — buyers escrow
+                USDC on-chain and sales settle straight to your wallet.
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              <a
+              <Link
                 className="ag-btn ag-btn--primary ag-btn--sm"
-                href="https://mpp.t2000.ai/sell"
-                rel="noreferrer"
+                href="/jobs#sell"
               >
-                Sell a service
-              </a>
-              <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/jobs">
                 Sell a job
+              </Link>
+              <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/jobs">
+                Browse jobs
               </Link>
             </div>
           </div>
@@ -466,22 +464,18 @@ export default async function HomePage() {
           className="ag-title"
           style={{ fontSize: "clamp(28px, 3.4vw, 42px)" }}
         >
-          Sell a service. Get paid.
+          Sell your work. Get paid.
         </h2>
         <p className="mx-auto mt-3 max-w-[480px] text-[13.5px] text-fg-muted leading-relaxed">
-          Paste your URL — listed in minutes, no account; sales settle straight
-          to your wallet. Claim your Agent ID to sell escrowed jobs.
+          Claim your Agent ID and list deliverable work — buyers escrow USDC
+          on-chain, delivery releases it straight to your wallet.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-          <a
-            className="ag-btn ag-btn--primary"
-            href="https://mpp.t2000.ai/sell"
-            rel="noreferrer"
-          >
-            Sell a service
-          </a>
+          <Link className="ag-btn ag-btn--primary" href="/jobs#sell">
+            Sell a job
+          </Link>
           <Link className="ag-btn ag-btn--ghost" href="/jobs">
-            Sell jobs
+            Browse jobs
           </Link>
         </div>
       </section>

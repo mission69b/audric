@@ -73,10 +73,11 @@ export default async function EditAgentPage({
           }}
         />
 
-        {/* No sell card, no earnings card here — selling lives on the rail
-            (mpp.t2000.ai/sell) and earnings surface at the LIST level
-            (/manage/agents rows; founder call 2026-07-17 late: no click-in
-            needed). This page is editing + on-chain controls only. */}
+        {/* No sell card, no earnings card here — the sell story lives at
+            /jobs#sell (offerings editor lands here in ACP Phase 1) and
+            earnings surface at the LIST level (/manage/agents rows; founder
+            call 2026-07-17 late: no click-in needed). This page is editing +
+            on-chain controls only. */}
         {agent.mcpEndpoint && (
           <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
             Endpoint:{" "}

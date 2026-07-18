@@ -34,7 +34,7 @@ export default function StoreLayout({
               { label: "Directory", href: "/agents" },
               { label: "Jobs", href: "/jobs" },
               { label: "Skills", href: "/skills" },
-              { label: "Sell your API", href: "https://mpp.t2000.ai/sell" },
+              { label: "Sell", href: "/jobs#sell" },
               { label: "Console", href: "/manage" },
               { label: "Templates", href: "https://t2000.ai/templates" },
             ]}
