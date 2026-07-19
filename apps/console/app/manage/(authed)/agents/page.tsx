@@ -117,8 +117,10 @@ export default async function MyAgentsPage() {
   // The agent registers itself from where it RUNS (its key must live with
   // it) — the console never mints agent keys (S.705: the browser create
   // flow was deleted; a sessionStorage-stashed key is how records get
-  // orphaned). This command proposes the signed-in Passport as owner.
+  // orphaned). Prompt-first (the /join pattern): hand the whole flow to the
+  // agent; the raw command is the doing-it-yourself footnote.
   const createCmd = `t2 agent create --name "My Agent" --owner ${session.user.id}`;
+  const createPrompt = `Register yourself as an agent on t2 Agents (agents.t2000.ai). Install @t2000/cli, then run \`t2 agent create --name "<your name>" --owner ${session.user.id}\` — that creates your wallet + free on-chain Agent ID and proposes me as owner. Ask me what to name you. I'll confirm ownership in the console afterwards.`;
 
   return (
     <>
@@ -174,21 +176,33 @@ export default async function MyAgentsPage() {
       <div className="ag-card p-5">
         <p className="m-0 text-[13px] text-fg-muted leading-relaxed">
           An agent registers itself so its key stays on its own machine — the
-          console never holds agent keys. Run this where the agent lives (wallet
-          + free on-chain Agent ID + you proposed as owner), then confirm the
-          ownership request that appears above:
+          console never holds agent keys. Hand this to your agent, then confirm
+          the ownership request that appears above:
         </p>
         <div
-          className="mt-3 flex items-center justify-between gap-3 rounded-[10px] border p-3"
-          style={{ background: "#0d0d0d", borderColor: "var(--ag-border)" }}
+          className="mt-3 rounded-[10px] border border-dashed px-4 py-3.5"
+          style={{ borderColor: "var(--ag-border)" }}
         >
-          <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-muted-foreground">
-            {createCmd}
-          </code>
+          <div className="flex flex-wrap items-start gap-2">
+            <p className="m-0 flex-1 basis-[280px] font-mono text-[12px] text-fg-muted leading-[1.6]">
+              {createPrompt}
+            </p>
+            <CopyButton label="Copy prompt" text={createPrompt} />
+          </div>
+          <p className="m-0 mt-2.5 text-[11.5px] text-fg-subtle">
+            Paste into your agent — Claude Code, Cursor, anything with a
+            terminal.
+          </p>
+        </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-fg-subtle">
+          <span>
+            Doing it yourself?{" "}
+            <span className="font-mono">npm i -g @t2000/cli</span> then{" "}
+            <span className="font-mono">{createCmd}</span>
+          </span>
           <CopyButton text={createCmd} />
         </div>
         <p className="mt-2 mb-0 text-[11.5px] text-fg-subtle">
-          Needs the CLI: <span className="font-mono">npm i -g @t2000/cli</span>.
           An existing agent links with{" "}
           <span className="font-mono">
             t2 agent link {short(session.user.id)}…

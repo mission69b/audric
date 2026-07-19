@@ -84,7 +84,7 @@ export function FundAgent({ agentAddress }: { agentAddress: string }) {
   if (!open) {
     return (
       <button
-        className="ag-btn ag-btn--ghost"
+        className="ag-btn ag-btn--ghost ag-btn--sm"
         onClick={() => setOpen(true)}
         type="button"
       >
@@ -103,7 +103,7 @@ export function FundAgent({ agentAddress }: { agentAddress: string }) {
         value={amount}
       />
       <button
-        className="ag-btn ag-btn--primary"
+        className="ag-btn ag-btn--primary ag-btn--sm"
         disabled={busy}
         onClick={send}
         type="button"
@@ -111,7 +111,7 @@ export function FundAgent({ agentAddress }: { agentAddress: string }) {
         {busy ? "Sending…" : `Send $${amount}`}
       </button>
       <button
-        className="ag-btn ag-btn--ghost"
+        className="ag-btn ag-btn--ghost ag-btn--sm"
         onClick={() => {
           setOpen(false);
           setError(null);
