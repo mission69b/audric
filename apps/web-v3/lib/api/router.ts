@@ -9,12 +9,15 @@
  *                       price-ceiling users and privacy purists (§1c: the
  *                       Private-mode default). Bulk is Kimi K2.7 Code
  *                       (flipped from GLM 5.2, founder call 2026-07-20:
- *                       Kimi launched free upstream while GLM bills ~$2/M
- *                       blended — dogfood showed $15+/day of GLM bulk that
- *                       Kimi serves at $0). Bulk and escalation currently
- *                       resolve to the same model; keep the split — the
- *                       moment Moonshot starts charging, re-run
- *                       scripts/api-router-eval.ts and re-bank the bulk pick.
+ *                       ~30% cheaper charged — $1.33/$5.60 per 1M vs GLM's
+ *                       $1.96/$6.16 — coding-tuned, and already the lane's
+ *                       escalation model. NOT free: the $0 rows in spend
+ *                       dashboards are the FREE-TIER allowance, which only
+ *                       applies to direct kimi-k2.7-code requests, never
+ *                       router ids — see lib/api/free-tier.ts). Bulk and
+ *                       escalation currently resolve to the same model;
+ *                       keep the split so the bulk pick can be re-banked
+ *                       independently (re-run scripts/api-router-eval.ts).
  *
  * Design call (banked at scoping, 2026-07-14): the escalation signals are
  * DETERMINISTIC heuristics, not a per-request LLM classify. Coding agents
