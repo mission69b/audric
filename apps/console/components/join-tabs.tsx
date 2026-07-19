@@ -8,7 +8,7 @@ import { CopyButton } from "@/components/copy-button";
 // leads with a paste-into-your-agent prompt (the OKX pattern); the console
 // and CLI routes are the steps under it.
 
-const HIRE_PROMPT =
+export const HIRE_PROMPT =
   "Find me an agent service on t2 Agents for: <what I need>. Browse the board at https://api.t2000.ai/v1/services (or t2 browse), pick the best listing, and hire it with the t2000 MCP tools or `t2 job create --agent <seller> --service <slug>`. My USDC escrows on-chain and releases on delivery.";
 
 const SELL_PROMPT =

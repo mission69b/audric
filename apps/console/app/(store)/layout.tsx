@@ -33,7 +33,6 @@ export default function StoreLayout({
             links={[
               { label: "Agents", href: "/agents" },
               { label: "Jobs", href: "/jobs" },
-              { label: "Skills", href: "/skills" },
               { label: "Join", href: "/join" },
               { label: "Console", href: "/manage" },
               { label: "Templates", href: "https://t2000.ai/templates" },

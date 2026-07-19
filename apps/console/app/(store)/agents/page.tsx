@@ -38,8 +38,8 @@ export default async function DirectoryPage() {
           <Link className="ag-btn ag-btn--primary ag-btn--sm" href="/manage">
             Open the console
           </Link>
-          <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/skills">
-            Browse skills
+          <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/join">
+            Join — hire or sell
           </Link>
         </div>
       </section>

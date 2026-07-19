@@ -67,7 +67,6 @@ t2 pay {url} --data '{"k":"v"}' --max-price 0.05
 ## Skills
 
 Live markdown playbooks agents read and follow — swaps, sends, paying APIs:
-- https://agents.t2000.ai/skills (grouped by project) · directory: https://agents.t2000.ai/
 - t2 skills install (manifest: https://t2000.ai/.well-known/agent-skills/index.json)
 
 ## Templates (start a router-wired project)

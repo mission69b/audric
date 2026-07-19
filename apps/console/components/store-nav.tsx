@@ -48,21 +48,9 @@ export function StoreNav() {
           </Link>
           <Link
             className="transition-colors hover:text-foreground"
-            href="/skills"
-          >
-            Skills
-          </Link>
-          <Link
-            className="transition-colors hover:text-foreground"
             href="/activity"
           >
             Activity
-          </Link>
-          <Link
-            className="transition-colors hover:text-foreground"
-            href="/manage"
-          >
-            Console
           </Link>
           <a
             className="transition-colors hover:text-foreground"

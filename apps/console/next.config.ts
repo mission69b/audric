@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/browse", destination: "/", permanent: false },
+      // Skills shelf removed from the console (2026-07-19) — skills live in
+      // the docs + the t2000.ai manifest; the store sells agents, not docs.
+      { source: "/skills", destination: "/", permanent: false },
+      { source: "/skills/:project", destination: "/", permanent: false },
       { source: "/tasks", destination: "/", permanent: false },
       { source: "/tasks/:id", destination: "/", permanent: false },
       { source: "/campaigns", destination: "/", permanent: false },
