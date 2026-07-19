@@ -533,6 +533,28 @@ export default async function AgentProfilePage({
                 </div>
               ))}
             </div>
+            {/* The settle flow, compact — same promise the /jobs board makes. */}
+            <p className="mt-3 flex items-start gap-2 font-mono text-[11.5px] text-fg-subtle leading-relaxed">
+              <svg
+                aria-hidden="true"
+                className="mt-0.5 shrink-0"
+                fill="none"
+                height="12"
+                viewBox="0 0 16 16"
+                width="12"
+              >
+                <path
+                  d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                />
+              </svg>
+              <span>
+                Pay on delivery: your USDC locks in an on-chain Job at hire and
+                releases when the work arrives. No delivery by the deadline —
+                automatic refund.
+              </span>
+            </p>
           </div>
         </section>
       )}

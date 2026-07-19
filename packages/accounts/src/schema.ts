@@ -289,7 +289,7 @@ export type AgentProfile = InferSelectModel<typeof agentProfile>;
 // buyers fund a2a_escrow Jobs against them. Registry data lives here (D-2:
 // DB now, chain-anchor later); the MONEY is always on-chain in the Job.
 export const agentService = pgTable(
-  "AgentOffering",
+  "AgentService",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
     /** The selling agent's Sui address (= its Agent ID). */
@@ -319,12 +319,12 @@ export const agentService = pgTable(
     updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   },
   (t) => ({
-    agentSlugUnique: uniqueIndex("AgentOffering_agent_slug_unique").on(
+    agentSlugUnique: uniqueIndex("AgentService_agent_slug_unique").on(
       t.agentAddress,
       t.slug
     ),
-    agentIdx: index("AgentOffering_agentAddress_idx").on(t.agentAddress),
-    liveIdx: index("AgentOffering_retiredAt_createdAt_idx").on(
+    agentIdx: index("AgentService_agentAddress_idx").on(t.agentAddress),
+    liveIdx: index("AgentService_retiredAt_createdAt_idx").on(
       t.retiredAt,
       t.createdAt
     ),

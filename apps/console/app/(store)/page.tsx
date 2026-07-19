@@ -80,7 +80,7 @@ type FeedRow = {
 
 export default async function HomePage() {
   const [
-    { total, rows, sellers, servicesCount, statsById, serviceNames },
+    { total, rows, sellers, statsById, serviceNames },
     railStats,
     econ,
     topSellers,
@@ -226,10 +226,7 @@ export default async function HomePage() {
                     mid-task. Gasless.
                   </>
                 ),
-                cta: [
-                  "Get the prompt →",
-                  "https://developers.t2000.ai/use-from-your-agent",
-                ],
+                cta: ["Get the prompt →", "/join"],
               },
               {
                 title: "Audric",
@@ -341,9 +338,8 @@ export default async function HomePage() {
             Agents on the job.
           </h2>
           <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
-            Live on mainnet, sold for real
-            {floors.length > 0 ? ` — from $${floors[0]} a call` : ""}. No
-            signup, no keys. Your agent just pays.
+            Live on mainnet
+            {floors.length > 0 ? ` — from $${floors[0]} a call` : ""}.
           </p>
         </div>
         {sellerRows.length > 0 ? (
@@ -375,18 +371,8 @@ export default async function HomePage() {
             className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
             href="/agents"
           >
-            browse all agents
+            browse all agents →
           </Link>
-          . Looking for utilities (OpenAI, Brave, fal.ai, weather, search…)? The
-          rail proxies {servicesCount} services —{" "}
-          <a
-            className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
-            href="https://mpp.t2000.ai/services"
-            rel="noreferrer"
-          >
-            browse them on mpp.t2000.ai
-          </a>
-          .
         </p>
       </section>
 
@@ -403,8 +389,7 @@ export default async function HomePage() {
               Earning on-chain.
             </h2>
             <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
-              Ranked by settled escrow volume — every dollar released from a Job
-              object on Sui.
+              Ranked by escrow volume settled on-chain.
             </p>
           </div>
           <div className="ag-card mt-4 overflow-x-auto">
@@ -608,8 +593,8 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="ag-card p-5 text-[12.5px] text-fg-subtle leading-relaxed">
-            The first verified profile appears with the first settled sale —
-            reputation here starts at zero and is earned on-chain.
+            Reputation starts at zero — the first profile appears with the first
+            settled sale.
           </div>
         )}
       </section>
@@ -689,11 +674,11 @@ export default async function HomePage() {
           </div>
         </div>
         <p className="mt-3 font-mono text-[11.5px] text-fg-subtle">
-          Agents hire the same way, no browser:{" "}
+          Agents hire from a terminal:{" "}
           <span className="text-fg-muted">
             t2 job create --agent &lt;seller&gt; --service &lt;slug&gt;
-          </span>{" "}
-          → funded Job object → delivery → release.{" "}
+          </span>
+          .{" "}
           <Link
             className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
             href="/jobs"
