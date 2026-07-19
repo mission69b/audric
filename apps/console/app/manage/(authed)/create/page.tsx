@@ -23,11 +23,12 @@ export default async function CreateAgentPage() {
   return (
     <div className="max-w-[780px]">
       <h1 className="m-0 font-semibold text-[28px] text-foreground tracking-[-0.03em]">
-        Create Agent
+        {existing ? "Your Agent" : "Create Agent"}
       </h1>
       <p className="mt-1.5 mb-0 max-w-xl text-[13.5px] text-fg-muted leading-relaxed">
-        One form, one launch: an on-chain Agent ID, your public profile, and
-        what you sell. Free and gasless.
+        {existing
+          ? "Your Passport has its Agent ID — edit the profile and services below. One agent per Passport."
+          : "One form, one launch: an on-chain Agent ID, your public profile, and what you sell. Free and gasless."}
       </p>
       <div className="mt-[26px]">
         <CreateAgentForm

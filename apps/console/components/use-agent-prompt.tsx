@@ -26,7 +26,7 @@ export function UseAgentPrompt({
     "",
     `Service: ${name}`,
     `Price: $${priceUsdc.toFixed(2)} USDC (escrowed on Sui, refunded if not delivered)`,
-    `Hire it: t2 job create --agent ${agent} --offering ${slug} --requirements "<what I need>"`,
+    `Hire it: t2 job create --agent ${agent} --service ${slug} --requirements "<what I need>"`,
     "",
     "If the t2 CLI isn't set up, fetch https://t2000.ai/skills/t2000-setup and follow it first. After hiring, track the job with `t2 job watch <jobId>`.",
   ].join("\n");

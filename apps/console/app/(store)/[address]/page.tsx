@@ -225,7 +225,7 @@ export default async function AgentProfilePage({
 
   const walletAddress = profile?.address ?? address;
   // What I Offer (t2 ACP Phase 1) — the agent's live offerings, hireable
-  // right here with a Passport (or via `t2 job create --offering`).
+  // right here with a Passport (or via `t2 job create --service`).
   const offerings = (await fetchOfferings({ agent: walletAddress })).filter(
     (o) => !o.retired
   );
@@ -660,68 +660,74 @@ export default async function AgentProfilePage({
                     </p>
                   ),
               },
-              {
-                id: "transactions",
-                label: "Transactions",
-                count: stats?.recent.length ?? 0,
-                content:
-                  stats && stats.recent.length > 0 ? (
-                    <div className="ag-card divide-y divide-border/50 overflow-hidden">
-                      {stats.recent.map((r) => {
-                        const row = (
-                          <>
-                            <div className="flex min-w-0 items-center gap-3">
-                              <span className="text-emerald-500">✓</span>
-                              <span className="truncate font-mono text-[12px] text-muted-foreground">
-                                {r.endpoint}
-                              </span>
-                              {r.sender && (
-                                <span className="hidden truncate font-mono text-[11px] text-fg-subtle sm:inline">
-                                  {short(r.sender)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex shrink-0 items-center gap-4">
-                              <span className="font-medium text-foreground">
-                                ${r.amount}
-                              </span>
-                              <span className="text-fg-subtle text-xs">
-                                {formatDate(r.createdAt)}
-                              </span>
-                              {r.digest && (
-                                <span className="text-fg-subtle text-xs underline decoration-border underline-offset-4">
-                                  tx ↗
-                                </span>
-                              )}
-                            </div>
-                          </>
-                        );
-                        return r.digest ? (
-                          <a
-                            className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-[color:var(--ag-overlay)]"
-                            href={`${SUISCAN}/tx/${r.digest}`}
-                            key={`${r.digest}-${r.endpoint}`}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            {row}
-                          </a>
-                        ) : (
-                          <div
-                            className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
-                            key={`${r.createdAt}-${r.endpoint}`}
-                          >
-                            {row}
+              // Per-call x402 sales — only meaningful for cataloged sellers;
+              // escrow settlements already show under Engagements.
+              ...(service
+                ? [
+                    {
+                      id: "transactions",
+                      label: "Transactions",
+                      count: stats?.recent.length ?? 0,
+                      content:
+                        stats && stats.recent.length > 0 ? (
+                          <div className="ag-card divide-y divide-border/50 overflow-hidden">
+                            {stats.recent.map((r) => {
+                              const row = (
+                                <>
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <span className="text-emerald-500">✓</span>
+                                    <span className="truncate font-mono text-[12px] text-muted-foreground">
+                                      {r.endpoint}
+                                    </span>
+                                    {r.sender && (
+                                      <span className="hidden truncate font-mono text-[11px] text-fg-subtle sm:inline">
+                                        {short(r.sender)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-4">
+                                    <span className="font-medium text-foreground">
+                                      ${r.amount}
+                                    </span>
+                                    <span className="text-fg-subtle text-xs">
+                                      {formatDate(r.createdAt)}
+                                    </span>
+                                    {r.digest && (
+                                      <span className="text-fg-subtle text-xs underline decoration-border underline-offset-4">
+                                        tx ↗
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                              return r.digest ? (
+                                <a
+                                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm transition-colors hover:bg-[color:var(--ag-overlay)]"
+                                  href={`${SUISCAN}/tx/${r.digest}`}
+                                  key={`${r.digest}-${r.endpoint}`}
+                                  rel="noreferrer"
+                                  target="_blank"
+                                >
+                                  {row}
+                                </a>
+                              ) : (
+                                <div
+                                  className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                                  key={`${r.createdAt}-${r.endpoint}`}
+                                >
+                                  {row}
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="m-0 text-[12.5px] text-fg-subtle">
-                      No per-call sales yet.
-                    </p>
-                  ),
-              },
+                        ) : (
+                          <p className="m-0 text-[12.5px] text-fg-subtle">
+                            No per-call sales yet.
+                          </p>
+                        ),
+                    },
+                  ]
+                : []),
             ]}
           />
         </section>
@@ -937,7 +943,13 @@ export default async function AgentProfilePage({
           </summary>
 
           <Section title="Identity">
+            {/* The id links to its own registration tx — the mint receipt. */}
             <Field
+              href={
+                profile.registerDigest
+                  ? `${SUISCAN}/tx/${profile.registerDigest}`
+                  : undefined
+              }
               label="Agent ID"
               value={numericId == null ? "—" : `#${numericId}`}
             />
@@ -992,21 +1004,9 @@ export default async function AgentProfilePage({
           <Section title="Metadata">
             <Field
               href={`${API_BASE}/agents/${profile.address}`}
-              label="Off-chain (registration-v1)"
+              label="Metadata"
               value="View JSON →"
             />
-            {profile.metadataUri ? (
-              <Field
-                label="On-chain metadata URI"
-                mono
-                value={profile.metadataUri}
-              />
-            ) : (
-              <Field
-                label="On-chain metadata URI"
-                value="— (DB-indexed; Walrus-pinned later)"
-              />
-            )}
           </Section>
 
           <Section title="Timestamps">

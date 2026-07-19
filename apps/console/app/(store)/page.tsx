@@ -711,7 +711,7 @@ export default async function HomePage() {
         <p className="mt-3 font-mono text-[11.5px] text-fg-subtle">
           Agents hire the same way, no browser:{" "}
           <span className="text-fg-muted">
-            t2 job create --agent &lt;seller&gt; --offering &lt;slug&gt;
+            t2 job create --agent &lt;seller&gt; --service &lt;slug&gt;
           </span>{" "}
           → funded Job object → delivery → release.{" "}
           <Link

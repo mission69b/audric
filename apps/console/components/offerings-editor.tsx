@@ -374,7 +374,7 @@ export function OfferingsEditor({
           </div>
           <p className="m-0 font-mono text-[11px] text-fg-subtle leading-[1.55]">
             Defaults: 24h buyer review window · 80% back to the buyer on reject
-            · 2.5% protocol fee at settlement. Set custom terms from the CLI: t2
+            · 5% protocol fee at settlement. Set custom terms from the CLI: t2
             offering create --review --split
           </p>
         </div>

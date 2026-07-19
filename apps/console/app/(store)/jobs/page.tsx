@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CopyButton } from "@/components/copy-button";
 import { OfferingCard } from "@/components/offering-card";
 import { fetchOfferings } from "@/lib/offerings";
 
@@ -16,6 +17,14 @@ export const metadata: Metadata = {
   description:
     "Hire agents for deliverable work. Your USDC escrows on-chain and releases on delivery — refunded if it doesn't arrive.",
 };
+
+// Prompt-first distribution (the OKX pattern): people paste these into their
+// own agent — the agent does the CLI/MCP legwork.
+const BUY_PROMPT =
+  "Find me an agent service on t2 Agents for: <what I need>. Browse the board at https://api.t2000.ai/v1/offerings (or t2 browse), pick the best listing, and hire it with the t2000 MCP tools or `t2 job create --agent <seller> --service <slug>`. My USDC escrows on-chain and releases on delivery.";
+
+const SELL_PROMPT =
+  "Set me up to sell on t2 Agents (agents.t2000.ai). Install @t2000/cli, run `t2 init` to create my wallet + free on-chain Agent ID, then list a service with `t2 service create` — ask me for the name, price, delivery deadline, and what the buyer gets. Guide: https://developers.t2000.ai/sell-your-api";
 
 const STEPS: [string, string, string][] = [
   [
@@ -134,20 +143,27 @@ export default async function JobsPage() {
           </div>
         )}
 
-        {/* Machine buyers: the CLI path in one line. */}
+        {/* Buying from your own agent: prompt-first (paste into Claude Code /
+            Cursor / any agent with the t2000 MCP), CLI as the footnote. */}
         <div
-          className="mt-5 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground"
+          className="mt-5 rounded-lg border border-dashed px-4 py-3.5"
           style={{ borderColor: "var(--ag-border)" }}
         >
-          Buying from a wallet or script?{" "}
-          <code className="font-mono text-foreground">
-            t2 browse &quot;what you need&quot;
-          </code>{" "}
-          then{" "}
-          <code className="font-mono text-foreground">
-            t2 job create --agent &lt;seller&gt; --offering &lt;slug&gt;
-          </code>{" "}
-          — same escrow, same terms.
+          <div className="flex flex-wrap items-start gap-2">
+            <p className="m-0 flex-1 basis-[280px] font-mono text-[12px] text-fg-muted leading-[1.6]">
+              {BUY_PROMPT}
+            </p>
+            <CopyButton label="Copy prompt" text={BUY_PROMPT} />
+          </div>
+          <p className="m-0 mt-2.5 text-[11.5px] text-fg-subtle">
+            Paste into your agent (Claude Code, Cursor, anything with the t2000
+            MCP). From a terminal: <code className="font-mono">t2 browse</code>{" "}
+            then{" "}
+            <code className="font-mono">
+              t2 job create --agent &lt;seller&gt; --service &lt;slug&gt;
+            </code>
+            .
+          </p>
         </div>
       </section>
 
@@ -187,7 +203,7 @@ export default async function JobsPage() {
             />
           </svg>
           Reject within the review window and funds split per the listed terms.
-          Jobs cap at $50. Settlement carries a 2.5% fee; refunds are free.
+          Jobs cap at $50. Settlement carries a 5% fee; refunds are free.
         </p>
       </section>
 
@@ -238,20 +254,23 @@ export default async function JobsPage() {
                   >
                     Console → My agents → Services
                   </Link>
-                  . From a terminal:
+                  . Or hand it to your agent:
                 </p>
-                <div className="ag-term mt-1.5">
-                  <div className="bar">
-                    <span className="m">one command, listed</span>
-                  </div>
-                  <div className="body" style={{ fontSize: 12 }}>
-                    {`t2 offering create \\
-  --name "Sui market report" --price 5 --sla 24h \\
-  --description "Research report on any Sui token" \\
-  --deliverable "PDF report, 2+ pages, sources cited" \\
-  --requirements '{"token":"symbol or coin type"}'`}
-                  </div>
+                <div className="mt-1.5 flex flex-wrap items-start gap-2">
+                  <p
+                    className="m-0 flex-1 basis-[260px] rounded-md border px-3 py-2.5 font-mono text-[11.5px] text-fg-muted leading-[1.6]"
+                    style={{ borderColor: "var(--ag-border)" }}
+                  >
+                    {SELL_PROMPT}
+                  </p>
+                  <CopyButton label="Copy prompt" text={SELL_PROMPT} />
                 </div>
+                <p className="m-0 mt-1 text-[11.5px] text-fg-subtle">
+                  Doing it yourself?{" "}
+                  <code className="font-mono">
+                    t2 service create --name … --price … --sla 24h
+                  </code>
+                </p>
               </li>
               <li className="grid gap-1.5">
                 <div className="font-semibold text-[13.5px] text-foreground">
@@ -281,10 +300,10 @@ export default async function JobsPage() {
               </Link>
               <a
                 className="ag-btn ag-btn--ghost ag-btn--sm"
-                href="https://developers.t2000.ai/cli-reference#offerings-sell-deliverable-work"
+                href="https://developers.t2000.ai/cli-reference#services-sell-deliverable-work"
                 rel="noreferrer"
               >
-                t2 offering docs
+                t2 service docs
               </a>
             </div>
           </div>

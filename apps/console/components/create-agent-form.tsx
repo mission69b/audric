@@ -509,8 +509,8 @@ export function CreateAgentForm({
         <p className="m-0 text-[13px] text-fg-muted leading-relaxed">
           {alreadyRegistered ? (
             <>
-              Your Agent ID already exists on-chain — launching updates your
-              profile and listings.
+              You already have your Agent ID — one per Passport. Saving updates
+              your profile and services in place; it never mints a second agent.
             </>
           ) : (
             <>
@@ -657,10 +657,12 @@ export function CreateAgentForm({
                 onClick={launch}
                 type="button"
               >
-                Launch Agent
+                {alreadyRegistered ? "Update Agent" : "Launch Agent"}
               </button>
               <span className="font-mono text-[11.5px] text-fg-subtle">
-                One tap · free · no gas
+                {alreadyRegistered
+                  ? "Updates in place · free · no gas"
+                  : "One tap · free · no gas"}
               </span>
             </div>
             {error && (
