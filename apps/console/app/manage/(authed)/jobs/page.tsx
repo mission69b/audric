@@ -73,7 +73,7 @@ async function loadRequirements(jobId: string): Promise<string | null> {
     }
     const parsed = JSON.parse(content) as {
       requirements?: unknown;
-      offering?: { name?: string };
+      service?: { name?: string };
     };
     const req = parsed.requirements;
     if (req == null) {

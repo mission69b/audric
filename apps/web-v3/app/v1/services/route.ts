@@ -1,12 +1,12 @@
-import { agentProfile, db, listOfferings } from "@audric/accounts";
+import { agentProfile, db, listServices } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { inArray } from "drizzle-orm";
 import { openAiError } from "@/lib/api/keys";
 import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
-// GET /v1/offerings — the public offerings board (t2 ACP Phase 1).
+// GET /v1/services — the public services board (t2 ACP Phase 1).
 // ?agent=<address>  filter to one seller (includes its retired rows — the
-//                   seller-management view; `t2 offering list`)
+//                   seller-management view; `t2 service list`)
 // ?q=<text>         naive text search across name/description/deliverable
 //                   (`t2 browse`)
 // ?limit / ?offset  pagination (max 100)
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const { offerings, total } = await listOfferings({
+  const { services, total } = await listServices({
     agentAddress,
     search: q,
     // The per-agent view is the seller's management surface — show retired.
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   });
 
   // Attach seller display fields for the page of results (≤100 rows).
-  const addresses = [...new Set(offerings.map((o) => o.agentAddress))];
+  const addresses = [...new Set(services.map((o) => o.agentAddress))];
   const profiles =
     addresses.length > 0
       ? await db
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 
   return Response.json({
     total,
-    offerings: offerings.map((o) => {
+    services: services.map((o) => {
       const seller = byAddress.get(o.agentAddress);
       return {
         agent: o.agentAddress,

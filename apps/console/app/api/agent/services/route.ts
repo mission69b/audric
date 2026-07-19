@@ -1,24 +1,24 @@
 import {
   getAgentProfile,
-  listOfferings,
-  parseOfferingUpsert,
-  retireOffering,
-  upsertOffering,
+  listServices,
+  parseServiceUpsert,
+  retireService,
+  upsertService,
 } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { MAX_JOB_USDC } from "@t2000/sdk";
 import { type NextRequest, NextResponse } from "next/server";
 
-// /api/agent/offerings — the console's owner-session offerings editor
+// /api/agent/services — the console's owner-session services editor
 // (t2 ACP Phase 1). Session-authed (the owner's Passport) + ownership-gated,
 // exactly like /api/agent/profile: the agent's confirmed on-chain owner (or
 // the self-agent itself) manages the catalog from the browser. Machines use
 // the signed api.t2000.ai route instead; both paths share ONE validator
-// (@audric/accounts parseOfferingUpsert) and ONE set of queries.
+// (@audric/accounts parseServiceUpsert) and ONE set of queries.
 //
-//   GET  ?agent=0x…                      → the agent's offerings (retired incl.)
-//   POST { agent, action: "upsert", offering } | { agent, action: "retire", slug }
+//   GET  ?agent=0x…                      → the agent's services (retired incl.)
+//   POST { agent, action: "upsert", service } | { agent, action: "retire", slug }
 
 async function authorize(
   agentRaw: unknown
@@ -51,18 +51,18 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) {
     return auth;
   }
-  const { offerings } = await listOfferings({
+  const { services } = await listServices({
     agentAddress: auth.agent,
     includeRetired: true,
   });
-  return NextResponse.json({ offerings });
+  return NextResponse.json({ services });
 }
 
 export async function POST(request: NextRequest) {
   let body: {
     agent?: string;
     action?: string;
-    offering?: unknown;
+    service?: unknown;
     slug?: string;
   };
   try {
@@ -76,35 +76,35 @@ export async function POST(request: NextRequest) {
   }
 
   if (body.action === "upsert") {
-    const parsed = parseOfferingUpsert(body.offering, {
+    const parsed = parseServiceUpsert(body.service, {
       maxPriceUsdc: MAX_JOB_USDC,
     });
     if (typeof parsed === "string") {
       return NextResponse.json({ error: parsed }, { status: 400 });
     }
-    const row = await upsertOffering({
+    const row = await upsertService({
       agentAddress: auth.agent,
-      slug: parsed.offering.slug,
-      name: parsed.offering.name,
-      description: parsed.offering.description,
-      priceMicroUsdc: Math.round(parsed.offering.priceUsdc * 1_000_000),
-      slaMinutes: parsed.offering.slaMinutes,
-      reviewWindowMinutes: parsed.offering.reviewWindowMinutes,
-      rejectSplitBps: parsed.offering.rejectSplitBps,
-      requirements: parsed.offering.requirements,
-      deliverable: parsed.offering.deliverable,
+      slug: parsed.service.slug,
+      name: parsed.service.name,
+      description: parsed.service.description,
+      priceMicroUsdc: Math.round(parsed.service.priceUsdc * 1_000_000),
+      slaMinutes: parsed.service.slaMinutes,
+      reviewWindowMinutes: parsed.service.reviewWindowMinutes,
+      rejectSplitBps: parsed.service.rejectSplitBps,
+      requirements: parsed.service.requirements,
+      deliverable: parsed.service.deliverable,
     });
-    return NextResponse.json({ ok: true, offering: row });
+    return NextResponse.json({ ok: true, service: row });
   }
 
   if (body.action === "retire") {
     const slug = String(body.slug ?? "")
       .trim()
       .toLowerCase();
-    const retired = await retireOffering(auth.agent, slug);
+    const retired = await retireService(auth.agent, slug);
     if (!retired) {
       return NextResponse.json(
-        { error: `No live offering "${slug}".` },
+        { error: `No live service "${slug}".` },
         { status: 404 }
       );
     }

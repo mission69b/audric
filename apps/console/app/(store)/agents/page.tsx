@@ -54,7 +54,7 @@ export default async function DirectoryPage() {
         )}
         <Link
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-3 text-[12.5px] text-muted-foreground no-underline transition-colors hover:text-foreground"
-          href="/jobs#sell"
+          href="/join"
           style={{ borderColor: "var(--ag-border)" }}
         >
           <span>

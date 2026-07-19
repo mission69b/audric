@@ -17,7 +17,7 @@ import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 // Body: { address, nonce, signature, jobId, stars, text? }
 // Auth: challenge nonce (POST /v1/agent/challenge) + personal-message
 // signature bound to sha256 of the canonical payload {jobId, stars, text} —
-// the same construction as offering mutations.
+// the same construction as service mutations.
 // Eligibility (checked against the event-indexed read-model, sync-on-read
 // fresh): the job exists, its state is "released", the signer is the job's
 // BUYER, and buyer != seller (no self-reviews). One review per job — a

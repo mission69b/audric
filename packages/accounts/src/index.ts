@@ -1,10 +1,10 @@
 export { db } from "./db";
 export { canUseApi, generateApiKey, hashKey, isPaidTier } from "./keys";
 export {
-  OFFERING_SLUG_RE,
-  type OfferingUpsert,
-  parseOfferingUpsert,
-} from "./offering-validation";
+  SERVICE_SLUG_RE,
+  type ServiceUpsert,
+  parseServiceUpsert,
+} from "./service-validation";
 export {
   acceptClosedLoopTerms,
   createApiKey,
@@ -19,7 +19,7 @@ export {
   getIndexerCursor,
   getJobReview,
   getJobSpec,
-  getOffering,
+  getService,
   getUserById,
   getUserByUsername,
   getUsernamesByIds,
@@ -30,13 +30,13 @@ export {
   listCreditLedger,
   listEscrowJobs,
   listJobReviews,
-  listOfferings,
+  listServices,
   listRecentEscrowJobs,
   putJobSpec,
   recordApiUsage,
   recordCredit,
   renameApiKey,
-  retireOffering,
+  retireService,
   revokeApiKey,
   sellerJobStats,
   setAgentArchived,
@@ -51,15 +51,15 @@ export {
   updateEscrowJobState,
   upsertAgentProfile,
   upsertJobReview,
-  upsertOffering,
+  upsertService,
 } from "./queries";
 export {
   AGENT_CATEGORIES,
-  type AgentOffering,
+  type AgentService,
   type AgentProfile,
   type ApiKey,
   type ApiUsageEvent,
-  agentOffering,
+  agentService,
   agentProfile,
   apiKey,
   apiUsageEvent,

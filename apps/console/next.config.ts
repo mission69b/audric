@@ -6,18 +6,16 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@audric/accounts", "@audric/auth", "@audric/onramp"],
   poweredByHeader: false,
   async redirects() {
-    // SPEC_HUB_V1: the retail pages (/join, /browse, /tasks) were deleted —
-    // stale links land on the hub home. Selling = offerings (t2 ACP, shipped
-    // Phase 1 2026-07-18): /sell lands on the offerings-first #sell section;
-    // mpp exited the seller funnel (D-4).
+    // /join is the onboarding page (tabbed hire/sell, 2026-07-19); /sell and
+    // /buy are aliases into it. The other retail-era paths (SPEC_HUB_V1)
+    // stay parked on the hub home.
     return [
-      { source: "/buy", destination: "/", permanent: false },
+      { source: "/buy", destination: "/join", permanent: false },
       {
         source: "/sell",
-        destination: "/jobs#sell",
+        destination: "/join",
         permanent: false,
       },
-      { source: "/join", destination: "/", permanent: false },
       { source: "/browse", destination: "/", permanent: false },
       { source: "/tasks", destination: "/", permanent: false },
       { source: "/tasks/:id", destination: "/", permanent: false },

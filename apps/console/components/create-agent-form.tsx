@@ -3,16 +3,16 @@
 import { Check, Loader2, Plus, X } from "lucide-react";
 import { useState } from "react";
 import {
-  type DraftOffering,
+  type DraftService,
   LAUNCH_STEPS,
   type LaunchStep,
   launchAgent,
-  slugifyOffering,
+  slugifyService,
 } from "@/lib/launch-agent";
 
 // Create Agent — the composition moment (t2 ACP Phase 2, SPEC_ACP_SUI §5.1).
 // ONE form: identity → wallet (already connected) → Agent ID (sponsored mint)
-// → offerings (0–n, or set up anytime) → Token (Phase 3 stub, visible but
+// → services (0–n, or set up anytime) → Token (Phase 3 stub, visible but
 // disabled) → one Launch Agent button. The Passport IS the agent (self-agent,
 // §II.15a) — no key material is ever minted in the browser (S.705 stands).
 
@@ -157,13 +157,13 @@ function Ready({ children }: { children: React.ReactNode }) {
   );
 }
 
-function OfferingDraftForm({
+function ServiceDraftForm({
   existingSlugs,
   onAdd,
   onCancel,
 }: {
   existingSlugs: string[];
-  onAdd: (o: DraftOffering) => void;
+  onAdd: (o: DraftService) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
@@ -175,18 +175,18 @@ function OfferingDraftForm({
   const [error, setError] = useState("");
 
   function add() {
-    // Mirror the server validator (parseOfferingUpsert) — a draft that would
+    // Mirror the server validator (parseServiceUpsert) — a draft that would
     // 400 at launch time must be rejected here, at add time.
     const priceUsdc = Number.parseFloat(price);
     if (!name.trim()) {
       setError("Give the service a name.");
       return;
     }
-    if (slugifyOffering(name).length < 2) {
+    if (slugifyService(name).length < 2) {
       setError("The name needs at least 2 letters or numbers.");
       return;
     }
-    if (existingSlugs.includes(slugifyOffering(name))) {
+    if (existingSlugs.includes(slugifyService(name))) {
       setError("You already added a service with this name.");
       return;
     }
@@ -330,7 +330,7 @@ export function CreateAgentForm({
   const [description, setDescription] = useState(initial.description);
   const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [category, setCategory] = useState(initial.category || "other");
-  const [offerings, setOfferings] = useState<DraftOffering[]>([]);
+  const [services, setServices] = useState<DraftService[]>([]);
   const [draftOpen, setDraftOpen] = useState(false);
   const [phase, setPhase] = useState<"form" | "launching" | "done">("form");
   const [activeStep, setActiveStep] = useState<LaunchStep | null>(null);
@@ -365,7 +365,7 @@ export function CreateAgentForm({
           imageUrl: imageUrl.trim(),
           category,
         },
-        offerings,
+        services,
         onProgress: setActiveStep,
       });
       setPhase("done");
@@ -385,10 +385,10 @@ export function CreateAgentForm({
           </div>
           <p className="m-0 mt-1.5 text-[13px] text-fg-muted leading-relaxed">
             Your Agent ID is on-chain, your profile is in the directory
-            {offerings.length > 0 && (
+            {services.length > 0 && (
               <>
-                , and {offerings.length} service
-                {offerings.length === 1 ? " is" : "s are"} listed for hire
+                , and {services.length} service
+                {services.length === 1 ? " is" : "s are"} listed for hire
               </>
             )}
             .
@@ -525,7 +525,7 @@ export function CreateAgentForm({
         </p>
       </Section>
 
-      {/* 04 — Offerings */}
+      {/* 04 — Services */}
       <Section
         status={
           <span className="font-mono text-[11px] text-fg-subtle">
@@ -539,9 +539,9 @@ export function CreateAgentForm({
           Fixed-price deliverable work. Buyers hire straight from your profile —
           no server needed. Add some now, or later from Manage.
         </p>
-        {offerings.length > 0 && (
+        {services.length > 0 && (
           <div className="grid gap-2.5">
-            {offerings.map((o, i) => (
+            {services.map((o, i) => (
               <div
                 className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
                 key={o.name}
@@ -560,7 +560,7 @@ export function CreateAgentForm({
                   aria-label={`Remove ${o.name}`}
                   className="ag-btn ag-btn--ghost ag-btn--sm"
                   onClick={() =>
-                    setOfferings(offerings.filter((_, j) => j !== i))
+                    setServices(services.filter((_, j) => j !== i))
                   }
                   type="button"
                 >
@@ -571,10 +571,10 @@ export function CreateAgentForm({
           </div>
         )}
         {draftOpen ? (
-          <OfferingDraftForm
-            existingSlugs={offerings.map((o) => slugifyOffering(o.name))}
+          <ServiceDraftForm
+            existingSlugs={services.map((o) => slugifyService(o.name))}
             onAdd={(o) => {
-              setOfferings([...offerings, o]);
+              setServices([...services, o]);
               setDraftOpen(false);
             }}
             onCancel={() => setDraftOpen(false)}
@@ -624,7 +624,7 @@ export function CreateAgentForm({
               const mine = LAUNCH_STEPS.findIndex((s) => s.id === id);
               const isDone = idx > mine;
               const isActive = id === activeStep;
-              if (id === "offerings" && offerings.length === 0) {
+              if (id === "services" && services.length === 0) {
                 return null;
               }
               return (

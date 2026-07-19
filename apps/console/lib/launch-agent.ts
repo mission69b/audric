@@ -3,15 +3,15 @@ import { registerSelf } from "@/lib/register-self";
 // The Launch Agent pipeline (t2 ACP Phase 2 — the composition moment,
 // SPEC_ACP_SUI §5.1). ONE tap composes what already exists: the sponsored
 // self-register (Passport = agent, idempotent), the profile write, and 0–n
-// offering upserts. No new key material — S.705 stands: the console never
+// service upserts. No new key material — S.705 stands: the console never
 // mints agent keys; keypair agents come from `t2 agent create` where they run.
 
-export type LaunchStep = "mint" | "profile" | "offerings";
+export type LaunchStep = "mint" | "profile" | "services";
 
 export const LAUNCH_STEPS: { id: LaunchStep; label: string }[] = [
   { id: "mint", label: "Minting your Agent ID (sponsored)" },
   { id: "profile", label: "Saving your profile" },
-  { id: "offerings", label: "Listing your offerings" },
+  { id: "services", label: "Listing your services" },
 ];
 
 export type LaunchIdentity = {
@@ -21,7 +21,7 @@ export type LaunchIdentity = {
   category: string;
 };
 
-export type DraftOffering = {
+export type DraftService = {
   name: string;
   priceUsdc: number;
   slaMinutes: number;
@@ -31,7 +31,7 @@ export type DraftOffering = {
   requirements: unknown;
 };
 
-export function slugifyOffering(name: string): string {
+export function slugifyService(name: string): string {
   return name
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, "-")
@@ -60,7 +60,7 @@ async function postJson(
 export async function launchAgent(opts: {
   address: string;
   identity: LaunchIdentity;
-  offerings: DraftOffering[];
+  services: DraftService[];
   onProgress?: (step: LaunchStep) => void;
 }): Promise<{ alreadyRegistered: boolean }> {
   opts.onProgress?.("mint");
@@ -75,14 +75,14 @@ export async function launchAgent(opts: {
     category: opts.identity.category,
   });
 
-  if (opts.offerings.length > 0) {
-    opts.onProgress?.("offerings");
-    for (const o of opts.offerings) {
-      await postJson("/api/agent/offerings", {
+  if (opts.services.length > 0) {
+    opts.onProgress?.("services");
+    for (const o of opts.services) {
+      await postJson("/api/agent/services", {
         agent: opts.address,
         action: "upsert",
-        offering: {
-          slug: slugifyOffering(o.name),
+        service: {
+          slug: slugifyService(o.name),
           name: o.name,
           description: o.description,
           priceUsdc: o.priceUsdc,

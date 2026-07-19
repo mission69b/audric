@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 
-// The offerings editor on /manage/agents/[address] (t2 ACP Phase 1) — the
-// browser half of `t2 offering create/list/retire`. Owner-session authed via
-// /api/agent/offerings; validation is the SAME parseOfferingUpsert the
+// The services editor on /manage/agents/[address] (t2 ACP Phase 1) — the
+// browser half of `t2 service create/list/retire`. Owner-session authed via
+// /api/agent/services; validation is the SAME parseServiceUpsert the
 // machine route uses, so the two paths can't drift.
 
-export type EditorOffering = {
+export type EditorService = {
   slug: string;
   name: string;
   description: string;
@@ -78,14 +78,14 @@ function Field({
   );
 }
 
-export function OfferingsEditor({
+export function ServicesEditor({
   agent,
   initial,
 }: {
   agent: string;
-  initial: EditorOffering[];
+  initial: EditorService[];
 }) {
-  const [offerings, setOfferings] = useState(initial);
+  const [services, setServices] = useState(initial);
   const [editing, setEditing] = useState<string | null>(null); // slug being edited
   const [formOpen, setFormOpen] = useState(initial.length === 0);
   const [name, setName] = useState("");
@@ -99,10 +99,10 @@ export function OfferingsEditor({
 
   async function refresh() {
     const res = await fetch(
-      `/api/agent/offerings?agent=${encodeURIComponent(agent)}`
+      `/api/agent/services?agent=${encodeURIComponent(agent)}`
     );
     const json = (await res.json().catch(() => ({}))) as {
-      offerings?: {
+      services?: {
         slug: string;
         name: string;
         description: string;
@@ -115,9 +115,9 @@ export function OfferingsEditor({
         retiredAt: string | null;
       }[];
     };
-    if (res.ok && json.offerings) {
-      setOfferings(
-        json.offerings.map((o) => ({
+    if (res.ok && json.services) {
+      setServices(
+        json.services.map((o) => ({
           slug: o.slug,
           name: o.name,
           description: o.description,
@@ -133,7 +133,7 @@ export function OfferingsEditor({
     }
   }
 
-  function startEdit(o: EditorOffering) {
+  function startEdit(o: EditorService) {
     setEditing(o.slug);
     setName(o.name);
     setPrice(String(o.priceUsdc));
@@ -175,13 +175,13 @@ export function OfferingsEditor({
       }
     }
     try {
-      const res = await fetch("/api/agent/offerings", {
+      const res = await fetch("/api/agent/services", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           agent,
           action: "upsert",
-          offering: {
+          service: {
             slug: editing ?? slugify(name),
             name: name.trim(),
             description: description.trim(),
@@ -212,7 +212,7 @@ export function OfferingsEditor({
 
   async function retire(slug: string) {
     setError("");
-    const res = await fetch("/api/agent/offerings", {
+    const res = await fetch("/api/agent/services", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ agent, action: "retire", slug }),
@@ -241,9 +241,9 @@ export function OfferingsEditor({
         </p>
       </div>
 
-      {offerings.length > 0 && (
+      {services.length > 0 && (
         <div className="grid gap-2.5">
-          {offerings.map((o) => (
+          {services.map((o) => (
             <div
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3"
               key={o.slug}
@@ -375,7 +375,7 @@ export function OfferingsEditor({
           <p className="m-0 font-mono text-[11px] text-fg-subtle leading-[1.55]">
             Defaults: 24h buyer review window · 80% back to the buyer on reject
             · 5% protocol fee at settlement. Set custom terms from the CLI: t2
-            offering create --review --split
+            service create --review --split
           </p>
         </div>
       ) : (

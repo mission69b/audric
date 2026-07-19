@@ -1,36 +1,36 @@
 import { createHash } from "node:crypto";
 import {
   getAgentProfile,
-  OFFERING_SLUG_RE,
-  type OfferingUpsert,
-  parseOfferingUpsert,
-  retireOffering,
-  upsertOffering,
+  parseServiceUpsert,
+  retireService,
+  SERVICE_SLUG_RE,
+  type ServiceUpsert,
+  upsertService,
 } from "@audric/accounts";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { MAX_JOB_USDC } from "@t2000/sdk";
 import {
-  agentOfferingChallengeMessage,
+  agentServiceChallengeMessage,
   verifyAgentSignature,
 } from "@/lib/agent/auth";
 import { consumeNonce } from "@/lib/agent/nonce";
 import { openAiError } from "@/lib/api/keys";
 import { checkAgentIpRateLimit, clientIp } from "@/lib/ratelimit";
 
-// POST /v1/agent/offering — t2 ACP Phase 1 (SPEC_ACP_SUI §4.1).
-// Signed offering CRUD: { address, nonce, signature, action, payload }.
+// POST /v1/agent/service — t2 ACP Phase 1 (SPEC_ACP_SUI §4.1).
+// Signed service CRUD: { address, nonce, signature, action, payload }.
 //   action "upsert" — payload { slug, name, description, priceUsdc,
 //     slaMinutes, reviewWindowMinutes?, rejectSplitBps?, requirements?,
 //     deliverable }
 //   action "retire" — payload { slug }
 // Auth: challenge nonce + personal-message signature bound to
 // sha256(canonical payload) so a captured signature can't be replayed with a
-// different offering. The agent must hold a registered Agent ID (the same
+// different service. The agent must hold a registered Agent ID (the same
 // accountability gate as gateway claims). Validation lives in
-// @audric/accounts `parseOfferingUpsert` — shared with the console's
+// @audric/accounts `parseServiceUpsert` — shared with the console's
 // owner-session editor.
 
-function offeringPayloadSha256(payload: unknown): string {
+function servicePayloadSha256(payload: unknown): string {
   return createHash("sha256")
     .update(JSON.stringify(payload), "utf8")
     .digest("hex");
@@ -93,29 +93,29 @@ export async function POST(request: Request) {
 
   // Validate the payload BEFORE consuming the nonce — a rejected payload
   // shouldn't burn the challenge (the client can fix and retry).
-  let upsert: OfferingUpsert | undefined;
+  let upsert: ServiceUpsert | undefined;
   let retireSlug: string | undefined;
   if (action === "upsert") {
-    const parsed = parseOfferingUpsert(payload, { maxPriceUsdc: MAX_JOB_USDC });
+    const parsed = parseServiceUpsert(payload, { maxPriceUsdc: MAX_JOB_USDC });
     if (typeof parsed === "string") {
       return openAiError(
         400,
         parsed,
         "invalid_request_error",
-        "invalid_offering"
+        "invalid_service"
       );
     }
-    upsert = parsed.offering;
+    upsert = parsed.service;
   } else {
     retireSlug = String((payload as Record<string, unknown>)?.slug ?? "")
       .trim()
       .toLowerCase();
-    if (!OFFERING_SLUG_RE.test(retireSlug)) {
+    if (!SERVICE_SLUG_RE.test(retireSlug)) {
       return openAiError(
         400,
         "payload.slug is required.",
         "invalid_request_error",
-        "invalid_offering"
+        "invalid_service"
       );
     }
   }
@@ -129,22 +129,22 @@ export async function POST(request: Request) {
       "invalid_nonce"
     );
   }
-  const payloadHash = offeringPayloadSha256(payload ?? null);
+  const payloadHash = servicePayloadSha256(payload ?? null);
   const valid = await verifyAgentSignature({
     address,
-    message: agentOfferingChallengeMessage(nonce, payloadHash),
+    message: agentServiceChallengeMessage(nonce, payloadHash),
     signature,
   });
   if (!valid) {
     return openAiError(
       401,
-      "Signature does not match the address (sign t2000-agent-offering:<nonce>:<sha256 of payload JSON>).",
+      "Signature does not match the address (sign t2000-agent-service:<nonce>:<sha256 of payload JSON>).",
       "invalid_request_error",
       "invalid_signature"
     );
   }
 
-  // Accountability gate: offerings attach to a registered Agent ID only.
+  // Accountability gate: services attach to a registered Agent ID only.
   const profile = await getAgentProfile(address);
   if (!profile) {
     return openAiError(
@@ -160,14 +160,14 @@ export async function POST(request: Request) {
   if (upsert && (!profile.active || profile.delistedAt)) {
     return openAiError(
       403,
-      "This Agent ID is deactivated — reactivate it before listing offerings.",
+      "This Agent ID is deactivated — reactivate it before listing services.",
       "invalid_request_error",
       "agent_inactive"
     );
   }
 
   if (upsert) {
-    const row = await upsertOffering({
+    const row = await upsertService({
       agentAddress: address,
       slug: upsert.slug,
       name: upsert.name,
@@ -179,15 +179,15 @@ export async function POST(request: Request) {
       requirements: upsert.requirements,
       deliverable: upsert.deliverable,
     });
-    return Response.json({ ok: true, offering: row });
+    return Response.json({ ok: true, service: row });
   }
-  const retired = await retireOffering(address, retireSlug as string);
+  const retired = await retireService(address, retireSlug as string);
   if (!retired) {
     return openAiError(
       404,
-      `No live offering "${retireSlug}" for this agent.`,
+      `No live service "${retireSlug}" for this agent.`,
       "invalid_request_error",
-      "offering_not_found"
+      "service_not_found"
     );
   }
   return Response.json({ ok: true, retired: retireSlug });

@@ -21,11 +21,11 @@ function errMsg(error: unknown, fallback: string): string {
 }
 
 // Client half of the browser buy path (t2 ACP Phase 1): the server resolves
-// the offering + composes the spec + builds the sponsored escrow-create tx;
+// the service + composes the spec + builds the sponsored escrow-create tx;
 // the Passport session key signs the bytes; the server sponsor-co-signs and
 // executes. Money moves from the SIGNED-IN wallet into the on-chain Job —
 // never through the site.
-export async function hireOffering(opts: {
+export async function hireService(opts: {
   agent: string;
   slug: string;
   requirements: unknown;

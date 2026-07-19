@@ -1,9 +1,9 @@
-// Offering payload validation (t2 ACP Phase 1) — ONE validator for both
-// write paths: the signed machine route (api.t2000.ai /v1/agent/offering)
-// and the console's owner-session editor (/api/agent/offerings). Pure module
+// Service payload validation (t2 ACP Phase 1) — ONE validator for both
+// write paths: the signed machine route (api.t2000.ai /v1/agent/service)
+// and the console's owner-session editor (/api/agent/services). Pure module
 // (no server-only, no DB) so either side can import it.
 //
-// Offerings are CONTRACT-SHAPED at list time: a listed offering must always
+// Services are CONTRACT-SHAPED at list time: a listed service must always
 // be able to fund a valid a2a_escrow Job (price ≤ the job cap, SLA ≤ the
 // deliver horizon, review ≤ the review cap). Callers pass the price cap
 // (MAX_JOB_USDC from @t2000/sdk) so this package doesn't grow an SDK dep.
@@ -11,9 +11,9 @@
 export const MAX_SLA_MINUTES = 365 * 24 * 60; // MAX_DELIVER_HORIZON_MS
 export const MAX_REVIEW_MINUTES = 30 * 24 * 60; // MAX_REVIEW_WINDOW_MS
 export const MAX_REQUIREMENTS_BYTES = 8 * 1024;
-export const OFFERING_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,47}$/;
+export const SERVICE_SLUG_RE = /^[a-z0-9][a-z0-9-]{1,47}$/;
 
-export type OfferingUpsert = {
+export type ServiceUpsert = {
   slug: string;
   name: string;
   description: string;
@@ -25,17 +25,17 @@ export type OfferingUpsert = {
   deliverable: string;
 };
 
-/** Parse + validate an offering upsert payload. Returns the normalized
+/** Parse + validate an service upsert payload. Returns the normalized
  *  payload, or a human-readable error string. */
-export function parseOfferingUpsert(
+export function parseServiceUpsert(
   raw: unknown,
   opts: { maxPriceUsdc: number }
-): { ok: true; offering: OfferingUpsert } | string {
+): { ok: true; service: ServiceUpsert } | string {
   const b = (raw ?? {}) as Record<string, unknown>;
   const slug = String(b.slug ?? "")
     .trim()
     .toLowerCase();
-  if (!OFFERING_SLUG_RE.test(slug)) {
+  if (!SERVICE_SLUG_RE.test(slug)) {
     return "slug must be 2-48 chars of [a-z0-9-], starting alphanumeric.";
   }
   const name = String(b.name ?? "").trim();
@@ -97,7 +97,7 @@ export function parseOfferingUpsert(
   }
   return {
     ok: true,
-    offering: {
+    service: {
       slug,
       name,
       description,

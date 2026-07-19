@@ -26,11 +26,11 @@ import {
   findServiceByWallet,
   serviceUrl,
 } from "@/lib/gateway-services";
-import { fetchOfferings, formatSlaMinutes } from "@/lib/offerings";
+import { fetchServices, formatSlaMinutes } from "@/lib/services";
 
 // Public agent page (agents.t2000.ai/<id or wallet>). Three sources compose
 // (t2 ACP, SPEC_ACP_SUI): the registry profile (claimed identity), the
-// agent's OFFERINGS (What I Offer — the first-class seller surface, hireable
+// agent's SERVICES (the first-class seller surface, hireable
 // in-place), and the gateway catalog (per-call x402 listings, machine path).
 // Zero-friction gateway sellers have NO registry record — their page renders
 // from catalog data alone with an "Unclaimed" chip + claim CTA (claiming =
@@ -204,11 +204,14 @@ export default async function AgentProfilePage({
   }
 
   const profile = await fetchProfile(address);
-  const services = await fetchGatewayServices();
+  const gatewayServices = await fetchGatewayServices();
   // What the wallet sells: the gateway catalog is the SSOT — match by
   // wallet (direct sellers pin `payTo`), render ITS data, and link to the
   // gateway service page for docs + try-it.
-  const service = findServiceByWallet(services, profile?.address ?? address);
+  const service = findServiceByWallet(
+    gatewayServices,
+    profile?.address ?? address
+  );
   // Claimed = a registry profile exists for the wallet. Unclaimed sellers
   // (zero-friction listings) render from the catalog entry alone.
   if (!(profile || service)) {
@@ -224,9 +227,9 @@ export default async function AgentProfilePage({
   }
 
   const walletAddress = profile?.address ?? address;
-  // What I Offer (t2 ACP Phase 1) — the agent's live offerings, hireable
+  // Services (t2 ACP Phase 1) — the agent's live services, hireable
   // right here with a Passport (or via `t2 job create --service`).
-  const offerings = (await fetchOfferings({ agent: walletAddress })).filter(
+  const agentServices = (await fetchServices({ agent: walletAddress })).filter(
     (o) => !o.retired
   );
   const displayName = profile?.name ?? service?.name ?? short(walletAddress);
@@ -454,15 +457,15 @@ export default async function AgentProfilePage({
         </div>
       )}
 
-      {/* What I Offer — structured offerings on the Agent ID (t2 ACP
+      {/* Services — structured listings on the Agent ID (t2 ACP
           Phase 1). Each card is hireable in-place: the requirements form +
           Passport-signed escrow funding. CLI path printed alongside. */}
-      {offerings.length > 0 && (
-        <section className="scroll-mt-24" id="offerings">
+      {agentServices.length > 0 && (
+        <section className="scroll-mt-24" id="services">
           <div className="mt-8">
             <div className="ag-eyebrow">{"// SERVICES"}</div>
             <div className="mt-3 grid gap-4">
-              {offerings.map((o) => (
+              {agentServices.map((o) => (
                 <div className="ag-card p-5" key={o.slug}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-[240px] flex-1">
@@ -507,7 +510,7 @@ export default async function AgentProfilePage({
                     ) : (
                       <>
                         <HireButton
-                          offering={{
+                          service={{
                             agent: o.agent,
                             slug: o.slug,
                             name: o.name,
@@ -769,9 +772,9 @@ export default async function AgentProfilePage({
           {service.escrow ? (
             /* Job-class GATEWAY listing (the machine-native 402 path,
                SPEC_A2A_ESCROW slice 2) — terms come from the seller's own
-               402 challenge, so there's no offering slug; the positional
+               402 challenge, so there's no service slug; the positional
                `t2 job create <amount> <seller>` form is correct here. The
-               human offerings path renders above in What I Offer. */
+               human services path renders above in What I Offer. */
             <div className="ag-card mt-4 overflow-hidden">
               <div className="grid grid-cols-3 divide-x divide-border/50">
                 {(

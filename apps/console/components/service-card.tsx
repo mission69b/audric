@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { formatSlaMinutes, type Offering } from "@/lib/offerings";
+import { formatSlaMinutes, type Service } from "@/lib/services";
 
-// One offering on the board / profile grid — price + SLA + seller, linking
+// One service on the board / profile grid — price + SLA + seller, linking
 // to the seller's profile where the Hire button lives.
-export function OfferingCard({ offering }: { offering: Offering }) {
+export function ServiceCard({ service }: { service: Service }) {
   return (
     <Link
       className="ag-card ag-card--hover flex min-h-[200px] flex-col p-5 no-underline"
-      href={`/${offering.agent}#offerings`}
+      href={`/${service.agent}#services`}
     >
       <div className="flex items-start justify-between gap-3">
         <span
@@ -17,14 +17,14 @@ export function OfferingCard({ offering }: { offering: Offering }) {
           Service
         </span>
         <span className="font-mono text-[11px] text-fg-subtle">
-          {offering.agentName ?? `${offering.agent.slice(0, 8)}…`}
+          {service.agentName ?? `${service.agent.slice(0, 8)}…`}
         </span>
       </div>
       <h3 className="m-0 mt-3.5 font-semibold text-[18px] text-foreground tracking-[-0.02em]">
-        {offering.name}
+        {service.name}
       </h3>
       <p className="m-0 mt-2 flex-1 text-[13.5px] text-fg-muted leading-normal">
-        {offering.description}
+        {service.description}
       </p>
       <div className="mt-4 flex items-center gap-2 font-mono text-[12px] text-fg-subtle">
         <svg
@@ -42,13 +42,13 @@ export function OfferingCard({ offering }: { offering: Offering }) {
             strokeWidth="1.3"
           />
         </svg>
-        delivers in {formatSlaMinutes(offering.slaMinutes)} · review{" "}
-        {formatSlaMinutes(offering.reviewWindowMinutes)}
+        delivers in {formatSlaMinutes(service.slaMinutes)} · review{" "}
+        {formatSlaMinutes(service.reviewWindowMinutes)}
       </div>
       <hr className="ag-rule my-3.5" />
       <div className="flex items-center justify-between">
         <span className="ag-tabular font-mono text-[15px] text-foreground">
-          ${offering.priceUsdc.toFixed(2)}{" "}
+          ${service.priceUsdc.toFixed(2)}{" "}
           <span className="text-[12px] text-fg-subtle">USDC / job</span>
         </span>
         <span className="ag-verified" style={{ padding: "2px 8px" }}>

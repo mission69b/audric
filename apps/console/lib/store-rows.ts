@@ -9,7 +9,7 @@ import {
   priceFloor,
   type ServiceStats,
 } from "@/lib/gateway-services";
-import { fetchOfferings } from "@/lib/offerings";
+import { fetchServices } from "@/lib/services";
 
 // Row assembly shared by the store homepage (sellers only) and the /agents
 // directory (everyone). One builder so the two surfaces can never disagree
@@ -55,14 +55,14 @@ function shortAddress(address: string): string {
 
 /** Selling agents first (receipts-sorted), then unclaimed sellers, then the
  *  rest of the directory. `verified` = claimed wallet + ≥1 settled sale.
- *  An agent sells via the gateway catalog (per-call) OR via ACP offerings
+ *  An agent sells via the gateway catalog (per-call) OR via ACP services
  *  (per-job) — either gives it a price on the store. */
 function buildRows(
   agents: AgentRow[],
   sellers: Seller[],
   handles: Map<string, string>,
   statsById: Map<string, ServiceStats | null>,
-  offeringFloors: Map<string, number> = new Map()
+  serviceFloors: Map<string, number> = new Map()
 ): StoreRow[] {
   const serviceByWallet = new Map(
     sellers.map((s) => [s.payTo.toLowerCase(), s])
@@ -73,7 +73,7 @@ function buildRows(
     const service = serviceByWallet.get(a.address.toLowerCase());
     const stats = service ? statsById.get(service.id) : undefined;
     const handle = handles.get(a.address);
-    const offeringFloor = offeringFloors.get(a.address.toLowerCase());
+    const serviceFloor = serviceFloors.get(a.address.toLowerCase());
     return {
       key: a.address,
       href: `/${a.numericId ?? a.address}`,
@@ -88,8 +88,8 @@ function buildRows(
       category: a.category ?? null,
       price:
         (service ? priceFloor(service) : null) ??
-        (offeringFloor == null ? null : `$${offeringFloor}`),
-      perJob: Boolean(service?.escrow) || (!service && offeringFloor != null),
+        (serviceFloor == null ? null : `$${serviceFloor}`),
+      perJob: Boolean(service?.escrow) || (!service && serviceFloor != null),
       verified: Boolean(stats && stats.sold > 0),
       sold: stats?.sold,
       buyers: stats?.buyers,
@@ -140,22 +140,20 @@ export async function loadStoreData(): Promise<{
   sellers: Seller[];
   servicesCount: number;
   statsById: Map<string, ServiceStats | null>;
-  /** Live-offering seller → display name (Scan name fallback for sellers
+  /** Live-service seller → display name (Scan name fallback for sellers
    *  the directory list doesn't carry, e.g. deactivated agents). */
-  offeringNames: Map<string, string>;
+  serviceNames: Map<string, string>;
 }> {
-  const [{ total, agents }, services, offerings] = await Promise.all([
-    fetchAgents(),
-    fetchGatewayServices(),
-    fetchOfferings(),
-  ]);
-  // The store showcases the AGENT economy only: ACP offering sellers plus
+  const [{ total, agents }, gatewayServices, agentServices] = await Promise.all(
+    [fetchAgents(), fetchGatewayServices(), fetchServices()]
+  );
+  // The store showcases the AGENT economy only: ACP service sellers plus
   // direct x402 sellers whose 402 pays their own wallet (founder call
   // 2026-07-17 late: the rail's proxied vendor catalog stays on
   // mpp.t2000.ai/services — listing it here reads as a reseller catalog and
   // dilutes the A2A story). flatMap so the narrowed `payTo` survives the
   // filter for TypeScript.
-  const sellers: Seller[] = services.flatMap((s) =>
+  const sellers: Seller[] = gatewayServices.flatMap((s) =>
     s.direct && s.payTo ? [{ ...s, payTo: s.payTo }] : []
   );
   const [handles, statsList] = await Promise.all([
@@ -167,29 +165,29 @@ export async function loadStoreData(): Promise<{
   const statsById = new Map<string, ServiceStats | null>(
     sellers.map((s, i) => [s.id, statsList[i]])
   );
-  // ACP offerings (t2 ACP Phase 1) make an agent a seller too: floor price
+  // ACP services (t2 ACP Phase 1) make an agent a seller too: floor price
   // per agent for the store grid + a name fallback for the Scan table.
-  const offeringFloors = new Map<string, number>();
-  const offeringNames = new Map<string, string>();
-  for (const o of offerings) {
+  const serviceFloors = new Map<string, number>();
+  const serviceNames = new Map<string, string>();
+  for (const o of agentServices) {
     if (o.retired) {
       continue;
     }
     const key = o.agent.toLowerCase();
-    const floor = offeringFloors.get(key);
+    const floor = serviceFloors.get(key);
     if (floor == null || o.priceUsdc < floor) {
-      offeringFloors.set(key, o.priceUsdc);
+      serviceFloors.set(key, o.priceUsdc);
     }
     if (o.agentName) {
-      offeringNames.set(key, o.agentName);
+      serviceNames.set(key, o.agentName);
     }
   }
   return {
     total,
-    rows: buildRows(agents, sellers, handles, statsById, offeringFloors),
+    rows: buildRows(agents, sellers, handles, statsById, serviceFloors),
     sellers,
-    servicesCount: services.length,
+    servicesCount: gatewayServices.length,
     statsById,
-    offeringNames,
+    serviceNames,
   };
 }

@@ -283,12 +283,12 @@ export const agentProfile = pgTable(
 
 export type AgentProfile = InferSelectModel<typeof agentProfile>;
 
-// ── Offerings (t2 ACP Phase 1 — SPEC_ACP_SUI §4.1) ──────────────────────────
+// ── Services (t2 ACP Phase 1 — SPEC_ACP_SUI §4.1) ──────────────────────────
 // A structured, fixed-price unit of deliverable work attached to an Agent ID.
-// THE seller primitive: sellers register offerings (name/price/SLA/schema),
+// THE seller primitive: sellers register services (name/price/SLA/schema),
 // buyers fund a2a_escrow Jobs against them. Registry data lives here (D-2:
 // DB now, chain-anchor later); the MONEY is always on-chain in the Job.
-export const agentOffering = pgTable(
+export const agentService = pgTable(
   "AgentOffering",
   {
     id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -296,7 +296,7 @@ export const agentOffering = pgTable(
     agentAddress: text("agentAddress")
       .notNull()
       .references(() => agentProfile.address),
-    /** Machine name, unique per agent — `t2 job create --offering <slug>`. */
+    /** Machine name, unique per agent — `t2 job create --service <slug>`. */
     slug: varchar("slug", { length: 48 }).notNull(),
     name: varchar("name", { length: 80 }).notNull(),
     description: text("description").notNull(),
@@ -331,7 +331,7 @@ export const agentOffering = pgTable(
   })
 );
 
-export type AgentOffering = InferSelectModel<typeof agentOffering>;
+export type AgentService = InferSelectModel<typeof agentService>;
 
 // Content-addressed job-spec store (t2 ACP Phase 1). The buyer's requirements
 // payload, keyed by its sha256 — the SAME hash the buyer pins on-chain as the

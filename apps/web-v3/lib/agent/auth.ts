@@ -51,15 +51,15 @@ export function agentServicesChallengeMessage(
   return `t2000-agent-services:${nonce}:${servicesSha256Hex}`;
 }
 
-/** The message to sign to mutate the agent's OFFERINGS (t2 ACP Phase 1 —
+/** The message to sign to mutate the agent's SERVICES (t2 ACP Phase 1 —
  *  upsert or retire). Bound to nonce + a sha256 of the canonical action
  *  payload, so a captured signature can't be replayed with a different
- *  offering (same construction as the services-catalog message). */
-export function agentOfferingChallengeMessage(
+ *  service (same construction as the services-catalog message). */
+export function agentServiceChallengeMessage(
   nonce: string,
   payloadSha256Hex: string
 ): string {
-  return `t2000-agent-offering:${nonce}:${payloadSha256Hex}`;
+  return `t2000-agent-service:${nonce}:${payloadSha256Hex}`;
 }
 
 /** The message to sign to review a RELEASED escrow Job (t2 ACP Phase 1 —

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { hireOffering } from "@/lib/hire";
+import { hireService } from "@/lib/hire";
 
-// The Hire button (t2 ACP Phase 1) — the browser buy path for an offering.
+// The Hire button (t2 ACP Phase 1) — the browser buy path for an service.
 // Requirements form → Passport signs the sponsored escrow-create → the job
 // funds on-chain at the LISTING's price/terms (server-resolved; nothing here
 // is trusted). Success hands the buyer the Job id + watch instructions.
 
-type HireOffering = {
+type HireService = {
   agent: string;
   slug: string;
   name: string;
@@ -51,7 +51,7 @@ function formatSla(minutes: number): string {
   return `${minutes}m`;
 }
 
-export function HireButton({ offering }: { offering: HireOffering }) {
+export function HireButton({ service }: { service: HireService }) {
   const [open, setOpen] = useState(false);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [freeText, setFreeText] = useState("");
@@ -61,10 +61,10 @@ export function HireButton({ offering }: { offering: HireOffering }) {
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ digest?: string; jobId?: string }>({});
 
-  const keys = requirementKeys(offering.requirements);
+  const keys = requirementKeys(service.requirements);
   const wantsText =
-    typeof offering.requirements === "string" ||
-    (offering.requirements != null && keys.length === 0);
+    typeof service.requirements === "string" ||
+    (service.requirements != null && keys.length === 0);
 
   async function hire() {
     setStatus("signing");
@@ -75,12 +75,12 @@ export function HireButton({ offering }: { offering: HireOffering }) {
         requirements = Object.fromEntries(
           keys.map(([k]) => [k, fields[k] ?? ""])
         );
-      } else if (offering.requirements != null) {
+      } else if (service.requirements != null) {
         requirements = freeText.trim();
       }
-      const res = await hireOffering({
-        agent: offering.agent,
-        slug: offering.slug,
+      const res = await hireService({
+        agent: service.agent,
+        slug: service.slug,
         requirements,
       });
       setResult(res);
@@ -95,12 +95,12 @@ export function HireButton({ offering }: { offering: HireOffering }) {
     return (
       <div className="ag-card grid gap-2.5 p-5">
         <div className="font-semibold text-[14px] text-foreground">
-          Job funded — ${offering.priceUsdc.toFixed(2)} USDC escrowed ✓
+          Job funded — ${service.priceUsdc.toFixed(2)} USDC escrowed ✓
         </div>
         <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
           The money sits in an on-chain Job object, not with the seller and not
-          with us. The seller delivers within {formatSla(offering.slaMinutes)},
-          then you have {formatSla(offering.reviewWindowMinutes)} to accept or
+          with us. The seller delivers within {formatSla(service.slaMinutes)},
+          then you have {formatSla(service.reviewWindowMinutes)} to accept or
           reject. No delivery by the deadline — you reclaim everything.
         </p>
         {result.jobId && (
@@ -148,7 +148,7 @@ export function HireButton({ offering }: { offering: HireOffering }) {
         onClick={() => setOpen(true)}
         type="button"
       >
-        Hire — ${offering.priceUsdc.toFixed(2)} USDC
+        Hire — ${service.priceUsdc.toFixed(2)} USDC
       </button>
     );
   }
@@ -157,10 +157,10 @@ export function HireButton({ offering }: { offering: HireOffering }) {
     <div className="ag-card grid gap-3.5 p-5">
       <div className="flex items-baseline justify-between gap-3">
         <div className="font-semibold text-[14px] text-foreground">
-          Hire: {offering.name}
+          Hire: {service.name}
         </div>
         <span className="ag-tabular font-mono text-[13px] text-foreground">
-          ${offering.priceUsdc.toFixed(2)} USDC
+          ${service.priceUsdc.toFixed(2)} USDC
         </span>
       </div>
 
@@ -189,9 +189,9 @@ export function HireButton({ offering }: { offering: HireOffering }) {
         <label className="grid gap-[6px]">
           <span className="font-medium text-[12.5px] text-foreground">
             What the seller needs
-            {typeof offering.requirements === "string" && (
+            {typeof service.requirements === "string" && (
               <span className="ml-2 font-normal text-[11.5px] text-fg-subtle">
-                {offering.requirements}
+                {service.requirements}
               </span>
             )}
           </span>
@@ -207,7 +207,7 @@ export function HireButton({ offering }: { offering: HireOffering }) {
 
       <p className="m-0 text-[11.5px] text-fg-subtle leading-relaxed">
         Your USDC escrows on-chain and releases when you accept delivery (or the{" "}
-        {formatSla(offering.reviewWindowMinutes)} review window lapses). No
+        {formatSla(service.reviewWindowMinutes)} review window lapses). No
         delivery by the deadline — you get it all back. No gas fees.
       </p>
 
@@ -220,7 +220,7 @@ export function HireButton({ offering }: { offering: HireOffering }) {
         >
           {status === "signing"
             ? "Confirm in your Passport…"
-            : `Escrow $${offering.priceUsdc.toFixed(2)} USDC`}
+            : `Escrow $${service.priceUsdc.toFixed(2)} USDC`}
         </button>
         <button
           className="ag-btn ag-btn--ghost"

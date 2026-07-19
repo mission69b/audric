@@ -18,10 +18,10 @@ import {
 } from "drizzle-orm";
 import { db } from "./db";
 import {
-  type AgentOffering,
+  type AgentService,
   type AgentProfile,
   type ApiKey,
-  agentOffering,
+  agentService,
   agentProfile,
   apiKey,
   apiUsageEvent,
@@ -386,32 +386,32 @@ export async function listAgentProfiles(opts?: {
   return { agents: rows, total: totalRow?.value ?? 0 };
 }
 
-// ── Offerings (t2 ACP Phase 1 — SPEC_ACP_SUI §4.1) ──────────────────────────
+// ── Services (t2 ACP Phase 1 — SPEC_ACP_SUI §4.1) ──────────────────────────
 
-/** Live offerings, newest first. Optional per-agent filter + naive text
+/** Live services, newest first. Optional per-agent filter + naive text
  *  search (name/description ilike) — the `t2 browse` read path. */
-export async function listOfferings(opts?: {
+export async function listServices(opts?: {
   agentAddress?: string;
   search?: string;
   includeRetired?: boolean;
-  /** Board/search views: only list offerings whose seller is an active,
+  /** Board/search views: only list services whose seller is an active,
    *  non-delisted Agent ID (a deactivated agent shouldn't keep selling).
    *  The per-agent management view passes false — a seller can always see
    *  and retire their own rows. */
   visibleSellersOnly?: boolean;
   limit?: number;
   offset?: number;
-}): Promise<{ offerings: AgentOffering[]; total: number }> {
+}): Promise<{ services: AgentService[]; total: number }> {
   const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 100);
   const offset = Math.max(opts?.offset ?? 0, 0);
   const conditions: (SQL | undefined)[] = [];
   if (!opts?.includeRetired) {
-    conditions.push(isNull(agentOffering.retiredAt));
+    conditions.push(isNull(agentService.retiredAt));
   }
   if (opts?.visibleSellersOnly) {
     conditions.push(
       inArray(
-        agentOffering.agentAddress,
+        agentService.agentAddress,
         db
           .select({ address: agentProfile.address })
           .from(agentProfile)
@@ -425,15 +425,15 @@ export async function listOfferings(opts?: {
     );
   }
   if (opts?.agentAddress) {
-    conditions.push(eq(agentOffering.agentAddress, opts.agentAddress));
+    conditions.push(eq(agentService.agentAddress, opts.agentAddress));
   }
   if (opts?.search) {
     const q = `%${opts.search.replaceAll(/[%_]/g, "")}%`;
     conditions.push(
       or(
-        ilike(agentOffering.name, q),
-        ilike(agentOffering.description, q),
-        ilike(agentOffering.deliverable, q)
+        ilike(agentService.name, q),
+        ilike(agentService.description, q),
+        ilike(agentService.deliverable, q)
       )
     );
   }
@@ -441,36 +441,36 @@ export async function listOfferings(opts?: {
   const [rows, [totalRow]] = await Promise.all([
     db
       .select()
-      .from(agentOffering)
+      .from(agentService)
       .where(where)
-      .orderBy(desc(agentOffering.createdAt))
+      .orderBy(desc(agentService.createdAt))
       .limit(limit)
       .offset(offset),
-    db.select({ value: count() }).from(agentOffering).where(where),
+    db.select({ value: count() }).from(agentService).where(where),
   ]);
-  return { offerings: rows, total: totalRow?.value ?? 0 };
+  return { services: rows, total: totalRow?.value ?? 0 };
 }
 
-export async function getOffering(
+export async function getService(
   agentAddress: string,
   slug: string
-): Promise<AgentOffering | undefined> {
+): Promise<AgentService | undefined> {
   const [row] = await db
     .select()
-    .from(agentOffering)
+    .from(agentService)
     .where(
       and(
-        eq(agentOffering.agentAddress, agentAddress),
-        eq(agentOffering.slug, slug)
+        eq(agentService.agentAddress, agentAddress),
+        eq(agentService.slug, slug)
       )
     )
     .limit(1);
   return row;
 }
 
-/** Create or update an offering (keyed agent+slug). Re-listing a retired slug
+/** Create or update an service (keyed agent+slug). Re-listing a retired slug
  *  revives it. Auth (agent signature) is the caller's job. */
-export async function upsertOffering(offering: {
+export async function upsertService(service: {
   agentAddress: string;
   slug: string;
   name: string;
@@ -481,22 +481,22 @@ export async function upsertOffering(offering: {
   rejectSplitBps: number;
   requirements: unknown;
   deliverable: string;
-}): Promise<AgentOffering> {
+}): Promise<AgentService> {
   const now = new Date();
   const [row] = await db
-    .insert(agentOffering)
-    .values({ ...offering, updatedAt: now })
+    .insert(agentService)
+    .values({ ...service, updatedAt: now })
     .onConflictDoUpdate({
-      target: [agentOffering.agentAddress, agentOffering.slug],
+      target: [agentService.agentAddress, agentService.slug],
       set: {
-        name: offering.name,
-        description: offering.description,
-        priceMicroUsdc: offering.priceMicroUsdc,
-        slaMinutes: offering.slaMinutes,
-        reviewWindowMinutes: offering.reviewWindowMinutes,
-        rejectSplitBps: offering.rejectSplitBps,
-        requirements: offering.requirements,
-        deliverable: offering.deliverable,
+        name: service.name,
+        description: service.description,
+        priceMicroUsdc: service.priceMicroUsdc,
+        slaMinutes: service.slaMinutes,
+        reviewWindowMinutes: service.reviewWindowMinutes,
+        rejectSplitBps: service.rejectSplitBps,
+        requirements: service.requirements,
+        deliverable: service.deliverable,
         retiredAt: null,
         updatedAt: now,
       },
@@ -505,23 +505,23 @@ export async function upsertOffering(offering: {
   return row;
 }
 
-/** Soft-retire an offering (funded jobs keep settling on-chain regardless).
- *  Returns false when the agent has no such offering. */
-export async function retireOffering(
+/** Soft-retire an service (funded jobs keep settling on-chain regardless).
+ *  Returns false when the agent has no such service. */
+export async function retireService(
   agentAddress: string,
   slug: string
 ): Promise<boolean> {
   const rows = await db
-    .update(agentOffering)
+    .update(agentService)
     .set({ retiredAt: new Date(), updatedAt: new Date() })
     .where(
       and(
-        eq(agentOffering.agentAddress, agentAddress),
-        eq(agentOffering.slug, slug),
-        isNull(agentOffering.retiredAt)
+        eq(agentService.agentAddress, agentAddress),
+        eq(agentService.slug, slug),
+        isNull(agentService.retiredAt)
       )
     )
-    .returning({ id: agentOffering.id });
+    .returning({ id: agentService.id });
   return rows.length > 0;
 }
 

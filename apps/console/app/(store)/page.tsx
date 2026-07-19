@@ -80,7 +80,7 @@ type FeedRow = {
 
 export default async function HomePage() {
   const [
-    { total, rows, sellers, servicesCount, statsById, offeringNames },
+    { total, rows, sellers, servicesCount, statsById, serviceNames },
     railStats,
     econ,
     topSellers,
@@ -100,7 +100,7 @@ export default async function HomePage() {
   const rowByAddress = new Map(rows.map((r) => [r.address.toLowerCase(), r]));
   const sellerName = (address: string): string =>
     rowByAddress.get(address.toLowerCase())?.name ??
-    offeringNames.get(address.toLowerCase()) ??
+    serviceNames.get(address.toLowerCase()) ??
     `${address.slice(0, 8)}…${address.slice(-4)}`;
 
   // The live feed — job lifecycle events + x402 settlements, interleaved by
@@ -188,32 +188,15 @@ export default async function HomePage() {
               Hire for a job
             </Link>
           </div>
-          <p className="mt-6 font-mono text-[11.5px] text-fg-subtle">
-            For machines:{" "}
-            <a
-              className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
-              href="/llms.txt"
-            >
-              llms.txt
-            </a>
-            {" · "}
-            <a
-              className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
-              href="https://developers.t2000.ai"
-              rel="noreferrer"
-            >
-              docs
-            </a>
-          </p>
         </div>
 
-        {/* One store · three ways to pay */}
+        {/* One store · three ways to hire */}
         <div className="ag-card relative overflow-hidden p-0">
           <div
             className="flex items-center justify-between border-b px-4 py-3"
             style={{ borderColor: "var(--ag-border)" }}
           >
-            <span className="ag-eyebrow">One store · Three ways to pay</span>
+            <span className="ag-eyebrow">One store · Three ways to hire</span>
             <span className="ag-verified">on-chain</span>
           </div>
           {(
@@ -377,11 +360,8 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              <Link
-                className="ag-btn ag-btn--primary ag-btn--sm"
-                href="/jobs#sell"
-              >
-                Sell a job
+              <Link className="ag-btn ag-btn--primary ag-btn--sm" href="/join">
+                Start selling
               </Link>
               <Link className="ag-btn ag-btn--ghost ag-btn--sm" href="/jobs">
                 Browse jobs
@@ -741,7 +721,7 @@ export default async function HomePage() {
         {/* ONE button — buyers already got theirs at the hero (S.765 CTA
             de-dup: five buttons pointed at three pages). */}
         <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-          <Link className="ag-btn ag-btn--primary" href="/jobs#sell">
+          <Link className="ag-btn ag-btn--primary" href="/join">
             List a service
           </Link>
         </div>

@@ -464,7 +464,7 @@
   .ag-term .body {
     padding: 16px;
     /* Wrap at spaces only — break-word split command words mid-word
-       ("t2 offering creat/e"); overflow-wrap still rescues one-word
+       ("t2 service creat/e"); overflow-wrap still rescues one-word
        overflows like long URLs. */
     overflow-wrap: break-word;
     white-space: pre-wrap;
@@ -559,5 +559,4 @@
       transform: translateY(0);
     }
   }
-
 }

@@ -1,15 +1,15 @@
 import { createHash } from "node:crypto";
-import { getOffering, putJobSpec } from "@audric/accounts";
+import { getService, putJobSpec } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { type NextRequest, NextResponse } from "next/server";
 
 // POST /api/job/hire-prepare { agent, slug, requirements? } — the browser
-// buy path for an OFFERING (t2 ACP Phase 1). Session-authed: the buyer is
+// buy path for a SERVICE (t2 ACP Phase 1). Session-authed: the buyer is
 // ALWAYS the signed-in Passport (server-authoritative, never client-set).
 //
-// The server does the same composition `t2 job create --offering` does:
-// resolve the live offering → build the t2-acp-job-spec@1 doc → store it
+// The server does the same composition `t2 job create --service` does:
+// resolve the live service → build the t2-acp-job-spec@1 doc → store it
 // content-addressed (its sha256 goes on-chain as the Job's spec_hash) →
 // have api.t2000.ai build the sponsored escrow-create tx for the buyer to
 // sign. Price/SLA/terms come from the LISTING, never from the client.
@@ -36,16 +36,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const offering = await getOffering(agent, slug);
-  if (!offering || offering.retiredAt) {
+  const service = await getService(agent, slug);
+  if (!service || service.retiredAt) {
     return NextResponse.json(
-      { error: "This offering is no longer available." },
+      { error: "This service is no longer available." },
       { status: 404 }
     );
   }
-  if (offering.requirements != null && requirements == null) {
+  if (service.requirements != null && requirements == null) {
     return NextResponse.json(
-      { error: "This offering needs requirements — fill in the form." },
+      { error: "This service needs requirements — fill in the form." },
       { status: 400 }
     );
   }
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest) {
   // Spec doc — identical shape to the CLI buy path (t2-acp-job-spec@1).
   const spec = JSON.stringify({
     type: "t2-acp-job-spec@1",
-    offering: {
-      agent: offering.agentAddress,
-      slug: offering.slug,
-      name: offering.name,
-      priceUsdc: offering.priceMicroUsdc / 1_000_000,
-      deliverable: offering.deliverable,
+    service: {
+      agent: service.agentAddress,
+      slug: service.slug,
+      name: service.name,
+      priceUsdc: service.priceMicroUsdc / 1_000_000,
+      deliverable: service.deliverable,
     },
     requirements,
     buyer,
@@ -68,12 +68,12 @@ export async function POST(request: NextRequest) {
   await putJobSpec(specSha, spec);
 
   const params = {
-    seller: offering.agentAddress,
-    amountUsdc: offering.priceMicroUsdc / 1_000_000,
+    seller: service.agentAddress,
+    amountUsdc: service.priceMicroUsdc / 1_000_000,
     specHash: `0x${specSha}`,
-    deliverByMs: Date.now() + offering.slaMinutes * 60_000,
-    reviewWindowMs: offering.reviewWindowMinutes * 60_000,
-    rejectSplitBps: offering.rejectSplitBps,
+    deliverByMs: Date.now() + service.slaMinutes * 60_000,
+    reviewWindowMs: service.reviewWindowMinutes * 60_000,
+    rejectSplitBps: service.rejectSplitBps,
   };
   const res = await fetch(`${API}/job/prepare`, {
     method: "POST",

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { CreateAgentForm } from "@/components/create-agent-form";
 
 // /manage/create — Create Agent, the one-form composition moment (t2 ACP
-// Phase 2, SPEC_ACP_SUI §5.1): identity → wallet → Agent ID → offerings →
+// Phase 2, SPEC_ACP_SUI §5.1): identity → wallet → Agent ID → services →
 // Token stub → Launch Agent. The signed-in Passport IS the agent (self-agent);
 // re-visiting with an existing registration prefills and re-launching updates.
 // Keypair agents (key lives where the agent runs) still come from

@@ -1,7 +1,7 @@
 import {
   getAgentProfile,
   listAgentsForOwner,
-  listOfferings,
+  listServices,
 } from "@audric/accounts";
 import { getCurrentUser } from "@audric/auth/server";
 import type { Metadata } from "next";
@@ -10,7 +10,7 @@ import { notFound, redirect } from "next/navigation";
 import { ActiveToggle } from "@/components/active-toggle";
 import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentEditForm } from "@/components/agent-edit-form";
-import { OfferingsEditor } from "@/components/offerings-editor";
+import { ServicesEditor } from "@/components/services-editor";
 
 // /manage/agents/[address] — the Edit-agent ROUTE (founder call, S.656:
 // a real page, not an inline expand). Guarded to the signed-in owner: the
@@ -45,7 +45,7 @@ export default async function EditAgentPage({
   if (!agent) {
     notFound();
   }
-  const { offerings } = await listOfferings({
+  const { services } = await listServices({
     agentAddress: agent.address,
     includeRetired: true,
   });
@@ -82,12 +82,12 @@ export default async function EditAgentPage({
           }}
         />
 
-        {/* The offerings editor (t2 ACP Phase 1) — what this agent sells,
+        {/* The services editor (t2 ACP Phase 1) — what this agent sells,
             managed from the browser. Earnings still surface at the LIST
             level (/manage/agents rows; founder call 2026-07-17 late). */}
-        <OfferingsEditor
+        <ServicesEditor
           agent={agent.address}
-          initial={offerings.map((o) => ({
+          initial={services.map((o) => ({
             slug: o.slug,
             name: o.name,
             description: o.description,
