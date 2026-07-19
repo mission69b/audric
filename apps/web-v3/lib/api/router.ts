@@ -4,10 +4,17 @@
  *
  * - `t2000/auto`      → bulk steps on GLM 5.2; escalation to frontier
  *                       (Claude Sonnet 5) on the three spec'd signals.
- * - `t2000/auto-open` → the same router with closed-frontier escalation
- *                       WELDED SHUT — hard steps go to the strongest open
- *                       coding model instead. For price-ceiling users and
- *                       privacy purists (§1c: the Private-mode default).
+ * - `t2000/auto-open` → closed-frontier escalation WELDED SHUT — hard steps
+ *                       go to the strongest open coding model instead. For
+ *                       price-ceiling users and privacy purists (§1c: the
+ *                       Private-mode default). Bulk is Kimi K2.7 Code
+ *                       (flipped from GLM 5.2, founder call 2026-07-20:
+ *                       Kimi launched free upstream while GLM bills ~$2/M
+ *                       blended — dogfood showed $15+/day of GLM bulk that
+ *                       Kimi serves at $0). Bulk and escalation currently
+ *                       resolve to the same model; keep the split — the
+ *                       moment Moonshot starts charging, re-run
+ *                       scripts/api-router-eval.ts and re-bank the bulk pick.
  *
  * Design call (banked at scoping, 2026-07-14): the escalation signals are
  * DETERMINISTIC heuristics, not a per-request LLM classify. Coding agents
@@ -27,6 +34,8 @@ export type RouterModelId = (typeof ROUTER_MODEL_IDS)[number];
 
 /** Bulk steps — edits, test loops, renames, tool calls (~70–80% of traffic). */
 export const ROUTER_BULK_MODEL = "zai/glm-5.2";
+/** Bulk on t2000/auto-open — the coding-tuned open model (free upstream). */
+export const ROUTER_OPEN_BULK_MODEL = "moonshotai/kimi-k2.7-code";
 /** Closed-frontier escalation (t2000/auto only). */
 export const ROUTER_FRONTIER_MODEL = "anthropic/claude-sonnet-5";
 /** Open escalation (t2000/auto-open) — the coding-tuned open reasoner. */
@@ -97,7 +106,7 @@ function matchesAny(text: string, patterns: RegExp[]): boolean {
  * 2. retry-after-failure → escalate (the strongest signal — a failure marker
  *                       in the latest user message after ≥2 assistant turns)
  * 3. plan/architecture phrasing → escalate
- * 4. otherwise        → bulk (GLM 5.2)
+ * 4. otherwise        → bulk (GLM 5.2 on auto; Kimi K2.7 Code on auto-open)
  */
 export function resolveRouterModel({
   modelId,
@@ -110,10 +119,9 @@ export function resolveRouterModel({
   /** Joined system text (counts toward context size only). */
   system?: string;
 }): RouteResolution {
-  const escalation =
-    modelId === "t2000/auto-open"
-      ? ROUTER_OPEN_ESCALATION_MODEL
-      : ROUTER_FRONTIER_MODEL;
+  const isOpen = modelId === "t2000/auto-open";
+  const escalation = isOpen ? ROUTER_OPEN_ESCALATION_MODEL : ROUTER_FRONTIER_MODEL;
+  const bulk = isOpen ? ROUTER_OPEN_BULK_MODEL : ROUTER_BULK_MODEL;
 
   const totalChars =
     (system?.length ?? 0) + messages.reduce((n, m) => n + m.content.length, 0);
@@ -136,5 +144,5 @@ export function resolveRouterModel({
     return { served: escalation, reason: "plan-architecture" };
   }
 
-  return { served: ROUTER_BULK_MODEL, reason: "bulk" };
+  return { served: bulk, reason: "bulk" };
 }

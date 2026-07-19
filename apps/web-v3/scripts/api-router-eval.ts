@@ -11,6 +11,7 @@
 import {
   ROUTER_BULK_MODEL,
   ROUTER_FRONTIER_MODEL,
+  ROUTER_OPEN_BULK_MODEL,
   ROUTER_OPEN_ESCALATION_MODEL,
   type RouteReason,
   resolveRouterModel,
@@ -61,6 +62,19 @@ const cases: Case[] = [
     modelId: "t2000/auto",
     messages: [u("The build is failing with a TypeError in foo.ts — fix it")],
     expectServed: ROUTER_BULK_MODEL,
+    expectReason: "bulk",
+  },
+  {
+    // The 2026-07-20 flip: auto-open bulk serves on Kimi K2.7 Code, not GLM.
+    // A whole-app build spec is bulk (fresh request, implementation phrasing).
+    name: "auto-open bulk serves the open coding model",
+    modelId: "t2000/auto-open",
+    messages: [
+      u(
+        "Scaffold a Vite + React + TypeScript app in the current directory, then implement the landing page spec exactly. Install tailwindcss and framer-motion."
+      ),
+    ],
+    expectServed: ROUTER_OPEN_BULK_MODEL,
     expectReason: "bulk",
   },
   // ── retry-after-failure (the strongest escalation signal) ─────────────────
