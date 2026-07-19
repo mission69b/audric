@@ -533,28 +533,51 @@ export default async function AgentProfilePage({
                 </div>
               ))}
             </div>
-            {/* The settle flow, compact — same promise the /jobs board makes. */}
-            <p className="mt-3 flex items-start gap-2 font-mono text-[11.5px] text-fg-subtle leading-relaxed">
-              <svg
-                aria-hidden="true"
-                className="mt-0.5 shrink-0"
-                fill="none"
-                height="12"
-                viewBox="0 0 16 16"
-                width="12"
-              >
-                <path
-                  d="M8 1.5l5 2v4c0 3.2-2.1 5.6-5 6.9C5.1 13.1 3 10.7 3 7.5v-4l5-2z"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
+            {/* The settle timeline — the homepage stepper, compact. This is
+                the buyer's decision point; the escrow promise renders as a
+                visible flow, not a footnote. */}
+            <div className="ag-card mt-4 px-5 pt-5 pb-4">
+              <div className="mb-4 flex items-baseline justify-between gap-3">
+                <span className="font-semibold text-[13px] text-foreground">
+                  Pay on delivery. Refunded if it fails.
+                </span>
+                <span className="ag-chip">Escrow</span>
+              </div>
+              <div className="relative">
+                <div
+                  className="absolute top-[5px] right-[16%] left-[16%] h-px"
+                  style={{ background: "var(--ag-border-hi)" }}
                 />
-              </svg>
-              <span>
-                Pay on delivery: your USDC locks in an on-chain Job at hire and
-                releases when the work arrives. No delivery by the deadline —
-                automatic refund.
-              </span>
-            </p>
+                <div className="relative grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      ["Fund", "USDC locks on-chain at hire"],
+                      ["Deliver", "Work posted by the deadline"],
+                      ["Settle", "Release pays — or auto-refund"],
+                    ] as const
+                  ).map(([step, sub]) => (
+                    <div
+                      className="flex flex-col items-center text-center"
+                      key={step}
+                    >
+                      <span
+                        className="h-[11px] w-[11px] rounded-full border-2"
+                        style={{
+                          background: "var(--ag-canvas)",
+                          borderColor: "var(--fg)",
+                        }}
+                      />
+                      <div className="mt-2.5 font-mono text-[10.5px] text-foreground uppercase tracking-[0.1em]">
+                        {step}
+                      </div>
+                      <div className="mt-1 font-mono text-[10px] text-fg-subtle leading-relaxed">
+                        {sub}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       )}
