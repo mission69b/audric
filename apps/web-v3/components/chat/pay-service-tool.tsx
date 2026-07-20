@@ -139,6 +139,12 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
   }
 
   const { serviceId, path, method, body, priceUsdc, purpose } = input;
+  // Render clamp: `purpose` is model-written text. A degenerate generation
+  // loop once poured thousands of rambling chars into it and the card
+  // rendered the whole wall (Kimi, 2026-07-21). The schema caps new calls;
+  // this clamps whatever still arrives.
+  const purposeLine =
+    purpose && purpose.length > 200 ? `${purpose.slice(0, 200)}…` : purpose;
 
   const onAllow = async () => {
     // The executor re-validates fail-closed (catalog resolution, live price,
@@ -168,7 +174,7 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
         <ToolContent>
           <div className="px-4 pt-3 text-sm">
             <div className="font-medium">
-              {purpose ?? "Paid API call"} · ${priceUsdc} USDC
+              {purposeLine ?? "Paid API call"} · ${priceUsdc} USDC
             </div>
             <div className="mt-1 break-all font-mono text-muted-foreground text-xs">
               {serviceId} · {(method ?? "POST").toUpperCase()} {path}

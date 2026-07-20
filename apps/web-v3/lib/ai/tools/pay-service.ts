@@ -43,8 +43,9 @@ export const payService = tool({
       .describe("The listed per-call price the user agreed to (e.g. 0.02)."),
     purpose: z
       .string()
+      .max(200)
       .describe(
-        "One short line for the confirm card: what this call fetches for the user."
+        "One short line (max 200 chars) for the confirm card: what this call fetches for the user."
       ),
   }),
   // NO execute — client-executed via the zkLogin session key (see file header).
