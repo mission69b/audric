@@ -52,6 +52,8 @@ type CatalogEndpoint = {
   method: string;
   path: string;
   price: string;
+  /** Seller's request schema (JSON Schema) — used to fail closed on a missing body. */
+  schema?: { required?: string[] };
 };
 
 type CatalogService = {
@@ -191,6 +193,30 @@ export async function payServiceCall(opts: {
   }
 
   const method = (opts.method ?? endpoint.method ?? "POST").toUpperCase();
+
+  // Fail closed BEFORE the payment handshake when the model skipped required
+  // body fields (Kimi omitted the body entirely, 2026-07-20: the seller 422s
+  // and the turn burns a confirm tap for nothing). Serve-side validation
+  // never charges on a 422, but the honest move is to not even dial.
+  const required = endpoint.schema?.required ?? [];
+  if (required.length > 0 && method !== "GET" && method !== "HEAD") {
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      parsed = opts.body ? JSON.parse(opts.body) : null;
+    } catch {
+      throw new Error(
+        "The request body is not valid JSON — nothing was paid. Rebuild it from the endpoint's requestSchema."
+      );
+    }
+    const missing = required.filter(
+      (k) => parsed?.[k] == null || parsed[k] === ""
+    );
+    if (missing.length > 0) {
+      throw new Error(
+        `The request body is missing required field(s): ${missing.join(", ")} — nothing was paid. Build the body from the endpoint's requestSchema and ask the user for anything you don't know.`
+      );
+    }
+  }
   // Direct sellers rarely serve CORS headers (JMPR: none), so browser calls
   // go through the gateway's catalog-pinned relay — the 402 handshake passes
   // through untouched and payment still settles client → seller. The relay
@@ -214,14 +240,22 @@ export async function payServiceCall(opts: {
   });
 
   const ok = result.status >= 200 && result.status < 300;
+  // Charge honesty: `paid` is receipt-derived. A seller-side reject with no
+  // settlement (e.g. a 422 from body validation) means NOTHING was charged —
+  // the model must never tell the user they were (founder hit exactly that
+  // misreport, 2026-07-20).
   return {
     paid: result.paid,
     response: truncateResponse(result.body),
     digest: result.receipt?.reference,
     direct: service.direct === true,
-    chargedUsdc: result.cost ?? catalogPrice,
+    chargedUsdc: result.paid ? (result.cost ?? catalogPrice) : 0,
     error: ok
       ? undefined
-      : `The service answered HTTP ${result.status} — relay its error to the user honestly.`,
+      : `The service answered HTTP ${result.status}${
+          result.paid
+            ? " AFTER payment settled — relay its error honestly and note the charge"
+            : " and NO payment was made (chargedUsdc is 0) — tell the user they were NOT charged, then fix the request and re-offer"
+        }.`,
   };
 }
