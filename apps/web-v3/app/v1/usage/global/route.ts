@@ -73,7 +73,9 @@ async function computeGlobalUsage(): Promise<GlobalUsage> {
       outputTokens: sql<number>`coalesce(sum(${apiUsageEvent.outputTokens}), 0)::bigint`,
       costMicros: sql<number>`coalesce(sum(${apiUsageEvent.costMicros}), 0)::bigint`,
       models: sql<number>`count(distinct ${apiUsageEvent.model})::bigint`,
-      sinceEpoch: sql<number | null>`extract(epoch from min(${apiUsageEvent.createdAt}))`,
+      sinceEpoch: sql<
+        number | null
+      >`extract(epoch from min(${apiUsageEvent.createdAt}))`,
     })
     .from(apiUsageEvent);
 
@@ -142,9 +144,9 @@ async function computeGlobalUsage(): Promise<GlobalUsage> {
   const dayTokens = hourly.reduce((n, h) => n + Number(h.tokens), 0);
   const dayRequests = hourly.reduce((n, h) => n + Number(h.requests), 0);
   const since =
-    totals.sinceEpoch !== null
-      ? new Date(Number(totals.sinceEpoch) * 1000)
-      : null;
+    totals.sinceEpoch === null
+      ? null
+      : new Date(Number(totals.sinceEpoch) * 1000);
 
   const allTokens = Number(totals.inputTokens) + Number(totals.outputTokens);
   const emptySlice = (): UsageSlice => ({ requests: 0, tokens: 0 });

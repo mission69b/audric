@@ -123,7 +123,9 @@ export function resolveRouterModel({
   system?: string;
 }): RouteResolution {
   const isOpen = modelId === "t2000/auto-open";
-  const escalation = isOpen ? ROUTER_OPEN_ESCALATION_MODEL : ROUTER_FRONTIER_MODEL;
+  const escalation = isOpen
+    ? ROUTER_OPEN_ESCALATION_MODEL
+    : ROUTER_FRONTIER_MODEL;
   const bulk = isOpen ? ROUTER_OPEN_BULK_MODEL : ROUTER_BULK_MODEL;
 
   const totalChars =
