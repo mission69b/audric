@@ -47,6 +47,9 @@ export type CatalogEndpoint = {
    *  copy where a JSON schema fails them (Kimi dropped `body` twice,
    *  2026-07-21). */
   sampleBody?: string;
+  /** Declared 200-response JSON schema — the deliverable's type contract
+   *  (@t2000/serve `.response()`), when the seller publishes one. */
+  responseSchema?: Record<string, unknown>;
 };
 
 export type CatalogService = {

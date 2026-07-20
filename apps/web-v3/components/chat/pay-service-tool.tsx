@@ -17,6 +17,7 @@ import type { ChatMessage } from "@/lib/types";
 import {
   type EndpointSchemaInfo,
   fetchEndpointSchema,
+  fetchResponseSchema,
   PAY_SERVICE_CAP_USD,
   payServiceCall,
 } from "@/lib/wallet/pay-service";
@@ -80,6 +81,95 @@ function svgDataUri(svg: string): string {
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
 type Swatch = { name?: string; hex: string };
+
+/** The slice of a declared response schema the renderer reads. */
+type ResponseSchemaNode = {
+  type?: string;
+  properties?: Record<string, ResponseSchemaNode>;
+  items?: ResponseSchemaNode;
+  contentMediaType?: string;
+  format?: string;
+};
+
+type Deliverables = {
+  svgs: { label: string; svg: string }[];
+  palettes: { label: string; colors: Swatch[] }[];
+};
+
+/**
+ * Render deliverables by the seller's DECLARED response schema (@t2000/serve
+ * `.response()`, carried through the catalog) — the structural replacement
+ * for content sniffing: `contentMediaType: "image/svg+xml"` names an SVG,
+ * `format: "color"` names a hex color. The same shape guards as the
+ * heuristics still apply (a declaration is a rendering hint, not a safety
+ * exemption — hostile sellers exist).
+ */
+function extractDeclared(
+  response: unknown,
+  schema: ResponseSchemaNode
+): Deliverables {
+  const svgs: Deliverables["svgs"] = [];
+  const palettes: Deliverables["palettes"] = [];
+  const visit = (value: unknown, node: ResponseSchemaNode, label: string) => {
+    if (svgs.length >= 3 && palettes.length >= 2) {
+      return;
+    }
+    if (
+      node.contentMediaType === "image/svg+xml" &&
+      typeof value === "string" &&
+      svgs.length < 3
+    ) {
+      const s = value.trim();
+      if (s.startsWith("<svg") && s.endsWith("</svg>") && s.length <= 50_000) {
+        svgs.push({ label, svg: s });
+      }
+      return;
+    }
+    if (Array.isArray(value) && node.items && palettes.length < 2) {
+      const items = node.items;
+      if (
+        items.format === "color" &&
+        value.every((v) => typeof v === "string" && HEX_COLOR.test(v))
+      ) {
+        palettes.push({
+          label,
+          colors: (value as string[]).map((hex) => ({ hex })),
+        });
+        return;
+      }
+      const colorKey = Object.entries(items.properties ?? {}).find(
+        ([, p]) => p.format === "color"
+      )?.[0];
+      if (colorKey) {
+        const colors: Swatch[] = [];
+        for (const v of value) {
+          const row = v as Record<string, unknown>;
+          const hex = row?.[colorKey];
+          if (typeof hex !== "string" || !HEX_COLOR.test(hex)) {
+            return;
+          }
+          colors.push({
+            hex,
+            name: typeof row.name === "string" ? row.name : undefined,
+          });
+        }
+        palettes.push({ label, colors });
+        return;
+      }
+      for (const v of value) {
+        visit(v, items, label);
+      }
+      return;
+    }
+    if (node.properties && value && typeof value === "object") {
+      for (const [k, child] of Object.entries(node.properties)) {
+        visit((value as Record<string, unknown>)[k], child, k);
+      }
+    }
+  };
+  visit(response, schema, "deliverable");
+  return { svgs, palettes };
+}
 
 /**
  * Collect color palettes out of a paid response — arrays of hex strings
@@ -168,6 +258,11 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
   // undefined = loading · null = no schema (fall back to the model's body)
   const [schema, setSchema] = useState<EndpointSchemaInfo | null | undefined>();
   const [form, setForm] = useState<Record<string, string>>({});
+  // Declared deliverable contract (undefined = loading, null = seller
+  // doesn't declare one → the sniffing heuristics stay as fallback).
+  const [responseSchema, setResponseSchema] = useState<
+    ResponseSchemaNode | null | undefined
+  >();
   const { toolCallId, state } = part;
   const widthClass = "w-[min(100%,450px)]";
 
@@ -205,6 +300,22 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
     };
   }, [isAwaitingConfirm, inputServiceId, inputPath, inputMethod, inputBody]);
 
+  const isDelivered = state === "output-available";
+  useEffect(() => {
+    if (!(isDelivered && inputServiceId && inputPath)) {
+      return;
+    }
+    let cancelled = false;
+    fetchResponseSchema(inputServiceId, inputPath).then((info) => {
+      if (!cancelled) {
+        setResponseSchema((info as ResponseSchemaNode | null) ?? null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isDelivered, inputServiceId, inputPath]);
+
   async function settle(output: unknown) {
     await addToolResult({
       tool: "pay_service",
@@ -230,9 +341,26 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
         : typeof out.response === "string"
           ? out.response
           : JSON.stringify(out.response, null, 2);
-    const svgs = out?.denied || out?.error ? [] : extractSvgs(out?.response);
-    const palettes =
-      out?.denied || out?.error ? [] : extractPalettes(out?.response);
+    // Declared contract first (structural), sniffing only for sellers that
+    // don't declare one. While the schema fetch is in flight (undefined),
+    // sniff — the declared render replaces it a beat later.
+    const failed = Boolean(out?.denied || out?.error);
+    let declared: Deliverables | null =
+      !failed && responseSchema
+        ? extractDeclared(out?.response, responseSchema)
+        : null;
+    if (
+      declared &&
+      declared.svgs.length === 0 &&
+      declared.palettes.length === 0
+    ) {
+      // Schema declared but nothing annotated — sniffing still applies.
+      declared = null;
+    }
+    const svgs = failed ? [] : (declared?.svgs ?? extractSvgs(out?.response));
+    const palettes = failed
+      ? []
+      : (declared?.palettes ?? extractPalettes(out?.response));
     return (
       <div className={widthClass} key={toolCallId}>
         <Tool className="w-full">

@@ -64,6 +64,10 @@ export const findPaidServices = tool({
           // alone (two founder turns, 2026-07-21); a literal fill-in string
           // is harder to drop.
           bodyTemplate: e.sampleBody,
+          // Declared deliverable contract (when the seller publishes one) —
+          // what a paid call returns, so you can tell the user what they'll
+          // get BEFORE they pay.
+          responseSchema: e.responseSchema,
         })),
       })),
     };

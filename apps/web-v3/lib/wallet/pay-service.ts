@@ -63,6 +63,14 @@ type CatalogEndpoint = {
   price: string;
   /** Seller's request schema (JSON Schema) — used to fail closed on a missing body. */
   schema?: EndpointSchemaInfo;
+  /**
+   * Seller's declared 200-response schema (JSON Schema) — the deliverable's
+   * TYPE contract (@t2000/serve `.response()`, carried through catalog
+   * ingest). contentMediaType / format annotations tell the receipt card
+   * what it's rendering, so deliverables display by declaration, not
+   * sniffing.
+   */
+  responseSchema?: Record<string, unknown>;
 };
 
 type CatalogService = {
@@ -149,6 +157,23 @@ export async function fetchEndpointSchema(
     return schema?.properties && Object.keys(schema.properties).length > 0
       ? schema
       : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The endpoint's declared 200-response schema (null = seller doesn't declare
+ * one / catalog unreachable). The receipt card renders deliverables from
+ * these annotations; sellers without one fall back to content sniffing.
+ */
+export async function fetchResponseSchema(
+  serviceId: string,
+  path: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const resolved = await resolveEndpoint(serviceId, path);
+    return resolved?.endpoint.responseSchema ?? null;
   } catch {
     return null;
   }
