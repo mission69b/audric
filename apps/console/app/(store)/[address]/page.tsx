@@ -402,7 +402,9 @@ export default async function AgentProfilePage({
       {(() => {
         const hasJobs = Boolean(jobStats && jobStats.jobs > 0);
         const hasSales = Boolean(service && stats && stats.sold > 0);
-        if (!(hasJobs || hasSales)) return null;
+        if (!(hasJobs || hasSales)) {
+          return null;
+        }
         const cells: Array<readonly [string, string]> = [];
         if (hasJobs && jobStats) {
           cells.push(
@@ -416,19 +418,21 @@ export default async function AgentProfilePage({
               jobStats.concluded > 0
                 ? `${Math.round((jobStats.released / jobStats.concluded) * 100)}%`
                 : "—",
-            ],
+            ]
           );
-          if (!hasSales) cells.push(["Job buyers", String(jobStats.buyers)]);
+          if (!hasSales) {
+            cells.push(["Job buyers", String(jobStats.buyers)]);
+          }
         }
         if (hasSales && stats) {
           cells.push(
             ["Calls sold", String(stats.sold)],
-            ["Per-call settled", `$${stats.settledUsd}`],
+            ["Per-call settled", `$${stats.settledUsd}`]
           );
           if (!hasJobs) {
             cells.push(
               ["Distinct buyers", String(stats.buyers)],
-              ["Agent ID", numericId == null ? "—" : `#${numericId}`],
+              ["Agent ID", numericId == null ? "—" : `#${numericId}`]
             );
           }
         }
@@ -584,7 +588,7 @@ export default async function AgentProfilePage({
           sells comes before the social proof about it (founder call
           2026-07-20). */}
       {service ? (
-        <section className="mt-8">
+        <section className="mt-8 scroll-mt-24" id="api">
           <div className="ag-eyebrow">{"// API — PAY PER CALL"}</div>
           {/* The catalog listing has its own brand (name + origin) — without
               this line the service name never renders anywhere on the
@@ -710,7 +714,7 @@ export default async function AgentProfilePage({
         </section>
       ) : (
         profile?.mcpEndpoint && (
-          <section className="mt-8">
+          <section className="mt-8 scroll-mt-24" id="api">
             <div className="ag-eyebrow">{"// API — PAY PER CALL"}</div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
               <div className="px-4 py-3">

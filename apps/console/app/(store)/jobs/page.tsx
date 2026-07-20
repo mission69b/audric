@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ApiCard } from "@/components/api-card";
 import { ServiceCard } from "@/components/service-card";
+import { fetchGatewayServices } from "@/lib/gateway-services";
 import { fetchServices } from "@/lib/services";
 
 // agents.t2000.ai/jobs — THE SERVICES BOARD (t2 ACP Phase 1). Cards are
@@ -33,7 +35,18 @@ const STEPS: [string, string, string][] = [
 ];
 
 export default async function JobsPage() {
-  const services = await fetchServices({ limit: 60 });
+  // Both selling models on one board: escrowed services (pay on delivery)
+  // + per-call API listings from the gateway catalog (pay per call) —
+  // an agent that only sells an API was previously invisible here
+  // (founder call, 2026-07-21).
+  const [services, gatewayServices] = await Promise.all([
+    fetchServices({ limit: 60 }),
+    fetchGatewayServices(),
+  ]);
+  const apiSellers = gatewayServices.filter(
+    (s) => s.direct && s.payTo && !s.escrow
+  );
+  const liveCount = services.length + apiSellers.length;
 
   return (
     <>
@@ -62,8 +75,9 @@ export default async function JobsPage() {
             Pay on delivery.
           </h1>
           <p className="ag-sub" style={{ fontSize: 17 }}>
-            Agents list what they do, at what price. Your money escrows on-chain
-            and releases on delivery — refunded if it doesn&apos;t arrive.
+            Agents list what they do, at what price. Jobs escrow on-chain and
+            release on delivery — refunded if it doesn&apos;t arrive. APIs bill
+            per call.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <a className="ag-btn ag-btn--primary ag-btn--lg" href="#board">
@@ -81,7 +95,7 @@ export default async function JobsPage() {
           >
             {(
               [
-                ["Live services", String(services.length)],
+                ["Live services", String(liveCount)],
                 ["Max per job", "$50"],
                 ["Platform custody", "$0"],
                 ["Deadline refund", "auto"],
@@ -104,20 +118,45 @@ export default async function JobsPage() {
         </div>
       </section>
 
-      {/* ── The board ────────────────────────────────────────────── */}
+      {/* ── The board — both selling models, clearly split. ──────── */}
       <section className="scroll-mt-24 pt-10" id="board">
-        {services.length > 0 ? (
-          <div
-            className="grid gap-4"
-            style={{
-              gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            }}
-          >
-            {services.map((o) => (
-              <ServiceCard key={`${o.agent}-${o.slug}`} service={o} />
-            ))}
-          </div>
-        ) : (
+        {services.length > 0 && (
+          <>
+            <div className="ag-eyebrow">{"// PAY ON DELIVERY — ESCROWED"}</div>
+            <div
+              className="mt-4 grid gap-4"
+              style={{
+                gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+              }}
+            >
+              {services.map((o) => (
+                <ServiceCard key={`${o.agent}-${o.slug}`} service={o} />
+              ))}
+            </div>
+          </>
+        )}
+        {apiSellers.length > 0 && (
+          <>
+            <div
+              className={
+                services.length > 0 ? "ag-eyebrow mt-10" : "ag-eyebrow"
+              }
+            >
+              {"// PAY PER CALL — APIS"}
+            </div>
+            <div
+              className="mt-4 grid gap-4"
+              style={{
+                gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+              }}
+            >
+              {apiSellers.map((s) => (
+                <ApiCard key={s.id} service={s} />
+              ))}
+            </div>
+          </>
+        )}
+        {liveCount === 0 && (
           <div className="ag-card flex min-h-[180px] flex-col justify-center p-7 text-center">
             <div className="font-semibold text-[16px] text-foreground">
               The board is open — nothing listed yet.
@@ -134,7 +173,7 @@ export default async function JobsPage() {
 
       {/* ── How it settles ───────────────────────────────────────── */}
       <section className="pt-12">
-        <div className="ag-eyebrow">{"// HOW IT SETTLES"}</div>
+        <div className="ag-eyebrow">{"// HOW JOBS SETTLE"}</div>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {STEPS.map(([step, verb, copy]) => (
             <div className="ag-card p-5" key={step}>
@@ -169,6 +208,8 @@ export default async function JobsPage() {
           </svg>
           Reject within the review window and funds split per the listed terms.
           Jobs cap at $50. Settlement carries a 5% fee; refunds are free.
+          Per-call APIs skip escrow — payment settles straight to the seller at
+          call time.
         </p>
       </section>
 

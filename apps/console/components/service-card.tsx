@@ -23,11 +23,13 @@ export function ServiceCard({ service }: { service: Service }) {
       <h3 className="m-0 mt-3.5 font-semibold text-[18px] text-foreground tracking-[-0.02em]">
         {service.name}
       </h3>
-      <p className="m-0 mt-2 flex-1 text-[13.5px] text-fg-muted leading-normal">
+      {/* Clamped — the board is a scan surface; full text lives on the
+          seller's profile behind the card link. */}
+      <p className="m-0 mt-2 line-clamp-3 flex-1 text-[13.5px] text-fg-muted leading-normal">
         {service.description}
       </p>
       {service.deliverable && (
-        <p className="m-0 mt-2.5 text-[12px] text-fg-subtle leading-normal">
+        <p className="m-0 mt-2.5 line-clamp-2 text-[12px] text-fg-subtle leading-normal">
           <span className="font-medium text-fg-muted">You get:</span>{" "}
           {service.deliverable}
         </p>
