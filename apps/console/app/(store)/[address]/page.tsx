@@ -392,70 +392,66 @@ export default async function AgentProfilePage({
         operator&apos;s own claim.
       </div>
 
-      {/* Job track record — stat cards from the event-indexed escrow ledger
-          (Phase 2 §5.3): settled jobs, escrowed USDC released, distinct
-          buyers, delivered rate. Chain truth, same source as Scan. */}
-      {jobStats && jobStats.jobs > 0 && (
-        <div className="ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-4">
-          {(
+      {/* Track record — ONE stat row combining both settlement ledgers:
+          escrow jobs (event indexer, Phase 2 §5.3) and per-call x402 sales
+          (payment ledger, S.608). When both ledgers have volume the
+          redundant cells (two buyer counts that can't be deduped across
+          ledgers, Agent ID already in the header) are dropped so it stays a
+          single row (founder call 2026-07-20). Chain truth, same source as
+          Scan. */}
+      {(() => {
+        const hasJobs = Boolean(jobStats && jobStats.jobs > 0);
+        const hasSales = Boolean(service && stats && stats.sold > 0);
+        if (!(hasJobs || hasSales)) return null;
+        const cells: Array<readonly [string, string]> = [];
+        if (hasJobs && jobStats) {
+          cells.push(
+            ["Jobs settled", String(jobStats.released)],
             [
-              ["Jobs settled", String(jobStats.released)],
-              [
-                "Escrow released",
-                `$${(jobStats.settledMicroUsdc / 1_000_000).toFixed(2)}`,
-              ],
-              ["Job buyers", String(jobStats.buyers)],
-              [
-                "Delivered rate",
-                jobStats.concluded > 0
-                  ? `${Math.round((jobStats.released / jobStats.concluded) * 100)}%`
-                  : "—",
-              ],
-            ] as const
-          ).map(([k, v], i) => (
-            <div
-              className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
-              key={k}
-            >
-              <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
-                {k}
-              </div>
-              <div className="mt-1.5 font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
-                {v}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Reputation strip — the store-era trust surface (S.608 design,
-          founder-requested back): every number derives from the payment
-          ledger (receipts, not reviews), rendered FIRST because the
-          marketplace story leads and the registry plumbing follows. */}
-      {service && stats && stats.sold > 0 && (
-        <div className="ag-card mt-6 grid grid-cols-2 overflow-hidden sm:grid-cols-4">
-          {(
+              "Escrow released",
+              `$${(jobStats.settledMicroUsdc / 1_000_000).toFixed(2)}`,
+            ],
             [
-              ["Sold", String(stats.sold)],
+              "Delivered rate",
+              jobStats.concluded > 0
+                ? `${Math.round((jobStats.released / jobStats.concluded) * 100)}%`
+                : "—",
+            ],
+          );
+          if (!hasSales) cells.push(["Job buyers", String(jobStats.buyers)]);
+        }
+        if (hasSales && stats) {
+          cells.push(
+            ["Calls sold", String(stats.sold)],
+            ["Per-call settled", `$${stats.settledUsd}`],
+          );
+          if (!hasJobs) {
+            cells.push(
               ["Distinct buyers", String(stats.buyers)],
-              ["Settled", `$${stats.settledUsd}`],
               ["Agent ID", numericId == null ? "—" : `#${numericId}`],
-            ] as const
-          ).map(([k, v], i) => (
-            <div
-              className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
-              key={k}
-            >
-              <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
-                {k}
+            );
+          }
+        }
+        return (
+          <div
+            className={`ag-card mt-6 grid grid-cols-2 overflow-hidden ${cells.length === 5 ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}
+          >
+            {cells.map(([k, v], i) => (
+              <div
+                className={`px-5 py-4 ${i > 0 ? "border-border/50 border-l" : ""}`}
+                key={k}
+              >
+                <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
+                  {k}
+                </div>
+                <div className="mt-1.5 font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
+                  {v}
+                </div>
               </div>
-              <div className="mt-1.5 font-semibold text-[22px] text-foreground tabular-nums tracking-tight">
-                {v}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Services — structured listings on the Agent ID (t2 ACP
           Phase 1). Each card is hireable in-place: the requirements form +
