@@ -43,6 +43,10 @@ export type CatalogEndpoint = {
   price: string;
   /** Request-body JSON schema when the catalog carries one. */
   schema?: Record<string, unknown>;
+  /** Gateway-computed example body — a fill-in template weaker models can
+   *  copy where a JSON schema fails them (Kimi dropped `body` twice,
+   *  2026-07-21). */
+  sampleBody?: string;
 };
 
 export type CatalogService = {
@@ -182,7 +186,7 @@ ${rows}
 Rules (strict):
 - If a FREE tool fully covers what they asked — web_search, the crypto tools, stock_analysis, generate_image — say so in one line and let them choose. Never charge for what's free without saying so.
 - pay_service BUYS AN API RESPONSE — it is NEVER how you send money to a person. "Send/transfer/pay X to <person/address>" is ALWAYS send_transfer, no exceptions.
-- Call \`find_paid_services\` first to get a service's endpoints, exact prices, and request-body schemas. Build the request body FROM THE SCHEMA — several sellers charge before validating, so a guessed body is a paid failure.
+- Call \`find_paid_services\` first to get a service's endpoints, exact prices, and request-body schemas. YOU MUST PASS \`body\` to pay_service for any POST endpoint with required fields: take the endpoint's \`bodyTemplate\`, replace every placeholder with the user's actual values, and pass the result as the \`body\` argument (a JSON string). A pay_service call with a missing/incomplete body is refused before payment — the purchase fails and you must re-collect and retry.
 - STATE THE PRICE before calling pay_service: one short line — what the endpoint returns + "$X per call". For PROXIED services add "no charge if it fails"; for DIRECT sellers add "settles straight to the seller — no automatic refund". NEVER call pay_service before the user has clearly asked for or agreed to the purchase. The user then taps Allow on a confirm card — that tap is the payment.
 - One call per agreement. Never chain a second paid call (a detail lookup, a retry, a booking) without a fresh offer + agreement. NEVER call booking/reserve/cancel endpoints unless the user explicitly asked to book — prefer search/read endpoints.
 - NEVER invent, substitute, or restyle a service; only the ones listed here exist. If none fits, say so and answer with your own tools.

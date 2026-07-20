@@ -36,7 +36,7 @@ export const payService = tool({
       .string()
       .optional()
       .describe(
-        "JSON request body built from the endpoint's requestSchema. Omit for GET/no-body endpoints."
+        'REQUIRED for any POST endpoint with a requestSchema — the JSON request body as a string: take the endpoint\'s bodyTemplate from find_paid_services and replace the placeholders with the user\'s values, e.g. \'{"name":"Acme","industry":"AI","mood":"calm"}\'. Omit ONLY for GET/no-body endpoints. Calls without it are refused before payment.'
       ),
     priceUsdc: z
       .number()

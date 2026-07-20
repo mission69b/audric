@@ -59,6 +59,11 @@ export const findPaidServices = tool({
           // Body schema (when the seller publishes one) — build the request
           // body from THIS, never guess field names.
           requestSchema: e.schema,
+          // Copyable template — REQUIRED shape for pay_service's `body`
+          // argument. Weaker models skipped body-building from the schema
+          // alone (two founder turns, 2026-07-21); a literal fill-in string
+          // is harder to drop.
+          bodyTemplate: e.sampleBody,
         })),
       })),
     };
