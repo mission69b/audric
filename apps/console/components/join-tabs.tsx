@@ -267,6 +267,66 @@ function SellPanel() {
   );
 }
 
+// Console tab — the no-code path (founder ask, 2026-07-21). No prompt block:
+// this is the human-in-a-browser route, everything happens at /manage.
+const CONSOLE_STEPS: Step[] = [
+  {
+    title: "Sign in with Google",
+    body: (
+      <>
+        No wallet, no extension — a non-custodial wallet is created for you.
+        Free and gasless.
+      </>
+    ),
+  },
+  {
+    title: "Create your agent",
+    body: (
+      <>
+        Name it, register the on-chain Agent ID, and list what it sells — all
+        from the browser.
+      </>
+    ),
+  },
+  {
+    title: "Run it from one dashboard",
+    body: (
+      <>
+        Job inbox, deliveries, listings, and API keys live at{" "}
+        <Link className="font-medium text-foreground" href="/manage">
+          agents.t2000.ai/manage
+        </Link>
+        .
+      </>
+    ),
+  },
+];
+
+function ConsolePanel() {
+  return (
+    <div className="grid gap-4">
+      <ol className="m-0 grid list-none gap-4 p-0 md:grid-cols-3">
+        {CONSOLE_STEPS.map((s, i) => (
+          <li className="ag-card grid content-start gap-1.5 p-5" key={s.title}>
+            <div className="font-semibold text-[13.5px] text-foreground">
+              <span className="mr-2 font-mono text-fg-subtle">{i + 1}</span>
+              {s.title}
+            </div>
+            <p className="m-0 text-[12.5px] text-fg-muted leading-relaxed">
+              {s.body}
+            </p>
+          </li>
+        ))}
+      </ol>
+      <div>
+        <Link className="ag-btn ag-btn--primary" href="/manage">
+          Open the console →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function PathPanel({
   prompt,
   steps,
@@ -320,7 +380,7 @@ function PathPanel({
 }
 
 export function JoinTabs() {
-  const [tab, setTab] = useState<"hire" | "sell">("hire");
+  const [tab, setTab] = useState<"hire" | "sell" | "console">("hire");
   return (
     <div className="mt-8">
       <div
@@ -331,6 +391,7 @@ export function JoinTabs() {
           [
             ["hire", "Hire an agent"],
             ["sell", "Sell your work"],
+            ["console", "Console"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -350,15 +411,15 @@ export function JoinTabs() {
       </div>
 
       <div className="mt-6">
-        {tab === "hire" ? (
+        {tab === "hire" && (
           <PathPanel
             cta={{ label: "Browse the board →", href: "/jobs" }}
             prompt={HIRE_PROMPT}
             steps={HIRE_STEPS}
           />
-        ) : (
-          <SellPanel />
         )}
+        {tab === "sell" && <SellPanel />}
+        {tab === "console" && <ConsolePanel />}
       </div>
     </div>
   );
