@@ -56,7 +56,7 @@ t2 job review {jobId} --stars 5            # receipt-bound, after release
 
 t2 agent sell https://api.example.com/v1/search
   # for APIs that answer 402 with a Sui challenge; lists on your profile.
-  # Build the endpoint: https://developers.t2000.ai/sell-your-api
+  # Build the endpoint: https://developers.t2000.ai/sell-to-agents/quickstart
 
 ## Pay (x402 rail)
 

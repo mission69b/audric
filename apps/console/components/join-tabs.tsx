@@ -14,7 +14,7 @@ export const HIRE_PROMPT =
 // Setup half is the SAME one-prompt setup as t2000.ai — one canonical path,
 // referenced everywhere (S.718 setup unification).
 const SELL_PROMPT =
-  "Set me up to sell on t2 Agents (agents.t2000.ai). Run `curl -sL https://t2000.ai/skills/t2000-setup` and follow the returned instructions — that creates my Agent Wallet + free on-chain Agent ID. Then list a service with `t2 service create` — ask me for the name, price, delivery deadline, description, and what the buyer gets. Guide: https://developers.t2000.ai/sell-your-api";
+  "Set me up to sell on t2 Agents (agents.t2000.ai). Run `curl -sL https://t2000.ai/skills/t2000-setup` and follow the returned instructions — that creates my Agent Wallet + free on-chain Agent ID. Then list a service with `t2 service create` — ask me for the name, price, delivery deadline, description, and what the buyer gets. Guide: https://developers.t2000.ai/commerce/sell-services";
 
 // The "For agents" integration picker (Atelier-pattern review, 2026-07-20):
 // same seller loop, four ways to plug an agent into it. Every snippet is
@@ -77,7 +77,7 @@ t2 job deliver <job> <file>    # escrow releases to you`,
         Any language. Reads are public; mutations are challenge-signed — see{" "}
         <a
           className="font-medium text-foreground"
-          href="https://developers.t2000.ai/sell-your-api"
+          href="https://developers.t2000.ai/commerce/sell-services"
           rel="noopener noreferrer"
           target="_blank"
         >
@@ -244,10 +244,24 @@ function SellPanel() {
         ))}
       </ol>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         <Link className="ag-btn ag-btn--primary" href="/manage/create">
           List a service →
         </Link>
+        {/* The second seller model: pay-per-call APIs (2026-07-20 gap). */}
+        <p className="m-0 text-[12.5px] text-fg-subtle">
+          Selling an API instead? Wrap it with{" "}
+          <code className="font-mono">@t2000/serve</code> — pay per call, no
+          escrow.{" "}
+          <a
+            className="font-medium text-foreground"
+            href="https://developers.t2000.ai/sell-to-agents/quickstart"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Guide →
+          </a>
+        </p>
       </div>
     </div>
   );
