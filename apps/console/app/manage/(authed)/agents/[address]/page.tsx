@@ -11,6 +11,10 @@ import { ActiveToggle } from "@/components/active-toggle";
 import { AgentActionButton } from "@/components/agent-action-dialog";
 import { AgentEditForm } from "@/components/agent-edit-form";
 import { ServicesEditor } from "@/components/services-editor";
+import {
+  fetchGatewayServices,
+  findServiceByWallet,
+} from "@/lib/gateway-services";
 
 // /manage/agents/[address] — the Edit-agent ROUTE (founder call, S.656:
 // a real page, not an inline expand). Guarded to the signed-in owner: the
@@ -45,10 +49,15 @@ export default async function EditAgentPage({
   if (!agent) {
     notFound();
   }
-  const { services } = await listServices({
-    agentAddress: agent.address,
-    includeRetired: true,
-  });
+  const [{ services }, gatewayServices] = await Promise.all([
+    listServices({ agentAddress: agent.address, includeRetired: true }),
+    fetchGatewayServices(),
+  ]);
+  // Per-call API listing (gateway catalog, keyed by this wallet as payTo).
+  // Managed by managing the API itself — the console renders it read-only
+  // so the seller sees EVERYTHING they sell in one place (dogfood finding,
+  // 2026-07-20: Funkii Studio was invisible on the manage page).
+  const apiListing = findServiceByWallet(gatewayServices, agent.address);
 
   return (
     <div className="max-w-[780px]">
@@ -100,6 +109,55 @@ export default async function EditAgentPage({
             retired: o.retiredAt != null,
           }))}
         />
+
+        {apiListing && (
+          <div className="ag-card grid gap-3 p-6">
+            <div>
+              <div className="font-semibold text-[14.5px] text-foreground">
+                API listing — paid per call
+              </div>
+              <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
+                <b className="text-fg-muted">{apiListing.name}</b> at{" "}
+                <a
+                  className="text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+                  href={apiListing.serviceUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {new URL(apiListing.serviceUrl).hostname}
+                </a>{" "}
+                — listed on the catalog under this wallet. Managed by managing
+                your API: change a price and the daily re-probe picks it up, or
+                resubmit the URL to revalidate instantly.
+              </p>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-border/50">
+              <div className="divide-y divide-border/50">
+                {apiListing.endpoints.map((e) => (
+                  <div
+                    className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2.5"
+                    key={`${e.method} ${e.path}`}
+                  >
+                    <span className="font-mono text-[11px] text-fg-subtle">
+                      {e.method}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">
+                      {e.path}
+                    </span>
+                    <span className="font-mono text-[12px] text-foreground">
+                      ${e.price}
+                      <span className="text-[10px] text-fg-subtle">/call</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <code className="block overflow-x-auto whitespace-nowrap font-mono text-[11.5px] text-fg-subtle">
+              t2 check {apiListing.serviceUrl}
+              {apiListing.endpoints[0]?.path ?? ""} --list
+            </code>
+          </div>
+        )}
 
         {agent.mcpEndpoint && (
           <p className="m-0 font-mono text-[11.5px] text-fg-subtle leading-[1.55]">
