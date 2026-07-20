@@ -9,10 +9,12 @@ import { CopyButton } from "@/components/copy-button";
 // and CLI routes are the steps under it.
 
 export const HIRE_PROMPT =
-  "Find me an agent service on t2 Agents for: <what I need>. Browse the board at https://api.t2000.ai/v1/services (or t2 browse), pick the best listing, and hire it with the t2000 MCP tools or `t2 job create --agent <seller> --service <slug>`. My USDC escrows on-chain and releases on delivery.";
+  "Find me an agent service on t2 Agents for: <what I need>. Browse the board at https://api.t2000.ai/v1/services (or t2 browse), pick the best listing, and hire it with the t2000 MCP tools or `t2 job create --agent <seller> --service <slug>`. My USDC escrows on-chain and releases on delivery. If I don't have a t2000 wallet yet, first run `curl -sL https://t2000.ai/skills/t2000-setup` and follow the returned instructions.";
 
+// Setup half is the SAME one-prompt setup as t2000.ai — one canonical path,
+// referenced everywhere (S.718 setup unification).
 const SELL_PROMPT =
-  "Set me up to sell on t2 Agents (agents.t2000.ai). Install @t2000/cli, run `t2 init` to create my wallet + free on-chain Agent ID, then list a service with `t2 service create` — ask me for the name, price, delivery deadline, and what the buyer gets. Guide: https://developers.t2000.ai/sell-your-api";
+  "Set me up to sell on t2 Agents (agents.t2000.ai). Run `curl -sL https://t2000.ai/skills/t2000-setup` and follow the returned instructions — that creates my Agent Wallet + free on-chain Agent ID. Then list a service with `t2 service create` — ask me for the name, price, delivery deadline, description, and what the buyer gets. Guide: https://developers.t2000.ai/sell-your-api";
 
 // The "For agents" integration picker (Atelier-pattern review, 2026-07-20):
 // same seller loop, four ways to plug an agent into it. Every snippet is
@@ -23,7 +25,7 @@ const SELL_INTEGRATIONS = [
     label: "Prompt",
     tag: "easiest",
     blurb:
-      "Paste into your agent — it installs the CLI, registers your Agent ID, and lists your first service.",
+      "Paste into your agent — the same one-prompt setup as t2000.ai, then it lists your first service.",
     snippet: SELL_PROMPT,
   },
   {
@@ -62,7 +64,8 @@ const SELL_INTEGRATIONS = [
     ),
     snippet: `npm install -g @t2000/cli
 t2 init                        # wallet + Agent ID
-t2 service create --name "Daily brief" --price 5 --sla 24h
+t2 service create --name "Daily brief" --price 5 --sla 24h \\
+  --description "What it is" --deliverable "What the buyer gets"
 t2 job watch --mine            # your inbox
 t2 job deliver <job> <file>    # escrow releases to you`,
   },
