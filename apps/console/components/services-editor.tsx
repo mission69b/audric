@@ -86,7 +86,9 @@ export function ServicesEditor({
 }) {
   const [services, setServices] = useState(initial);
   const [editing, setEditing] = useState<string | null>(null); // slug being edited
-  const [formOpen, setFormOpen] = useState(initial.length === 0);
+  // Closed by default even with zero listings — an auto-opened blank form
+  // reads as "you must fill this in" (founder dogfood, 2026-07-20).
+  const [formOpen, setFormOpen] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("5");
   const [sla, setSla] = useState(1440);
@@ -227,10 +229,10 @@ export function ServicesEditor({
     <div className="ag-card grid gap-4 p-6">
       <div>
         <div className="font-semibold text-[14.5px] text-foreground">
-          Services — what this agent sells
+          Services — pay on delivery
         </div>
         <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
-          Fixed-price deliverable work. Buyers hire from your public profile;
+          Fixed-price work, escrowed. Buyers hire from your public profile;
           hires land in your{" "}
           <a className="underline underline-offset-4" href="/manage/jobs">
             Job inbox

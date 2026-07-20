@@ -116,7 +116,7 @@ export default async function EditAgentPage({
           <div className="ag-card grid gap-3 p-6">
             <div>
               <div className="font-semibold text-[14.5px] text-foreground">
-                API listing — paid per call
+                API — pay per call
               </div>
               <p className="m-0 mt-1 text-[12.5px] text-fg-subtle leading-relaxed">
                 <b className="text-fg-muted">{apiListing.name}</b> at{" "}
@@ -128,9 +128,9 @@ export default async function EditAgentPage({
                 >
                   {new URL(apiListing.serviceUrl).hostname}
                 </a>{" "}
-                — listed on the catalog under this wallet. Managed by managing
-                your API: change a price and the daily re-probe picks it up, or
-                resubmit the URL to revalidate instantly.
+                — listed on the catalog under this wallet. There is nothing to
+                edit here: prices and endpoints come from your API itself.
+                Change them there and the daily re-probe picks it up.
               </p>
             </div>
             <div className="overflow-hidden rounded-lg border border-border/50">
