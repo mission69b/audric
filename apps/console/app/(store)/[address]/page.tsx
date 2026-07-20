@@ -582,6 +582,161 @@ export default async function AgentProfilePage({
         </section>
       )}
 
+      {/* What it sells — gateway-catalog data when the wallet matches a
+          cataloged seller; the flagship endpoint otherwise. Any x402 client
+          can pay either way. Renders ABOVE the reviews record: what an agent
+          sells comes before the social proof about it (founder call
+          2026-07-20). */}
+      {service ? (
+        <section className="mt-8">
+          <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
+          {/* The catalog listing has its own brand (name + origin) — without
+              this line the service name never renders anywhere on the
+              console (dogfood finding: "Funkii Studio" was invisible). */}
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="ag-title" style={{ fontSize: 22 }}>
+              {service.name}
+            </h2>
+            <a
+              className="font-mono text-[12px] text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+              href={service.serviceUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {new URL(service.serviceUrl).hostname} ↗
+            </a>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
+            <div className="divide-y divide-border/50">
+              {service.endpoints.map((e) => (
+                <div
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3"
+                  key={`${e.method} ${e.path}`}
+                >
+                  <span className="font-mono text-[11px] text-fg-subtle">
+                    {e.method}
+                  </span>
+                  <span className="font-mono text-[12.5px] text-foreground">
+                    {e.path}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-fg-muted">
+                    {e.description}
+                  </span>
+                  <span className="font-mono text-[12.5px] text-foreground">
+                    ${e.price}
+                    <span className="text-fg-subtle text-[10px]">
+                      {service.escrow ? "/job" : "/call"}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {service.escrow ? (
+            /* Job-class GATEWAY listing (the machine-native 402 path,
+               SPEC_A2A_ESCROW slice 2) — terms come from the seller's own
+               402 challenge, so there's no service slug; the positional
+               `t2 job create <amount> <seller>` form is correct here. The
+               human services path renders above in What I Offer. */
+            <div className="ag-card mt-4 overflow-hidden">
+              <div className="grid grid-cols-3 divide-x divide-border/50">
+                {(
+                  [
+                    [
+                      "Delivers in",
+                      formatWindow(service.escrow.deliverWithinMs),
+                    ],
+                    [
+                      "Review window",
+                      formatWindow(service.escrow.reviewWindowMs),
+                    ],
+                    [
+                      "If rejected",
+                      `${(service.escrow.rejectSplitBps / 100).toFixed(0)}% back`,
+                    ],
+                  ] as const
+                ).map(([k, v]) => (
+                  <div className="px-5 py-4" key={k}>
+                    <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
+                      {k}
+                    </div>
+                    <div className="mt-1.5 font-semibold text-[18px] text-foreground tabular-nums tracking-tight">
+                      {v}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-border/50 border-t bg-card/40 px-5 py-4">
+                <div className="text-fg-subtle text-xs">
+                  Fund a job — USDC locks in an on-chain escrow object and
+                  releases on delivery. No delivery by the deadline: you reclaim
+                  it all.
+                </div>
+                <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
+                  t2 job create {service.endpoints[0]?.price ?? "5"}{" "}
+                  {walletAddress} --spec brief.md
+                </code>
+                <p className="m-0 mt-2 text-[11.5px] text-fg-subtle leading-relaxed">
+                  Then{" "}
+                  <span className="font-mono">t2 job watch &lt;id&gt;</span>{" "}
+                  tracks it and prints your available action at every state —{" "}
+                  <Link
+                    className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+                    href="/jobs"
+                  >
+                    how jobs work
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Use it — the 4-tab surface: browser try-it (Passport pays),
+               your-agent command/prompt, raw x402, and the Audric deep link. */
+            <UseServiceTabs
+              dialect={service.dialect}
+              direct={service.direct === true}
+              endpoints={service.endpoints}
+              gatewayDocsUrl={serviceUrl(service)}
+              serviceId={service.id}
+              serviceName={service.name}
+              serviceUrl={service.serviceUrl}
+            />
+          )}
+          {(!stats || stats.sold === 0) && (
+            <p className="mt-2 text-fg-subtle text-xs">
+              New listing — no settled sales yet.
+            </p>
+          )}
+          {/* Per-call settlement history lives in the Transactions tab below
+              (Phase 2 §5.3 — the standalone RECENT ACTIVITY block folded in). */}
+        </section>
+      ) : (
+        profile?.mcpEndpoint && (
+          <section className="mt-8">
+            <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
+            <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
+              <div className="px-4 py-3">
+                <div className="text-fg-subtle text-xs">Paid endpoint</div>
+                <div className="mt-1 break-all font-mono text-[12.5px] text-foreground">
+                  {profile.mcpEndpoint}
+                </div>
+              </div>
+              <div className="border-border/50 border-t bg-card/40 px-4 py-3">
+                <div className="text-fg-subtle text-xs">
+                  Buy a call — {profile.paymentMethods?.join(", ") ?? "x402"} ·
+                  USDC on Sui, gasless, no signup:
+                </div>
+                <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
+                  t2 pay {profile.mcpEndpoint} --max-price 0.10
+                </code>
+              </div>
+            </div>
+          </section>
+        )
+      )}
+
       {/* Reviews / Engagements / Transactions — the record, tabbed (Phase 2
           §5.3). Reviews are receipt-bound stars on released Jobs; engagements
           are the agent's escrow jobs; transactions are its x402 per-call
@@ -779,159 +934,6 @@ export default async function AgentProfilePage({
             ]}
           />
         </section>
-      )}
-
-      {/* What it sells — gateway-catalog data when the wallet matches a
-          cataloged seller; the flagship endpoint otherwise. Any x402 client
-          can pay either way. */}
-      {service ? (
-        <section className="mt-8">
-          <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
-          {/* The catalog listing has its own brand (name + origin) — without
-              this line the service name never renders anywhere on the
-              console (dogfood finding: "Funkii Studio" was invisible). */}
-          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h2 className="ag-title" style={{ fontSize: 22 }}>
-              {service.name}
-            </h2>
-            <a
-              className="font-mono text-[12px] text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
-              href={service.serviceUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {new URL(service.serviceUrl).hostname} ↗
-            </a>
-          </div>
-          <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
-            <div className="divide-y divide-border/50">
-              {service.endpoints.map((e) => (
-                <div
-                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-3"
-                  key={`${e.method} ${e.path}`}
-                >
-                  <span className="font-mono text-[11px] text-fg-subtle">
-                    {e.method}
-                  </span>
-                  <span className="font-mono text-[12.5px] text-foreground">
-                    {e.path}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-fg-muted">
-                    {e.description}
-                  </span>
-                  <span className="font-mono text-[12.5px] text-foreground">
-                    ${e.price}
-                    <span className="text-fg-subtle text-[10px]">
-                      {service.escrow ? "/job" : "/call"}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {service.escrow ? (
-            /* Job-class GATEWAY listing (the machine-native 402 path,
-               SPEC_A2A_ESCROW slice 2) — terms come from the seller's own
-               402 challenge, so there's no service slug; the positional
-               `t2 job create <amount> <seller>` form is correct here. The
-               human services path renders above in What I Offer. */
-            <div className="ag-card mt-4 overflow-hidden">
-              <div className="grid grid-cols-3 divide-x divide-border/50">
-                {(
-                  [
-                    [
-                      "Delivers in",
-                      formatWindow(service.escrow.deliverWithinMs),
-                    ],
-                    [
-                      "Review window",
-                      formatWindow(service.escrow.reviewWindowMs),
-                    ],
-                    [
-                      "If rejected",
-                      `${(service.escrow.rejectSplitBps / 100).toFixed(0)}% back`,
-                    ],
-                  ] as const
-                ).map(([k, v]) => (
-                  <div className="px-5 py-4" key={k}>
-                    <div className="font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]">
-                      {k}
-                    </div>
-                    <div className="mt-1.5 font-semibold text-[18px] text-foreground tabular-nums tracking-tight">
-                      {v}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-border/50 border-t bg-card/40 px-5 py-4">
-                <div className="text-fg-subtle text-xs">
-                  Fund a job — USDC locks in an on-chain escrow object and
-                  releases on delivery. No delivery by the deadline: you reclaim
-                  it all.
-                </div>
-                <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
-                  t2 job create {service.endpoints[0]?.price ?? "5"}{" "}
-                  {walletAddress} --spec brief.md
-                </code>
-                <p className="m-0 mt-2 text-[11.5px] text-fg-subtle leading-relaxed">
-                  Then{" "}
-                  <span className="font-mono">t2 job watch &lt;id&gt;</span>{" "}
-                  tracks it and prints your available action at every state —{" "}
-                  <Link
-                    className="font-medium text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
-                    href="/jobs"
-                  >
-                    how jobs work
-                  </Link>
-                  .
-                </p>
-              </div>
-            </div>
-          ) : (
-            /* Use it — the 4-tab surface: browser try-it (Passport pays),
-               your-agent command/prompt, raw x402, and the Audric deep link. */
-            <UseServiceTabs
-              dialect={service.dialect}
-              direct={service.direct === true}
-              endpoints={service.endpoints}
-              gatewayDocsUrl={serviceUrl(service)}
-              serviceId={service.id}
-              serviceName={service.name}
-              serviceUrl={service.serviceUrl}
-            />
-          )}
-          {(!stats || stats.sold === 0) && (
-            <p className="mt-2 text-fg-subtle text-xs">
-              New listing — no settled sales yet.
-            </p>
-          )}
-          {/* Per-call settlement history lives in the Transactions tab above
-              (Phase 2 §5.3 — the standalone RECENT ACTIVITY block folded in). */}
-        </section>
-      ) : (
-        profile?.mcpEndpoint && (
-          <section className="mt-8">
-            <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
-            <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
-              <div className="px-4 py-3">
-                <div className="text-fg-subtle text-xs">Paid endpoint</div>
-                <div className="mt-1 break-all font-mono text-[12.5px] text-foreground">
-                  {profile.mcpEndpoint}
-                </div>
-              </div>
-              <div className="border-border/50 border-t bg-card/40 px-4 py-3">
-                <div className="text-fg-subtle text-xs">
-                  Buy a call — {profile.paymentMethods?.join(", ") ?? "x402"} ·
-                  USDC on Sui, gasless, no signup:
-                </div>
-                <code className="mt-1.5 block overflow-x-auto whitespace-nowrap font-mono text-[12px] text-foreground">
-                  t2 pay {profile.mcpEndpoint} --max-price 0.10
-                </code>
-              </div>
-            </div>
-          </section>
-        )
       )}
 
       {/* Unclaimed sellers: the claim panel. Claiming = registering an Agent
