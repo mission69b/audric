@@ -17,7 +17,6 @@ export type EditorService = {
   rejectSplitBps: number;
   requirements: unknown;
   deliverable: string;
-  retired: boolean;
 };
 
 const SLA_CHOICES: [string, number][] = [
@@ -127,7 +126,6 @@ export function ServicesEditor({
           rejectSplitBps: o.rejectSplitBps,
           requirements: o.requirements,
           deliverable: o.deliverable,
-          retired: o.retiredAt != null,
         }))
       );
     }
@@ -252,11 +250,6 @@ export function ServicesEditor({
               <div className="min-w-[200px]">
                 <div className="font-medium text-[13.5px] text-foreground">
                   {o.name}
-                  {o.retired && (
-                    <span className="ml-2 font-mono text-[10.5px] text-fg-subtle uppercase">
-                      retired
-                    </span>
-                  )}
                 </div>
                 <div className="mt-0.5 font-mono text-[11.5px] text-fg-subtle">
                   {o.slug} · ${o.priceUsdc.toFixed(2)} USDC · delivers in{" "}
@@ -269,17 +262,15 @@ export function ServicesEditor({
                   onClick={() => startEdit(o)}
                   type="button"
                 >
-                  {o.retired ? "Relist" : "Edit"}
+                  Edit
                 </button>
-                {!o.retired && (
-                  <button
-                    className="ag-btn ag-btn--ghost ag-btn--sm"
-                    onClick={() => retire(o.slug)}
-                    type="button"
-                  >
-                    Retire
-                  </button>
-                )}
+                <button
+                  className="ag-btn ag-btn--ghost ag-btn--sm"
+                  onClick={() => retire(o.slug)}
+                  type="button"
+                >
+                  Retire
+                </button>
               </div>
             </div>
           ))}

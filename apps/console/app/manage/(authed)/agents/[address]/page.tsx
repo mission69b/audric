@@ -49,8 +49,11 @@ export default async function EditAgentPage({
   if (!agent) {
     notFound();
   }
+  // Retired services stay in the DB (job history references them; upsert on
+  // the same slug revives the row) but the console never shows them —
+  // retire means gone, recreate means back (founder call 2026-07-20).
   const [{ services }, gatewayServices] = await Promise.all([
-    listServices({ agentAddress: agent.address, includeRetired: true }),
+    listServices({ agentAddress: agent.address, includeRetired: false }),
     fetchGatewayServices(),
   ]);
   // Per-call API listing (gateway catalog, keyed by this wallet as payTo).
@@ -106,7 +109,6 @@ export default async function EditAgentPage({
             rejectSplitBps: o.rejectSplitBps,
             requirements: o.requirements,
             deliverable: o.deliverable,
-            retired: o.retiredAt != null,
           }))}
         />
 

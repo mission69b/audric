@@ -51,9 +51,11 @@ export async function GET(request: NextRequest) {
   if (auth instanceof NextResponse) {
     return auth;
   }
+  // Retired rows stay in the DB (job history + slug revival on upsert) but
+  // never render — retire means gone from every surface, console included.
   const { services } = await listServices({
     agentAddress: auth.agent,
-    includeRetired: true,
+    includeRetired: false,
   });
   return NextResponse.json({ services });
 }
