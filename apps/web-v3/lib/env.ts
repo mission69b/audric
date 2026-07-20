@@ -132,6 +132,11 @@ const serverSchema = z.object({
   // stays fully metered; no behavior change). A cost-envelope dial, never a
   // marketed token number. Server-only.
   FREE_TIER_DAILY_MICROS: optionalString,
+  // Platform-wide free-tier budget in micro-USD/day — the circuit breaker
+  // that bounds the worst-case daily free bill (per-account cap × farmable
+  // Google accounts is otherwise unbounded). BOTH vars must be set for the
+  // free tier to serve; unset/0 → free tier OFF (fail closed). Server-only.
+  FREE_TIER_GLOBAL_DAILY_MICROS: optionalString,
 });
 
 // NEXT_PUBLIC_* — statically replaced into client bundles; validated both at
@@ -177,6 +182,7 @@ const runtimeEnv = {
   CONFIDENTIAL_ANCHOR_PACKAGE_ID: process.env.CONFIDENTIAL_ANCHOR_PACKAGE_ID,
   CONFIDENTIAL_ANCHOR_SIGNER_KEY: process.env.CONFIDENTIAL_ANCHOR_SIGNER_KEY,
   FREE_TIER_DAILY_MICROS: process.env.FREE_TIER_DAILY_MICROS,
+  FREE_TIER_GLOBAL_DAILY_MICROS: process.env.FREE_TIER_GLOBAL_DAILY_MICROS,
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
   NEXT_PUBLIC_ENOKI_API_KEY: process.env.NEXT_PUBLIC_ENOKI_API_KEY,
   NEXT_PUBLIC_SUI_NETWORK: process.env.NEXT_PUBLIC_SUI_NETWORK,

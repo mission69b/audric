@@ -453,9 +453,22 @@ export async function POST(request: Request) {
   }) => {
     try {
       if (!pricing) {
+        // No pricing entry → we can't debit, but the tokens still happened.
+        // Record a $0 usage event so the request is visible in usage
+        // aggregates (and the warning below is auditable against rows).
         console.warn(
           `[/v1/chat/completions] no pricing for ${model} — served UNMETERED`
         );
+        await recordApiUsage({
+          userId: auth.userId,
+          keyId: auth.keyId,
+          model: model ?? "",
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
+          costMicros: 0,
+          privacyTier: confidential ? "confidential" : "private",
+          ref: id,
+        });
         return;
       }
       const debit = debitMicrosForUsage(usage, pricing, apiMarginFor(model));
