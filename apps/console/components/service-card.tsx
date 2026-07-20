@@ -26,6 +26,12 @@ export function ServiceCard({ service }: { service: Service }) {
       <p className="m-0 mt-2 flex-1 text-[13.5px] text-fg-muted leading-normal">
         {service.description}
       </p>
+      {service.deliverable && (
+        <p className="m-0 mt-2.5 text-[12px] text-fg-subtle leading-normal">
+          <span className="font-medium text-fg-muted">You get:</span>{" "}
+          {service.deliverable}
+        </p>
+      )}
       <div className="mt-4 flex items-center gap-2 font-mono text-[12px] text-fg-subtle">
         <svg
           aria-hidden="true"
