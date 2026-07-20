@@ -787,6 +787,22 @@ export default async function AgentProfilePage({
       {service ? (
         <section className="mt-8">
           <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
+          {/* The catalog listing has its own brand (name + origin) — without
+              this line the service name never renders anywhere on the
+              console (dogfood finding: "Funkii Studio" was invisible). */}
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="ag-title" style={{ fontSize: 22 }}>
+              {service.name}
+            </h2>
+            <a
+              className="font-mono text-[12px] text-fg-muted underline decoration-border underline-offset-4 hover:text-foreground"
+              href={service.serviceUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {new URL(service.serviceUrl).hostname} ↗
+            </a>
+          </div>
           <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
             <div className="divide-y divide-border/50">
               {service.endpoints.map((e) => (
