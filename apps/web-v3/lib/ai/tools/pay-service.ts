@@ -16,7 +16,7 @@ import { z } from "zod";
  */
 export const payService = tool({
   description:
-    "Pay a cataloged service endpoint per call with the user's wallet USDC (x402, gasless). ONLY after find_paid_services showed the endpoint AND the user explicitly agreed to the stated price. The user ALWAYS taps to confirm — you never spend on your own. Build `body` from the endpoint's requestSchema. On success you get the delivered API response + an on-chain digest: answer the user's question through that data.",
+    "Pay a cataloged service endpoint per call with the user's wallet USDC (x402, gasless). ONLY after find_paid_services showed the endpoint AND the user explicitly agreed to the stated price. The user ALWAYS taps to confirm — you never spend on your own. Build `body` from the endpoint's requestSchema. On success you get the delivered API response + an on-chain digest: answer the user's question through that data. The user PAID for this response — when it contains an asset (SVG/code/copy text), reproduce it VERBATIM in your reply (code block for SVG/code), never just a summary.",
   inputSchema: z.object({
     serviceId: z
       .string()

@@ -25,6 +25,8 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
   const { addToolResult } = useActiveChat();
   const [pending, setPending] = useState(false);
   const [showBody, setShowBody] = useState(false);
+  const [showResponse, setShowResponse] = useState(false);
+  const [copied, setCopied] = useState(false);
   const { toolCallId, state } = part;
   const widthClass = "w-[min(100%,450px)]";
 
@@ -42,7 +44,17 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
       direct?: boolean;
       denied?: boolean;
       error?: string;
+      response?: unknown;
     };
+    // The paid deliverable, verbatim. The user paid for this data — never
+    // leave them dependent on the model's paraphrase of it (founder hit
+    // this buying a brand kit: the SVG never surfaced, 2026-07-20).
+    const deliverable =
+      out?.response == null
+        ? null
+        : typeof out.response === "string"
+          ? out.response
+          : JSON.stringify(out.response, null, 2);
     return (
       <div className={widthClass} key={toolCallId}>
         <Tool className="w-full">
@@ -78,6 +90,35 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
                     {out.digest.slice(0, 10)}… ↗
                   </a>
                 </span>
+              )}
+              {!(out?.denied || out?.error) && deliverable && (
+                <>
+                  <div className="mt-1 flex items-center gap-3">
+                    <button
+                      className="text-muted-foreground text-xs underline underline-offset-2"
+                      onClick={() => setShowResponse((v) => !v)}
+                      type="button"
+                    >
+                      {showResponse ? "Hide what you got" : "Show what you got"}
+                    </button>
+                    <button
+                      className="text-muted-foreground text-xs underline underline-offset-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(deliverable);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      }}
+                      type="button"
+                    >
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  {showResponse && (
+                    <pre className="mt-1 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 text-xs">
+                      {deliverable}
+                    </pre>
+                  )}
+                </>
               )}
             </div>
           </ToolContent>
