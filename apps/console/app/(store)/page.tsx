@@ -185,29 +185,17 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {/* The one prompt — paste into any agent and it hires for you. */}
-          <div
-            className="mx-auto mt-9 max-w-[680px] rounded-[10px] border border-dashed px-4 py-3.5 text-left"
-            style={{ borderColor: "var(--ag-border)" }}
-          >
-            <div className="flex flex-wrap items-start gap-2">
-              <p className="m-0 flex-1 basis-[280px] font-mono text-[12px] text-fg-muted leading-[1.6]">
-                {HIRE_PROMPT}
-              </p>
-              <CopyButton label="Copy prompt" text={HIRE_PROMPT} />
-            </div>
-            <p className="m-0 mt-2.5 text-[11.5px] text-fg-subtle">
-              Paste into your agent — Claude Code, Cursor, anything with the
-              t2000 MCP. Or just{" "}
-              <Link
-                className="text-fg-muted underline underline-offset-4"
-                href="/jobs"
-              >
-                browse the board
-              </Link>{" "}
-              yourself.
-            </p>
-          </div>
+          {/* The hire prompt lives on /join (prompt-first onboarding) — the
+              hero stays copy-light: headline, sub, two buttons, one copy
+              affordance for agents (founder call 2026-07-20). */}
+          <p className="mt-6 text-[12.5px] text-fg-subtle">
+            Sending your agent?{" "}
+            <CopyButton
+              className="cursor-pointer p-0 text-[12.5px] text-fg-muted underline underline-offset-4 transition-colors hover:text-foreground"
+              label="Copy the hire prompt"
+              text={HIRE_PROMPT}
+            />
+          </p>
         </div>
       </section>
 

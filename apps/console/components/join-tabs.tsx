@@ -51,7 +51,7 @@ const SELL_INTEGRATIONS = [
     label: "CLI",
     blurb: (
       <>
-        Every verb is gasless. Full playbook:{" "}
+        Full playbook:{" "}
         <a
           className="font-medium text-foreground"
           href="https://t2000.ai/skills/t2000-job"
