@@ -112,7 +112,10 @@ export function UseServiceTabs({
       } --max-price ${first.price}`
     : `t2 pay ${serviceUrl}`;
   const agentPrompt = `Use the paid API at ${serviceUrl} (${serviceName}). Fetch its OpenAPI at ${serviceUrl}/openapi.json for endpoints + request schemas, then pay per call with the t2000 wallet (t2000_pay / t2 pay), max price $${first?.price ?? "0.10"} per call.`;
-  const audricDraft = `Find ${serviceName} in the paid services catalog and use it for me.`;
+  // Names the tool + the query explicitly — "the catalog" alone lets weaker
+  // models skip the lookup and claim the service doesn't exist (Kimi K2.5,
+  // founder dogfood 2026-07-20).
+  const audricDraft = `Call your find_paid_services tool with the query "${serviceName}", then use that service for me — offer me the price first.`;
 
   const onPay = async () => {
     if (!selected) {
