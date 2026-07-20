@@ -43,6 +43,40 @@ function parseModelBody(body: string | undefined): Record<string, unknown> {
   }
 }
 
+/**
+ * Collect SVG deliverables out of a paid response so the card can SHOW them
+ * (founder, 2026-07-21: a delivered logo surfaced only as a code block).
+ * Rendered through an `<img>` data-URI — browsers treat SVG-in-img as an
+ * inert image document (no script execution, no external loads), so a
+ * hostile seller SVG can't run anything.
+ */
+function extractSvgs(response: unknown): { label: string; svg: string }[] {
+  const found: { label: string; svg: string }[] = [];
+  const visit = (value: unknown, label: string) => {
+    if (found.length >= 3) {
+      return;
+    }
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (s.startsWith("<svg") && s.endsWith("</svg>") && s.length <= 50_000) {
+        found.push({ label, svg: s });
+      }
+      return;
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      for (const [k, v] of Object.entries(value)) {
+        visit(v, k);
+      }
+    }
+  };
+  visit(response, "svg");
+  return found;
+}
+
+function svgDataUri(svg: string): string {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 /** Coerce form strings back to the schema's declared types. */
 function buildBodyFromForm(
   schema: EndpointSchemaInfo,
@@ -143,6 +177,7 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
         : typeof out.response === "string"
           ? out.response
           : JSON.stringify(out.response, null, 2);
+    const svgs = out?.denied || out?.error ? [] : extractSvgs(out?.response);
     return (
       <div className={widthClass} key={toolCallId}>
         <Tool className="w-full">
@@ -178,6 +213,35 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
                     {out.digest.slice(0, 10)}… ↗
                   </a>
                 </span>
+              )}
+              {svgs.length > 0 && (
+                <div className="mt-2 grid gap-2">
+                  {svgs.map(({ label, svg }) => (
+                    <div
+                      className="rounded-md border bg-muted/40 p-2"
+                      key={label}
+                    >
+                      {/* biome-ignore lint/performance/noImgElement: data-URI SVG can't go through next/image */}
+                      <img
+                        alt={`${label} (delivered SVG)`}
+                        className="mx-auto max-h-40 w-auto"
+                        src={svgDataUri(svg)}
+                      />
+                      <div className="mt-1.5 flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">
+                          {label}
+                        </span>
+                        <a
+                          className="text-muted-foreground text-xs underline underline-offset-2"
+                          download={`${label}.svg`}
+                          href={svgDataUri(svg)}
+                        >
+                          Download SVG
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
               {!(out?.denied || out?.error) && deliverable && (
                 <>
