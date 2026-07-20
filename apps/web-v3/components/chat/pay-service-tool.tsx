@@ -77,6 +77,59 @@ function svgDataUri(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
+type Swatch = { name?: string; hex: string };
+
+/**
+ * Collect color palettes out of a paid response — arrays of hex strings
+ * (logo tier) or `{name, hex}` objects (palette/brand-kit tiers) — so the
+ * card can render swatches instead of leaving colors as text.
+ */
+function extractPalettes(
+  response: unknown
+): { label: string; colors: Swatch[] }[] {
+  const found: { label: string; colors: Swatch[] }[] = [];
+  const visit = (value: unknown, label: string) => {
+    if (found.length >= 2 || !value || typeof value !== "object") {
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (value.length < 2 || value.length > 12) {
+        return;
+      }
+      if (value.every((v) => typeof v === "string" && HEX_COLOR.test(v))) {
+        found.push({
+          label,
+          colors: (value as string[]).map((hex) => ({ hex })),
+        });
+      } else if (
+        value.every(
+          (v) =>
+            v &&
+            typeof v === "object" &&
+            typeof (v as Swatch).hex === "string" &&
+            HEX_COLOR.test((v as Swatch).hex)
+        )
+      ) {
+        found.push({
+          label,
+          colors: (value as Swatch[]).map((c) => ({
+            name: typeof c.name === "string" ? c.name : undefined,
+            hex: c.hex,
+          })),
+        });
+      }
+      return;
+    }
+    for (const [k, v] of Object.entries(value)) {
+      visit(v, k);
+    }
+  };
+  visit(response, "palette");
+  return found;
+}
+
 /** Coerce form strings back to the schema's declared types. */
 function buildBodyFromForm(
   schema: EndpointSchemaInfo,
@@ -178,6 +231,8 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
           ? out.response
           : JSON.stringify(out.response, null, 2);
     const svgs = out?.denied || out?.error ? [] : extractSvgs(out?.response);
+    const palettes =
+      out?.denied || out?.error ? [] : extractPalettes(out?.response);
     return (
       <div className={widthClass} key={toolCallId}>
         <Tool className="w-full">
@@ -238,6 +293,37 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
                         >
                           Download SVG
                         </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {palettes.length > 0 && (
+                <div className="mt-2 grid gap-2">
+                  {palettes.map(({ label, colors }) => (
+                    <div
+                      className="rounded-md border bg-muted/40 p-2"
+                      key={label}
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        {colors.map((c) => (
+                          <div
+                            className="grid justify-items-center gap-1"
+                            key={c.hex + (c.name ?? "")}
+                            title={c.name ? `${c.name} · ${c.hex}` : c.hex}
+                          >
+                            <span
+                              className="h-9 w-9 rounded-md border"
+                              style={{ backgroundColor: c.hex }}
+                            />
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {c.hex}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-1.5 text-muted-foreground text-xs">
+                        {label}
                       </div>
                     </div>
                   ))}
