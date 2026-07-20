@@ -78,6 +78,7 @@ import {
   getMessageCountByUserId,
   getMessagesByChatId,
   getUserById,
+  recordApiUsage,
   recordCredit,
   saveChat,
   saveMessages,
@@ -1161,40 +1162,71 @@ export async function POST(request: Request) {
         // free model debits nothing. ref = message id → idempotent (one debit
         // per assistant turn, even if onFinish ever re-fires). Inert when the
         // credit rail isn't configured.
-        if (isPremiumModel && isCreditConfigured()) {
-          const pricing = (await getModelPricing())[chatModel];
-          for (const m of finishedMessages) {
-            if (m.role !== "assistant") {
-              continue;
-            }
-            const meta = m.metadata as
-              | {
-                  totalTokens?: number;
-                  inputTokens?: number;
-                  outputTokens?: number;
-                }
-              | undefined;
-            if (!meta?.totalTokens) {
-              continue;
-            }
-            const debit = debitMicrosForUsage(
-              {
-                inputTokens: meta.inputTokens,
-                outputTokens: meta.outputTokens,
-              },
-              pricing,
-              marginFor(chatModel)
-            );
-            if (debit > 0) {
-              await recordCredit({
+        //
+        // Every assistant turn with token metadata ALSO lands a usage event
+        // (source='chat', $0 cost when nothing was debited) so in-app tokens
+        // show up in the platform usage stream (/v1/usage/global) alongside
+        // API traffic — S.777. Same ref → same idempotency as the debit.
+        const meterCredit = isPremiumModel && isCreditConfigured();
+        const pricing = meterCredit
+          ? (await getModelPricing())[chatModel]
+          : undefined;
+        let debited = false;
+        for (const m of finishedMessages) {
+          if (m.role !== "assistant") {
+            continue;
+          }
+          const meta = m.metadata as
+            | {
+                totalTokens?: number;
+                inputTokens?: number;
+                outputTokens?: number;
+              }
+            | undefined;
+          if (!meta?.totalTokens) {
+            continue;
+          }
+          const debit = meterCredit
+            ? debitMicrosForUsage(
+                {
+                  inputTokens: meta.inputTokens,
+                  outputTokens: meta.outputTokens,
+                },
+                pricing,
+                marginFor(chatModel)
+              )
+            : 0;
+          if (debit > 0) {
+            debited = true;
+            await recordCredit({
+              userId: session.user.id,
+              amountMicros: -debit,
+              type: "debit",
+              description: `${chatModel} · ${meta.inputTokens ?? 0}+${meta.outputTokens ?? 0} tok`,
+              ref: m.id,
+            });
+          }
+          if (session?.user?.id) {
+            try {
+              await recordApiUsage({
                 userId: session.user.id,
-                amountMicros: -debit,
-                type: "debit",
-                description: `${chatModel} · ${meta.inputTokens ?? 0}+${meta.outputTokens ?? 0} tok`,
+                model: chatModel,
+                inputTokens: meta.inputTokens ?? 0,
+                outputTokens: meta.outputTokens ?? 0,
+                costMicros: debit,
+                privacyTier: chatModel.startsWith("phala/")
+                  ? "confidential"
+                  : "private",
+                source: "chat",
                 ref: m.id,
               });
+            } catch (e) {
+              // Usage telemetry must never break the turn.
+              console.warn("[chat] usage event failed", e);
             }
           }
+        }
+        if (debited) {
           // Top the card back up if this debit dropped them below threshold.
           await maybeAutoRecharge(session.user.id);
           // Else (no auto-recharge), warn once if they've dropped low on credit.

@@ -13,8 +13,10 @@ import { getReadyRedisClient } from "@/lib/ratelimit";
 // PUBLIC (no key), cached in Redis for 5 minutes — one SQL pass per 5 min
 // worst case, safe to hammer. `?fresh=1` is NOT offered on purpose.
 
-const CACHE_KEY = "usage:global:v1";
+const CACHE_KEY = "usage:global:v2";
 const CACHE_TTL_SECONDS = 300;
+
+type UsageSlice = { requests: number; tokens: number };
 
 type GlobalUsage = {
   updated_at: string;
@@ -28,6 +30,19 @@ type GlobalUsage = {
     /** Micro-USD charged across all metered requests, as USD. */
     compute_usd: number;
     models_served: number;
+    /** Every model ever served, by tokens — the durable leaderboard
+     * (the 24h one goes quiet between bursts). */
+    models: Array<{
+      model: string;
+      requests: number;
+      tokens: number;
+      share: number;
+    }>;
+    /** private = ZDR routing · confidential = GPU-TEE with receipts. */
+    by_tier: { private: UsageSlice; confidential: UsageSlice };
+    /** api = /v1 keys · chat = in-app Audric turns (recorded from
+     * 2026-07-20 on; earlier chat usage was ledger-only, not backfilled). */
+    by_source: { api: UsageSlice; chat: UsageSlice };
   };
   last_24h: {
     requests: number;
@@ -85,6 +100,27 @@ async function computeGlobalUsage(): Promise<GlobalUsage> {
     .orderBy(sql`3 desc`)
     .limit(10);
 
+  const allTimeModels = await db
+    .select({
+      model: apiUsageEvent.model,
+      requests: sql<number>`count(*)::bigint`,
+      tokens: tokensExpr,
+    })
+    .from(apiUsageEvent)
+    .groupBy(apiUsageEvent.model)
+    .orderBy(sql`3 desc`)
+    .limit(50);
+
+  const slices = await db
+    .select({
+      tier: apiUsageEvent.privacyTier,
+      source: apiUsageEvent.source,
+      requests: sql<number>`count(*)::bigint`,
+      tokens: tokensExpr,
+    })
+    .from(apiUsageEvent)
+    .groupBy(apiUsageEvent.privacyTier, apiUsageEvent.source);
+
   // Dense 24-bucket series (missing hours render as zero bars, like the
   // reference page) — keyed on the UTC hour epoch.
   const byHour = new Map(hourly.map((h) => [Number(h.hourEpoch), h]));
@@ -110,6 +146,23 @@ async function computeGlobalUsage(): Promise<GlobalUsage> {
       ? new Date(Number(totals.sinceEpoch) * 1000)
       : null;
 
+  const allTokens = Number(totals.inputTokens) + Number(totals.outputTokens);
+  const emptySlice = (): UsageSlice => ({ requests: 0, tokens: 0 });
+  const byTier = { private: emptySlice(), confidential: emptySlice() };
+  const bySource = { api: emptySlice(), chat: emptySlice() };
+  for (const s of slices) {
+    const tier = byTier[s.tier as keyof typeof byTier];
+    const source = bySource[s.source as keyof typeof bySource];
+    if (tier) {
+      tier.requests += Number(s.requests);
+      tier.tokens += Number(s.tokens);
+    }
+    if (source) {
+      source.requests += Number(s.requests);
+      source.tokens += Number(s.tokens);
+    }
+  }
+
   return {
     updated_at: new Date().toISOString(),
     counting_since: since ? since.toISOString() : null,
@@ -123,6 +176,14 @@ async function computeGlobalUsage(): Promise<GlobalUsage> {
       output_tokens: Number(totals.outputTokens),
       compute_usd: Number(totals.costMicros) / 1_000_000,
       models_served: Number(totals.models),
+      models: allTimeModels.map((m) => ({
+        model: m.model,
+        requests: Number(m.requests),
+        tokens: Number(m.tokens),
+        share: allTokens > 0 ? Number(m.tokens) / allTokens : 0,
+      })),
+      by_tier: byTier,
+      by_source: bySource,
     },
     last_24h: {
       requests: dayRequests,

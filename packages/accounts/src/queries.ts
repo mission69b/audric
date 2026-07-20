@@ -660,12 +660,15 @@ export async function acceptClosedLoopTerms(userId: string) {
  */
 export async function recordApiUsage(event: {
   userId: string;
-  keyId: string;
+  /** Omit for in-app chat turns (no API key involved). */
+  keyId?: string;
   model: string;
   inputTokens: number;
   outputTokens: number;
   costMicros: number;
   privacyTier: "private" | "confidential";
+  /** "api" (default) or "chat" — see schema note on `source`. */
+  source?: "api" | "chat";
   ref?: string;
 }): Promise<void> {
   await db
@@ -678,6 +681,7 @@ export async function recordApiUsage(event: {
       outputTokens: event.outputTokens,
       costMicros: Math.max(0, Math.round(event.costMicros)),
       privacyTier: event.privacyTier,
+      source: event.source ?? "api",
       ref: event.ref,
     })
     .onConflictDoNothing({ target: apiUsageEvent.ref });

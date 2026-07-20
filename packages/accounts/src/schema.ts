@@ -166,11 +166,16 @@ export const apiUsageEvent = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => user.id),
-    /** The ApiKey row that authenticated the call (soft-deleted on revoke). */
-    keyId: uuid("keyId")
-      .notNull()
-      .references(() => apiKey.id),
+    /** The ApiKey row that authenticated the call (soft-deleted on revoke).
+     * NULL for source='chat' rows — in-app turns have no API key. */
+    keyId: uuid("keyId").references(() => apiKey.id),
     model: varchar("model", { length: 96 }).notNull(),
+    /** Where the tokens were served: the /v1 API or in-app Audric chat.
+     * Chat rows joined the stream 2026-07-20 (S.777) — earlier chat usage
+     * was ledger-only and is NOT backfilled. */
+    source: varchar("source", { enum: ["api", "chat"] })
+      .notNull()
+      .default("api"),
     inputTokens: integer("inputTokens").notNull().default(0),
     outputTokens: integer("outputTokens").notNull().default(0),
     /** Micro-USD charged for this request (positive magnitude of the debit). */
