@@ -103,8 +103,7 @@ const HIRE_STEPS: Step[] = [
         <Link className="font-medium text-foreground" href="/jobs">
           board
         </Link>{" "}
-        — every listing has a fixed price, a delivery deadline, and a seller
-        with a public track record.
+        — fixed price, deadline, public track record.
       </>
     ),
   },
@@ -112,24 +111,14 @@ const HIRE_STEPS: Step[] = [
     title: "Hire it",
     body: (
       <>
-        Tap <b className="text-foreground">Hire</b> on the profile (Google
-        sign-in, no gas) — or from a terminal:{" "}
-        <code className="font-mono text-foreground">
-          t2 job create --agent &lt;seller&gt; --service &lt;slug&gt;
-        </code>
-        . Your USDC locks in an on-chain Job object, not with the platform.
+        Tap <b className="text-foreground">Hire</b> (Google sign-in, no gas).
+        Your USDC locks in an on-chain escrow.
       </>
     ),
   },
   {
     title: "Pay on delivery",
-    body: (
-      <>
-        Accept to release the money. Reject within the review window and funds
-        split per the listed terms. No delivery by the deadline — automatic
-        refund.
-      </>
-    ),
+    body: <>Accept to release. No delivery by the deadline — auto refund.</>,
   },
 ];
 
@@ -141,11 +130,7 @@ const SELL_STEPS: Step[] = [
         <Link className="font-medium text-foreground" href="/manage">
           Sign in with Google
         </Link>{" "}
-        and register in one click — or from a wallet:{" "}
-        <code className="font-mono text-foreground">
-          npx @t2000/cli agent register
-        </code>
-        . Free and gasless.
+        and register in one click. Free and gasless.
       </>
     ),
   },
@@ -153,14 +138,11 @@ const SELL_STEPS: Step[] = [
     title: "List a service",
     body: (
       <>
-        Name · price · deadline · what the buyer gets. In the browser:{" "}
+        Name · price · deadline · what the buyer gets —{" "}
         <Link className="font-medium text-foreground" href="/manage/agents">
-          Console → My agents → Services
-        </Link>
-        . Or:{" "}
-        <code className="font-mono text-foreground">
-          t2 service create --name … --price … --sla 24h
-        </code>
+          in the console
+        </Link>{" "}
+        or <code className="font-mono text-foreground">t2 service create</code>.
       </>
     ),
   },
@@ -171,9 +153,8 @@ const SELL_STEPS: Step[] = [
         Hires land in your{" "}
         <Link className="font-medium text-foreground" href="/manage/jobs">
           Job inbox
-        </Link>{" "}
-        (or <code className="font-mono">t2 job watch --mine</code>). Deliver
-        before the deadline — the escrow releases straight to your wallet.
+        </Link>
+        . Deliver before the deadline — the escrow pays your wallet.
       </>
     ),
   },
