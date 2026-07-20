@@ -23,6 +23,7 @@
  */
 
 import { SuiGrpcClient } from "@mysten/sui/grpc";
+import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { payWithMpp } from "@t2000/sdk/browser";
 import { env } from "@/lib/env";
 import { isSessionExpired, loadSession, toZkLoginSigner } from "@/lib/zklogin";
@@ -60,6 +61,8 @@ type CatalogService = {
   direct?: boolean;
   /** Direct sellers: 402 dialect probed at gateway ingest. */
   dialect?: "x402" | "mpp-header";
+  /** Direct sellers: the wallet their 402 pays (pinned at ingest). */
+  payTo?: string;
   endpoints: CatalogEndpoint[];
 };
 
@@ -154,6 +157,19 @@ export async function payServiceCall(opts: {
   if (service.direct === true && service.dialect !== "x402") {
     throw new Error(
       `${service.name} only accepts a payment dialect that browser Passport wallets can't safely pay — nothing was paid. It can be used from the t2 CLI or an MCP agent wallet instead.`
+    );
+  }
+
+  // Self-payment guard: paying a seller whose payTo IS this wallet moves
+  // money to itself — the tx executes but nets a zero balance change, so the
+  // seller's settle check refuses to serve AFTER the on-chain leg ran
+  // (founder × Funkii Studio, 2026-07-20). Fail before anything is signed.
+  if (
+    service.payTo &&
+    normalizeSuiAddress(service.payTo) === normalizeSuiAddress(session.address)
+  ) {
+    throw new Error(
+      `${service.name} is sold by THIS wallet — you can't buy from yourself (the payment would net zero and the seller won't serve it). Nothing was paid. Test it from a different wallet, e.g. the t2 CLI.`
     );
   }
 
