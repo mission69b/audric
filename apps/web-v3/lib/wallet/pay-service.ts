@@ -48,12 +48,21 @@ export type PayServiceOutcome = {
   error?: string;
 };
 
+/** The slice of JSON Schema the confirm-card form + preflight understand. */
+export type EndpointSchemaInfo = {
+  required?: string[];
+  properties?: Record<
+    string,
+    { type?: string; description?: string; enum?: string[] }
+  >;
+};
+
 type CatalogEndpoint = {
   method: string;
   path: string;
   price: string;
   /** Seller's request schema (JSON Schema) — used to fail closed on a missing body. */
-  schema?: { required?: string[] };
+  schema?: EndpointSchemaInfo;
 };
 
 type CatalogService = {
@@ -114,6 +123,35 @@ async function resolveEndpoint(
     pathMatchesTemplate(path, e.path)
   );
   return endpoint ? { service, endpoint } : null;
+}
+
+/**
+ * Schema for the confirm-card's input form (null = no body schema / not
+ * found / catalog unreachable — the card falls back to the model-built
+ * body). Same catalog resolution the executor uses, so what the form shows
+ * is what the preflight enforces.
+ */
+export async function fetchEndpointSchema(
+  serviceId: string,
+  path: string,
+  method?: string
+): Promise<EndpointSchemaInfo | null> {
+  try {
+    const resolved = await resolveEndpoint(serviceId, path);
+    if (!resolved) {
+      return null;
+    }
+    const m = (method ?? resolved.endpoint.method ?? "POST").toUpperCase();
+    if (m === "GET" || m === "HEAD") {
+      return null;
+    }
+    const schema = resolved.endpoint.schema;
+    return schema?.properties && Object.keys(schema.properties).length > 0
+      ? schema
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function truncateResponse(body: unknown): unknown {

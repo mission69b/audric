@@ -10,16 +10,62 @@
  * "you decide".
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tool, ToolContent, ToolHeader } from "@/components/ai-elements/tool";
 import { useActiveChat } from "@/hooks/use-active-chat";
 import type { ChatMessage } from "@/lib/types";
-import { PAY_SERVICE_CAP_USD, payServiceCall } from "@/lib/wallet/pay-service";
+import {
+  type EndpointSchemaInfo,
+  fetchEndpointSchema,
+  PAY_SERVICE_CAP_USD,
+  payServiceCall,
+} from "@/lib/wallet/pay-service";
 
 type PayServicePart = Extract<
   ChatMessage["parts"][number],
   { type: "tool-pay_service" }
 >;
+
+/** Pre-fill the form from whatever body the model built (may be absent). */
+function parseModelBody(body: string | undefined): Record<string, unknown> {
+  if (!body) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(body);
+    return typeof parsed === "object" &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Coerce form strings back to the schema's declared types. */
+function buildBodyFromForm(
+  schema: EndpointSchemaInfo,
+  values: Record<string, string>
+): string {
+  const out: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(values)) {
+    const value = raw.trim();
+    if (value === "") {
+      continue;
+    }
+    const type = schema.properties?.[key]?.type;
+    if (type === "number" || type === "integer") {
+      const n = Number(value);
+      out[key] = Number.isFinite(n) ? n : value;
+    } else if (type === "boolean") {
+      out[key] = value === "true";
+    } else {
+      out[key] = value;
+    }
+  }
+  return JSON.stringify(out);
+}
 
 export function PayServiceTool({ part }: { part: PayServicePart }) {
   const { addToolResult } = useActiveChat();
@@ -27,8 +73,50 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
   const [showBody, setShowBody] = useState(false);
   const [showResponse, setShowResponse] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Confirm-card form (the proper fix for model-mangled bodies, 2026-07-21):
+  // when the endpoint publishes a body schema, its fields render as editable
+  // inputs pre-filled from the model's body. The body sent upstream is built
+  // FROM THE FORM — the model can no longer omit or garble a field, and the
+  // Allow tap approves the money AND the inputs.
+  // undefined = loading · null = no schema (fall back to the model's body)
+  const [schema, setSchema] = useState<EndpointSchemaInfo | null | undefined>();
+  const [form, setForm] = useState<Record<string, string>>({});
   const { toolCallId, state } = part;
   const widthClass = "w-[min(100%,450px)]";
+
+  const isAwaitingConfirm =
+    state !== "output-available" &&
+    Boolean(part.input?.serviceId && part.input?.path);
+  const inputServiceId = part.input?.serviceId;
+  const inputPath = part.input?.path;
+  const inputMethod = part.input?.method;
+  const inputBody = part.input?.body;
+
+  useEffect(() => {
+    if (!(isAwaitingConfirm && inputServiceId && inputPath)) {
+      return;
+    }
+    let cancelled = false;
+    fetchEndpointSchema(inputServiceId, inputPath, inputMethod).then((info) => {
+      if (cancelled || !info) {
+        if (!cancelled) {
+          setSchema(null);
+        }
+        return;
+      }
+      const modelBody = parseModelBody(inputBody);
+      const seeded: Record<string, string> = {};
+      for (const key of Object.keys(info.properties ?? {})) {
+        const v = modelBody[key];
+        seeded[key] = v == null ? "" : String(v);
+      }
+      setSchema(info);
+      setForm(seeded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAwaitingConfirm, inputServiceId, inputPath, inputMethod, inputBody]);
 
   async function settle(output: unknown) {
     await addToolResult({
@@ -146,6 +234,10 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
   const purposeLine =
     purpose && purpose.length > 200 ? `${purpose.slice(0, 200)}…` : purpose;
 
+  const requiredKeys = schema?.required ?? [];
+  const missingRequired = requiredKeys.filter((k) => !form[k]?.trim());
+  const formActive = schema != null;
+
   const onAllow = async () => {
     // The executor re-validates fail-closed (catalog resolution, live price,
     // cap, session) — errors settle back to the agent so it explains instead
@@ -156,7 +248,8 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
         serviceId,
         path,
         method,
-        body,
+        // Form-built body wins: deterministic from what the user approved.
+        body: formActive ? buildBodyFromForm(schema, form) : body,
         priceUsdc,
       });
       await settle(result);
@@ -183,7 +276,38 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
               From your wallet USDC, gasless. The exact charge is the live
               catalog price — never above it.
             </div>
-            {body && (
+            {formActive && (
+              <div className="mt-3 grid gap-2">
+                {Object.entries(schema.properties ?? {}).map(([key, prop]) => {
+                  const isRequired = requiredKeys.includes(key);
+                  return (
+                    <label className="grid gap-1" key={key}>
+                      <span className="text-muted-foreground text-xs">
+                        {key}
+                        {isRequired ? (
+                          <span className="text-red-500"> *</span>
+                        ) : (
+                          " (optional)"
+                        )}
+                      </span>
+                      <input
+                        className="rounded-md border bg-background px-2 py-1.5 text-sm outline-none focus:border-primary"
+                        disabled={pending}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, [key]: e.target.value }))
+                        }
+                        placeholder={prop.description ?? key}
+                        value={form[key] ?? ""}
+                      />
+                    </label>
+                  );
+                })}
+                <div className="text-muted-foreground text-xs">
+                  This is exactly what the seller receives — edit before paying.
+                </div>
+              </div>
+            )}
+            {!formActive && body && (
               <button
                 className="mt-1 text-muted-foreground text-xs underline underline-offset-2"
                 onClick={() => setShowBody((v) => !v)}
@@ -192,7 +316,7 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
                 {showBody ? "Hide request" : "Show request"}
               </button>
             )}
-            {body && showBody && (
+            {!formActive && body && showBody && (
               <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-2 text-xs">
                 {body}
               </pre>
@@ -215,8 +339,15 @@ export function PayServiceTool({ part }: { part: PayServicePart }) {
             </button>
             <button
               className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
-              disabled={pending}
+              disabled={
+                pending || schema === undefined || missingRequired.length > 0
+              }
               onClick={onAllow}
+              title={
+                missingRequired.length > 0
+                  ? `Fill in: ${missingRequired.join(", ")}`
+                  : undefined
+              }
               type="button"
             >
               {pending ? "Paying…" : `Allow & Pay $${priceUsdc}`}
