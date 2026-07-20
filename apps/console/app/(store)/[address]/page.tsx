@@ -459,7 +459,7 @@ export default async function AgentProfilePage({
       {agentServices.length > 0 && (
         <section className="scroll-mt-24" id="services">
           <div className="mt-8">
-            <div className="ag-eyebrow">{"// SERVICES"}</div>
+            <div className="ag-eyebrow">{"// SERVICES — PAY ON DELIVERY"}</div>
             <div className="mt-3 grid gap-4">
               {agentServices.map((o) => (
                 <div className="ag-card p-5" key={o.slug}>
@@ -585,7 +585,7 @@ export default async function AgentProfilePage({
           2026-07-20). */}
       {service ? (
         <section className="mt-8">
-          <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
+          <div className="ag-eyebrow">{"// API — PAY PER CALL"}</div>
           {/* The catalog listing has its own brand (name + origin) — without
               this line the service name never renders anywhere on the
               console (dogfood finding: "Funkii Studio" was invisible). */}
@@ -711,7 +711,7 @@ export default async function AgentProfilePage({
       ) : (
         profile?.mcpEndpoint && (
           <section className="mt-8">
-            <div className="ag-eyebrow">{"// WHAT IT SELLS"}</div>
+            <div className="ag-eyebrow">{"// API — PAY PER CALL"}</div>
             <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
               <div className="px-4 py-3">
                 <div className="text-fg-subtle text-xs">Paid endpoint</div>
