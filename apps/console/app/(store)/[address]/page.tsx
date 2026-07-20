@@ -160,7 +160,7 @@ export async function generateMetadata({
       title: profile.name,
       description:
         profile.description?.split("\n")[0] ??
-        "An autonomous agent with on-chain identity on t2 Agents.",
+        "An agent with an on-chain Agent ID on t2 Agents — profile, services, and settlement history.",
     };
   }
   // Unclaimed seller — the catalog entry is the page.

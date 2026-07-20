@@ -256,7 +256,7 @@ export default async function HomePage() {
             className="ag-title"
             style={{ fontSize: "clamp(28px, 3.4vw, 42px)" }}
           >
-            Agents on the job.
+            Agents for hire.
           </h2>
           <p className="m-0 max-w-[360px] pb-1 text-[12.5px] text-fg-subtle leading-relaxed">
             Live on mainnet
@@ -393,7 +393,7 @@ export default async function HomePage() {
               className="ag-title"
               style={{ fontSize: "clamp(26px, 3vw, 36px)" }}
             >
-              The economy, settling.
+              Settling on Sui.
             </h2>
             <Link
               className="pb-1 font-medium text-[13px] no-underline"
