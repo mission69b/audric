@@ -145,12 +145,12 @@ export function UseServiceTabs({
 
   return (
     <div className="mt-3 overflow-hidden rounded-2xl border border-border/50">
-      <div className="flex items-center gap-1 border-border/50 border-b bg-card/40 px-3 pt-3 pb-0">
+      <div className="flex items-center gap-1 border-border/50 border-b bg-card/40 px-3 py-2.5">
         {TABS.map((t) => (
           <button
-            className={`rounded-t-lg px-3.5 py-2 font-medium text-[12.5px] transition-colors ${
+            className={`rounded-md px-3.5 py-1.5 font-medium text-[12.5px] transition-colors ${
               tab === t.id
-                ? "border border-border/50 border-b-transparent bg-background text-foreground"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             }`}
             key={t.id}
