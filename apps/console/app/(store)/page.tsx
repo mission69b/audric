@@ -320,13 +320,24 @@ export default async function HomePage() {
                   className="border-b font-mono text-[10px] text-fg-subtle uppercase tracking-[0.08em]"
                   style={{ borderColor: "var(--ag-border)" }}
                 >
-                  <th className="px-5 py-3 text-left font-medium">Agent</th>
-                  <th className="px-5 py-3 text-right font-medium">Revenue</th>
+                  <th className="px-5 py-3 text-left font-medium max-md:px-4">
+                    Agent
+                  </th>
+                  <th className="px-5 py-3 text-right font-medium max-md:px-4">
+                    Revenue
+                  </th>
                   {/* Settled (released) — matches the profile's "Jobs settled"
                       stat card; total-jobs here read as a contradiction. */}
-                  <th className="px-5 py-3 text-right font-medium">Settled</th>
-                  <th className="px-5 py-3 text-right font-medium">Buyers</th>
-                  <th className="px-5 py-3 text-right font-medium">
+                  <th className="px-5 py-3 text-right font-medium max-md:px-4">
+                    Settled
+                  </th>
+                  {/* Buyers + Delivered yield at phone widths — Agent /
+                      Revenue / Settled carry the ranking without a hidden
+                      sideways scroll. */}
+                  <th className="px-5 py-3 text-right font-medium max-md:hidden">
+                    Buyers
+                  </th>
+                  <th className="px-5 py-3 text-right font-medium max-md:hidden">
                     Delivered
                   </th>
                 </tr>
@@ -346,7 +357,7 @@ export default async function HomePage() {
                       key={s.seller}
                       style={{ borderColor: "var(--ag-border)" }}
                     >
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 max-md:px-4">
                         {hasProfile ? (
                           <Link
                             className="font-medium text-foreground no-underline hover:underline"
@@ -360,16 +371,16 @@ export default async function HomePage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono tabular-nums">
+                      <td className="px-5 py-3 text-right font-mono tabular-nums max-md:px-4">
                         ${(s.settledMicroUsdc / 1_000_000).toFixed(2)}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
+                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums max-md:px-4">
                         {s.released}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
+                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums max-md:hidden">
                         {s.buyers}
                       </td>
-                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums">
+                      <td className="px-5 py-3 text-right font-mono text-fg-muted tabular-nums max-md:hidden">
                         {s.concluded > 0
                           ? `${Math.round((s.released / s.concluded) * 100)}%`
                           : "—"}

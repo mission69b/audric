@@ -105,9 +105,13 @@ export function UsageSection() {
           <thead>
             <tr className="border-border border-b text-left text-[11px] text-muted-foreground uppercase tracking-wide">
               <th className="pb-2 font-medium">Model</th>
-              <th className="pb-2 text-right font-medium">Reqs</th>
-              <th className="pb-2 text-right font-medium">Tokens</th>
-              <th className="pb-2 text-right font-medium">Spend</th>
+              <th className="pb-2 pl-3 text-right font-medium">Reqs</th>
+              {/* Tokens is the first column to give up at phone widths —
+                  Reqs + Spend carry the story. */}
+              <th className="pb-2 pl-3 text-right font-medium max-sm:hidden">
+                Tokens
+              </th>
+              <th className="pb-2 pl-3 text-right font-medium">Spend</th>
             </tr>
           </thead>
           <tbody>
@@ -116,16 +120,16 @@ export function UsageSection() {
                 className="border-border/50 border-b last:border-0"
                 key={r.model}
               >
-                <td className="py-2.5 font-mono text-foreground text-xs">
+                <td className="break-all py-2.5 font-mono text-foreground text-xs">
                   {r.model}
                 </td>
-                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
+                <td className="py-2.5 pl-3 text-right text-muted-foreground tabular-nums">
                   {r.requests}
                 </td>
-                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
+                <td className="py-2.5 pl-3 text-right text-muted-foreground tabular-nums max-sm:hidden">
                   {fmtTokens(r.inputTokens + r.outputTokens)}
                 </td>
-                <td className="py-2.5 text-right text-muted-foreground tabular-nums">
+                <td className="py-2.5 pl-3 text-right text-muted-foreground tabular-nums">
                   {fmtSpend(r.costMicros)}
                 </td>
               </tr>

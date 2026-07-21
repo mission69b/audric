@@ -184,7 +184,7 @@ export default async function MyAgentsPage() {
           style={{ borderColor: "var(--ag-border)" }}
         >
           <div className="flex flex-wrap items-start gap-2">
-            <p className="m-0 flex-1 basis-[280px] font-mono text-[12px] text-fg-muted leading-[1.6]">
+            <p className="m-0 flex-1 basis-[280px] break-words font-mono text-[12px] text-fg-muted leading-[1.6] [overflow-wrap:anywhere]">
               {createPrompt}
             </p>
             <CopyButton label="Copy prompt" text={createPrompt} />
@@ -195,7 +195,7 @@ export default async function MyAgentsPage() {
           </p>
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-fg-subtle">
-          <span>
+          <span className="min-w-0 [overflow-wrap:anywhere]">
             Doing it yourself?{" "}
             <span className="font-mono">npm i -g @t2000/cli</span> then{" "}
             <span className="font-mono">{createCmd}</span>
