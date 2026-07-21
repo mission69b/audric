@@ -83,6 +83,21 @@ export async function tryEndpoint(opts: {
     status: result.status,
     response: result.body,
     digest: result.receipt?.reference,
-    error: ok ? undefined : `The service answered HTTP ${result.status}.`,
+    error: ok ? undefined : failureMessage(result.status, result.body),
   };
+}
+
+/** Non-2xx → surface the seller's own reason. A serve-style 402/422 carries
+ *  `{ error }` in the body ("settlement failed: …", "invalid payment: …") —
+ *  swallowing it turns a diagnosable failure into "HTTP 402" (dogfood,
+ *  2026-07-21: a failing wallet couldn't be debugged from the UI). */
+function failureMessage(status: number, body: unknown): string {
+  const detail =
+    body && typeof body === "object" && "error" in body
+      ? String((body as { error: unknown }).error)
+      : typeof body === "string" && body.length > 0
+        ? body
+        : "";
+  const base = `The service answered HTTP ${status}.`;
+  return detail ? `${base} ${detail.slice(0, 400)}` : base;
 }
