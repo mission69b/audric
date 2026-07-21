@@ -184,7 +184,9 @@ export default async function MyAgentsPage() {
           style={{ borderColor: "var(--ag-border)" }}
         >
           <div className="flex flex-wrap items-start gap-2">
-            <p className="m-0 flex-1 basis-[280px] break-words font-mono text-[12px] text-fg-muted leading-[1.6] [overflow-wrap:anywhere]">
+            {/* min-w-0: without it flex sizes this item to the unbreakable
+                0x… address's min-content width and it punches off-screen. */}
+            <p className="m-0 min-w-0 flex-1 basis-[280px] font-mono text-[12px] text-fg-muted leading-[1.6] [overflow-wrap:anywhere]">
               {createPrompt}
             </p>
             <CopyButton label="Copy prompt" text={createPrompt} />
