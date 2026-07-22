@@ -9,6 +9,7 @@ import {
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { SUPPORTED_ASSETS } from "@t2000/sdk/browser";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { env } from "@/lib/env";
 import { ZK_CONFIG } from "@/lib/zk-config";
@@ -32,13 +33,32 @@ function shortAddress(a: string): string {
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
 }
 
+// The session's Google id_token carries the email claim (scope: openid email);
+// decode it client-side so the menu can say WHO is signed in — no server call.
+function emailFromJwt(jwt: string): string | null {
+  try {
+    const payload = JSON.parse(
+      atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+    ) as { email?: unknown };
+    return typeof payload.email === "string" ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
+// Console entry points — shown only OUTSIDE /manage (QA ER-001): inside the
+// console the sidebar already has both; on public store pages this dropdown
+// is the only path in.
 const MENU = [
   { label: "Overview", href: "/manage/dashboard" },
   { label: "Wallet & billing", href: "/manage/billing" },
 ] as const;
 
 export function WalletChip() {
+  const pathname = usePathname();
+  const inConsole = pathname?.startsWith("/manage") ?? false;
   const [address, setAddress] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -53,6 +73,7 @@ export function WalletChip() {
     }
     const addr = session.address;
     setAddress(addr);
+    setEmail(emailFromJwt(session.jwt));
     let alive = true;
     (async () => {
       try {
@@ -141,6 +162,12 @@ export function WalletChip() {
               borderColor: "var(--ag-border-hi)",
             }}
           >
+            {/* Who is signed in — email from the session JWT (ER-001). */}
+            {email && (
+              <div className="truncate px-2.5 pt-2 pb-0.5 text-[12px] text-muted-foreground">
+                {email}
+              </div>
+            )}
             {/* Address row IS the copy affordance — one click, no digging. */}
             <button
               className="flex w-full items-center justify-between gap-2 rounded-[7px] px-2.5 py-2 text-left transition-colors hover:bg-[color:var(--ag-overlay)]"
@@ -168,19 +195,23 @@ export function WalletChip() {
                 {copied ? "✓ Copied" : "Copy"}
               </span>
             </button>
-            <div
-              className="my-1.5 h-px"
-              style={{ background: "var(--ag-border)" }}
-            />
-            {MENU.map((m) => (
-              <Link
-                className="block rounded-[7px] px-2.5 py-2 text-[13px] text-muted-foreground no-underline transition-colors hover:bg-[color:var(--ag-overlay)] hover:text-foreground"
-                href={m.href}
-                key={m.label}
-              >
-                {m.label}
-              </Link>
-            ))}
+            {!inConsole && (
+              <>
+                <div
+                  className="my-1.5 h-px"
+                  style={{ background: "var(--ag-border)" }}
+                />
+                {MENU.map((m) => (
+                  <Link
+                    className="block rounded-[7px] px-2.5 py-2 text-[13px] text-muted-foreground no-underline transition-colors hover:bg-[color:var(--ag-overlay)] hover:text-foreground"
+                    href={m.href}
+                    key={m.label}
+                  >
+                    {m.label}
+                  </Link>
+                ))}
+              </>
+            )}
             <div
               className="my-1.5 h-px"
               style={{ background: "var(--ag-border)" }}

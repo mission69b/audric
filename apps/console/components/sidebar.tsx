@@ -5,7 +5,6 @@ import {
   Bot,
   Boxes,
   CreditCard,
-  ExternalLink,
   Inbox,
   KeyRound,
   LayoutGrid,
@@ -13,16 +12,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-// Console sidebar (t2000-design/agents ManageConsole §Sidebar): identity
-// block (monogram tile + @handle + copy-address), grouped nav, then the
-// two-balance money block — USDC → agent payments · Credit → Private Inference —
-// stated once, and Docs ↗. Sign-out lives in the top nav's wallet chip.
-// Card-path buyers (sign in → key → base URL) get Private Inference first;
-// agent/wallet surfaces stay one group down (item 10: progressive disclosure,
-// not removal).
+// Console sidebar (t2000-design/agents ManageConsole §Sidebar): grouped nav,
+// then the two-balance money block — USDC → agent payments · Credit →
+// Private Inference — stated once. Identity (email + address) and sign-out
+// live in the top nav's wallet chip; Docs is in the top nav (QA ER-003/004:
+// no duplicate identity or Docs down here). Card-path buyers (sign in → key →
+// base URL) get Private Inference first; agent/wallet surfaces stay one group
+// down (item 10: progressive disclosure, not removal).
 const NAV_GROUPS: {
   label: string;
   items: { href: string; label: string; icon: typeof LayoutGrid }[];
@@ -52,29 +50,18 @@ const NAV_GROUPS: {
   },
 ];
 
-function shortAddress(address: string): string {
-  return address.length > 12
-    ? `${address.slice(0, 6)}…${address.slice(-4)}`
-    : address;
-}
-
 export function Sidebar({
-  address,
   balance,
   walletUsdc,
-  handle,
   onNavigate,
 }: {
-  address: string;
   /** Platform credit (Private Inference), formatted "12.34". */
   balance: string;
   /** On-chain Passport USDC — null when the RPC read failed. */
   walletUsdc: number | null;
-  handle?: string | null;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const [copied, setCopied] = useState(false);
 
   return (
     <aside
@@ -84,59 +71,6 @@ export function Sidebar({
         background: "var(--ag-canvas)",
       }}
     >
-      {/* Identity — who is signed in (design: tile + handle + copy address). */}
-      <div className="px-3 pb-[18px]">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="flex size-[34px] items-center justify-center rounded-[9px] border font-mono text-[13px] text-fg-muted"
-            style={{
-              background: "var(--ag-overlay)",
-              borderColor: "var(--ag-border)",
-            }}
-          >
-            ◎
-          </div>
-          <div className="min-w-0">
-            <div className="truncate font-semibold text-[13.5px] text-foreground">
-              {handle ?? shortAddress(address)}
-            </div>
-            <button
-              className="flex items-center gap-1.5 font-mono text-[11px] text-fg-subtle transition-colors hover:text-fg-muted"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(address);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1400);
-                } catch {
-                  // clipboard unavailable
-                }
-              }}
-              title="Copy address"
-              type="button"
-            >
-              {copied ? "Copied ✓" : shortAddress(address)}
-              {!copied && (
-                <svg
-                  aria-hidden="true"
-                  fill="none"
-                  height="11"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  viewBox="0 0 16 16"
-                  width="11"
-                >
-                  <rect height="8" rx="1.5" width="8" x="5.5" y="5.5" />
-                  <path
-                    d="M10.5 5.5V3.5A1 1 0 0 0 9.5 2.5h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <nav className="flex flex-col gap-4">
         {NAV_GROUPS.map((group) => (
           <div key={group.label}>
@@ -226,16 +160,6 @@ export function Sidebar({
           </div>
         ))}
       </Link>
-
-      <a
-        className="mt-1 flex items-center gap-2 px-3 py-2.5 font-medium text-[13px] text-fg-subtle no-underline transition-colors hover:text-foreground"
-        href="https://developers.t2000.ai"
-        rel="noreferrer"
-        target="_blank"
-      >
-        <ExternalLink className="size-[15px]" strokeWidth={1.3} />
-        Docs ↗
-      </a>
     </aside>
   );
 }

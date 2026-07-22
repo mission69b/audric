@@ -7,16 +7,12 @@ import { Sidebar } from "@/components/sidebar";
 // top (rendered by the layout); under it a 1400px grid — 240px sidebar +
 // main. Mobile: the sidebar becomes a drawer behind a Menu button + scrim.
 export function ConsoleShell({
-  address,
   balance,
   walletUsdc,
-  handle,
   children,
 }: {
-  address: string;
   balance: string;
   walletUsdc: number | null;
-  handle: string | null;
   children: React.ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
@@ -32,9 +28,7 @@ export function ConsoleShell({
         }
       >
         <Sidebar
-          address={address}
           balance={balance}
-          handle={handle}
           onNavigate={() => setNavOpen(false)}
           walletUsdc={walletUsdc}
         />
