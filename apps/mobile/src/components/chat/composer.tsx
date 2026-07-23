@@ -1,22 +1,9 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image } from "expo-image";
+import { useMemo } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
-import {
-  CTX,
-  SLASH_COMMANDS,
-  type SlashKey,
-  VISION_MODELS,
-} from "@/app-state/catalog";
+import { CTX, SLASH_COMMANDS, type SlashKey } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import {
   ArrowUp,
@@ -28,11 +15,10 @@ import {
   Paperclip,
   SquarePen,
   Trash2,
-  TriangleAlert,
   X,
 } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
-import { fonts, radius } from "@/theme/tokens";
+import { fonts } from "@/theme/tokens";
 
 const SLASH_ICON: Record<SlashKey, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
   new: SquarePen,
@@ -43,10 +29,13 @@ const SLASH_ICON: Record<SlashKey, React.ComponentType<{ size?: number; color?: 
   purge: Eraser,
 };
 
-// The chat composer (prototype "COMPOSER"): optional slash-command menu, the
-// vision-error banner, the attach preview strip, the text input, and the control
-// row (attach · model chip · memory toggle · context ring · send/stop). 1:1 with
-// the prototype markup + derived values (slashOpen, ctxShow, attach states…).
+// The chat composer (prototype "COMPOSER"): optional slash-command menu, a preview
+// strip for staged images, the text input, and the control row (attach · model chip ·
+// memory toggle · context ring · send/stop). The paperclip is a REAL path now: OS
+// photo picker → base64 `data:` URL `file` part → the model reads it directly (see
+// `lib/attachments.ts`). Every mobile model — Kimi/Auto included — accepts image input
+// (verified via the Gateway), so `canAttach` is effectively always true; the gate is
+// kept only as forward-safety for a future text-only model.
 export function Composer() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -58,12 +47,14 @@ export function Composer() {
     busy,
     model,
     openModel,
-    attachDemo,
-    toggleAttach,
     memoryOn,
     toggleMemory,
     openCtx,
     runSlash,
+    attachments,
+    canAttach,
+    pickAttachment,
+    removeAttachment,
   } = useAppState();
 
   const slashCmds = useMemo(() => {
@@ -77,7 +68,6 @@ export function Composer() {
   // usage from the stream's finish part (chat+api → message metadata), replace
   // catalog CTX with it, then restore `messages.length > 0 && !busy`.
   const ctxShow = false;
-  const attachVisionError = attachDemo && !VISION_MODELS.has(model);
 
   return (
     <View style={[styles.wrap, { paddingBottom: (insets.bottom || 12) + 8 }]}>
@@ -102,16 +92,44 @@ export function Composer() {
       ) : null}
 
       <View style={[styles.box, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        {attachVisionError ? (
-          <View style={styles.visionBanner}>
-            <TriangleAlert size={15} color={colors.warnFg} strokeWidth={2} />
-            <Text style={[styles.visionText, { color: colors.warnFg }]}>
-              This model can't see images. Switch to a vision model or Auto. (PDFs work on any model.)
-            </Text>
+        {attachments.length > 0 ? (
+          <View style={styles.attachStrip}>
+            {attachments.map((a) => {
+              const isImage = a.mediaType.startsWith("image/");
+              return (
+                <View
+                  key={a.id}
+                  style={[
+                    styles.thumb,
+                    { borderColor: colors.border },
+                    !isImage && { backgroundColor: colors.muted },
+                  ]}
+                >
+                  {isImage ? (
+                    <Image source={{ uri: a.url }} style={styles.thumbImg} contentFit="cover" />
+                  ) : (
+                    <View style={styles.thumbFile}>
+                      <FileText size={18} color={colors.mutedFg} strokeWidth={1.8} />
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.thumbFileName, { color: colors.mutedFg }]}
+                      >
+                        {a.name}
+                      </Text>
+                    </View>
+                  )}
+                  <Pressable
+                    onPress={() => removeAttachment(a.id)}
+                    hitSlop={6}
+                    style={[styles.thumbX, { backgroundColor: colors.fg }]}
+                  >
+                    <X size={11} color={colors.bg} strokeWidth={2.8} />
+                  </Pressable>
+                </View>
+              );
+            })}
           </View>
         ) : null}
-
-        {attachDemo ? <AttachStrip /> : null}
 
         <TextInput
           value={draft}
@@ -126,20 +144,11 @@ export function Composer() {
 
         <View style={styles.controls}>
           <Pressable
-            onPress={toggleAttach}
-            style={[
-              styles.attachBtn,
-              {
-                borderColor: colors.border,
-                backgroundColor: attachDemo ? colors.secondary : "transparent",
-              },
-            ]}
+            onPress={pickAttachment}
+            hitSlop={6}
+            style={[styles.attachBtn, { borderColor: colors.border }, !canAttach && styles.attachDim]}
           >
-            <Paperclip
-              size={16}
-              color={attachDemo ? colors.fg : colors.mutedFg}
-              strokeWidth={1.9}
-            />
+            <Paperclip size={16} color={colors.mutedFg} strokeWidth={1.9} />
           </Pressable>
 
           <Pressable
@@ -195,94 +204,6 @@ export function Composer() {
         </View>
       </View>
     </View>
-  );
-}
-
-// The upload-overlay ring — prototype `animation:spin .8s linear infinite`.
-function Spinner() {
-  const rot = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(rot, {
-        toValue: 1,
-        duration: 800,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [rot]);
-  const spin = rot.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] });
-  return <Animated.View style={[styles.spinner, { transform: [{ rotate: spin }] }]} />;
-}
-
-// The three demo attachments (prototype attachItems): two image tiles (the second
-// mid-upload) and a PDF card. The tiles are presentational (no real files), but
-// each × removes its own tile the way the webapp removes a real attachment —
-// tracked in local state. Removing the last tile clears the whole demo strip via
-// the store toggle so the composer returns to its empty state.
-type AttachTile = "img" | "uploading" | "pdf";
-
-function AttachStrip() {
-  const { colors } = useTheme();
-  const { toggleAttach } = useAppState();
-  const [tiles, setTiles] = useState<AttachTile[]>(["img", "uploading", "pdf"]);
-
-  const remove = (id: AttachTile) => {
-    const next = tiles.filter((t) => t !== id);
-    if (next.length === 0) {
-      toggleAttach();
-    } else {
-      setTiles(next);
-    }
-  };
-
-  return (
-    <View style={styles.attachStrip}>
-      {tiles.includes("img") ? (
-        <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-          <LinearGradient
-            colors={["#0ac7b4", "#6366f1"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.tileImg}
-          />
-          <TileRemove onPress={() => remove("img")} />
-        </View>
-      ) : null}
-      {tiles.includes("uploading") ? (
-        <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-          <LinearGradient
-            colors={["#0ac7b4", "#6366f1"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.tileImg}
-          />
-          <View style={styles.tileUploading}>
-            <Spinner />
-          </View>
-          <TileRemove onPress={() => remove("uploading")} />
-        </View>
-      ) : null}
-      {tiles.includes("pdf") ? (
-        <View style={[styles.tile, { borderColor: colors.border, backgroundColor: colors.muted }]}>
-          <View style={styles.tileFile}>
-            <FileText size={20} color={colors.mutedFg} strokeWidth={1.7} />
-            <Text style={[styles.tileBadge, { color: colors.mutedFg }]}>PDF</Text>
-          </View>
-          <TileRemove onPress={() => remove("pdf")} />
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function TileRemove({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} hitSlop={6} style={styles.tileRemove}>
-      <X size={9} color="#fff" strokeWidth={3} />
-    </Pressable>
   );
 }
 
@@ -349,31 +270,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingBottom: 11,
   },
-  visionBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(217,119,6,0.12)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(217,119,6,0.3)",
-    borderRadius: 11,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginBottom: 9,
-  },
-  visionText: { flex: 1, fontFamily: fonts.medium, fontSize: 11.5, lineHeight: 16 },
 
   input: { fontFamily: fonts.regular, fontSize: 14.5, paddingTop: 2, paddingBottom: 6, padding: 0 },
 
+  attachStrip: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  thumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "visible",
+  },
+  thumbImg: { width: "100%", height: "100%", borderRadius: 12 },
+  thumbFile: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    gap: 3,
+  },
+  thumbFileName: { fontFamily: fonts.medium, fontSize: 8.5, textAlign: "center" },
+  thumbX: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   controls: { flexDirection: "row", alignItems: "center", gap: 9, marginTop: 6 },
   attachBtn: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
+  attachDim: { opacity: 0.4 },
   modelChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -424,45 +363,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stopSquare: { width: 11, height: 11, borderRadius: 3 },
-
-  attachStrip: { flexDirection: "row", gap: 9, marginBottom: 11, flexWrap: "wrap" },
-  tile: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  tileImg: { flex: 1, backgroundColor: "#0ac7b4" },
-  tileUploading: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.42)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  spinner: {
-    width: 18,
-    height: 18,
-    borderRadius: 999,
-    borderWidth: 2.5,
-    borderColor: "rgba(255,255,255,0.35)",
-    borderTopColor: "#fff",
-  },
-  tileFile: { flex: 1, alignItems: "center", justifyContent: "center", gap: 5 },
-  tileBadge: { fontFamily: fonts.bold, fontSize: 8, letterSpacing: 0.4 },
-  tileRemove: {
-    position: "absolute",
-    top: 3,
-    right: 3,
-    width: 17,
-    height: 17,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
 });

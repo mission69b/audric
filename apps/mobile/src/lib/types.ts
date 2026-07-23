@@ -38,3 +38,44 @@ export function messageText(message: ChatMessage): string {
     .map((p) => p.text)
     .join("");
 }
+
+// An image attachment carried on a message — an AI SDK `file` part whose mediaType
+// is an image. `url` is a `data:` URL (mobile inlines the photo at the source; see
+// `lib/attachments.ts`). Used by the user bubble to show what the user sent.
+export type MessageImage = { url: string; mediaType: string; name?: string };
+
+// Image file parts on a message, in order. Mirrors how web-v3 reads image parts off
+// a message (`p.type === "file"` + an `image/*` mediaType).
+export function messageImages(message: ChatMessage): MessageImage[] {
+  const out: MessageImage[] = [];
+  for (const p of message.parts) {
+    if (p.type !== "file") {
+      continue;
+    }
+    const fp = p as { url?: string; mediaType?: string; filename?: string };
+    if (typeof fp.url === "string" && fp.mediaType?.startsWith("image/")) {
+      out.push({ url: fp.url, mediaType: fp.mediaType, name: fp.filename });
+    }
+  }
+  return out;
+}
+
+// A non-image attachment carried on a message (today: PDFs). Rendered as a labeled
+// chip, never inline — the bytes aren't shown. On a RELOADED thread the file part has
+// been swapped for a `[file: name]` text marker server-side (`chat+api` partsForPersist),
+// so this only surfaces for the just-sent turn — same lifecycle as `messageImages`.
+export type MessageFile = { name: string; mediaType: string };
+
+export function messageFiles(message: ChatMessage): MessageFile[] {
+  const out: MessageFile[] = [];
+  for (const p of message.parts) {
+    if (p.type !== "file") {
+      continue;
+    }
+    const fp = p as { mediaType?: string; filename?: string };
+    if (fp.mediaType && !fp.mediaType.startsWith("image/")) {
+      out.push({ name: fp.filename ?? "document", mediaType: fp.mediaType });
+    }
+  }
+  return out;
+}
