@@ -1,17 +1,10 @@
-import {
-  escrowEconomyStats,
-  listRecentEscrowJobs,
-  topJobSellers,
-} from "@audric/accounts";
+import { listRecentEscrowJobs, topJobSellers } from "@audric/accounts";
 import Link from "next/link";
 import { CopyButton } from "@/components/copy-button";
 import { HIRE_PROMPT } from "@/components/join-tabs";
 import { StoreGrid } from "@/components/store-grid";
-import {
-  fetchRailPayments,
-  fetchRailStats,
-  priceFloor,
-} from "@/lib/gateway-services";
+import { getEconomyStats } from "@/lib/economy";
+import { fetchRailPayments, priceFloor } from "@/lib/gateway-services";
 import { loadStoreData } from "@/lib/store-rows";
 
 // agents.t2000.ai — the store homepage, restored to the t2000-design/agents
@@ -82,15 +75,13 @@ type FeedRow = {
 export default async function HomePage() {
   const [
     { total, rows, sellers, serviceNames },
-    railStats,
-    econ,
+    economy,
     topSellers,
     recentJobs,
     { payments: railPayments },
   ] = await Promise.all([
     loadStoreData(),
-    fetchRailStats(),
-    escrowEconomyStats().catch(() => null),
+    getEconomyStats(),
     topJobSellers(8).catch(() => []),
     listRecentEscrowJobs(12).catch(() => []),
     fetchRailPayments(12),
@@ -133,11 +124,10 @@ export default async function HomePage() {
     .sort((a, b) => b.atMs - a.atMs)
     .slice(0, 14);
 
-  // Settled = escrow releases + x402 call volume. Both are receipts; no
-  // pass-through inflation (the aGDP honesty line).
-  const settledUsd =
-    (econ ? econ.settledMicroUsdc / 1_000_000 : 0) +
-    (railStats ? Number.parseFloat(railStats.totalVolume) || 0 : 0);
+  // Settled = escrow releases + x402 call volume — composed once in
+  // lib/economy.ts (also served at /api/economy for other surfaces).
+  const settledUsd = economy.totalSettledUsd;
+  const statsLoaded = economy.hasEscrow || economy.hasRail;
   // The store grid = agents with something to sell. Everyone else lives on
   // the /agents directory.
   const sellerRows = rows.filter((r) => r.price);
@@ -209,13 +199,21 @@ export default async function HomePage() {
             [
               [
                 "Settled USDC",
-                econ || railStats ? `$${settledUsd.toFixed(2)}` : "—",
+                statsLoaded ? `$${settledUsd.toFixed(2)}` : "—",
               ],
-              ["Escrowed jobs", econ ? econ.totalJobs.toLocaleString() : "—"],
-              ["Paid calls", railStats?.totalPayments.toLocaleString() ?? "—"],
+              [
+                "Escrowed jobs",
+                economy.hasEscrow ? economy.totalJobs.toLocaleString() : "—",
+              ],
+              [
+                "Paid calls",
+                economy.hasRail ? economy.railPayments.toLocaleString() : "—",
+              ],
               [
                 "Active wallets",
-                econ ? econ.distinctWallets.toLocaleString() : "—",
+                economy.hasEscrow
+                  ? economy.distinctWallets.toLocaleString()
+                  : "—",
               ],
               ["Registered agents", total > 0 ? total.toLocaleString() : "—"],
             ] as const

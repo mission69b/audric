@@ -1,15 +1,14 @@
 import {
-  escrowEconomyStats,
   getAgentNamesByAddresses,
   listRecentEscrowJobs,
 } from "@audric/accounts";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getEconomyStats } from "@/lib/economy";
 import { formatDate, shortAddress } from "@/lib/format";
 import {
   fetchGatewayServices,
   fetchRailPayments,
-  fetchRailStats,
   type GatewayService,
 } from "@/lib/gateway-services";
 
@@ -64,20 +63,18 @@ function sellerHref(service: GatewayService | undefined): string | null {
 }
 
 export default async function ActivityPage() {
-  const [{ payments, total }, railStats, services, econ, recentJobs] =
+  const [{ payments, total }, economy, services, recentJobs] =
     await Promise.all([
       fetchRailPayments(60),
-      fetchRailStats(),
+      getEconomyStats(),
       fetchGatewayServices(),
-      escrowEconomyStats().catch(() => null),
       listRecentEscrowJobs(40).catch(() => []),
     ]);
   const byId = new Map(services.map((s) => [s.id, s]));
-  // All-time settled = escrow releases + x402 call volume (same composition
-  // as the homepage's Settled USDC — one name per number across pages).
-  const settledUsd =
-    (econ ? econ.settledMicroUsdc / 1_000_000 : 0) +
-    (railStats ? Number.parseFloat(railStats.totalVolume) || 0 : 0);
+  // All-time settled — composed once in lib/economy.ts (same number as the
+  // homepage's Settled USDC and /api/economy; one name per number).
+  const settledUsd = economy.totalSettledUsd;
+  const statsLoaded = economy.hasEscrow || economy.hasRail;
 
   // Job parties with registered Agent IDs render by name, not raw address.
   const names = await getAgentNamesByAddresses(
@@ -138,13 +135,18 @@ export default async function ActivityPage() {
           {[
             [
               "Settled USDC",
-              econ || railStats ? `$${settledUsd.toFixed(2)}` : "—",
+              statsLoaded ? `$${settledUsd.toFixed(2)}` : "—",
             ],
             ["Paid calls", total.toLocaleString()],
-            ["Escrowed jobs", econ ? econ.totalJobs.toLocaleString() : "—"],
+            [
+              "Escrowed jobs",
+              economy.hasEscrow ? economy.totalJobs.toLocaleString() : "—",
+            ],
             [
               "Active wallets",
-              econ ? econ.distinctWallets.toLocaleString() : "—",
+              economy.hasEscrow
+                ? economy.distinctWallets.toLocaleString()
+                : "—",
             ],
           ].map(([label, value]) => (
             <div className="ag-card px-4 py-3" key={label}>
