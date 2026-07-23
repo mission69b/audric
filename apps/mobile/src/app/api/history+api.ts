@@ -1,4 +1,4 @@
-import { getChatsByUserId } from "@/lib/db/queries";
+import { deleteAllChatsByUserId, getChatsByUserId } from "@/lib/db/queries";
 import { authenticate } from "@/lib/api-guard";
 
 // History route — the drawer's chat list. Returns this user's threads (id + title +
@@ -40,5 +40,35 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[history route] load failed:", error);
     return Response.json({ chats: [] });
+  }
+}
+
+// "Delete all chats" — `DELETE /api/history`. Removes every thread (and its votes,
+// messages, streams) belonging to the verified `audric_session` user. Native analogue
+// of web-v3's `DELETE /api/history` (`deleteAllChatsByUserId`). No-ops when the DB is
+// absent. The body userId (dev-fallback hint) is never trusted over the token.
+export async function DELETE(request: Request) {
+  const asserted =
+    (new URL(request.url).searchParams.get("userId") ?? "").toLowerCase() ||
+    null;
+  const auth = await authenticate(request, asserted);
+  if (!auth.ok) return auth.response;
+
+  const userId = auth.userId ?? "";
+  if (!SUI_ADDRESS.test(userId)) {
+    return Response.json({ ok: false, error: "Bad request." }, { status: 400 });
+  }
+  if (!process.env.POSTGRES_URL) {
+    return Response.json({ ok: true, persisted: false, deletedCount: 0 });
+  }
+  try {
+    const { deletedCount } = await deleteAllChatsByUserId({ userId });
+    return Response.json({ ok: true, deletedCount });
+  } catch (error) {
+    console.error("[history route] delete-all failed:", error);
+    return Response.json(
+      { ok: false, error: "Delete failed." },
+      { status: 500 }
+    );
   }
 }

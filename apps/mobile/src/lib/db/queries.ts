@@ -1,6 +1,16 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "./client";
-import { chat, type ChatRow, message, type MessageRow, user } from "./schema";
+import {
+  chat,
+  type ChatRow,
+  document,
+  message,
+  type MessageRow,
+  stream,
+  suggestion,
+  user,
+  vote,
+} from "./schema";
 
 // Query layer — the native mirror of web-v3's `lib/db/queries.ts`, same function
 // names + semantics. Every call no-ops (or returns empty) when the DB is absent
@@ -117,4 +127,57 @@ export async function deleteChatById(input: {
   if (owned.length === 0) return;
   await db.delete(message).where(eq(message.chatId, input.id));
   await db.delete(chat).where(eq(chat.id, input.id));
+}
+
+// "Delete all chats" — remove every thread this user owns, plus each thread's FK
+// children (votes, messages, resumable streams) in FK-safe order. Mirrors web-v3's
+// `deleteAllChatsByUserId`. Returns the number of chats removed (0 when none / no DB).
+export async function deleteAllChatsByUserId(input: {
+  userId: string;
+}): Promise<{ deletedCount: number }> {
+  const db = getDb();
+  if (!db) return { deletedCount: 0 };
+  const owned = await db
+    .select({ id: chat.id })
+    .from(chat)
+    .where(eq(chat.userId, input.userId));
+  if (owned.length === 0) return { deletedCount: 0 };
+  const chatIds = owned.map((c) => c.id);
+  await db.delete(vote).where(inArray(vote.chatId, chatIds));
+  await db.delete(message).where(inArray(message.chatId, chatIds));
+  await db.delete(stream).where(inArray(stream.chatId, chatIds));
+  await db.delete(chat).where(eq(chat.userId, input.userId));
+  return { deletedCount: chatIds.length };
+}
+
+// "Purge all my data" also drops artifact Documents (+ their Suggestion children).
+// Mirrors web-v3's `deleteAllDocumentsByUserId`. Mobile never creates documents, but
+// a web-app user has them, and the purge copy promises "artifacts" are removed.
+export async function deleteAllDocumentsByUserId(input: {
+  userId: string;
+}): Promise<{ deletedCount: number }> {
+  const db = getDb();
+  if (!db) return { deletedCount: 0 };
+  await db.delete(suggestion).where(eq(suggestion.userId, input.userId));
+  const deleted = await db
+    .delete(document)
+    .where(eq(document.userId, input.userId))
+    .returning({ id: document.id });
+  return { deletedCount: deleted.length };
+}
+
+// "Forget all my memories" — bump the user's memory epoch so recall/save move to a
+// fresh namespace and every prior memory is never recalled again. The old encrypted
+// Walrus blobs are left to expire on their own. Returns the new epoch (0 when no DB).
+// Mirrors web-v3's `incrementMemoryEpoch`; mobile omits web-v3's `updatedAt` bump
+// (that column isn't in this minimal mirror).
+export async function incrementMemoryEpoch(userId: string): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+  const [row] = await db
+    .update(user)
+    .set({ memoryEpoch: sql`${user.memoryEpoch} + 1` })
+    .where(eq(user.id, userId))
+    .returning({ memoryEpoch: user.memoryEpoch });
+  return row?.memoryEpoch ?? 0;
 }
