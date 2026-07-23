@@ -26,6 +26,20 @@ function grpcClient(): SuiGrpcClient {
   return new SuiGrpcClient({ baseUrl, network: SUI_NETWORK });
 }
 
+/**
+ * Why Send is unavailable right now, or `null` when it can proceed.
+ *
+ * SINGLE SOURCE OF TRUTH for the network gate: the UI disables Send from this, and
+ * `sendSui` throws from this, so the button state and the guard can never drift.
+ * The UI check is the courtesy; the throw is the guarantee (defence in depth — a
+ * mainnet broadcast stays impossible even if a surface forgets to ask).
+ */
+export function sendUnavailableReason(): string | null {
+  return SUI_NETWORK === "testnet"
+    ? null
+    : "Sending is testnet-only right now — mainnet transfers are not enabled yet.";
+}
+
 // Build → sign (zkLogin) → broadcast a gas-native SUI transfer on the configured
 // network. Every failure throws with a user-facing message; the caller surfaces it.
 //
@@ -43,9 +57,11 @@ export async function sendSui(input: {
   expectedAddress: string;
 }): Promise<{ digest: string }> {
   // Hard gate: Real Send is testnet-only until Phase-0 mainnet parity is deliberately
-  // lifted. This makes a mainnet broadcast impossible regardless of misconfiguration.
-  if (SUI_NETWORK !== "testnet") {
-    throw new Error("Real Send is testnet-only pending Phase-0 parity.");
+  // lifted. This makes a mainnet broadcast impossible regardless of misconfiguration
+  // — and regardless of whether the calling surface honoured `sendUnavailableReason`.
+  const unavailable = sendUnavailableReason();
+  if (unavailable) {
+    throw new Error(unavailable);
   }
 
   // Exact string→base-units. Rejects sub-unit precision (e.g. "0.0000000015" SUI)

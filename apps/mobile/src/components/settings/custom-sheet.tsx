@@ -5,12 +5,14 @@ import { X } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
-// Custom instructions sheet (prototype CUSTOM). Standing directions Audric
-// follows in every reply. Draft is held in the store (customText) so it survives
-// re-opening the sheet within a session; Save just closes (no backend yet).
+// Custom instructions sheet (prototype CUSTOM). Standing directions Audric follows
+// in every reply — and it means it: Save persists them to the device and every
+// subsequent turn forwards them into the system prompt. (They were previously
+// session-only local state behind a Save button that saved nothing.)
 export function CustomSheet() {
   const { colors } = useTheme();
-  const { customSheet, closeCustom, customText, onCustomText } = useAppState();
+  const { customSheet, closeCustom, saveCustom, customText, onCustomText } =
+    useAppState();
 
   return (
     <BottomSheet visible={customSheet} onClose={closeCustom} maxHeightRatio={0.9}>
@@ -38,7 +40,7 @@ export function CustomSheet() {
       />
       <Text style={[styles.counter, { color: colors.mutedFg }]}>{customText.length}/2000</Text>
 
-      <Pressable onPress={closeCustom} style={[styles.save, { backgroundColor: colors.tealLabel }]}>
+      <Pressable onPress={saveCustom} style={[styles.save, { backgroundColor: colors.tealLabel }]}>
         <Text style={styles.saveText}>Save</Text>
       </Pressable>
     </BottomSheet>

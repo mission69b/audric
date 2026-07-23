@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppState } from "@/app-state/store";
 import { authenticate, useBiometricCapability } from "@/auth/biometrics";
 import { useAuth } from "@/auth/useAuth";
+import { useBalance } from "@/lib/wallet-data";
 import { CopyPill } from "@/components/ui/copy-pill";
 import { AUDRIC_PRIVACY_URL, AUDRIC_TERMS_URL, openAudricWeb } from "@/lib/audric-web";
 import {
@@ -159,6 +160,7 @@ function WalletReady() {
   const { colors } = useTheme();
   const { openReceive, onboardNext } = useAppState();
   const { session } = useAuth();
+  const { usdc } = useBalance();
   const insets = useSafeAreaInsets();
 
   return (
@@ -180,7 +182,12 @@ function WalletReady() {
               </Text>
               <Text style={[styles.balAsset, { color: colors.fg }]}>USDC</Text>
             </View>
-            <Text style={[styles.balNum, { color: colors.fg }]}>0.00</Text>
+            {/* Live read, not a hardcoded "0.00": this card looks identical to the
+                real wallet screen, so it must not assert a figure it did not fetch.
+                "—" while loading or on a soft-fail, exactly like the wallet tab. */}
+            <Text style={[styles.balNum, { color: colors.fg }]}>
+              {usdc != null ? usdc.toFixed(2) : "—"}
+            </Text>
           </View>
           <View style={[styles.addrRow, { borderTopColor: colors.border }]}>
             <Wallet size={14} color={colors.mutedFg} strokeWidth={1.8} />

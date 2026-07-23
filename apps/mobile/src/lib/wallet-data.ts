@@ -7,7 +7,9 @@ import { generateAPIUrl } from "@/lib/api-url";
 // balance + transaction history for the SIGNED-IN address via the `/api/balance`
 // and `/api/transactions` routes — the same SDK-backed readers web-v3 uses — so
 // web and mobile show identical numbers. Read-only: no signing, no money write
-// (the Send flow stays a Phase-0 mock). Both soft-fail to empty/null so a flaky
+// happens in THIS file. (Send itself is NOT a mock — `lib/wallet/send.ts` builds,
+// zkLogin-signs and broadcasts real transactions, gated to testnet. Do not call it
+// casually in a demo.) Both soft-fail to empty/null so a flaky
 // RPC shows "—" / an empty list rather than breaking the wallet tab, mirroring the
 // routes' own soft-fail contract and the `loadHistory` pattern in the store.
 

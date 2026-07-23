@@ -20,9 +20,11 @@ import {
 import { authHeader } from "@/auth/session";
 import { useAuth } from "@/auth/useAuth";
 import { generateAPIUrl } from "@/lib/api-url";
+import { loadCustomInstructions, saveCustomInstructions } from "@/lib/prefs";
 import type { ChatMessage } from "@/lib/types";
 import { resolveRecipient } from "@/lib/wallet/recipient";
 import { sendSui } from "@/lib/wallet/send";
+import { useTheme } from "@/theme/theme";
 
 // A faithful port of the mobile prototype's single `Component` state machine
 // (`Audric Mobile Design Brief/Audric Mobile.dc.html`). The prototype runs the
@@ -46,11 +48,12 @@ export type ConfirmKind = "delete" | "purge" | "forget" | "signout" | null;
 // Onboarding entry (see AGENTS/CLAUDE Phase-0). The real zkLogin `gate` is the
 // production sign-in, so once a user reaches the app they are ALREADY signed in —
 // showing the prototype's mock "Continue with Google" Welcome step again would be
-// a second, fake sign-in. In production we therefore start onboarding at step 1
-// (Privacy → Wallet → FaceID). In __DEV__ we start at step 0 so the full 4-step
-// prototype flow (incl. the mock Welcome) stays previewable via the gate's dev
-// bypass, without touching real auth.
-const ONBOARD_START_STEP = __DEV__ ? 0 : 1;
+// a second, FAKE sign-in. Onboarding therefore always starts at step 1
+// (Privacy → Wallet → FaceID).
+//
+// This was `__DEV__ ? 0 : 1`, so dev builds could preview step 0 behind the gate's
+// dev bypass. That bypass is gone, so the branch only meant dev users reached the
+// app for real and were then shown a mock Google button. Removed with it.
 
 let seq = 0;
 const uid = (suffix: string) => `${(seq += 1)}${suffix}`;
@@ -168,6 +171,8 @@ type Store = {
   customText: string;
   openCustom: () => void;
   closeCustom: () => void;
+  /** Persist the custom instructions to the device, then close the sheet. */
+  saveCustom: () => void;
   onCustomText: (v: string) => void;
   handleSheet: boolean;
   handleText: string;
@@ -202,8 +207,13 @@ type Store = {
 
 const AppStateContext = createContext<Store | null>(null);
 
+// NOTE: there is deliberately no "wallet" kind. Wallet/balance wording used to be
+// intercepted here and answered with a canned figure — a fabricated financial claim
+// rendered indistinguishably from a real turn. Those messages now classify as "text"
+// and reach the model, which has a real `balance_check` tool reading the signed-in
+// address. Never reintroduce a client-side branch that asserts a balance.
 function classify(text: string): {
-  kind: "text" | "image" | "video" | "artifact" | "wallet";
+  kind: "text" | "image" | "video" | "artifact";
 } {
   const lc = text.toLowerCase();
   if (/\b(image|picture|draw|logo|illustration|photo|art|render|generate)\b/.test(lc))
@@ -215,29 +225,16 @@ function classify(text: string): {
     )
   )
     return { kind: "artifact" };
-  if (/balance|usdc|wallet|hold|spend|money/.test(lc)) return { kind: "wallet" };
   return { kind: "text" };
 }
 
 // Builds the prototype's canned assistant reply for a NON-text (demo) turn as a
+// visibly-badged demo card. Never used for wallet/balance questions — see `classify`.
 // `ChatMessage`: a metadata-tagged assistant message carrying the render kind + a
 // short text part. No model call — these surfaces are still mock (in web-v3 they
 // are real tool-call parts), but they share the same parts-based message list.
-function buildDemoReply(
-  kind: "image" | "video" | "artifact" | "wallet"
-): ChatMessage {
+function buildDemoReply(kind: "image" | "video" | "artifact"): ChatMessage {
   const base = { id: uid("a"), role: "assistant" as const };
-  if (kind === "wallet")
-    return {
-      ...base,
-      metadata: { demo: "wallet" },
-      parts: [
-        {
-          type: "text",
-          text: "You're holding 124.50 USDC that's spendable, plus 0.82 SUI reserved for gas. Want me to send some?",
-        },
-      ],
-    };
   if (kind === "image")
     return {
       ...base,
@@ -324,6 +321,9 @@ function groupByRecency(
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
+  // `/theme` dispatches the real theme toggle. ThemeProvider wraps this provider
+  // (app/_layout.tsx → RootNavigator → app/(app)/_layout.tsx), so this is safe.
+  const { toggle: toggleTheme } = useTheme();
   const [tab, setTabRaw] = useState<Tab>("chat");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -372,6 +372,17 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [referralSheet, setReferralSheet] = useState(false);
   const [customSheet, setCustomSheet] = useState(false);
   const [customText, setCustomText] = useState("");
+  // Custom instructions persist across restarts and are actually APPLIED to every
+  // turn (forwarded in the request body → prepended to the system prompt). Before
+  // this they were session-only local state behind a "Save" button that saved
+  // nothing — see AUDIT-2026-07-20.md #5.
+  const customTextRef = useRef(customText);
+  useEffect(() => {
+    customTextRef.current = customText;
+  }, [customText]);
+  useEffect(() => {
+    loadCustomInstructions().then(setCustomText);
+  }, []);
   const [handleSheet, setHandleSheet] = useState(false);
   const [handleText, setHandleText] = useState("");
   const [accountMenu, setAccountMenu] = useState(false);
@@ -382,7 +393,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // `onboarded:false`). Real sign-in already happened at the gate; the steps
   // only introduce the app ("Get started" advances, "Skip for now" finishes).
   const [onboarded, setOnboarded] = useState(false);
-  const [step, setStep] = useState(ONBOARD_START_STEP);
+  const [step, setStep] = useState(1);
   // Guest persona (anonymous "try before signup"): free models, no persistence,
   // a sign-in nudge after a few turns. Flipped by the onboarding actions.
   const [guest, setGuest] = useState(false);
@@ -422,7 +433,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [session?.address]);
 
   // The `audric_session` token that authenticates the data routes, read live at
-  // request time (same ref pattern as the model/userId). Absent on a dev-bypass
+  // request time (same ref pattern as the model/userId). Absent on an untokened
   // session → `authHeader` yields no header → the route's dev fallback applies.
   const tokenRef = useRef<string | undefined>(session?.token);
   useEffect(() => {
@@ -469,6 +480,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             userId: guestRef.current ? undefined : userIdRef.current,
             messages: reqMessages.filter((m) => !m.metadata?.demo),
             selectedChatModel: modelId(modelRef.current),
+            // Standing user directions — the sheet promises Audric "follows [them]
+            // in every reply", so they must actually reach the system prompt.
+            customInstructions: customTextRef.current || undefined,
           },
         }),
       }),
@@ -701,9 +715,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Demo turn (wallet / image / video / artifact): inject the user message +
-      // the canned assistant reply after the prototype's 1.6s delay — no model
-      // call. These surfaces are real tool-call parts in web-v3.
+      // Demo turn (image / video / artifact): inject the user message + the canned
+      // assistant reply after the prototype's 1.6s delay — no model call. These
+      // surfaces are real tool-call parts in web-v3; here the render path badges
+      // them "Demo" so they can't be read as model output.
       const isMedia = kind === "image" || kind === "video";
       const userMsg: ChatMessage = {
         id: uid("u"),
@@ -746,7 +761,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setGuest(false);
     setChatMessages([]);
     setChatId(Crypto.randomUUID());
-    setStep(ONBOARD_START_STEP);
+    setStep(1);
     setAnonTurns(0);
     setNudge(false);
     setCtxOpen(false);
@@ -789,9 +804,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       } else if (name === "purge") {
         setDraft("");
         setConfirmKind("purge");
+      } else if (name === "theme") {
+        setDraft("");
+        toggleTheme();
       } else setDraft("");
     },
-    [newChat, cancelPending]
+    [newChat, cancelPending, toggleTheme]
   );
 
   const changeRecipient = useCallback((v: string) => {
@@ -995,6 +1013,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       customText,
       openCustom: () => setCustomSheet(true),
       closeCustom: () => setCustomSheet(false),
+      saveCustom: () => {
+        // Persist, then close. Fire-and-forget: the write is best-effort inside
+        // `saveCustomInstructions`, and the in-memory value already applies to the
+        // next turn either way.
+        saveCustomInstructions(customTextRef.current);
+        setCustomSheet(false);
+      },
       onCustomText: (v: string) => setCustomText(v.slice(0, 2000)),
       handleSheet,
       handleText,

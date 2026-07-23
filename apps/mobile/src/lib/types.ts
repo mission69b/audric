@@ -10,8 +10,12 @@ import type { UIMessage } from "ai";
 // modelled as metadata so the render path already reads `parts` + `metadata` the
 // way the production client does.
 export type MessageMetadata = {
-  /** A prototype demo turn (mock, not model output) and its render kind. */
-  demo?: "wallet" | "image" | "video" | "artifact";
+  /** A prototype demo turn (mock, not model output) and its render kind. The
+   * render path badges these as "Demo" so a canned card can never be mistaken
+   * for model output. There is deliberately no `wallet` kind: a fabricated
+   * balance is a financial claim, so wallet questions go to the real model and
+   * its `balance_check` tool instead. */
+  demo?: "image" | "video" | "artifact";
   /** Artifact card labels (demo). */
   artTitle?: string;
   artKind?: string;

@@ -61,7 +61,7 @@ export async function authenticate(
     return { ok: false, response: unauthorized() };
   }
 
-  // Development only: trust the client-asserted id (dev bypass / guest).
+  // Development only: trust the client-asserted id (guest persona / local tooling).
   return {
     ok: true,
     userId: clientAssertedUserId,

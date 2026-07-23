@@ -10,6 +10,7 @@ import {
   AUDRIC_PRIVACY_URL,
   AUDRIC_TERMS_URL,
   openAudricWeb,
+  SUI_NETWORK,
 } from "@/lib/audric-web";
 import { displayHandle, expiresLabel } from "@/lib/identity";
 import { CopyPill } from "@/components/ui/copy-pill";
@@ -146,7 +147,12 @@ function SettingsHome() {
           </View>
           <View style={[styles.kvRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.kvKey, { color: colors.mutedFg }]}>Network</Text>
-            <Text style={[styles.kvVal, { color: colors.fg }]}>Sui mainnet</Text>
+            {/* Derived, never hardcoded: this sits beside the wallet address, so
+                naming the wrong chain misstates where the user's money actually is.
+                Was a literal "Sui mainnet" while the app ran on testnet. */}
+            <Text style={[styles.kvVal, { color: colors.fg }]}>
+              {SUI_NETWORK === "testnet" ? "Sui testnet" : "Sui mainnet"}
+            </Text>
           </View>
           <View style={[styles.kvRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.kvKey, { color: colors.mutedFg }]}>Sign-in email</Text>
@@ -456,13 +462,18 @@ function Billing() {
               );
             })}
           </View>
+          {/* Inert by design — there is no in-app purchase flow. Dimmed + captioned
+              so they don't read as working buttons. */}
           <View style={styles.topupRow}>
             {TOPUPS.map((a) => (
-              <View key={a} style={[styles.topupBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
-                <Text style={[styles.topupTextSm, { color: colors.fg }]}>+${a}</Text>
+              <View key={a} style={[styles.topupBtn, styles.topupBtnOff, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                <Text style={[styles.topupTextSm, { color: colors.mutedFg }]}>+${a}</Text>
               </View>
             ))}
           </View>
+          <Text style={[styles.topupNote, { color: colors.mutedFg }]}>
+            Top-ups are coming soon — manage credit on the web for now.
+          </Text>
         </View>
       </View>
 
@@ -668,6 +679,8 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     alignItems: "center",
   },
+  topupBtnOff: { opacity: 0.5 },
+  topupNote: { fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 16, marginTop: 8 },
   topupTextSm: { fontFamily: fonts.semibold, fontSize: 12.5 },
   legalNote: { fontFamily: fonts.regular, fontSize: 10.5, lineHeight: 16.3, marginTop: 11, marginHorizontal: 2 },
   readTerms: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 5, paddingHorizontal: 2 },

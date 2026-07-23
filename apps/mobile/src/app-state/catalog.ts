@@ -105,11 +105,15 @@ export function providerLogoUrl(prov: string): string | null {
   return `https://models.dev/logos/${LOGO_SLUG[prov] ?? prov}.svg`;
 }
 
-// Empty-state suggestion chips — the literal prompt each sends.
+// Empty-state suggestion chips — the literal prompt each sends. Every chip must
+// map to something the app can ACTUALLY do: "Check my balance" is answered by the
+// real `balance_check` tool, the privacy question by the model, and the research
+// chip by the live `web_search` tool. The old "Send a payment" chip was dropped —
+// there is no send tool, so it only ever produced an apology.
 export const SUGGESTIONS: { label: string; text: string }[] = [
   { label: "Check my balance", text: "What's my USDC balance?" },
   { label: "How do you keep my data private?", text: "How do you keep my data private?" },
-  { label: "Send a payment", text: "Send 10 USDC to alice.audric" },
+  { label: "What's new in AI this week?", text: "What's new in AI this week?" },
 ];
 
 // Follow-up rows under the last assistant turn.
@@ -119,18 +123,10 @@ export const FOLLOWUPS: { label: string; text: string }[] = [
   { label: "Draft a launch announcement", text: "Draft a launch announcement document" },
 ];
 
-// Worklog steps shown when a wallet (rich) turn's worklog is expanded.
-export const WORK_STEPS: { n: number; t: string }[] = [
-  { n: 1, t: "Connected to your Sui wallet" },
-  { n: 2, t: "Read USDC + SUI balances" },
-  { n: 3, t: "Computed spendable amount" },
-];
-
 // Slash commands — web-v3 slash-commands.tsx (7 commands).
 export type SlashKey =
   | "new"
   | "clear"
-  | "rename"
   | "model"
   | "theme"
   | "delete"
@@ -138,7 +134,8 @@ export type SlashKey =
 export const SLASH_COMMANDS: { name: SlashKey; desc: string }[] = [
   { name: "new", desc: "Start a new chat" },
   { name: "clear", desc: "Clear current chat" },
-  { name: "rename", desc: "Rename current chat" },
+  // "rename" was listed here but had no branch in `runSlash` — it silently did
+  // nothing. Dropped until a rename path exists; re-add it WITH the handler.
   { name: "model", desc: "Change the AI model" },
   { name: "theme", desc: "Toggle dark/light mode" },
   { name: "delete", desc: "Delete current chat" },

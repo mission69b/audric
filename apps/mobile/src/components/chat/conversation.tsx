@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { Pressable } from "react-native";
-import { FOLLOWUPS, WORK_STEPS } from "@/app-state/catalog";
+import { FOLLOWUPS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import { type ChatMessage, messageText } from "@/lib/types";
 import { CotTimeline } from "./cot-timeline";
@@ -11,13 +11,10 @@ import { Markdown } from "./markdown";
 import {
   AudricMark,
   Check,
-  ChevronDown,
   Copy,
-  CreditCard,
   Download,
   FileText,
   ImageIcon,
-  Loader,
   Maximize2,
   Pencil,
   Play,
@@ -104,9 +101,10 @@ function AssistantTurn({
   streaming: boolean;
   showFollowups: boolean;
 }) {
-  // Demo turns carry their render kind on metadata (the mock WorklogCard etc.);
-  // real turns render from `parts` exactly like web-v3 — a Chain-of-Thought
-  // timeline (reasoning + web_search) above the markdown answer.
+  // Demo turns carry their render kind on metadata and are BADGED as such — a
+  // canned card must never be mistakable for model output. Real turns render from
+  // `parts` exactly like web-v3 — a Chain-of-Thought timeline (reasoning +
+  // web_search) above the markdown answer.
   const demo = m.metadata?.demo;
   const answer = messageText(m);
   const hasWork = m.parts.some(
@@ -116,8 +114,7 @@ function AssistantTurn({
     <View style={styles.assistantRow}>
       <Avatar />
       <View style={styles.assistantCol}>
-        {demo === "wallet" ? <WorklogCard /> : null}
-        {demo === "wallet" ? <WalletCard /> : null}
+        {demo ? <DemoBadge /> : null}
         {demo === "image" ? <ImageCard /> : null}
         {demo === "video" ? <VideoCard /> : null}
         {demo === "artifact" ? (
@@ -145,69 +142,16 @@ function AssistantTurn({
   );
 }
 
-function WorklogCard() {
-  const { colors } = useTheme();
-  const { worklogOpen, toggleWorklog } = useAppState();
-  return (
-    <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
-      <Pressable onPress={toggleWorklog} style={styles.worklogBtn}>
-        <Loader size={14} color={colors.tealLabel} strokeWidth={2} />
-        <Text style={[styles.worklogTitle, { color: colors.fg }]}>Worked for 8s</Text>
-        <Text style={[styles.worklogMuted, { color: colors.mutedFg }]}>· 3 steps</Text>
-        <View style={styles.flexEnd}>
-          <ChevronDown size={15} color={colors.mutedFg} strokeWidth={2} />
-        </View>
-      </Pressable>
-      {worklogOpen ? (
-        <View style={styles.worklogBody}>
-          {WORK_STEPS.map((st) => (
-            <View key={st.n} style={styles.stepRow}>
-              <View style={[styles.stepNum, { borderColor: colors.border }]}>
-                <Text style={[styles.stepNumText, { color: colors.mutedFg }]}>{st.n}</Text>
-              </View>
-              <Text style={[styles.stepText, { color: colors.secondaryFg }]}>{st.t}</Text>
-            </View>
-          ))}
-          <View style={styles.doneRow}>
-            <View style={[styles.doneDot, { backgroundColor: colors.teal }]}>
-              <Check size={10} color={colors.tealLabel} strokeWidth={3} />
-            </View>
-            <Text style={[styles.doneText, { color: colors.tealLabel }]}>Done</Text>
-          </View>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function WalletCard() {
+// Demo turns are canned prototype output, not model output. This badge is the ONLY
+// thing that distinguishes them on screen, so it renders above every demo card and
+// is never conditional on anything but `metadata.demo`.
+function DemoBadge() {
   const { colors } = useTheme();
   return (
-    <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.card }]}>
-      <View style={[styles.walletHead, { borderBottomColor: colors.border }]}>
-        <CreditCard size={13} color={colors.mutedFg} strokeWidth={1.8} />
-        <Text style={[styles.walletHeadText, { color: colors.mutedFg }]}>Wallet · balance</Text>
-      </View>
-      <View style={styles.walletBody}>
-        <View style={styles.walletRow}>
-          <View style={styles.walletLeft}>
-            <View style={[styles.badge, { backgroundColor: colors.tealBg }]}>
-              <Text style={[styles.badgeText, { color: colors.tealLabel }]}>spendable</Text>
-            </View>
-            <Text style={[styles.walletAsset, { color: colors.fg }]}>USDC</Text>
-          </View>
-          <Text style={[styles.walletNum, { color: colors.fg }]}>124.50</Text>
-        </View>
-        <View style={styles.walletRow}>
-          <View style={styles.walletLeft}>
-            <View style={[styles.badge, { backgroundColor: colors.muted }]}>
-              <Text style={[styles.badgeText, { color: colors.mutedFg }]}>gas</Text>
-            </View>
-            <Text style={[styles.walletAssetMuted, { color: colors.mutedFg }]}>SUI</Text>
-          </View>
-          <Text style={[styles.walletNumMuted, { color: colors.mutedFg }]}>0.82</Text>
-        </View>
-      </View>
+    <View style={[styles.demoBadge, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+      <Text style={[styles.demoBadgeText, { color: colors.mutedFg }]}>
+        Demo · not generated
+      </Text>
     </View>
   );
 }
@@ -554,46 +498,16 @@ const styles = StyleSheet.create({
   actionBtn: { borderRadius: 7, alignItems: "center", justifyContent: "center" },
 
   card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: radius.md, overflow: "hidden" },
-
-  worklogBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, paddingHorizontal: 12 },
-  worklogTitle: { fontFamily: fonts.medium, fontSize: 12 },
-  worklogMuted: { fontFamily: fonts.medium, fontSize: 12 },
-  flexEnd: { marginLeft: "auto" },
-  worklogBody: { paddingHorizontal: 12, paddingBottom: 12, paddingTop: 2, gap: 10 },
-  stepRow: { flexDirection: "row", gap: 9, alignItems: "flex-start" },
-  stepNum: {
-    width: 17,
-    height: 17,
+  demoBadge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
   },
-  stepNumText: { fontFamily: fonts.monoSemibold, fontSize: 9 },
-  stepText: { flex: 1, fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17.5 },
-  doneRow: { flexDirection: "row", gap: 9, alignItems: "center" },
-  doneDot: { width: 17, height: 17, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  doneText: { fontFamily: fonts.medium, fontSize: 12.5 },
+  demoBadgeText: { fontFamily: fonts.semibold, fontSize: 10, letterSpacing: 0.3 },
 
-  walletHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  walletHeadText: { fontFamily: fonts.medium, fontSize: 11 },
-  walletBody: { paddingVertical: 11, paddingHorizontal: 12, gap: 8 },
-  walletRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  walletLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
-  badge: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: 999 },
-  badgeText: { fontFamily: fonts.semibold, fontSize: 9, letterSpacing: 0.18 },
-  walletAsset: { fontFamily: fonts.regular, fontSize: 13 },
-  walletAssetMuted: { fontFamily: fonts.regular, fontSize: 13 },
-  walletNum: { fontFamily: fonts.monoSemibold, fontSize: 14 },
-  walletNumMuted: { fontFamily: fonts.monoSemibold, fontSize: 14 },
+
 
   imageCard: {
     width: "100%",

@@ -9,23 +9,34 @@ export type StoredSession = {
   savedAt: number;
   /**
    * The `audric_session` token (HS256, minted by the exchange) that
-   * authenticates the data routes. Absent on a __DEV__ bypass session — those
-   * fall back to the dev-guest path server-side, never to a real prod route.
+   * authenticates the data routes. Absent only on an untokened guest session —
+   * those fall back to the dev-guest path server-side, never to a real prod route.
    */
   token?: string;
   /** Epoch ms when `token` expires (server-set 7-day cap). */
   expiresAt?: number;
-  /**
-   * True only for the __DEV__ auth bypass (no real derivation). Lets the UI
-   * flag that this address is a placeholder and gates it out of any wallet
-   * operation. Never set on a real signed-in session.
-   */
-  dev?: boolean;
 };
 
 /**
+ * Has this stored session's token passed its server-set expiry?
+ *
+ * A session with NO `expiresAt` is an untokened guest record, not an expired one —
+ * it never carried a deadline, so it is never expired here (see `token?` above).
+ * Only a token that HAS a deadline can outlive it.
+ *
+ * Pure + injectable clock so the launch path can be unit-tested without faking time.
+ */
+export function isSessionExpired(
+  s: StoredSession | null,
+  nowMs: number = Date.now()
+): boolean {
+  if (!s?.expiresAt) return false;
+  return nowMs >= s.expiresAt;
+}
+
+/**
  * Bearer header for the session token, or an empty object when there is no token
- * (dev bypass / guest). Spread into a `fetch` `headers` map. Client-safe — carries
+ * (guest). Spread into a `fetch` `headers` map. Client-safe — carries
  * only the opaque token, never the secret; the token is verified server-side.
  */
 export function authHeader(token?: string | null): Record<string, string> {

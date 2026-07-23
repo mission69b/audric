@@ -4,6 +4,7 @@ import { useAppState } from "@/app-state/store";
 import { ArrowUpRight, Check, TriangleAlert } from "@/components/ui/icon";
 import { BottomSheet } from "@/components/ui/sheet";
 import { openExternal, suiscanTxUrl } from "@/lib/audric-web";
+import { sendUnavailableReason } from "@/lib/wallet/send";
 import { useBalance } from "@/lib/wallet-data";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
@@ -56,7 +57,15 @@ export function SendSheet() {
   // silently overspend. Only evaluated once a positive amount is entered so the warning
   // doesn't flash while the balance is still loading.
   const insufficient = amount > 0 && (sui == null || amount > sui - GAS_RESERVE);
-  const canSend = recipientInput.trim().length > 0 && amount > 0 && !insufficient;
+  // Network gate, read from the same helper `sendSui` throws on — so the button can
+  // never offer an action the money path would reject. Shown BEFORE any input, so a
+  // user never fills in a transfer that was impossible from the start.
+  const sendBlockedReason = sendUnavailableReason();
+  const canSend =
+    !sendBlockedReason &&
+    recipientInput.trim().length > 0 &&
+    amount > 0 &&
+    !insufficient;
   // A broadcast is in flight — block dismissal (scrim tap / swipe / Android back) so a
   // send can't be backgrounded into an untracked state.
   const dismissable = stage !== "sending";
@@ -121,7 +130,15 @@ export function SendSheet() {
             ) : null}
           </View>
 
-          {insufficient ? (
+          {/* The network gate outranks the balance warning: on a network where
+              sending is disabled entirely, "insufficient balance" would be a
+              misleading reason for the disabled button. */}
+          {sendBlockedReason ? (
+            <View style={styles.warnBanner}>
+              <TriangleAlert size={16} color={WARN_FG} strokeWidth={2} />
+              <Text style={styles.warnText}>{sendBlockedReason}</Text>
+            </View>
+          ) : insufficient ? (
             <View style={styles.warnBanner}>
               <TriangleAlert size={16} color={WARN_FG} strokeWidth={2} />
               <Text style={styles.warnText}>

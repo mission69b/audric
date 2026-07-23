@@ -3,7 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppState } from "@/app-state/store";
-import { Copy, Download, Info, X } from "@/components/ui/icon";
+import { Info, X } from "@/components/ui/icon";
 import { fonts } from "@/theme/tokens";
 
 const FULL_MODEL = "Audric · Image";
@@ -17,7 +17,7 @@ const W72 = "rgba(255,255,255,0.72)";
 
 // Full-screen image viewer (prototype FULLSCREEN IMAGE). A black overlay with the
 // generated image (the demo gradient), a Details toggle exposing model + prompt,
-// and Copy / Download actions. Opened by tapping an assistant image card.
+// Opened by tapping an assistant image card.
 export function ImageFullscreen() {
   const insets = useSafeAreaInsets();
   const { imageFull, closeImageFull, imageDetails, toggleImageDetails } = useAppState();
@@ -74,16 +74,9 @@ export function ImageFullscreen() {
           </View>
         ) : null}
 
-        <View style={[styles.actions, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={styles.copyBtn}>
-            <Copy size={15} color="#fff" strokeWidth={1.9} />
-            <Text style={styles.copyLabel}>Copy image</Text>
-          </View>
-          <View style={styles.downloadBtn}>
-            <Download size={15} color="#111" strokeWidth={1.9} />
-            <Text style={styles.downloadLabel}>Download image</Text>
-          </View>
-        </View>
+        {/* "Copy image" / "Download image" buttons lived here. They were plain
+            Views with no handler at all, over a demo placeholder image — nothing
+            real to copy or save. Removed until image generation is live. */}
       </View>
     </Modal>
   );
@@ -153,32 +146,4 @@ const styles = StyleSheet.create({
   },
   detLabel: { fontFamily: fonts.regular, fontSize: 11.5, lineHeight: 17, color: W55 },
   detValue: { color: "#fff" },
-  actions: {
-    flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-  copyBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    backgroundColor: W12,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  copyLabel: { fontFamily: fonts.semibold, fontSize: 13, color: "#fff" },
-  downloadBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  downloadLabel: { fontFamily: fonts.semibold, fontSize: 13, color: "#111" },
 });

@@ -18,6 +18,7 @@ import { clearPendingAuth, loadPendingAuth } from "./pending-auth";
 import {
   authHeader,
   clearSession,
+  isSessionExpired,
   loadLockPref,
   loadSession,
   saveLockPref,
@@ -30,17 +31,11 @@ type Status = "loading" | "signed-out" | "signing-in" | "signed-in";
 type AuthState = {
   status: Status;
   session: StoredSession | null;
-  /** Result of the most recent sign-in — carries the Phase 0 gate signal. */
+  /** Result of the most recent sign-in — the derived identity + zkLogin proof. */
   lastDerived: DerivedIdentity | null;
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
-  /**
-   * __DEV__-only: enter the app with a placeholder session, no real OAuth /
-   * derivation. Lets us build screens behind the auth gate while production
-   * address-parity is still pending funkii's keys. No-op in production builds.
-   */
-  devBypass: () => Promise<void>;
   /** Biometric app-lock is turned on for this install. */
   lockEnabled: boolean;
   /** The app is currently locked (session exists but is hidden behind biometrics). */
@@ -53,12 +48,6 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-/**
- * Obviously-fake, correctly-shaped Sui address (32 bytes / 64 hex). Marks a dev
- * bypass session so it can never be mistaken for a derived wallet address.
- */
-const DEV_STUB_ADDRESS = `0x${"de".repeat(32)}`;
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [session, setSession] = useState<StoredSession | null>(null);
@@ -69,7 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const [s, pref] = await Promise.all([loadSession(), loadLockPref()]);
+      const [stored, pref] = await Promise.all([loadSession(), loadLockPref()]);
+      // An expired token must NOT restore as a signed-in shell: every data route
+      // would 401 while the UI still presented an authenticated app. Drop the
+      // record and land on the gate instead. The wallet keys go with it — a key
+      // set must never outlive the identity that authorised it, the same invariant
+      // `signIn` enforces on its no-fresh-proof path.
+      const expired = isSessionExpired(stored);
+      if (expired) {
+        await clearSession().catch(() => {});
+        await clearWalletKeys().catch(() => {});
+      }
+      const s = expired ? null : stored;
       setSession(s);
       setLockEnabledState(pref);
       // If the lock is on and a session exists, start locked — the app must not
@@ -188,23 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return ok;
   }, []);
 
-  const devBypass = useCallback(async () => {
-    if (!__DEV__) return;
-    const stub: StoredSession = {
-      address: DEV_STUB_ADDRESS,
-      email: "dev@audric.local",
-      savedAt: Date.now(),
-      dev: true,
-    };
-    await saveSession(stub);
-    setSession(stub);
-    setLastDerived(null);
-    setError(null);
-    setStatus("signed-in");
-  }, []);
-
-  // Onboarding side effect: whenever a session becomes active — fresh sign-in, dev
-  // bypass, OR a session restored from the Keychain on launch — create the User row
+  // Onboarding side effect: whenever a session becomes active — fresh sign-in
+  // OR a session restored from the Keychain on launch — create the User row
   // in the DB (server route, idempotent upsert) so chat persistence has an identity
   // to FK against. Fire-and-forget: a failure must NEVER block entry into the app;
   // the row self-heals on the next launch (upsert). Not a wallet write — the address
@@ -221,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: "POST",
           // Bearer present on a real session → the route derives identity from the
           // verified token (the body address/email are ignored server-side). Absent
-          // on the dev bypass → the route's dev fallback trusts the body.
+          // on an untokened guest session → the route's dev fallback trusts the body.
           headers: { "Content-Type": "application/json", ...authHeader(token) },
           body: JSON.stringify({ address, email }),
         });
@@ -247,7 +232,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       signIn,
       signOut,
-      devBypass,
       lockEnabled,
       locked,
       setLockEnabled,
@@ -260,7 +244,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       signIn,
       signOut,
-      devBypass,
       lockEnabled,
       locked,
       setLockEnabled,

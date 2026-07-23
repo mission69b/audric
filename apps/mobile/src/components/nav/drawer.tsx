@@ -1,6 +1,6 @@
 // The navigation drawer (prototype's slide-over left panel). Holds brand + close,
-// New chat / Skills actions, the grouped chat history (each row with a Private /
-// Public / Delete popover), and a footer with Wallet, Settings, and the account
+// New chat / Skills actions, the grouped chat history (each row with a
+// Delete / Cancel popover), and a footer with Wallet, Settings, and the account
 // block (signed-in Passport tile → account menu, or a guest "Log in" nudge).
 // Mirrors BottomSheet: RN <Modal> so it floats above the app, animates in ~220ms
 // (slide from the left + scrim fade), closes instantly.
@@ -25,14 +25,13 @@ import { useBalance } from "@/lib/wallet-data";
 import {
   AudricMark,
   ChevronUp,
-  Globe,
   LogIn,
-  Lock,
   Ellipsis,
   PanelLeft,
   Settings,
   SquarePen,
   Trash2,
+  X,
   Wallet,
 } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
@@ -175,17 +174,20 @@ export function Drawer() {
                         <View
                           style={[styles.menu, { backgroundColor: colors.card, borderColor: colors.border }]}
                         >
-                          <Pressable onPress={closeChatMenu} style={styles.menuRow}>
-                            <Lock size={14} color={colors.secondaryFg} strokeWidth={1.8} />
-                            <Text style={[styles.menuText, { color: colors.fg }]}>Private</Text>
-                          </Pressable>
-                          <Pressable onPress={closeChatMenu} style={styles.menuRow}>
-                            <Globe size={14} color={colors.secondaryFg} strokeWidth={1.8} />
-                            <Text style={[styles.menuText, { color: colors.fg }]}>Public</Text>
-                          </Pressable>
+                          {/* Private/Public rows lived here. They were pure no-ops
+                              (both just closed the menu) with no visibility backend
+                              behind them — a fake privacy control is the worst kind
+                              to fake, so they are gone until chat visibility is real.
+                              Removing them left Delete alone, and nothing dismisses
+                              this menu by tapping outside — so Cancel is explicit
+                              rather than leaving a destructive-only menu with no exit. */}
                           <Pressable onPress={() => deleteChat(conv.id)} style={styles.menuRow}>
                             <Trash2 size={14} color="#ef4444" strokeWidth={1.8} />
                             <Text style={[styles.menuText, { color: "#ef4444" }]}>Delete</Text>
+                          </Pressable>
+                          <Pressable onPress={closeChatMenu} style={styles.menuRow}>
+                            <X size={14} color={colors.secondaryFg} strokeWidth={1.8} />
+                            <Text style={[styles.menuText, { color: colors.fg }]}>Cancel</Text>
                           </Pressable>
                         </View>
                       ) : null}

@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAppState } from "@/app-state/store";
+import { sendUnavailableReason } from "@/lib/wallet/send";
 import { openExternal, suiscanTxUrl } from "@/lib/audric-web";
 import { timeAgo, useBalance, useTransactions } from "@/lib/wallet-data";
 import {
@@ -15,11 +16,15 @@ import { fonts } from "@/theme/tokens";
 // The wallet tab (prototype WALLET header + home). Balance card (spendable USDC +
 // gas SUI) and recent-activity list are LIVE on-chain reads for the signed-in
 // address (`useBalance` / `useTransactions`); "—" / an empty list show while
-// loading or on a soft-fail. Receive / Send open their sheets (Send is a Phase-0
-// mock). Reached from the drawer (P3).
+// loading or on a soft-fail. Receive / Send open their sheets. Send is REAL — it
+// broadcasts a signed on-chain transfer (`lib/wallet/send.ts`), gated to testnet via
+// `sendUnavailableReason()`; the entry point below reflects that gate so the action
+// is never offered on a network where it cannot run. Reached from the drawer (P3).
 export function WalletScreen() {
   const { colors } = useTheme();
   const { setTab, openReceive, openSend } = useAppState();
+  // Same helper `sendSui` throws on — the entry point and the guard cannot drift.
+  const sendBlockedReason = sendUnavailableReason();
   const { usdc, sui } = useBalance();
   const { transactions } = useTransactions();
 
@@ -79,13 +84,23 @@ export function WalletScreen() {
             <Text style={[styles.actionLabel, { color: colors.fg }]}>Receive</Text>
           </Pressable>
           <Pressable
-            onPress={openSend}
-            style={[styles.action, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={sendBlockedReason ? undefined : openSend}
+            disabled={Boolean(sendBlockedReason)}
+            style={[
+              styles.action,
+              { backgroundColor: colors.card, borderColor: colors.border },
+              sendBlockedReason && styles.actionDisabled,
+            ]}
           >
             <ArrowUpRight size={20} color={colors.fg} strokeWidth={1.8} />
             <Text style={[styles.actionLabel, { color: colors.fg }]}>Send</Text>
           </Pressable>
         </View>
+
+        {/* State the reason rather than leaving a dead-looking button unexplained. */}
+        {sendBlockedReason ? (
+          <Text style={[styles.actionNote, { color: colors.mutedFg }]}>{sendBlockedReason}</Text>
+        ) : null}
 
         <View>
           <Text style={[styles.sectionLabel, { color: colors.mutedFg }]}>RECENT ACTIVITY</Text>
@@ -213,6 +228,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
   },
+  actionDisabled: { opacity: 0.45 },
+  actionNote: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17 },
   actionLabel: { fontFamily: fonts.medium, fontSize: 13 },
   sectionLabel: {
     fontFamily: fonts.semibold,

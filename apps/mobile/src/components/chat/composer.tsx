@@ -26,7 +26,6 @@ import {
   List,
   Palette,
   Paperclip,
-  Pencil,
   SquarePen,
   Trash2,
   TriangleAlert,
@@ -38,7 +37,6 @@ import { fonts, radius } from "@/theme/tokens";
 const SLASH_ICON: Record<SlashKey, React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>> = {
   new: SquarePen,
   clear: Trash2,
-  rename: Pencil,
   model: List,
   theme: Palette,
   delete: X,

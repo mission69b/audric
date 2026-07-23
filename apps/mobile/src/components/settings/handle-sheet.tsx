@@ -9,7 +9,8 @@ const AVAIL = "#10b981";
 
 // Claim-a-handle sheet (prototype HANDLE). A @audric name for the passport.
 // Availability is a pure length check (demo) — 3–20 chars flips the green line;
-// both Cancel and Claim just close (no @handle mint backend yet).
+// Claiming is NOT wired (no @handle mint backend), so the claim action is
+// disabled and labelled "coming soon" instead of silently closing the sheet.
 export function HandleSheet() {
   const { colors } = useTheme();
   const { handleSheet, closeHandle, handleText, onHandleText } = useAppState();
@@ -53,9 +54,11 @@ export function HandleSheet() {
         <Pressable onPress={closeHandle} style={[styles.btn, { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }]}>
           <Text style={[styles.btnText, { color: colors.fg }]}>Cancel</Text>
         </Pressable>
-        <Pressable onPress={closeHandle} style={[styles.btn, { backgroundColor: colors.tealLabel }]}>
-          <Text style={[styles.btnText, { color: "#fff" }]}>Claim handle</Text>
-        </Pressable>
+        {/* No @handle mint backend exists, so this cannot claim anything. Disabled
+            and labelled rather than presented as a working action. */}
+        <View style={[styles.btn, { backgroundColor: colors.muted }]}>
+          <Text style={[styles.btnText, { color: colors.mutedFg }]}>Claim — coming soon</Text>
+        </View>
       </View>
     </BottomSheet>
   );

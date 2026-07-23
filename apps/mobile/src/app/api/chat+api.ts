@@ -7,6 +7,7 @@ import {
 import { getLanguageModel } from "@/lib/ai/providers";
 import { authenticate } from "@/lib/api-guard";
 import { systemPrompt } from "@/lib/ai/prompts";
+import { balanceCheck } from "@/lib/ai/tools/balance-check";
 import { webSearch } from "@/lib/ai/tools/web-search";
 import {
   deleteChatById,
@@ -36,6 +37,8 @@ export const maxDuration = 60;
 // runaway/abusive caller.
 const MAX_MESSAGES = 100;
 const MAX_REQUEST_CHARS = 100_000;
+// Mirrors the sheet's own 2000-char cap (`lib/prefs.ts`).
+const MAX_CUSTOM_INSTRUCTIONS = 2000;
 
 // Identity/thread id shapes for persistence — mirror web-v3's uuid chat/message ids
 // + the Sui-address user id. A turn is only persisted when BOTH are well-formed.
@@ -61,6 +64,7 @@ export async function POST(req: Request) {
     userId?: string;
     messages?: UIMessage[];
     selectedChatModel?: string;
+    customInstructions?: string;
   };
   try {
     body = await req.json();
@@ -88,6 +92,12 @@ export async function POST(req: Request) {
   }
 
   const { messages, selectedChatModel } = body;
+  // Standing user directions from the Custom instructions sheet. Capped here as
+  // well as client-side — the client is not the authority on request size.
+  const customInstructions =
+    typeof body.customInstructions === "string"
+      ? body.customInstructions.trim().slice(0, MAX_CUSTOM_INSTRUCTIONS)
+      : "";
   if (!Array.isArray(messages) || messages.length === 0) {
     return Response.json({ error: "No messages." }, { status: 400 });
   }
@@ -132,25 +142,37 @@ export async function POST(req: Request) {
     }
   }
 
-  // Same composer web-v3's chat route uses. `web_search` is live, so we take the
-  // tools branch (regularPrompt + aboutAudricPrompt + searchPrompt + request
-  // hints). Geo hints are empty on native (no @vercel/functions). Memory / wallet
-  // address / the wallet + artifact tools get passed here as they land (wallet is
-  // Phase-0 gated), matching web-v3.
-  const system = systemPrompt({
+  // Same composer web-v3's chat route uses. `web_search` and `balance_check` are
+  // live, so we take the tools branch (regularPrompt + aboutAudricPrompt +
+  // searchPrompt + request hints). Geo hints are empty on native (no
+  // @vercel/functions). Memory and the artifact tools graft on here as they land,
+  // matching web-v3.
+  //
+  // `isAuthed` tracks the VERIFIED token, not merely a present address: the dev
+  // fallback yields a client-asserted id we must not describe to the model as a
+  // signed-in user.
+  const base = systemPrompt({
     requestHints: {},
     supportsTools: true,
-    isAuthed: false,
+    isAuthed: auth.viaToken,
   });
+  // Custom instructions are USER CONTENT, not policy: fenced and explicitly framed
+  // as preferences so they shape tone/format without being read as authority to
+  // override the system rules above them.
+  const system = customInstructions
+    ? `${base}\n\n<user_custom_instructions>\nThe user has set these standing preferences for how you reply. Follow them unless they conflict with your instructions above.\n\n${customInstructions}\n</user_custom_instructions>`
+    : base;
 
   const result = streamText({
     model: getLanguageModel(selectedChatModel),
     system,
     messages: await convertToModelMessages(messages),
-    // Only the ungated, secret-free tool is wired so far. web-v3's DB/blob/wallet
-    // tools (createDocument, generate_image, balance_check, send_transfer, …) need
-    // a session + Neon/blob/Enoki and, for wallet, the Phase-0 gate — added later.
-    tools: { web_search: webSearch },
+    // `balance_check` is bound to the VERIFIED session address (never a model input),
+    // so a wallet question gets a real read instead of the fabricated figure the
+    // client used to inject — see AUDIT-2026-07-20.md #1. Still to land from web-v3:
+    // the DB/blob tools (createDocument, generate_image) and the money WRITE
+    // (send_transfer), which needs Enoki + client-side signing.
+    tools: { web_search: webSearch, balance_check: balanceCheck(userId || null) },
     // Multi-step loop so the model can search then synthesize a cited answer (and
     // chain a couple of searches). web-v3 gives research turns a 12-step budget.
     stopWhen: stepCountIs(6),

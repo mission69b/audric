@@ -1,5 +1,6 @@
 import { queryHistory } from "@t2000/sdk";
 import { authenticate } from "@/lib/api-guard";
+import { resolveLimit } from "@/lib/pagination";
 
 // Transaction-history route — the wallet tab's RECENT ACTIVITY list. Native
 // analogue of web-v3's `transaction_history` tool: the SDK's canonical history
@@ -41,10 +42,11 @@ export async function GET(request: Request) {
     process.env.EXPO_PUBLIC_SUI_NETWORK === "testnet" ? "testnet" : "mainnet";
   process.env.T2000_GRAPHQL_URL ||= `https://graphql.${network}.sui.io/graphql`;
 
-  const rawLimit = Number(url.searchParams.get("limit"));
-  const limit = Number.isFinite(rawLimit)
-    ? Math.min(Math.max(1, Math.trunc(rawLimit)), MAX_LIMIT)
-    : DEFAULT_LIMIT;
+  const limit = resolveLimit(
+    url.searchParams.get("limit"),
+    DEFAULT_LIMIT,
+    MAX_LIMIT
+  );
 
   try {
     const records = await queryHistory(address, limit);
