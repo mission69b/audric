@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { CREDIT_USD, HELP_ITEMS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
 import { useAuth } from "@/auth/useAuth";
@@ -8,13 +7,12 @@ import { HELP_LINKS, openExternal } from "@/lib/audric-web";
 import { displayHandle, shortAddress } from "@/lib/identity";
 import { useBalance } from "@/lib/wallet-data";
 import { BottomSheet } from "@/components/ui/sheet";
+import { PassportAvatar } from "@/components/ui/passport-avatar";
 import { ChevronDown, ChevronRight, CreditCard, HelpCircle, LogOut, Moon, Settings, Sun } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
 const SIGNOUT = "#dc2626";
-// Gradient passport avatar (prototype linear-gradient 140deg teal → teal-dark → slate).
-const AVATAR_STOPS = ["#0ac7b4", "#0f766e", "#1e293b"] as const;
 
 // Account menu (prototype ACCOUNT sheet), opened from the drawer footer. Passport
 // identity header, a three-up stats strip, and the account actions. Sign out is
@@ -38,13 +36,7 @@ export function AccountMenu() {
   return (
     <BottomSheet visible={accountMenu} onClose={closeAccount} maxHeightRatio={0.9}>
       <View style={styles.idRow}>
-        <LinearGradient
-          colors={AVATAR_STOPS}
-          locations={[0, 0.55, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.avatar}
-        />
+        <PassportAvatar size={40} />
         <View style={styles.idText}>
           <Text style={[styles.handle, { color: colors.fg }]}>{displayHandle(session)}</Text>
           <Text style={[styles.addr, { color: colors.mutedFg }]}>{shortAddress(session?.address)}</Text>
@@ -152,7 +144,6 @@ function Row({
 
 const styles = StyleSheet.create({
   idRow: { flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 2, paddingBottom: 14 },
-  avatar: { width: 40, height: 40, borderRadius: 999 },
   idText: { flex: 1, minWidth: 0 },
   handle: { fontFamily: fonts.semibold, fontSize: 14 },
   addr: { fontFamily: fonts.regular, fontSize: 11.5, marginTop: 1 },

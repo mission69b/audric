@@ -22,6 +22,7 @@ import { useAppState } from "@/app-state/store";
 import { useAuth } from "@/auth/useAuth";
 import { displayHandle } from "@/lib/identity";
 import { useBalance } from "@/lib/wallet-data";
+import { PassportAvatar } from "@/components/ui/passport-avatar";
 import {
   AudricMark,
   ChevronUp,
@@ -233,7 +234,7 @@ export function Drawer() {
                 onPress={openAccount}
                 style={[styles.account, { backgroundColor: colors.muted, borderColor: colors.border }]}
               >
-                <View style={styles.avatar} />
+                <PassportAvatar size={34} radius={11} />
                 <View style={styles.accountMid}>
                   <Text style={[styles.accountName, { color: colors.fg }]}>{displayHandle(session)}</Text>
                   <Text style={[styles.accountSub, { color: colors.mutedFg }]}>Free plan</Text>
@@ -333,7 +334,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 8,
   },
-  avatar: { width: 34, height: 34, borderRadius: 11, backgroundColor: "#0f766e" },
   guestTile: { width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   accountMid: { flex: 1, minWidth: 0 },
   accountName: { fontFamily: fonts.semibold, fontSize: 13.5 },
