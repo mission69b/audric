@@ -14,6 +14,7 @@ import {
 } from "@/lib/audric-web";
 import { displayHandle, expiresLabel } from "@/lib/identity";
 import { CopyPill } from "@/components/ui/copy-pill";
+import { PassportAvatar } from "@/components/ui/passport-avatar";
 import {
   Check,
   ChevronDown,
@@ -34,7 +35,6 @@ import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
 const RED = "#ef4444";
-const AVATAR = ["#0ac7b4", "#0f766e", "#1e293b"] as const;
 
 // The Settings tab (prototype SETTINGS). Two sub-views driven by the store's
 // `settingsView`: home (Passport identity, Memory, General, Your Data, Privacy,
@@ -116,7 +116,7 @@ function SettingsHome() {
         <SectionLabel>PASSPORT</SectionLabel>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.idRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.avatar} />
+            <PassportAvatar size={46} radius={14} />
             <View style={styles.idMid}>
               <Text style={[styles.idName, { color: colors.fg }]}>{displayHandle(session)}</Text>
               <Text style={[styles.idSub, { color: colors.mutedFg }]}>
@@ -553,7 +553,6 @@ const styles = StyleSheet.create({
     padding: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  avatar: { width: 46, height: 46, borderRadius: 14, backgroundColor: AVATAR[1] },
   idMid: { flex: 1, minWidth: 0 },
   idName: { fontFamily: fonts.semibold, fontSize: 15 },
   idSub: { fontFamily: fonts.regular, fontSize: 12, marginTop: 1 },
@@ -585,7 +584,10 @@ const styles = StyleSheet.create({
   kvKey: { fontFamily: fonts.regular, fontSize: 12.5 },
   kvVal: { flex: 1, minWidth: 0, textAlign: "right", fontFamily: fonts.medium, fontSize: 12.5 },
   kvMono: { fontFamily: fonts.monoMedium, fontSize: 12 },
-  linkBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  // `marginLeft: auto` so the Handle row's value hugs the right edge like every
+  // other passport row (Wallet address / Network / Sign-in email / Session all
+  // right-align via `kvVal`, which this Pressable can't reuse).
+  linkBtn: { flexDirection: "row", alignItems: "center", gap: 5, marginLeft: "auto" },
   linkText: { fontFamily: fonts.semibold, fontSize: 12.5 },
 
   // Memory / generic rows

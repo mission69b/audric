@@ -2,6 +2,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as Crypto from "expo-crypto";
 import { fetch as expoFetch } from "expo/fetch";
+import { Alert } from "react-native";
 import {
   createContext,
   type ReactNode,
@@ -15,12 +16,27 @@ import {
 import {
   type Conversation,
   type ConversationGroup,
+  IMAGE_MODELS,
   modelId,
 } from "@/app-state/catalog";
+import {
+  MAX_ATTACHMENTS,
+  type PendingAttachment,
+  pickAttachment,
+  toFileParts,
+} from "@/lib/attachments";
 import { authHeader } from "@/auth/session";
 import { useAuth } from "@/auth/useAuth";
 import { generateAPIUrl } from "@/lib/api-url";
-import { loadCustomInstructions, saveCustomInstructions } from "@/lib/prefs";
+import {
+  DEFAULT_CHAT_MODEL,
+  loadChatModel,
+  loadCustomInstructions,
+  loadOnboarded,
+  saveChatModel,
+  saveCustomInstructions,
+  saveOnboarded,
+} from "@/lib/prefs";
 import type { ChatMessage } from "@/lib/types";
 import { resolveRecipient } from "@/lib/wallet/recipient";
 import { sendSui } from "@/lib/wallet/send";
@@ -41,9 +57,14 @@ export type SendStage = "confirm" | "sending" | "success" | "error";
 export type ConfirmKind = "delete" | "purge" | "forget" | "signout" | null;
 
 // The chat message model is now the Vercel AI SDK `ChatMessage` (role + parts[],
-// see `@/lib/types`) — the same wire shape as web-v3. Text turns stream real text
-// parts; the prototype's demo surfaces (wallet/image/video/artifact) ride along as
-// typed `metadata.demo` on an assistant message so the whole thread is ONE list.
+// see `@/lib/types`) — the same wire shape as web-v3. EVERY turn streams real
+// parts from the model.
+// `metadata.demo` (image/video/artifact cards) has NO producer any more: the
+// client-side classifier that minted those canned turns is gone (see `send` below).
+// The render branches + card components in `components/chat/conversation.tsx` and
+// the two sheets they open are therefore currently unreachable — kept, not wired,
+// until real image/artifact tools land (which will render from `parts`, not
+// metadata). Nothing may reintroduce a locally-authored assistant turn.
 
 // Onboarding entry (see AGENTS/CLAUDE Phase-0). The real zkLogin `gate` is the
 // production sign-in, so once a user reaches the app they are ALREADY signed in —
@@ -72,15 +93,22 @@ type Store = {
   setDraft: (v: string) => void;
   /** Awaiting the first token (or a demo turn's delay) — drives the thinking dots. */
   thinking: boolean;
-  /** A turn is in flight (awaiting OR streaming OR demo) — drives the Stop button. */
+  /** A turn is in flight (awaiting OR streaming) — drives the Stop button. */
   busy: boolean;
-  pendingMedia: "image" | "video" | null;
   worklogOpen: boolean;
   toggleWorklog: () => void;
   send: (text?: string) => void;
   stop: () => void;
   newChat: () => void;
   askSuggestion: (t: string) => void;
+
+  // composer attachments (real OS picker → data-URL `file` parts: images inline,
+  // PDFs extracted to text server-side). Sent with the next turn, then cleared.
+  // `canAttach` gates the paperclip on the model.
+  attachments: PendingAttachment[];
+  canAttach: boolean;
+  pickAttachment: () => void;
+  removeAttachment: (id: string) => void;
 
   // chat history (real, DB-backed — replaces the prototype's static CONVERSATIONS).
   // Grouped by recency (Today / Yesterday / …), newest first; `active` flags the
@@ -108,8 +136,6 @@ type Store = {
   setVisibility: (v: Visibility) => void;
 
   // composer extras
-  attachDemo: boolean;
-  toggleAttach: () => void;
   memoryOn: boolean;
   toggleMemory: () => void;
   ctxOpen: boolean;
@@ -192,6 +218,8 @@ type Store = {
 
   // onboarding (prototype first-launch flow → OnboardScreen)
   onboarded: boolean;
+  /** false until the persisted onboarded flag has been read (gates the shell). */
+  onboardReady: boolean;
   step: number;
   onboardNext: () => void;
   finishOnboarding: () => void;
@@ -207,71 +235,14 @@ type Store = {
 
 const AppStateContext = createContext<Store | null>(null);
 
-// NOTE: there is deliberately no "wallet" kind. Wallet/balance wording used to be
-// intercepted here and answered with a canned figure — a fabricated financial claim
-// rendered indistinguishably from a real turn. Those messages now classify as "text"
-// and reach the model, which has a real `balance_check` tool reading the signed-in
-// address. Never reintroduce a client-side branch that asserts a balance.
-function classify(text: string): {
-  kind: "text" | "image" | "video" | "artifact";
-} {
-  const lc = text.toLowerCase();
-  if (/\b(image|picture|draw|logo|illustration|photo|art|render|generate)\b/.test(lc))
-    return { kind: "image" };
-  if (/\b(video|animate|clip|motion|sunrise)\b/.test(lc)) return { kind: "video" };
-  if (
-    /\b(document|artifact|essay|article|draft|announcement|write|code|function|script|table|spreadsheet|sheet|report)\b/.test(
-      lc
-    )
-  )
-    return { kind: "artifact" };
-  return { kind: "text" };
-}
-
-// Builds the prototype's canned assistant reply for a NON-text (demo) turn as a
-// visibly-badged demo card. Never used for wallet/balance questions — see `classify`.
-// `ChatMessage`: a metadata-tagged assistant message carrying the render kind + a
-// short text part. No model call — these surfaces are still mock (in web-v3 they
-// are real tool-call parts), but they share the same parts-based message list.
-function buildDemoReply(kind: "image" | "video" | "artifact"): ChatMessage {
-  const base = { id: uid("a"), role: "assistant" as const };
-  if (kind === "image")
-    return {
-      ...base,
-      metadata: { demo: "image" },
-      parts: [
-        {
-          type: "text",
-          text: "Here's your image — tap it to view full screen, or download it.",
-        },
-      ],
-    };
-  if (kind === "video")
-    return {
-      ...base,
-      metadata: { demo: "video" },
-      parts: [
-        {
-          type: "text",
-          text: "Here's your clip. Tap play to preview, or download the MP4.",
-        },
-      ],
-    };
-  return {
-    ...base,
-    metadata: {
-      demo: "artifact",
-      artTitle: "Launch announcement",
-      artKind: "Document",
-    },
-    parts: [
-      {
-        type: "text",
-        text: "I drafted this as a document you can edit — open it to make changes.",
-      },
-    ],
-  };
-}
+// NOTE: there is deliberately NO client-side classifier here any more. The prototype
+// used to route a message whose text matched an image/video/artifact keyword regex
+// ("write", "code", "table", "report", "generate", …) into a canned demo card — the
+// model was never called, so a real question silently got mock output. Wallet/balance
+// wording had the same treatment and asserted a fabricated figure. Every message now
+// goes to `/api/chat` and is answered by the model, which has the real `balance_check`
+// tool bound to the signed-in address. Never reintroduce a client-side branch that
+// answers a user's message locally.
 
 // Raw history row as the /api/history route returns it (createdAt is an ISO string).
 type HistoryRow = { id: string; title: string; createdAt: string };
@@ -320,6 +291,84 @@ function groupByRecency(
   }));
 }
 
+// Abort-safe wrapper around `expo/fetch`. expo/fetch streams the SSE body (RN's
+// global fetch can't), but its response-body ReadableStream is closed ONLY by the
+// native `didComplete`/`didFailWithError` events. Aborting the request instead
+// calls native `request.cancel()`, which does NOT close or error the JS-side
+// stream controller — so the AI SDK read loop never receives a clean `{done}` and
+// spins the JS thread (tap Stop mid-stream → hard freeze; the D1 defect).
+//
+// The fix owns the stream: pump the source body into a ReadableStream WE control,
+// and on the request's abort signal cancel the source AND `controller.close()` our
+// stream, so the AI SDK reader settles immediately (a clean end finalizes the
+// partial turn). Only the streamed success body is wrapped — error responses are
+// read via `.text()`/`.json()`, so their body reader is left untouched.
+const streamingFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  const baseFetch = expoFetch as unknown as typeof globalThis.fetch;
+  const res = await baseFetch(input as Parameters<typeof globalThis.fetch>[0], init);
+  const signal = init?.signal ?? undefined;
+  if (!res.ok || !res.body) return res;
+
+  const reader = res.body.getReader();
+  let closed = false;
+  const wrapped = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const onAbort = () => {
+        if (closed) return;
+        closed = true;
+        void reader.cancel().catch(() => {});
+        try {
+          controller.close();
+        } catch {
+          // controller already closed — nothing to do.
+        }
+      };
+      if (signal) {
+        if (signal.aborted) {
+          onAbort();
+          return;
+        }
+        signal.addEventListener("abort", onAbort);
+      }
+      const pump = () => {
+        reader.read().then(
+          ({ done, value }) => {
+            if (closed) return;
+            if (done) {
+              closed = true;
+              controller.close();
+              return;
+            }
+            controller.enqueue(value);
+            pump();
+          },
+          (err) => {
+            if (closed) return;
+            closed = true;
+            controller.error(err);
+          }
+        );
+      };
+      pump();
+    },
+    cancel() {
+      closed = true;
+      void reader.cancel().catch(() => {});
+    },
+  });
+
+  // Delegate everything to the real response, but hand out the abort-safe body.
+  // `Reflect.get` binds the receiver to the source so getters (headers/status)
+  // don't recurse through this proxy.
+  return new Proxy(res, {
+    get(target, prop) {
+      if (prop === "body") return wrapped;
+      const value = Reflect.get(target, prop, target);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}) as unknown as typeof globalThis.fetch;
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   // `/theme` dispatches the real theme toggle. ThemeProvider wraps this provider
   // (app/_layout.tsx → RootNavigator → app/(app)/_layout.tsx), so this is safe.
@@ -328,20 +377,26 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [draft, setDraft] = useState("");
-  // True while a demo (non-text) turn's 1.6s delay is running — the text turns get
-  // their "awaiting" state from the useChat `status` instead (see below).
-  const [mockPending, setMockPending] = useState(false);
-  const [pendingMedia, setPendingMedia] = useState<"image" | "video" | null>(null);
   const [worklogOpen, setWorklogOpen] = useState(false);
 
-  const [model, setModel] = useState("Auto");
+  // Images picked in the composer but not yet sent. Read at send-time via a ref so
+  // the send/pick callbacks stay stable (they don't re-create the transport).
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const attachmentsRef = useRef(attachments);
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  // Model pick persists across a Metro reload / cold start (web-v3 keeps the same
+  // choice in its `chat-model` cookie). Without this the picker silently snapped
+  // back to Auto on every reload and the user's next turn ran on another model.
+  const [model, setModel] = useState(DEFAULT_CHAT_MODEL);
   const [modelSheet, setModelSheet] = useState(false);
   const [modelQuery, setModelQueryState] = useState("");
 
   const [visibility, setVisibilityState] = useState<Visibility>("private");
   const [visSheet, setVisSheet] = useState(false);
 
-  const [attachDemo, setAttachDemo] = useState(false);
   // Memory is opt-in / OFF by default — the product's privacy promise (and the
   // app's own onboarding + Settings copy). Deliberately diverges from the
   // prototype, which shows it pre-enabled.
@@ -382,6 +437,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [customText]);
   useEffect(() => {
     loadCustomInstructions().then(setCustomText);
+    loadChatModel().then(setModel);
   }, []);
   const [handleSheet, setHandleSheet] = useState(false);
   const [handleText, setHandleText] = useState("");
@@ -393,6 +449,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // `onboarded:false`). Real sign-in already happened at the gate; the steps
   // only introduce the app ("Get started" advances, "Skip for now" finishes).
   const [onboarded, setOnboarded] = useState(false);
+  // Gate the shell until the persisted flag is read, so a returning user never
+  // sees a frame of onboarding before it snaps to chat. Load once on mount.
+  const [onboardReady, setOnboardReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    loadOnboarded().then((done) => {
+      if (!alive) return;
+      if (done) setOnboarded(true);
+      setOnboardReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [step, setStep] = useState(1);
   // Guest persona (anonymous "try before signup"): free models, no persistence,
   // a sign-in nudge after a few turns. Flipped by the onboarding actions.
@@ -400,7 +470,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [anonTurns, setAnonTurns] = useState(0);
   const [nudge, setNudge] = useState(false);
 
-  const replyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
   // Bumped on every openSend/closeSend. A confirmSend snapshots it and gates its
   // state writes, so a send whose sheet was dismissed + reopened mid-flight can't
@@ -458,7 +527,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     () =>
       new DefaultChatTransport<ChatMessage>({
         api: generateAPIUrl("/api/chat"),
-        fetch: expoFetch as unknown as typeof globalThis.fetch,
+        // Abort-safe wrapper (not raw expoFetch) so tapping Stop mid-stream cleanly
+        // terminates the read loop instead of spinning the JS thread — see D1.
+        fetch: streamingFetch,
         // Mobile is a stateless BFF, so it sends the FULL history every turn (web-v3
         // sends only the latest `message` + re-hydrates the rest from its DB). When
         // chat persistence is grafted onto the route this body contract changes to
@@ -503,42 +574,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     generateId: () => Crypto.randomUUID(),
     transport,
     onError: (err) => {
-      // Streaming failed (network / provider) — clear placeholders; the partial
-      // assistant message (if any) stays so the user sees what arrived. Prod
-      // surfaces a toast here.
+      // Streaming failed (network / provider) — the partial assistant message (if
+      // any) stays so the user sees what arrived. Prod surfaces a toast here.
       console.warn("[chat] stream error:", err?.message ?? String(err));
-      setMockPending(false);
-      setPendingMedia(null);
     },
   });
 
-  // Thinking dots show only BEFORE the first token ('submitted') or during a demo
-  // turn's delay; once tokens stream in, the assistant bubble renders them.
-  const thinking = status === "submitted" || mockPending;
+  // Thinking dots show only BEFORE the first token ('submitted'); once tokens
+  // stream in, the assistant bubble renders them.
+  const thinking = status === "submitted";
   // Busy = a turn is in flight → composer shows Stop, context ring hides.
-  const busy = status === "submitted" || status === "streaming" || mockPending;
+  const busy = status === "submitted" || status === "streaming";
 
-  // Cancel any in-flight reply — the mock timer (media/wallet/artifact turns) AND a
-  // real model request — so a late-arriving response can't repopulate a thread that
-  // was just cleared (clear / delete / purge / new chat / onboarding reset). Also
-  // drops the thinking + media placeholders.
+  // Cancel the in-flight model request so a late-arriving response can't repopulate
+  // a thread that was just cleared (clear / delete / purge / new chat / onboarding
+  // reset). Harmless if idle.
   const cancelPending = useCallback(() => {
-    if (replyTimer.current) clearTimeout(replyTimer.current);
-    replyTimer.current = null;
-    // Abort any in-flight model stream (text turn); harmless if idle.
     stopStream();
-    setMockPending(false);
-    setPendingMedia(null);
   }, [stopStream]);
-
-  // Clear every pending timer + abort any live request when the provider unmounts
-  // (navigation / sign-out), so no queued state update lands on a torn-down tree.
-  useEffect(
-    () => () => {
-      if (replyTimer.current) clearTimeout(replyTimer.current);
-    },
-    []
-  );
 
   // --- Chat history (DB-backed drawer list) ---------------------------------
   // The raw newest-first rows from /api/history; `history` (below) buckets them by
@@ -622,6 +675,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setChatMenu(null);
       setDrawerOpen(false);
       setTabRaw("chat");
+      setAttachments([]);
       if (id === chatId) return; // already the open thread
       const userId = userIdRef.current;
       try {
@@ -665,7 +719,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setChatId(Crypto.randomUUID());
       }
       try {
-        await fetch(
+        // fetch() only rejects on network errors — a 401/500 resolves normally, so
+        // gate on res.ok to route HTTP failures into the resync below.
+        const res = await fetch(
           generateAPIUrl(
             `/api/chat?chatId=${encodeURIComponent(id)}&userId=${encodeURIComponent(userId ?? "")}`
           ),
@@ -677,6 +733,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
             },
           }
         );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (e) {
         console.warn(
           "[history] delete failed:",
@@ -695,10 +752,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       // follow-up/suggestion taps) so we never fire a second request mid-stream.
       if (busy) return;
       const t = (typeof text === "string" ? text : draft).trim();
-      if (!t) return;
-      const { kind } = classify(t);
+      const atts = attachmentsRef.current;
+      // Nothing to send. An image with no caption is a valid turn ("what is this?"
+      // works on its own), so text OR an attachment is enough.
+      if (!t && atts.length === 0) return;
       setDraft("");
       setWorklogOpen(false);
+      if (atts.length) setAttachments([]);
       // Guest turns mirror web: proactively nudge sign-in on the 3rd guest turn.
       if (guest)
         setAnonTurns((prev) => {
@@ -707,46 +767,68 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
           return next;
         });
 
-      if (kind === "text") {
-        // Real streamed turn — appends the user message and streams the assistant
-        // reply from the provider seam (Vercel AI Gateway). `useChat` owns the
-        // message state + the 'submitted'/'streaming' status the UI reads.
+      // Real streamed turn — appends the user message and streams the assistant
+      // reply from the provider seam (Vercel AI Gateway). `useChat` owns the
+      // message state + the 'submitted'/'streaming' status the UI reads. EVERY
+      // message takes this path; there is no local answer. Attachments ride along as
+      // `file` parts (data URLs) — images the model reads directly, PDFs the BFF
+      // extracts to text; a caption-less send omits the empty text part.
+      if (atts.length) {
+        const files = toFileParts(atts);
+        sendMessage(t ? { text: t, files } : { files });
+      } else {
         sendMessage({ text: t });
-        return;
       }
-
-      // Demo turn (image / video / artifact): inject the user message + the canned
-      // assistant reply after the prototype's 1.6s delay — no model call. These
-      // surfaces are real tool-call parts in web-v3; here the render path badges
-      // them "Demo" so they can't be read as model output.
-      const isMedia = kind === "image" || kind === "video";
-      const userMsg: ChatMessage = {
-        id: uid("u"),
-        role: "user",
-        // Tag the demo turn's user side too, so the whole mock turn (user +
-        // canned reply) is excluded from real model context (see transport filter).
-        metadata: { demo: kind },
-        parts: [{ type: "text", text: t }],
-      };
-      setChatMessages((prev) => [...prev, userMsg]);
-      setMockPending(true);
-      setPendingMedia(isMedia ? kind : null);
-
-      if (replyTimer.current) clearTimeout(replyTimer.current);
-      replyTimer.current = setTimeout(() => {
-        setChatMessages((prev) => [...prev, buildDemoReply(kind)]);
-        setMockPending(false);
-        setPendingMedia(null);
-      }, 1600);
     },
-    [busy, draft, guest, sendMessage, setChatMessages]
+    [busy, draft, guest, sendMessage]
   );
+
+  // Open the attach chooser (Photo Library / Files) and stage the picks. Every
+  // current model reads images (Kimi/Auto included — verified via the Gateway; see
+  // `IMAGE_MODELS`) and PDFs work on any model (extracted to text server-side), so
+  // this guard is dormant forward-safety: it only fires if a future text-only model
+  // is added. Reads model + current count via refs to stay stable. Picker errors are
+  // surfaced by the chooser, never swallowed silently.
+  const pickAttachmentCb = useCallback(async () => {
+    if (!IMAGE_MODELS.has(modelRef.current)) {
+      Alert.alert(
+        "Switch to a vision model",
+        "This model can't read attachments. Pick another model from the menu."
+      );
+      return;
+    }
+    const remaining = MAX_ATTACHMENTS - attachmentsRef.current.length;
+    if (remaining <= 0) {
+      Alert.alert(
+        "Attachment limit",
+        `You can attach up to ${MAX_ATTACHMENTS} files per message.`
+      );
+      return;
+    }
+    try {
+      const picked = await pickAttachment(remaining);
+      if (picked.length) {
+        setAttachments((prev) => [...prev, ...picked].slice(0, MAX_ATTACHMENTS));
+      }
+    } catch (e) {
+      console.warn(
+        "[attach] pick failed:",
+        e instanceof Error ? e.message : String(e)
+      );
+      Alert.alert("Something went wrong");
+    }
+  }, []);
+
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
   // Onboarding transitions (prototype onboardNext / finish / skip — the mock
   // onGoogle sign-in animation was removed; the gate owns real sign-in).
   const finishOnboarding = useCallback(() => {
     cancelPending();
     setOnboarded(true);
+    void saveOnboarded(true);
     setGuest(false);
     setTabRaw("chat");
     setChatMessages([]);
@@ -758,6 +840,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const replayOnboarding = useCallback(() => {
     cancelPending();
     setOnboarded(false);
+    void saveOnboarded(false);
     setGuest(false);
     setChatMessages([]);
     setChatId(Crypto.randomUUID());
@@ -776,6 +859,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setChatMessages([]);
     setChatId(Crypto.randomUUID());
     setDraft("");
+    setAttachments([]);
     setDrawerOpen(false);
     setTabRaw("chat");
   }, [cancelPending, setChatMessages]);
@@ -794,6 +878,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setChatMessages([]);
         setChatId(Crypto.randomUUID());
         setDraft("");
+        setAttachments([]);
       } else if (name === "model") {
         setDraft("");
         setModelSheet(true);
@@ -880,17 +965,126 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setStage("confirm");
   }, []);
 
+  // Shared optimistic reset for the two chat-wiping actions (delete-all / purge):
+  // clear the drawer list + the open thread immediately, so the UI reflects the
+  // wipe before the network round-trip. `loadHistory()` resyncs on failure so rows
+  // reappear rather than silently vanishing — same pattern as `deleteChat`.
+  const resetAfterWipe = useCallback(() => {
+    setRawHistory([]);
+    cancelPending();
+    setChatMessages([]);
+    setChatId(Crypto.randomUUID());
+    setAttachments([]);
+    setDrawerOpen(false);
+  }, [cancelPending, setChatMessages]);
+
+  // "Delete all chats" — authed `DELETE /api/history` (owner-checked server-side).
+  const deleteAllChats = useCallback(async () => {
+    const userId = userIdRef.current;
+    resetAfterWipe();
+    try {
+      // fetch() only rejects on network errors — a 401/500 resolves normally. Without
+      // the res.ok gate a rejected wipe would leave the UI cleared while the server
+      // still holds every chat: a false "deleted" state on the privacy hub. Treat a
+      // non-OK response as a failure so the catch restores the list and tells the user.
+      const res = await fetch(
+        generateAPIUrl(
+          `/api/history?userId=${encodeURIComponent(userId ?? "")}`
+        ),
+        {
+          method: "DELETE",
+          headers: {
+            Accept: "application/json",
+            ...authHeader(tokenRef.current),
+          },
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      console.warn(
+        "[account] delete-all failed:",
+        e instanceof Error ? e.message : String(e)
+      );
+      loadHistory();
+      Alert.alert(
+        "Couldn't delete chats",
+        "Something went wrong — your chats were not deleted."
+      );
+    }
+  }, [resetAfterWipe, loadHistory]);
+
+  // "Purge all my data" — authed `POST /api/account/purge` (chats + messages +
+  // artifact documents). Same optimistic local wipe as delete-all.
+  const purgeAllData = useCallback(async () => {
+    const userId = userIdRef.current;
+    resetAfterWipe();
+    try {
+      const res = await fetch(generateAPIUrl("/api/account/purge"), {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...authHeader(tokenRef.current),
+        },
+        body: JSON.stringify({ userId }),
+      });
+      // See deleteAllChats: gate on res.ok so an HTTP-level rejection restores the
+      // list instead of leaving a false "purged" state while the data still exists.
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      console.warn(
+        "[account] purge failed:",
+        e instanceof Error ? e.message : String(e)
+      );
+      loadHistory();
+      Alert.alert(
+        "Couldn't purge your data",
+        "Something went wrong — your data was not deleted."
+      );
+    }
+  }, [resetAfterWipe, loadHistory]);
+
+  // "Forget all my memories" — authed `POST /api/account/forget-memory` bumps the
+  // server memory epoch (recall/save move to a fresh namespace). Nothing local to
+  // clear: chats + the memory toggle are unaffected, only future recall changes.
+  const forgetMemory = useCallback(async () => {
+    const userId = userIdRef.current;
+    try {
+      const res = await fetch(generateAPIUrl("/api/account/forget-memory"), {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...authHeader(tokenRef.current),
+        },
+        body: JSON.stringify({ userId }),
+      });
+      // Nothing local to restore, so a silent HTTP failure is the worst case: the
+      // dialog closes as if memories were forgotten while the epoch never moved.
+      // Gate on res.ok and surface the failure so the claim isn't a false assurance.
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      console.warn(
+        "[account] forget-memory failed:",
+        e instanceof Error ? e.message : String(e)
+      );
+      Alert.alert(
+        "Couldn't forget memories",
+        "Something went wrong — your memories were not cleared."
+      );
+    }
+  }, []);
+
+  // Confirm the pending destructive action. Read `confirmKind` directly (not via a
+  // state-updater) so the side-effect fires exactly once — a side-effect inside a
+  // setState updater double-fires under React StrictMode, which would double-POST.
   const doConfirm = useCallback(() => {
-    setConfirmKind((k) => {
-      if (k === "delete" || k === "purge") {
-        cancelPending();
-        setChatMessages([]);
-        setChatId(Crypto.randomUUID());
-        setDrawerOpen(false);
-      }
-      return null;
-    });
-  }, [cancelPending]);
+    const k = confirmKind;
+    setConfirmKind(null);
+    if (k === "delete") void deleteAllChats();
+    else if (k === "purge") void purgeAllData();
+    else if (k === "forget") void forgetMemory();
+  }, [confirmKind, deleteAllChats, purgeAllData, forgetMemory]);
 
   const value = useMemo<Store>(
     () => ({
@@ -905,13 +1099,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setDraft,
       thinking,
       busy,
-      pendingMedia,
       worklogOpen,
       toggleWorklog: () => setWorklogOpen((v) => !v),
       send,
       stop,
       newChat,
       askSuggestion: (t: string) => send(t),
+      attachments,
+      canAttach: IMAGE_MODELS.has(model),
+      pickAttachment: pickAttachmentCb,
+      removeAttachment,
       history,
       openChat,
       deleteChat,
@@ -926,6 +1123,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       closeModel: () => setModelSheet(false),
       pickModel: (m: string) => {
         setModel(m);
+        // Best-effort persist; a write failure only costs the pick on next launch.
+        saveChatModel(m);
         setModelSheet(false);
       },
       setModelQuery: setModelQueryState,
@@ -939,8 +1138,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         setVisSheet(false);
       },
 
-      attachDemo,
-      toggleAttach: () => setAttachDemo((v) => !v),
       memoryOn,
       toggleMemory: () => setMemoryOn((v) => !v),
       ctxOpen,
@@ -1042,6 +1239,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       doConfirm,
 
       onboarded,
+      onboardReady,
       step,
       onboardNext: () => setStep((s) => Math.min(3, s + 1)),
       finishOnboarding,
@@ -1061,11 +1259,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       draft,
       thinking,
       busy,
-      pendingMedia,
       worklogOpen,
       send,
       stop,
       newChat,
+      attachments,
+      pickAttachmentCb,
+      removeAttachment,
       history,
       openChat,
       deleteChat,
@@ -1074,7 +1274,6 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       modelQuery,
       visibility,
       visSheet,
-      attachDemo,
       memoryOn,
       ctxOpen,
       runSlash,
@@ -1110,6 +1309,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       confirmKind,
       doConfirm,
       onboarded,
+      onboardReady,
       step,
       finishOnboarding,
       replayOnboarding,

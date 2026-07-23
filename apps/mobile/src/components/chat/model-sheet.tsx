@@ -77,24 +77,11 @@ export function ModelSheet() {
             }
           />
         ))}
-
-        <View style={[styles.footer, { backgroundColor: colors.muted }]}>
-          <View style={styles.footRow}>
-            <Text style={[styles.footAnon, { color: colors.mutedFg }]}>Anon</Text>
-            <Text style={[styles.footArrow, { color: colors.mutedFg }]}>→</Text>
-            <Text
-              style={[
-                styles.footPriv,
-                { color: colors.tealLabel, backgroundColor: colors.tealBg },
-              ]}
-            >
-              Private · ZDR
-            </Text>
-          </View>
-          <Text style={[styles.footNote, { color: colors.mutedFg }]}>
-            Every chat is zero-retention — your prompts are never stored or trained on.
-          </Text>
-        </View>
+        {/* The privacy-ladder footer (Anon → Private·ZDR + the zero-retention
+            line) was removed 2026-07-23 — every row already carries its own
+            "Private" badge, so the strip only repeated it at the bottom of a
+            sheet the user has to scroll past. ZDR copy still lives in Settings →
+            Privacy & Storage, which is where users go to read it. */}
       </ScrollView>
     </BottomSheet>
   );
@@ -235,29 +222,5 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 6,
     overflow: "hidden",
-  },
-  footer: {
-    marginTop: 10,
-    marginHorizontal: 8,
-    paddingVertical: 9,
-    paddingHorizontal: 11,
-    borderRadius: 11,
-  },
-  footRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  footAnon: { fontFamily: fonts.regular, fontSize: 10, opacity: 0.6 },
-  footArrow: { fontFamily: fonts.regular, fontSize: 10, opacity: 0.45 },
-  footPriv: {
-    fontFamily: fonts.semibold,
-    fontSize: 10,
-    borderRadius: 5,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    overflow: "hidden",
-  },
-  footNote: {
-    fontFamily: fonts.regular,
-    fontSize: 10,
-    lineHeight: 14,
-    marginTop: 5,
   },
 });

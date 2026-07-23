@@ -1,12 +1,18 @@
+import { useEffect, useRef } from "react";
 import {
-  KeyboardAvoidingView,
+  Animated,
+  Easing,
+  Keyboard,
+  type KeyboardEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppState } from "@/app-state/store";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { Composer } from "@/components/chat/composer";
@@ -42,7 +48,13 @@ import { fonts } from "@/theme/tokens";
 // /skills surface in the store purge; skills are chat-native tools now.)
 export default function Shell() {
   const { colors } = useTheme();
-  const { tab, onboarded } = useAppState();
+  const { tab, onboarded, onboardReady } = useAppState();
+
+  // Hold on a blank bg until the persisted onboarded flag has been read, so a
+  // returning user never sees a frame of onboarding before it snaps to chat.
+  if (!onboardReady) {
+    return <View style={[styles.root, { backgroundColor: colors.bg }]} />;
+  }
 
   // First-launch takeover (prototype `onboarded:false`). The onboarding flow
   // owns its own safe-area insets; Receive stays mounted because the wallet-ready
@@ -96,24 +108,83 @@ export default function Shell() {
 function ChatTab() {
   const { messages } = useAppState();
   const hasMessages = messages.length > 0;
+  const insets = useSafeAreaInsets();
+  // Keyboard lift. RN's KeyboardAvoidingView is a no-op on Android under
+  // edge-to-edge (SDK 54+ forces it on, so the main window never resizes for the
+  // IME), which left the composer covered by the keyboard (D2). Drive the content
+  // up from the global Keyboard events instead — they fire regardless of which
+  // window owns the input — shrinking the flex column by the keyboard height so
+  // the bottom-pinned composer rises above it. Lift by the keyboard height minus
+  // the bottom safe-area inset the composer already pads (that inset sits behind
+  // the keyboard once it is up), leaving the same 8px gap the sheets use.
+  const kbLift = useRef(new Animated.Value(0)).current;
+
+  // Stick-to-bottom. Without it the thread stays where it was while a new turn
+  // streams in below the fold — the user sends a message and sees nothing happen
+  // (D24). web-v3 pins to the bottom the same way. `stick` turns OFF as soon as
+  // the user scrolls up to read history, so a live stream never yanks them back.
+  const scrollRef = useRef<ScrollView>(null);
+  const stick = useRef(true);
+  const STICK_SLOP = 80; // px from the bottom that still counts as "at the bottom"
+
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const fromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+    stick.current = fromBottom <= STICK_SLOP;
+  };
+
+  // Sending re-arms the stick even if they had scrolled up: their own message is
+  // what they want to see. A streamed assistant turn does not (that's `stick`).
+  const lastRole = messages.at(-1)?.role;
+  const count = messages.length;
+  useEffect(() => {
+    if (lastRole === "user") stick.current = true;
+  }, [lastRole, count]);
+
+  useEffect(() => {
+    const showEvt =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const animateTo = (toValue: number, duration: number) =>
+      Animated.timing(kbLift, {
+        toValue,
+        duration: duration || 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    const onShow = (e: KeyboardEvent) =>
+      animateTo(Math.max(0, e.endCoordinates.height - insets.bottom), e.duration);
+    const onHide = (e: KeyboardEvent) => animateTo(0, e.duration);
+    const showSub = Keyboard.addListener(showEvt, onShow);
+    const hideSub = Keyboard.addListener(hideEvt, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [kbLift, insets.bottom]);
 
   return (
     <View style={styles.flex}>
       <ChatHeader />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={8}
-      >
+      <Animated.View style={[styles.flex, { paddingBottom: kbLift }]}>
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={hasMessages ? styles.thread : styles.emptyWrap}
           keyboardShouldPersistTaps="handled"
+          onScroll={onScroll}
+          // Cheap enough for a stick check; not driving an animation.
+          scrollEventThrottle={64}
+          onContentSizeChange={() => {
+            if (stick.current) scrollRef.current?.scrollToEnd({ animated: true });
+          }}
         >
           {hasMessages ? <Conversation /> : <EmptyState />}
         </ScrollView>
         <Composer />
-      </KeyboardAvoidingView>
+      </Animated.View>
     </View>
   );
 }

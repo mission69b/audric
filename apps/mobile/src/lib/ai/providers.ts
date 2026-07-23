@@ -25,3 +25,10 @@ export function getLanguageModel(modelId?: string) {
   }
   return gateway.languageModel(modelId);
 }
+
+// NOTE: no server-side vision strip. Every model this BFF exposes accepts image
+// input (verified via the Gateway's input_modalities — Kimi K2.5 included), and
+// "auto" resolves to Kimi, which is itself image-capable. There is no non-vision
+// target and no Confidential (text-only) mode on mobile, so an image part always
+// has a model that can read it — nothing to strip. web-v3 likewise strips images
+// only for Confidential mode, never on the normal path.

@@ -23,6 +23,7 @@ type Block =
   | { kind: "quote"; text: string }
   | { kind: "ul"; items: string[] }
   | { kind: "ol"; items: { num: string; text: string }[] }
+  | { kind: "table"; head: string[]; rows: string[][] }
   | { kind: "hr" }
   | { kind: "p"; text: string };
 
@@ -36,7 +37,21 @@ const RE = {
   ul: /^\s*[-*+]\s+/,
   ol: /^\s*\d+[.)]\s+/,
   olItem: /^\s*(\d+)[.)]\s+(.*)$/,
+  // GFM table: any row containing a pipe, plus the |---|:--:| delimiter that
+  // makes it a table rather than prose with a pipe in it.
+  tableRow: /\|/,
+  tableDivider: /^\s*\|?(?:\s*:?-{2,}:?\s*\|)+\s*:?-{2,}:?\s*\|?\s*$/,
 };
+
+// "| a | b |" → ["a", "b"]. Leading/trailing pipes are optional in GFM.
+function splitTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((c) => c.trim());
+}
 
 // Split source into block-level nodes. A line's leading token decides its block;
 // paragraphs greedily absorb following plain lines until a blank line or a new
@@ -46,13 +61,21 @@ function parseBlocks(src: string): Block[] {
   const blocks: Block[] = [];
   let i = 0;
 
-  const isBlockStart = (l: string) =>
+  // A header row only starts a table when the NEXT line is the |---| divider, so
+  // an ordinary sentence containing a pipe stays a paragraph.
+  const isTableStart = (n: number) =>
+    n + 1 < lines.length &&
+    RE.tableRow.test(lines[n]) &&
+    RE.tableDivider.test(lines[n + 1]);
+
+  const isBlockStart = (l: string, n: number) =>
     RE.blank.test(l) ||
     RE.fence.test(l) ||
     RE.heading.test(l) ||
     RE.quote.test(l) ||
     RE.ul.test(l) ||
-    RE.ol.test(l);
+    RE.ol.test(l) ||
+    isTableStart(n);
 
   while (i < lines.length) {
     const line = lines[i];
@@ -123,9 +146,25 @@ function parseBlocks(src: string): Block[] {
       continue;
     }
 
+    if (isTableStart(i)) {
+      const head = splitTableRow(line);
+      i += 2; // header + divider
+      const rows: string[][] = [];
+      while (i < lines.length && RE.tableRow.test(lines[i])) {
+        const cells = splitTableRow(lines[i]);
+        // Pad/trim to the header width so a ragged row can't shift the columns.
+        rows.push(
+          Array.from({ length: head.length }, (_, c) => cells[c] ?? "")
+        );
+        i++;
+      }
+      blocks.push({ kind: "table", head, rows });
+      continue;
+    }
+
     const buf: string[] = [line];
     i++;
-    while (i < lines.length && !isBlockStart(lines[i])) {
+    while (i < lines.length && !isBlockStart(lines[i], i)) {
       buf.push(lines[i]);
       i++;
     }
@@ -198,6 +237,34 @@ function renderInline(
 }
 
 const HEADING_SIZE = [21, 19, 17, 15.5, 15, 15] as const;
+
+// Per-column table widths, estimated from the longest cell. Inline markers
+// (**bold**, `code`) are stripped first so they don't inflate the count. A cell
+// longer than the cap still wraps — the shared width keeps the grid aligned when
+// it does.
+const CELL_MIN_W = 64;
+const CELL_MAX_W = 260;
+const CELL_PAD_W = 22; // paddingHorizontal * 2, see `td`
+function columnWidths(
+  head: string[],
+  rows: string[][],
+  size: number
+): number[] {
+  const plain = (c: string) => c.replace(/[*_`~]/g, "").length;
+  // ~0.58em per character for the UI font at chat sizes; the header is semibold,
+  // so it is measured a touch wider.
+  const charW = (size - 1) * 0.58;
+  return head.map((h, ci) => {
+    const longest = rows.reduce(
+      (max, r) => Math.max(max, plain(r[ci] ?? "")),
+      plain(h) * 1.07
+    );
+    return Math.min(
+      CELL_MAX_W,
+      Math.max(CELL_MIN_W, Math.ceil(longest * charW) + CELL_PAD_W)
+    );
+  });
+}
 
 export function Markdown({
   text,
@@ -275,6 +342,59 @@ export function Markdown({
                 ))}
               </View>
             );
+          case "table": {
+            // Every cell in a column gets the SAME width, so the grid stays
+            // aligned row-to-row (intrinsic per-cell widths would stagger it).
+            // Width is estimated from the column's longest cell — RN gives no
+            // synchronous text measurement, and a measure-then-layout pass would
+            // reflow on every streamed frame.
+            const widths = columnWidths(b.head, b.rows, size);
+            return (
+              <View key={key} style={s.tableWrap}>
+                {/* Horizontal scroll, like the code block: a 4-column table of
+                    market caps is wider than a phone, and squeezing it to fit
+                    makes the grid unreadable. */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View>
+                    <View style={[s.tr, s.trHead]}>
+                      {b.head.map((c, ci) => (
+                        <View
+                          key={`${key}-h${ci}`}
+                          style={[
+                            s.td,
+                            { width: widths[ci] },
+                            ci > 0 && s.tdDivider,
+                          ]}
+                        >
+                          <Text style={s.thText}>
+                            {renderInline(c, s, `${key}-h${ci}`)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                    {b.rows.map((r, ri) => (
+                      <View key={`${key}-r${ri}`} style={s.tr}>
+                        {r.map((c, ci) => (
+                          <View
+                            key={`${key}-r${ri}c${ci}`}
+                            style={[
+                              s.td,
+                              { width: widths[ci] },
+                              ci > 0 && s.tdDivider,
+                            ]}
+                          >
+                            <Text style={s.tdText}>
+                              {renderInline(c, s, `${key}-r${ri}c${ci}`)}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            );
+          }
           case "hr":
             return <View key={key} style={s.hr} />;
           default:
@@ -371,6 +491,41 @@ function useStyles(
           fontFamily: fonts.regular,
           fontSize: size,
           lineHeight: size * 1.5,
+          color: base,
+        },
+        tableWrap: {
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.border,
+          borderRadius: 10,
+          overflow: "hidden",
+        },
+        tr: {
+          flexDirection: "row",
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+        },
+        // The header carries no top border (the wrapper's own edge is its rule).
+        trHead: { borderTopWidth: 0, backgroundColor: colors.muted },
+        // Width comes from `columnWidths` per column — see the table branch.
+        td: {
+          paddingVertical: 7,
+          paddingHorizontal: 11,
+          justifyContent: "center",
+        },
+        tdDivider: {
+          borderLeftWidth: StyleSheet.hairlineWidth,
+          borderLeftColor: colors.border,
+        },
+        thText: {
+          fontFamily: fonts.semibold,
+          fontSize: size - 1,
+          lineHeight: (size - 1) * 1.45,
+          color: base,
+        },
+        tdText: {
+          fontFamily: fonts.regular,
+          fontSize: size - 1,
+          lineHeight: (size - 1) * 1.45,
           color: base,
         },
         hr: {

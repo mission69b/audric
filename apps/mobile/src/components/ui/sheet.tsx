@@ -8,7 +8,8 @@ import { useEffect, useRef } from "react";
 import {
   Animated,
   Easing,
-  KeyboardAvoidingView,
+  Keyboard,
+  type KeyboardEvent,
   Modal,
   Platform,
   Pressable,
@@ -41,6 +42,12 @@ export function BottomSheet({
   const { height } = useWindowDimensions();
   const slide = useRef(new Animated.Value(1)).current; // 1 = offscreen, 0 = seated
   const fade = useRef(new Animated.Value(0)).current;
+  // Keyboard lift. RN <Modal> windows do NOT resize for the keyboard on Android
+  // (and the app is edge-to-edge, so `adjustResize` never reaches this window),
+  // so a KeyboardAvoidingView here is a no-op and input sheets (Send / handle /
+  // custom instructions) get covered. Instead drive the panel up from the global
+  // Keyboard events, which fire regardless of which window owns the input.
+  const kbLift = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!visible) return;
@@ -57,10 +64,34 @@ export function BottomSheet({
     ]).start();
   }, [visible, slide, fade]);
 
-  const translateY = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, height],
-  });
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const animateTo = (toValue: number, duration: number) =>
+      Animated.timing(kbLift, {
+        toValue,
+        duration: duration || 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    // Lift by the keyboard height, minus the bottom safe-area inset the panel
+    // already pads (the nav-bar gap sits behind the keyboard once it is up).
+    const onShow = (e: KeyboardEvent) =>
+      animateTo(Math.max(0, e.endCoordinates.height - insets.bottom), e.duration);
+    const onHide = (e: KeyboardEvent) => animateTo(0, e.duration);
+    const showSub = Keyboard.addListener(showEvt, onShow);
+    const hideSub = Keyboard.addListener(hideEvt, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [kbLift, insets.bottom]);
+
+  // Seated slide position, then pulled further up by the live keyboard height.
+  const translateY = Animated.subtract(
+    slide.interpolate({ inputRange: [0, 1], outputRange: [0, height] }),
+    kbLift
+  );
 
   return (
     <Modal
@@ -70,10 +101,7 @@ export function BottomSheet({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={styles.bottomRoot}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <View style={styles.bottomRoot}>
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim, opacity: fade }]}
         >
@@ -93,7 +121,7 @@ export function BottomSheet({
           <View style={[styles.handle, { backgroundColor: colors.border }]} />
           {children}
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

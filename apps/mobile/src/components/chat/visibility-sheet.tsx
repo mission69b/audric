@@ -5,10 +5,11 @@ import { Check, Globe, Lock } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
-// The "Chat visibility" bottom sheet (prototype VISIBILITY SHEET). Two rows —
-// Private (default) and Public (read-only share link) — with the active one
-// tinted and check-marked. No close button in the prototype; the scrim/handle
-// dismiss it. Mirrors web-v3's per-chat visibility control.
+// The "Chat visibility" bottom sheet (prototype VISIBILITY SHEET). Public share
+// links are NOT wired on mobile — there is no public read-only chat route here yet,
+// so selecting "Public" only ever flipped the header icon and produced no link. The
+// Public row is therefore shown as "Coming soon" and is non-interactive; only Private
+// is selectable. Re-enable Public when the share-link route lands (web-v3 has it).
 export function VisibilitySheet() {
   const { colors } = useTheme();
   const { visSheet, closeVis, visibility, setVisibility } = useAppState();
@@ -19,7 +20,7 @@ export function VisibilitySheet() {
       <View style={styles.head}>
         <Text style={[styles.title, { color: colors.fg }]}>Chat visibility</Text>
         <Text style={[styles.sub, { color: colors.mutedFg }]}>
-          Private by default. Make a single chat public to share a read-only link.
+          Private by default. Public read-only share links are coming soon.
         </Text>
       </View>
 
@@ -43,24 +44,18 @@ export function VisibilitySheet() {
           ) : null}
         </Pressable>
 
-        <Pressable
-          onPress={() => setVisibility("public")}
-          style={[
-            styles.row,
-            { backgroundColor: !isPrivate ? colors.secondary : "transparent" },
-          ]}
-        >
-          <Globe size={18} color={colors.fg} strokeWidth={1.8} />
+        <View style={[styles.row, styles.rowDisabled]}>
+          <Globe size={18} color={colors.mutedFg} strokeWidth={1.8} />
           <View style={styles.mid}>
-            <Text style={[styles.rowTitle, { color: colors.fg }]}>Public</Text>
+            <Text style={[styles.rowTitle, { color: colors.mutedFg }]}>Public</Text>
             <Text style={[styles.rowSub, { color: colors.mutedFg }]}>
               Anyone with the link can access this chat
             </Text>
           </View>
-          {!isPrivate ? (
-            <Check size={18} color={colors.tealLabel} strokeWidth={2.4} />
-          ) : null}
-        </Pressable>
+          <View style={[styles.soonBadge, { backgroundColor: colors.secondary }]}>
+            <Text style={[styles.soonText, { color: colors.mutedFg }]}>Coming soon</Text>
+          </View>
+        </View>
       </View>
     </BottomSheet>
   );
@@ -78,7 +73,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
   },
+  rowDisabled: { opacity: 0.7 },
   mid: { flex: 1, minWidth: 0 },
   rowTitle: { fontFamily: fonts.medium, fontSize: 13.5 },
   rowSub: { fontFamily: fonts.regular, fontSize: 11.5, marginTop: 1 },
+  soonBadge: { borderRadius: 999, paddingVertical: 4, paddingHorizontal: 9 },
+  soonText: { fontFamily: fonts.semibold, fontSize: 10.5 },
 });

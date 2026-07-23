@@ -32,7 +32,10 @@ export const MODELS: ModelRow[] = [
     best: "Fast & free",
     prov: "moonshot",
     kind: "free",
-    caps: { tools: true },
+    // Vision VERIFIED against the Gateway: /v1/models/moonshotai/kimi-k2.5/endpoints
+    // reports architecture.input_modalities = ['text','image']. K2.5 reads images
+    // (unlike the text-only original K2), same signal web-v3's getCapabilities() uses.
+    caps: { tools: true, vision: true },
   },
   {
     name: "Grok 4.3",
@@ -82,14 +85,17 @@ export function modelId(name: string): string {
   return MODEL_ID_BY_NAME[name] ?? "auto";
 }
 
-// Vision-capable set — only non-vision models (Kimi) reject image attachments;
-// Auto and every premium model see them. (PDFs work on any model.)
-export const VISION_MODELS = new Set([
+// Models (by display name) that can SEE an image attachment — the composer's attach
+// gate. VERIFIED against the Vercel AI Gateway (`/v1/models/:id/endpoints` →
+// architecture.input_modalities): EVERY model here, Kimi K2.5 included, reports `image`
+// input. This mirrors web-v3's composer, which gates on the LIVE Gateway capability
+// (`vision || isAuto`), NOT the static routing hint that leaves Kimi's `vision` unset.
+// "Auto" is in because mobile has no router: `getLanguageModel("auto")` resolves to Kimi
+// (DEFAULT_MODEL_ID) — itself image-capable — so an Auto turn's image is still read.
+// Derived from `caps.vision` so a future text-only model gates itself out automatically.
+export const IMAGE_MODELS = new Set<string>([
   "Auto",
-  "Grok 4.3",
-  "Claude Sonnet 5",
-  "Claude Opus 4.8",
-  "GPT-5.5",
+  ...MODELS.filter((m) => m.caps.vision).map((m) => m.name),
 ]);
 
 // models.dev logo slug per prototype provider key.
@@ -116,11 +122,18 @@ export const SUGGESTIONS: { label: string; text: string }[] = [
   { label: "What's new in AI this week?", text: "What's new in AI this week?" },
 ];
 
-// Follow-up rows under the last assistant turn.
+// Follow-up rows under the last assistant turn. Like the empty-state SUGGESTIONS,
+// every chip must map to something the app can ACTUALLY do — so each sends a plain
+// conversational prompt that reaches the model (a real streamed turn), NOT a
+// media/artifact request. The old chips ("Generate a logo", "Make a video clip",
+// "Draft an announcement") all hit `classify()`'s image/video/artifact regexes and
+// short-circuited to canned demo cards — the first thing a new user tapped never
+// reached a model. Keep this wording free of those trigger words (image/draw/logo/
+// video/clip/draft/document/write/generate/…) so it always classifies as "text".
 export const FOLLOWUPS: { label: string; text: string }[] = [
-  { label: "Generate a logo image", text: "Generate a minimal geometric logo, teal on charcoal" },
-  { label: "Make a short video clip", text: "Make a short video clip of a sunrise over the sea" },
-  { label: "Draft a launch announcement", text: "Draft a launch announcement document" },
+  { label: "Explain it more simply", text: "Explain that more simply" },
+  { label: "What are the trade-offs?", text: "What are the trade-offs to consider?" },
+  { label: "Find recent sources", text: "Find recent sources on this" },
 ];
 
 // Slash commands — web-v3 slash-commands.tsx (7 commands).
@@ -380,13 +393,10 @@ export const HELP_ITEMS: string[] = [
   "Report a bug",
 ];
 
-// Referral sheet demo figures (prototype REFERRAL sheet).
-export const REFERRAL_LINK = "https://audric.ai/r/you-a1b2";
-export const REFERRAL_STATS: { value: string; label: string; teal?: boolean }[] = [
-  { value: "3", label: "Referrals" },
-  { value: "$30", label: "Earned", teal: true },
-  { value: "#142", label: "Rank" },
-];
+// (Referral link + stats removed: they were hardcoded fabrications shown as if they
+// were the signed-in user's real figures. The Refer & earn sheet is now an honest
+// "coming soon" — see `referral-sheet.tsx` — with no per-user data invented. Restore
+// real values here when the mobile referral service is wired.)
 
 // Artifact viewer demo body.
 export const ARTIFACT_LINES: string[] = [

@@ -16,6 +16,7 @@ import {
   Loader,
   TriangleAlert,
 } from "@/components/ui/icon";
+import { ShimmerText } from "@/components/ui/shimmer-text";
 import { Markdown } from "./markdown";
 import type { ChatMessage } from "@/lib/types";
 import { useTheme } from "@/theme/theme";
@@ -31,8 +32,11 @@ import { fonts } from "@/theme/tokens";
 //     the query, a result count, and tappable source rows,
 //   • a "Thought / Worked for Xs · N steps" summary once the turn finishes.
 //
-// Auto-opens while the turn streams and collapses when done; a manual tap wins
-// after that (same UX as web-v3). The elapsed timer is anchored to the
+// Collapsed by default, including while the turn streams — a deliberate
+// divergence from web-v3, which auto-opens during the stream. On a phone the
+// expanded trace pushes the answer off-screen exactly while the user is waiting
+// for it; the shimmering header already says work is happening. Opening is one
+// tap and the state sticks for that turn. The elapsed timer is anchored to the
 // server-stamped `metadata.createdAt`; on history-reloaded turns that metadata is
 // absent, so the seconds are simply omitted (the steps still render from the
 // persisted parts).
@@ -146,10 +150,10 @@ export function CotTimeline({
   const { colors } = useTheme();
   const steps = useMemo(() => buildSteps(parts), [parts]);
 
-  // Manual toggle overrides the auto behaviour (open while streaming, collapsed
-  // when done); null = follow the auto rule.
+  // Closed until the user asks for it. `null` = untouched (closed); a tap pins
+  // it either way for the rest of the turn.
   const [override, setOverride] = useState<boolean | null>(null);
-  const open = override ?? streaming;
+  const open = override ?? false;
 
   // Elapsed timer, anchored to the server `createdAt`. Tick every 500ms while
   // streaming, then freeze at the last value.
@@ -182,12 +186,19 @@ export function CotTimeline({
         style={styles.header}
         hitSlop={6}
       >
+        <Brain size={14} color={colors.tealLabel} strokeWidth={2} />
         {streaming ? (
-          <Spinner size={14} color={colors.tealLabel} />
+          // web-v3 shimmers its live "Thinking..." label (components/chat/
+          // message.tsx:688, `<Shimmer duration={1}>`); ShimmerText is the RN port.
+          <ShimmerText
+            text={summary}
+            color={colors.fg}
+            size={12.5}
+            style={styles.summary}
+          />
         ) : (
-          <Brain size={14} color={colors.tealLabel} strokeWidth={2} />
+          <Text style={[styles.summary, { color: colors.fg }]}>{summary}</Text>
         )}
-        <Text style={[styles.summary, { color: colors.fg }]}>{summary}</Text>
         <ChevronDown
           size={15}
           color={colors.mutedFg}

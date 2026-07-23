@@ -10,6 +10,7 @@ import {
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 import { generateAPIUrl } from "@/lib/api-url";
+import { saveChatModel } from "@/lib/prefs";
 import { clearWalletKeys, saveWalletKeys } from "@/lib/wallet/keys";
 import { authenticate } from "./biometrics";
 import { type DerivedIdentity, exchangeForAddress } from "./exchange";
@@ -169,6 +170,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await clearSession();
     await clearWalletKeys();
+    // The model pick is per-user (premium models are entitlement-gated), so it must
+    // not survive into the next account — web-v3 clears its `chat-model` cookie on
+    // sign-out for the same reason.
+    await saveChatModel("");
     setSession(null);
     setLastDerived(null);
     setError(null);

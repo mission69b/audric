@@ -6,8 +6,12 @@ import { useAppState } from "@/app-state/store";
 import { Info, X } from "@/components/ui/icon";
 import { fonts } from "@/theme/tokens";
 
-const FULL_MODEL = "Audric · Image";
-const FULL_PROMPT = "A minimal geometric logo, teal on charcoal";
+// This viewer opens from the badged demo image card — there is no real generation
+// behind it (image-gen isn't wired on mobile yet). So the chip + Details pane must
+// NOT assert a real model or prompt the way the prototype did ("Model: Audric ·
+// Image" + a fabricated prompt read as a genuine result). They now state plainly
+// that this is a demo placeholder, matching the in-thread "Demo · not generated".
+const FULL_MODEL = "Demo · not generated";
 // Fixed on-black chrome — this viewer is dark in both themes (prototype FULLSCREEN
 // IMAGE), so it uses literal white-alpha colors rather than theme tokens.
 const W12 = "rgba(255,255,255,0.12)";
@@ -66,10 +70,9 @@ export function ImageFullscreen() {
         {imageDetails ? (
           <View style={styles.details}>
             <Text style={styles.detLabel}>
-              Model: <Text style={styles.detValue}>{FULL_MODEL}</Text>
-            </Text>
-            <Text style={styles.detLabel}>
-              Prompt: <Text style={styles.detValue}>{FULL_PROMPT}</Text>
+              This is a <Text style={styles.detValue}>demo placeholder</Text> —
+              image generation isn't live on mobile yet, so no model was run and
+              nothing here was generated.
             </Text>
           </View>
         ) : null}

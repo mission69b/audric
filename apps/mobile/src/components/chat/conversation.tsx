@@ -1,11 +1,18 @@
 import * as Clipboard from "expo-clipboard";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { Pressable } from "react-native";
 import { FOLLOWUPS } from "@/app-state/catalog";
 import { useAppState } from "@/app-state/store";
-import { type ChatMessage, messageText } from "@/lib/types";
+import {
+  type ChatMessage,
+  messageFiles,
+  messageImages,
+  messageText,
+} from "@/lib/types";
+import { ShimmerText } from "@/components/ui/shimmer-text";
 import { CotTimeline } from "./cot-timeline";
 import { Markdown } from "./markdown";
 import {
@@ -31,14 +38,14 @@ import { fonts, radius, space } from "@/theme/tokens";
 // by the thinking / media-loading placeholders. Rendered inside the shell's
 // scroll view. 1:1 with the prototype markup.
 export function Conversation() {
-  const { messages, thinking, busy, pendingMedia } = useAppState();
+  const { messages, thinking, busy } = useAppState();
   const lastIdx = messages.length - 1;
 
   return (
     <View style={styles.col}>
       {messages.map((m, i) =>
         m.role === "user" ? (
-          <UserBubble key={m.id} text={messageText(m)} />
+          <UserBubble key={m.id} m={m} />
         ) : (
           <AssistantTurn
             key={m.id}
@@ -52,9 +59,7 @@ export function Conversation() {
           />
         )
       )}
-      {thinking && !pendingMedia ? <ThinkingRow /> : null}
-      {thinking && pendingMedia === "image" ? <MediaLoading kind="image" /> : null}
-      {thinking && pendingMedia === "video" ? <MediaLoading kind="video" /> : null}
+      {thinking ? <ThinkingRow /> : null}
     </View>
   );
 }
@@ -68,26 +73,72 @@ function Avatar() {
   );
 }
 
-function UserBubble({ text }: { text: string }) {
+function UserBubble({ m }: { m: ChatMessage }) {
   const { colors } = useTheme();
   const { setDraft } = useAppState();
+  const text = messageText(m);
+  // Images the user attached this turn — rendered as thumbnails above the text
+  // (real photos, not demo tiles: the same `data:` URL that was sent to the model).
+  const images = messageImages(m);
+  // Non-image attachments (PDFs) — a labeled chip, not inline bytes. Both only show
+  // for the just-sent turn; a reloaded thread carries "[file: name]" text markers.
+  const files = messageFiles(m);
   return (
     <View style={styles.userWrap}>
-      <LinearGradient
-        colors={[colors.bubbleFrom, colors.bubbleTo]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.bubble, { borderColor: colors.border }]}
-      >
-        <Text style={[styles.userText, { color: colors.fg }]}>{text}</Text>
-      </LinearGradient>
-      <View style={styles.userActions}>
-        <CopyButton size={26} text={text} />
-        {/* Edit: drop the message back into the composer to revise and resend. */}
-        <IconBtn label="Edit" onPress={() => setDraft(text)} size={26}>
-          <Pencil color={colors.mutedFg} size={13} strokeWidth={1.9} />
-        </IconBtn>
-      </View>
+      {images.length > 0 ? (
+        <View style={styles.userImages}>
+          {images.map((img, i) => (
+            <Image
+              key={`${m.id}-img-${i}`}
+              source={{ uri: img.url }}
+              style={[styles.userImage, { borderColor: colors.border }]}
+              contentFit="cover"
+              accessibilityLabel={img.name ?? "Attached image"}
+            />
+          ))}
+        </View>
+      ) : null}
+      {files.length > 0 ? (
+        <View style={styles.userFiles}>
+          {files.map((f, i) => (
+            <View
+              key={`${m.id}-file-${i}`}
+              style={[
+                styles.userFile,
+                { borderColor: colors.border, backgroundColor: colors.card },
+              ]}
+            >
+              <FileText size={15} color={colors.mutedFg} strokeWidth={1.9} />
+              <Text
+                numberOfLines={1}
+                style={[styles.userFileName, { color: colors.fg }]}
+              >
+                {f.name}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {text ? (
+        <LinearGradient
+          colors={[colors.bubbleFrom, colors.bubbleTo]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.bubble, { borderColor: colors.border }]}
+        >
+          <Text style={[styles.userText, { color: colors.fg }]}>{text}</Text>
+        </LinearGradient>
+      ) : null}
+      {/* Copy/Edit only make sense with text — an image-only turn has neither. */}
+      {text ? (
+        <View style={styles.userActions}>
+          <CopyButton size={26} text={text} />
+          {/* Edit: drop the message back into the composer to revise and resend. */}
+          <IconBtn label="Edit" onPress={() => setDraft(text)} size={26}>
+            <Pencil color={colors.mutedFg} size={13} strokeWidth={1.9} />
+          </IconBtn>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -101,15 +152,24 @@ function AssistantTurn({
   streaming: boolean;
   showFollowups: boolean;
 }) {
-  // Demo turns carry their render kind on metadata and are BADGED as such — a
-  // canned card must never be mistakable for model output. Real turns render from
-  // `parts` exactly like web-v3 — a Chain-of-Thought timeline (reasoning +
-  // web_search) above the markdown answer.
+  // Turns render from `parts` exactly like web-v3 — a Chain-of-Thought timeline
+  // (reasoning + web_search) above the markdown answer.
+  // The `demo` branches below are DEAD: nothing sets `metadata.demo` since the
+  // client-side classifier was removed (see `send` in app-state/store.tsx), so no
+  // canned card can reach the thread. Kept only so the prototype's card markup
+  // isn't lost before the real image/artifact tools land — those will render from
+  // `parts`, so treat this as scaffolding to replace, never to feed.
   const demo = m.metadata?.demo;
   const answer = messageText(m);
   const hasWork = m.parts.some(
     (p) => p.type === "reasoning" || (p.type as string) === "tool-web_search"
   );
+  // Nothing to show yet. While the turn is live this is the gap between the first
+  // stream event and the first token — it used to render as a bare avatar with an
+  // action row under it, indistinguishable from a turn that answered with silence.
+  // Once the turn is done it means the model really did return nothing; web-v3
+  // shows an honest fallback line there (`isEmptyAssistant`, message.tsx:709).
+  const empty = !(demo || hasWork || answer);
   return (
     <View style={styles.assistantRow}>
       <Avatar />
@@ -131,10 +191,19 @@ function AssistantTurn({
 
         {answer ? <Markdown text={answer} /> : null}
 
-        <View style={styles.assistantActions}>
-          <CopyButton size={27} text={answer} />
-          <VoteButtons />
-        </View>
+        {empty && streaming ? <ThinkingLabel /> : null}
+        {empty && !streaming ? (
+          <Markdown text="I didn't quite catch that — could you rephrase or add a bit more detail?" />
+        ) : null}
+
+        {/* Actions appear on a finished turn only — copy/vote on a half-streamed
+            answer copies half an answer (web-v3 gates them the same way). */}
+        {streaming ? null : (
+          <View style={styles.assistantActions}>
+            <CopyButton size={27} text={answer} />
+            <VoteButtons />
+          </View>
+        )}
 
         {showFollowups ? <Followups /> : null}
       </View>
@@ -174,12 +243,6 @@ function ImageCard() {
         end={{ x: 0.8, y: 0.8 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.imgBadge}>
-        <Text style={styles.imgBadgeText}>AI · IMAGE</Text>
-      </View>
-      <View style={styles.imgDownload}>
-        <Download size={15} color="#fff" strokeWidth={2} />
-      </View>
     </Pressable>
   );
 }
@@ -258,95 +321,30 @@ function Followups() {
   );
 }
 
-// Mirrors the prototype's `dotpulse` keyframe (opacity .25↔1 + translateY 0↔-3px):
-// rise over `peakMs`, fall over `peakMs`, then hold at rest for `holdMs`. Native
-// driver so it stays smooth off the JS thread. `delayMs` staggers each dot's phase.
-function usePulse(peakMs: number, holdMs: number, delayMs = 0) {
-  const v = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(v, {
-          toValue: 1,
-          duration: peakMs,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(v, {
-          toValue: 0,
-          duration: peakMs,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.delay(holdMs),
-      ]),
-    );
-    const t = setTimeout(() => loop.start(), delayMs);
-    return () => {
-      clearTimeout(t);
-      loop.stop();
-    };
-  }, [v, peakMs, holdMs, delayMs]);
-  return v;
-}
-
-// One thinking dot — prototype `dotpulse 1.2s infinite` (0.48s up / 0.48s down / 0.24s rest).
-function PulseDot({ delay, color }: { delay: number; color: string }) {
-  const v = usePulse(480, 240, delay);
-  const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [0.25, 1] });
-  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [0, -3] });
+// The waiting label. web-v3 renders exactly this while a turn has no content yet
+// — `<Shimmer duration={1}>Thinking...</Shimmer>` (components/chat/message.tsx:688)
+// — so mobile uses the same shimmering text instead of the prototype's three
+// pulsing dots.
+function ThinkingLabel() {
+  const { colors } = useTheme();
   return (
-    <Animated.View
-      style={[styles.dot, { backgroundColor: color, opacity, transform: [{ translateY }] }]}
+    <ShimmerText
+      text="Thinking…"
+      color={colors.mutedFg}
+      size={13}
+      style={styles.thinking}
     />
   );
 }
 
+// Pre-stream row (status "submitted"): no assistant message exists yet, so the
+// avatar has to come from here. Once the message arrives, `AssistantTurn` owns
+// the same label.
 function ThinkingRow() {
-  const { colors } = useTheme();
   return (
     <View style={styles.loadRow}>
       <Avatar />
-      <View style={styles.thinking}>
-        <View style={styles.dots}>
-          <PulseDot delay={0} color={colors.mutedFg} />
-          <PulseDot delay={200} color={colors.mutedFg} />
-          <PulseDot delay={400} color={colors.mutedFg} />
-        </View>
-        <Text style={[styles.thinkingText, { color: colors.mutedFg }]}>Working…</Text>
-      </View>
-    </View>
-  );
-}
-
-function MediaLoading({ kind }: { kind: "image" | "video" }) {
-  const { colors } = useTheme();
-  const label = kind === "image" ? "Creating image…" : "Generating video… (~1 min)";
-  // Whole placeholder card breathes — prototype `dotpulse 1.6s ease-in-out infinite`.
-  const v = usePulse(640, 320);
-  const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [0.25, 1] });
-  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [0, -3] });
-  return (
-    <View style={styles.loadRow}>
-      <Avatar />
-      <Animated.View
-        style={[
-          kind === "image" ? styles.imgPlaceholder : styles.videoPlaceholder,
-          {
-            borderColor: colors.border,
-            backgroundColor: colors.muted,
-            opacity,
-            transform: [{ translateY }],
-          },
-        ]}
-      >
-        {kind === "image" ? (
-          <ImageIcon size={26} color={colors.mutedFg} strokeWidth={1.7} />
-        ) : (
-          <Play size={26} color={colors.mutedFg} strokeWidth={1.7} />
-        )}
-        <Text style={[styles.placeholderText, { color: colors.mutedFg }]}>{label}</Text>
-      </Animated.View>
+      <ThinkingLabel />
     </View>
   );
 }
@@ -471,6 +469,37 @@ const styles = StyleSheet.create({
   col: { flexDirection: "column", gap: 16, paddingVertical: 10 },
 
   userWrap: { alignSelf: "flex-end", maxWidth: "80%", alignItems: "flex-end", gap: 3 },
+  userImages: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 6,
+    marginBottom: 5,
+  },
+  userImage: {
+    width: 116,
+    height: 116,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  userFiles: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 6,
+    marginBottom: 5,
+  },
+  userFile: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    maxWidth: 220,
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  userFileName: { fontFamily: fonts.medium, fontSize: 12.5, flexShrink: 1 },
   bubble: {
     borderWidth: StyleSheet.hairlineWidth,
     borderTopLeftRadius: 18,
@@ -517,33 +546,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
   },
-  imgBadge: {
-    position: "absolute",
-    left: 9,
-    bottom: 9,
-    backgroundColor: "rgba(0,0,0,0.32)",
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 999,
-  },
-  imgBadgeText: {
-    fontFamily: fonts.semibold,
-    fontSize: 8.5,
-    letterSpacing: 0.51,
-    color: "rgba(255,255,255,0.92)",
-  },
-  imgDownload: {
-    position: "absolute",
-    right: 9,
-    bottom: 9,
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.42)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   videoCard: {
     width: "100%",
     maxWidth: 330,
@@ -624,10 +626,7 @@ const styles = StyleSheet.create({
   followLabel: { flex: 1, minWidth: 0, fontFamily: fonts.regular, fontSize: 13 },
 
   loadRow: { flexDirection: "row", gap: 9, alignItems: "flex-start" },
-  thinking: { flexDirection: "row", alignItems: "center", gap: 8, height: 28 },
-  dots: { flexDirection: "row", gap: 3 },
-  dot: { width: 6, height: 6, borderRadius: 999 },
-  thinkingText: { fontFamily: fonts.regular, fontSize: 13 },
+  thinking: { height: 28 },
 
   imgPlaceholder: {
     width: "100%",

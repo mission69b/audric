@@ -125,6 +125,7 @@ export const systemPrompt = ({
   memoryRecall,
   customInstructions,
   walletAddress,
+  boundTools,
   artifactsActive,
   researchActive,
 }: {
@@ -142,6 +143,15 @@ export const systemPrompt = ({
    * See `recallMemoryBlock` in lib/memwal.ts. */
   memoryRecall?: string | null;
   walletAddress?: string;
+  /** MOBILE-ONLY (no web-v3 counterpart): the tool names actually bound on this turn.
+   * When given, sections describing tools that are NOT bound are dropped and an
+   * authoritative `<available_tools>` block is appended, so the model is never told
+   * about a tool it cannot call. web-v3 achieves the same with
+   * `experimental_activeTools`; the native route has no such narrowing, and without
+   * this the model reasoned "I don't see a send_transfer tool … the system prompt
+   * mentions I should be able to send transfers" and sent the user to a third-party
+   * wallet. Omit for web-v3 parity (every section is emitted). */
+  boundTools?: readonly string[];
   /** Only advertise the artifact tools when they're actually active this turn
    * (explicit creation intent) — otherwise the model narrates "I'll
    * create a document" and double-outputs (inline + artifact). */
@@ -164,23 +174,62 @@ export const systemPrompt = ({
     return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}${recall}`;
   }
 
+  // A section that documents tools is emitted only when at least one of those tools
+  // is actually bound. With `boundTools` omitted (web-v3 parity) every section is
+  // emitted, exactly as before.
+  const has = (...names: string[]) =>
+    !boundTools || names.some((n) => boundTools.includes(n));
+
   // Artifacts are opt-in per turn — advertise them only when active (else the
   // model treats a plain question as a "write a document" task).
   const artifacts = artifactsActive ? `\n\n${artifactsPrompt}` : "";
+
+  const search = has("web_search", "web_scrape") ? `\n\n${searchPrompt}` : "";
+  const crypto = has(
+    "crypto_market",
+    "crypto_history",
+    "crypto_global",
+    "crypto_screener",
+    "token_research",
+    "onchain_trending",
+    "perp_market"
+  )
+    ? `\n\n${cryptoPrompt}`
+    : "";
+  const stock = has("stock_analysis") ? `\n\n${stockPrompt}` : "";
+  // No tool backs this one — it describes how to handle a document whose text was
+  // extracted into the user's message. A `boundTools` caller is the native route,
+  // which has no attachment path at all (`attachments: []` on every saved turn), so
+  // the section would only teach it to talk about files it can never receive.
+  const documents = boundTools ? "" : `\n\n${documentsPrompt}`;
 
   // Wallet tools are wallet-gated → only offer them to signed-in users.
   const addrLine = walletAddress
     ? `\nThe user's Passport wallet address is ${walletAddress} — this is also their receive address. When they ask "what's my address" / "where do I receive", give it directly; don't tell them to look elsewhere.`
     : "";
-  const wallet = isAuthed ? `\n\n${walletPrompt}${addrLine}` : "";
+  // `walletPrompt` documents the money WRITE. Without `send_transfer` bound, use the
+  // read-only variant — otherwise the model is told to preview-then-send with a tool
+  // it doesn't have.
+  const walletBody = has("send_transfer")
+    ? walletPrompt
+    : mobileWalletReadPrompt(boundTools ?? []);
+  const wallet = isAuthed && walletBody ? `\n\n${walletBody}${addrLine}` : "";
   // Recalled facts FIRST, then the memory instruction — so its "injected above"
   // wording stays accurate.
-  const memory = isAuthed && memoryOn ? `${recall}\n\n${memoryPrompt}` : "";
+  const memory =
+    isAuthed && memoryOn && has("save_memory")
+      ? `${recall}\n\n${memoryPrompt}`
+      : "";
   // set_preferences is authed-only — only tell the agent how to capture standing
   // directives when it actually has the tool.
-  const preferences = isAuthed ? `\n\n${preferencesPrompt}` : "";
+  const preferences =
+    isAuthed && has("set_preferences") ? `\n\n${preferencesPrompt}` : "";
   const research = researchActive ? `\n\n${researchPrompt}` : "";
-  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundariesPrompt}${artifacts}\n\n${searchPrompt}\n\n${cryptoPrompt}\n\n${stockPrompt}\n\n${documentsPrompt}${research}${wallet}${memory}${preferences}`;
+  // Last word: the authoritative list of what's callable, so it outranks any
+  // capability wording above it.
+  const available = boundTools ? `\n\n${availableToolsPrompt(boundTools)}` : "";
+  const boundaries = boundTools ? mobileBoundariesPrompt : boundariesPrompt;
+  return `${regularPrompt}\n\n${aboutAudricPrompt}${ci}\n\n${requestPrompt}\n\n${boundaries}${artifacts}${search}${crypto}${stock}${documents}${research}${wallet}${memory}${preferences}${available}`;
 };
 
 export const preferencesPrompt = `Standing preferences (custom instructions): when the user states a LASTING directive about HOW you should respond — the language to reply in ("only speak German"), tone/length ("always be concise"), persona, what to call them, or output format — call \`set_preferences\` with the COMPLETE updated instruction set. These apply to EVERY future response automatically (they're injected as <custom_instructions> above), so do NOT use \`save_memory\` for them — memory is for FACTS recalled when relevant, which would miss a standing directive on an unrelated message.
@@ -244,4 +293,53 @@ Money-write discipline (sends):
 - Don't repeat a send the user already confirmed unless they clearly ask again.
 - EXPECTED OUTPUT: after it confirms, tell them it's done and share the on-chain digest; if it's denied or fails, say so plainly — never imply money moved when it didn't.`;
 
+// MOBILE-ONLY (no web-v3 counterpart). `walletPrompt` above documents the money
+// WRITE (`send_transfer`) plus the send discipline. The native route binds reads
+// only, so emitting it promises a send the model cannot perform — on device the
+// model reasoned "I don't see a send_transfer tool in my tool list … the system
+// prompt mentions I should be able to send transfers", burned ~55s, then sent the
+// user to a third-party wallet. This covers the read tools that ARE bound and
+// routes a send request to the app's own Send flow instead.
+// Returns "" when no wallet tool is bound at all — then there is nothing to say.
+export function mobileWalletReadPrompt(boundTools: readonly string[]): string {
+  const lines: string[] = [];
+  if (boundTools.includes("balance_check")) {
+    lines.push(
+      "- `balance_check`: read their holdings (USDC, USDsui, SUI, other tokens) with USD values. Use it for any balance question. It renders its OWN balance table in the UI — do NOT restate the figures; after it runs, add at most a one-line natural-language summary."
+    );
+  }
+  if (boundTools.includes("transaction_history")) {
+    lines.push("- `transaction_history`: their recent on-chain activity.");
+  }
+  if (boundTools.includes("resolve_suins")) {
+    lines.push(
+      '- `resolve_suins`: turn a SuiNS name ("alice.sui") or an Audric handle ("alice@audric") into a 0x address.'
+    );
+  }
+  if (lines.length === 0) {
+    return "";
+  }
+  return `Passport wallet — the user has a non-custodial Sui wallet (created from their Google sign-in via zkLogin; no seed phrase). You can READ it:
+${lines.join("\n")}
+You CANNOT move money from this chat — there is no send tool here. If they ask you to send funds, say that plainly in one line and point them at **Wallet → Send** in this app (tap-to-confirm, gasless USDC/USDsui). NEVER point them at a third-party wallet (Sui Wallet, Suiet) or an explorer, and never imply funds moved.`;
+}
+
 export const boundariesPrompt = `What you can do today: chat, live web search + read a specific page, live crypto + US-stock market data, image generation/editing, and read/move the user's Passport USDC (send + balances + history — signed-in users). If asked for something outside this, say so briefly and offer what you CAN do. NEVER claim to have called or paid a service when you haven't.`;
+
+// MOBILE-ONLY (no web-v3 counterpart). The native route binds a SUBSET of web-v3's
+// tools, so `boundariesPrompt` above (which describes web-v3's full surface) would
+// have the model promise sends, image generation and market data it cannot perform.
+// Used whenever `boundTools` is passed to `systemPrompt`.
+export const mobileBoundariesPrompt = `What you can do in this turn: chat, and use exactly the tools listed in <available_tools> below — nothing else. If asked for something outside that, say so briefly in one line and offer what you CAN do. NEVER claim to have called a tool you don't have, and NEVER claim to have called or paid a service when you haven't.`;
+
+// MOBILE-ONLY. The authoritative, last-word list of callable tools. Placed at the END
+// of the system prompt so it wins over any capability wording earlier in it.
+export function availableToolsPrompt(boundTools: readonly string[]): string {
+  const list = boundTools.length
+    ? boundTools.map((t) => `\`${t}\``).join(", ")
+    : "none";
+  return `<available_tools>
+The ONLY tools you can call this turn: ${list}. Any other tool named anywhere above is NOT available to you right now — never announce it, never plan around it, and never say a capability is missing from Audric because of it.
+The Audric app itself can still do things you can't do from here. In particular, the user CAN send funds: the app has a Wallet tab with its own Send flow (tap-to-confirm, gasless USDC/USDsui). If they ask you to send, say plainly that you can't move money from chat yet and point them at **Wallet → Send** in this app. NEVER send them to a third-party wallet (Sui Wallet, Suiet, an explorer) to do something Audric already does.
+</available_tools>`;
+}

@@ -17,10 +17,18 @@ export function generateAPIUrl(relativePath: string): string {
     return process.env.EXPO_PUBLIC_API_BASE_URL.concat(path);
   }
 
-  const origin = Constants.experienceUrl?.replace("exp://", "http://");
+  // `experienceUrl` is set when the app is opened from the Expo CLI (tunnel/LAN
+  // QR). A dev-client launched directly — emulator app icon or deep link — leaves
+  // it empty, but Metro still exposes its host via `hostUri`. Fall back to that so
+  // the app renders on an emulator without a hardcoded IP or an env override.
+  const fromExperience = Constants.experienceUrl?.replace("exp://", "http://");
+  const fromHostUri = Constants.expoConfig?.hostUri
+    ? `http://${Constants.expoConfig.hostUri}`
+    : "";
+  const origin = fromExperience || fromHostUri;
   if (!origin) {
     throw new Error(
-      "generateAPIUrl: no dev-server origin (Constants.experienceUrl is empty) and EXPO_PUBLIC_API_BASE_URL is unset."
+      "generateAPIUrl: no dev-server origin (Constants.experienceUrl / hostUri empty) and EXPO_PUBLIC_API_BASE_URL is unset."
     );
   }
   return origin.concat(path);

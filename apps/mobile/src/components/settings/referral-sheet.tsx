@@ -1,23 +1,20 @@
-import { Pressable, Share, StyleSheet, Text, View } from "react-native";
-import { REFERRAL_LINK, REFERRAL_STATS } from "@/app-state/catalog";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAppState } from "@/app-state/store";
 import { BottomSheet } from "@/components/ui/sheet";
-import { Gift, Share2, X } from "@/components/ui/icon";
+import { Gift, X } from "@/components/ui/icon";
 import { useTheme } from "@/theme/theme";
 import { fonts } from "@/theme/tokens";
 
-// Refer & earn sheet (prototype REFERRAL). Give $10 / get $10 — share link + the
-// user's referral stats. Demo figures from the catalog; the Share button opens the
-// OS share sheet with the real referral link so it can actually be sent.
+// Refer & earn sheet (prototype REFERRAL). Referrals are NOT wired on mobile — there
+// is no referral backend here yet, and the prototype's link (`audric.ai/r/you-a1b2`)
+// + stats (3 referrals / $30 earned / #142 rank) were hardcoded fabrications shown as
+// if they were this user's real figures. Rather than surface a fake personal link and
+// a live-looking Share button, this sheet is an honest "coming soon": it describes the
+// offer without inventing per-user data. Re-enable with the real thing when the referral
+// service lands (web-v3 issues codes via `REFERRAL_ALPHABET` in `lib/db/queries.ts`).
 export function ReferralSheet() {
   const { colors } = useTheme();
   const { referralSheet, closeReferral } = useAppState();
-
-  const onShare = () => {
-    Share.share({
-      message: `Join me on Audric and we both get $10 in credits: ${REFERRAL_LINK}`,
-    });
-  };
 
   return (
     <BottomSheet visible={referralSheet} onClose={closeReferral} maxHeightRatio={0.9}>
@@ -34,28 +31,20 @@ export function ReferralSheet() {
       </View>
 
       <Text style={[styles.desc, { color: colors.mutedFg }]}>
-        Give $10, get $10. Share your link — when a friend joins and makes their
-        first purchase, you both get $10 in credits.
+        Give $10, get $10. When a friend joins Audric and makes their first
+        purchase, you'll both get $10 in credits.
       </Text>
 
-      <View style={styles.linkRow}>
-        <View style={[styles.linkBox, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-          <Text numberOfLines={1} style={[styles.link, { color: colors.fg }]}>{REFERRAL_LINK}</Text>
+      <View style={styles.soonRow}>
+        <View style={[styles.soonBadge, { backgroundColor: colors.tealBg }]}>
+          <Text style={[styles.soonBadgeText, { color: colors.tealLabel }]}>Coming soon</Text>
         </View>
-        <Pressable onPress={onShare} style={[styles.shareBtn, { backgroundColor: colors.tealLabel }]}>
-          <Share2 size={14} color="#fff" strokeWidth={2} />
-          <Text style={styles.shareText}>Share</Text>
-        </Pressable>
       </View>
 
-      <View style={styles.stats}>
-        {REFERRAL_STATS.map((s) => (
-          <View key={s.label} style={[styles.stat, { backgroundColor: colors.muted }]}>
-            <Text style={[styles.statValue, { color: s.teal ? colors.tealLabel : colors.fg }]}>{s.value}</Text>
-            <Text style={[styles.statLabel, { color: colors.mutedFg }]}>{s.label}</Text>
-          </View>
-        ))}
-      </View>
+      <Text style={[styles.soonNote, { color: colors.mutedFg }]}>
+        Your personal referral link and rewards will appear here in an upcoming
+        release.
+      </Text>
     </BottomSheet>
   );
 }
@@ -75,28 +64,18 @@ const styles = StyleSheet.create({
 
   desc: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 19.4, paddingVertical: 12, paddingHorizontal: 2 },
 
-  linkRow: { flexDirection: "row", gap: 8, paddingHorizontal: 2, paddingBottom: 12 },
-  linkBox: {
-    flex: 1,
-    minWidth: 0,
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 13,
+  soonRow: { flexDirection: "row", paddingHorizontal: 2, paddingTop: 2, paddingBottom: 10 },
+  soonBadge: {
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  link: { fontFamily: fonts.monoMedium, fontSize: 12 },
-  shareBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 12,
-    paddingHorizontal: 16,
+  soonBadgeText: { fontFamily: fonts.semibold, fontSize: 11.5, letterSpacing: 0.2 },
+  soonNote: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    paddingHorizontal: 2,
+    paddingBottom: 8,
   },
-  shareText: { fontFamily: fonts.semibold, fontSize: 12.5, color: "#fff" },
-
-  stats: { flexDirection: "row", gap: 9, paddingHorizontal: 2, paddingBottom: 6 },
-  stat: { flex: 1, borderRadius: 13, paddingVertical: 12, paddingHorizontal: 10, alignItems: "center" },
-  statValue: { fontFamily: fonts.monoSemibold, fontSize: 20, fontVariant: ["tabular-nums"] },
-  statLabel: { fontFamily: fonts.medium, fontSize: 10.5, marginTop: 2 },
 });

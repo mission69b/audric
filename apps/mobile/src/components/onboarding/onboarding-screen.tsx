@@ -221,6 +221,11 @@ function FaceId() {
   // we never enable a lock the user can't pass), persist the pref, then finish. If
   // the device has no enrolled biometrics, or the prompt is cancelled, we still
   // finish onboarding — the user is never trapped on this step.
+  // Copy tracks the actual method on THIS device — "Face ID" on an iPhone,
+  // "Fingerprint" on most Android, etc. `cap` is null for the first frame while
+  // the probe resolves; fall back to the neutral "Biometrics" until it does.
+  const label = cap?.label ?? "Biometrics";
+
   const onEnable = async () => {
     if (cap?.available) {
       const ok = await authenticate(`Turn on ${cap.label} lock`);
@@ -235,15 +240,15 @@ function FaceId() {
         <View style={[styles.faceTile, { backgroundColor: colors.secondary }]}>
           <ScanFace size={40} color={colors.fg} strokeWidth={1.7} />
         </View>
-        <Text style={[styles.stepTitle, styles.center, { color: colors.fg }]}>Unlock with Face ID</Text>
+        <Text style={[styles.stepTitle, styles.center, { color: colors.fg }]}>Unlock with {label}</Text>
         <Text style={[styles.stepSub, { color: colors.mutedFg }]}>
-          Approve payments and open Audric with a glance. You can change this
+          Approve payments and open Audric in an instant. You can change this
           anytime in Settings.
         </Text>
       </View>
       <View style={[styles.bottom, styles.bottomGap, { paddingBottom: insets.bottom + 30 }]}>
         <Pressable onPress={onEnable} style={[styles.primaryBtn, { backgroundColor: colors.fg }]}>
-          <Text style={[styles.primaryText, { color: colors.bg }]}>Enable Face ID</Text>
+          <Text style={[styles.primaryText, { color: colors.bg }]}>Enable {label}</Text>
         </Pressable>
         <Pressable onPress={finishOnboarding} style={styles.ghostBtn}>
           <Text style={[styles.ghostText, { color: colors.mutedFg }]}>Not now</Text>
