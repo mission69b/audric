@@ -94,6 +94,12 @@ export function AgentManageCard({
       >
         Manage
       </Link>
+      <Link
+        className="ag-btn ag-btn--ghost ag-btn--sm"
+        href={`/${agent.address}/token`}
+      >
+        Token
+      </Link>
     </div>
   );
 }

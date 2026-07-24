@@ -84,11 +84,14 @@ export default async function OverviewPage() {
               Create your first API key
             </div>
             <div className="mt-0.5 text-[12px] text-fg-muted">
-              Free — includes a daily coding allowance on kimi-k2.7-code.
-              Point any OpenAI-compatible tool at api.t2000.ai/v1.
+              Free — includes a daily coding allowance on kimi-k2.7-code. Point
+              any OpenAI-compatible tool at api.t2000.ai/v1.
             </div>
           </div>
-          <span className="font-medium text-[13px]" style={{ color: "var(--ag-accent)" }}>
+          <span
+            className="font-medium text-[13px]"
+            style={{ color: "var(--ag-accent)" }}
+          >
             API keys →
           </span>
         </Link>

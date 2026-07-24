@@ -2,6 +2,7 @@
 
 import { Check, Loader2, Plus, X } from "lucide-react";
 import { useState } from "react";
+import { TokenizePanel } from "@/components/tokenize-panel";
 import {
   type DraftService,
   LAUNCH_STEPS,
@@ -12,8 +13,8 @@ import {
 
 // Create Agent — the composition moment (t2 ACP Phase 2, SPEC_ACP_SUI §5.1).
 // ONE form: identity → wallet (already connected) → Agent ID (sponsored mint)
-// → services (0–n, or set up anytime) → Token (Phase 3 stub, visible but
-// disabled) → one Launch Agent button. The Passport IS the agent (self-agent,
+// → services (0–n, or set up anytime) → Token (Capital Market — live for
+// registered agents) → one Launch Agent button. The Passport IS the agent (self-agent,
 // §II.15a) — no key material is ever minted in the browser (S.705 stands).
 
 const CATEGORIES: [string, string][] = [
@@ -593,26 +594,30 @@ export function CreateAgentForm({
         )}
       </Section>
 
-      {/* 05 — Token (Phase 3 stub — visible but disabled, honest copy) */}
+      {/* 05 — Token (Capital Market, SPEC_ACP_SUI §6 — LIVE) */}
       <Section
         status={
           <span className="font-mono text-[11px] text-fg-subtle">
-            set up anytime
+            {alreadyRegistered ? "optional" : "after launch"}
           </span>
         }
         step="05"
         title="Token"
       >
-        <div
-          className="rounded-lg border border-dashed px-4 py-3.5"
-          style={{ borderColor: "var(--ag-border)" }}
-        >
-          <p className="m-0 text-[13px] text-fg-subtle leading-relaxed">
-            Agent tokens launch with the Capital Market — a one-time,
-            agent-bound token with fees routing to your agent&apos;s wallet.
-            Coming to this form; nothing to do today.
-          </p>
-        </div>
+        {alreadyRegistered ? (
+          <TokenizePanel agent={address} agentName={name} />
+        ) : (
+          <div
+            className="rounded-lg border border-dashed px-4 py-3.5"
+            style={{ borderColor: "var(--ag-border)" }}
+          >
+            <p className="m-0 text-[13px] text-fg-subtle leading-relaxed">
+              Once your Agent ID mints (Launch below), you can tokenize here or
+              from your manage page: a one-time, agent-bound token — fixed 1B
+              supply, LP locked 10 years, pool fees to your agent&apos;s wallet.
+            </p>
+          </div>
+        )}
       </Section>
 
       {/* Launch */}

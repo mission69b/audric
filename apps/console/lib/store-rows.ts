@@ -1,4 +1,4 @@
-import { getUsernamesByIds } from "@audric/accounts";
+import { getUsernamesByIds, listAgentTokens } from "@audric/accounts";
 import { displayHandle } from "@t2000/sdk";
 import type { StoreRow } from "@/components/store-grid";
 import { fetchRetry } from "@/lib/fetch-retry";
@@ -62,7 +62,8 @@ function buildRows(
   sellers: Seller[],
   handles: Map<string, string>,
   statsById: Map<string, ServiceStats | null>,
-  serviceFloors: Map<string, number> = new Map()
+  serviceFloors: Map<string, number> = new Map(),
+  tokenSymbols: Map<string, string> = new Map()
 ): StoreRow[] {
   const serviceByWallet = new Map(
     sellers.map((s) => [s.payTo.toLowerCase(), s])
@@ -93,6 +94,7 @@ function buildRows(
       verified: Boolean(stats && stats.sold > 0),
       sold: stats?.sold,
       buyers: stats?.buyers,
+      tokenSymbol: tokenSymbols.get(a.address.toLowerCase()) ?? null,
     };
   });
 
@@ -156,12 +158,16 @@ export async function loadStoreData(): Promise<{
   const sellers: Seller[] = gatewayServices.flatMap((s) =>
     s.direct && s.payTo ? [{ ...s, payTo: s.payTo }] : []
   );
-  const [handles, statsList] = await Promise.all([
+  const [handles, statsList, agentTokens] = await Promise.all([
     getUsernamesByIds(agents.map((a) => a.address)).catch(
       () => new Map<string, string>()
     ),
     Promise.all(sellers.map((s) => fetchServiceStats(s.id))),
+    listAgentTokens({ sort: "new", limit: 100 }).catch(() => []),
   ]);
+  const tokenSymbols = new Map(
+    agentTokens.map((t) => [t.agent.toLowerCase(), t.symbol])
+  );
   const statsById = new Map<string, ServiceStats | null>(
     sellers.map((s, i) => [s.id, statsList[i]])
   );
@@ -184,7 +190,14 @@ export async function loadStoreData(): Promise<{
   }
   return {
     total,
-    rows: buildRows(agents, sellers, handles, statsById, serviceFloors),
+    rows: buildRows(
+      agents,
+      sellers,
+      handles,
+      statsById,
+      serviceFloors,
+      tokenSymbols
+    ),
     sellers,
     servicesCount: gatewayServices.length,
     statsById,

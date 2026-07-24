@@ -38,8 +38,7 @@ export default async function BillingPage() {
             style={{ background: "var(--ag-verify)" }}
           />
           <span className="text-[12.5px] text-fg-muted">
-            Wallet · USDC{" "}
-            <span className="text-fg-subtle">(on-chain)</span>
+            Wallet · USDC <span className="text-fg-subtle">(on-chain)</span>
           </span>
         </div>
         <div className="mt-1.5 mb-4 font-semibold text-[34px] text-foreground tabular-nums tracking-[-0.03em]">

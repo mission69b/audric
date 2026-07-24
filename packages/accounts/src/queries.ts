@@ -26,8 +26,12 @@ import {
   apiKey,
   apiUsageEvent,
   creditLedger,
+  type AgentToken,
+  agentToken,
   type EscrowJob,
   escrowJob,
+  type FeeClaim,
+  feeClaim,
   indexerCursor,
   type JobReview,
   jobReview,
@@ -1123,4 +1127,111 @@ export async function listEscrowJobs(opts: {
     db.select({ value: count() }).from(escrowJob).where(where),
   ]);
   return { jobs: rows, total };
+}
+
+// === Agent Capital (SPEC_ACP_SUI §6) — event-derived token read-model ===
+
+/** Record a bind event (idempotent — one token per agent, chain-enforced). */
+export async function insertAgentToken(row: {
+  agent: string;
+  coinType: string;
+  symbol: string;
+  launcher: string;
+  boundAtMs: number;
+  boundTxDigest: string;
+}): Promise<void> {
+  await db.insert(agentToken).values(row).onConflictDoNothing();
+}
+
+/** Record the finalize event (pool + 10y lock). Idempotent. */
+export async function finalizeAgentToken(row: {
+  agent: string;
+  poolId: string;
+  lockId: string;
+  finalizedAtMs: number;
+}): Promise<void> {
+  await db
+    .update(agentToken)
+    .set({
+      poolId: row.poolId,
+      lockId: row.lockId,
+      finalizedAtMs: row.finalizedAtMs,
+    })
+    .where(and(eq(agentToken.agent, row.agent), isNull(agentToken.finalizedAtMs)));
+}
+
+/** Record one FeesClaimed event + roll it into the agent's lifetime totals.
+ *  The `FeeClaim` primary key makes replays no-ops before totals move. */
+export async function recordFeeClaim(row: {
+  id: string;
+  lockId: string;
+  agent: string;
+  coinTypeA: string;
+  coinTypeB: string;
+  amountA: number;
+  amountB: number;
+  txDigest: string;
+  timestampMs: number;
+  /** Raw amounts mapped onto (agentSide, suiSide) by the indexer. */
+  agentSideRaw: number;
+  suiSideRaw: number;
+}): Promise<void> {
+  const { agentSideRaw, suiSideRaw, ...claim } = row;
+  const inserted = await db
+    .insert(feeClaim)
+    .values(claim)
+    .onConflictDoNothing()
+    .returning({ id: feeClaim.id });
+  if (inserted.length === 0) {
+    return; // replay — totals already counted
+  }
+  await db
+    .update(agentToken)
+    .set({
+      feesClaimedAgentRaw: sql`${agentToken.feesClaimedAgentRaw} + ${agentSideRaw}`,
+      feesClaimedSuiRaw: sql`${agentToken.feesClaimedSuiRaw} + ${suiSideRaw}`,
+      feeClaimCount: sql`${agentToken.feeClaimCount} + 1`,
+    })
+    .where(eq(agentToken.agent, row.agent));
+}
+
+export async function getAgentToken(agent: string): Promise<AgentToken | null> {
+  const rows = await db
+    .select()
+    .from(agentToken)
+    .where(eq(agentToken.agent, agent))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Capital tab lists. `sort`: new (finalize desc) | fees (lifetime SUI-side
+ *  fees desc). Only finalized tokens — a bound-but-unfinished launch is not a
+ *  market. */
+export async function listAgentTokens(opts: {
+  sort: "new" | "fees";
+  limit?: number;
+}): Promise<AgentToken[]> {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const order =
+    opts.sort === "fees"
+      ? [desc(agentToken.feesClaimedSuiRaw), desc(agentToken.finalizedAtMs)]
+      : [desc(agentToken.finalizedAtMs)];
+  return db
+    .select()
+    .from(agentToken)
+    .where(isNotNull(agentToken.finalizedAtMs))
+    .orderBy(...order)
+    .limit(limit);
+}
+
+export async function listFeeClaims(
+  agent: string,
+  limit = 50
+): Promise<FeeClaim[]> {
+  return db
+    .select()
+    .from(feeClaim)
+    .where(eq(feeClaim.agent, agent))
+    .orderBy(desc(feeClaim.timestampMs))
+    .limit(Math.min(limit, 200));
 }

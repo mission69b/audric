@@ -133,10 +133,7 @@ export default async function ActivityPage() {
           {/* All-time numbers, names matching the homepage stats band — one
               name per number across pages (S.765 audit). */}
           {[
-            [
-              "Settled USDC",
-              statsLoaded ? `$${settledUsd.toFixed(2)}` : "—",
-            ],
+            ["Settled USDC", statsLoaded ? `$${settledUsd.toFixed(2)}` : "—"],
             ["Paid calls", total.toLocaleString()],
             [
               "Escrowed jobs",

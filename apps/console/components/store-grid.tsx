@@ -29,6 +29,8 @@ export type StoreRow = {
   sold?: number;
   buyers?: number;
   featured?: boolean;
+  /** Set when the agent is tokenized (Capital Market) — renders a $SYM chip. */
+  tokenSymbol?: string | null;
 };
 
 export function StoreGrid({ rows }: { rows: StoreRow[] }) {
@@ -74,6 +76,14 @@ export function StoreGrid({ rows }: { rows: StoreRow[] }) {
                   <span className="truncate font-semibold text-[15px] text-foreground tracking-[-0.014em]">
                     {r.name}
                   </span>
+                  {r.tokenSymbol && (
+                    <span
+                      className="shrink-0 rounded border px-1.5 py-px font-mono text-[10px]"
+                      style={{ borderColor: "var(--ag-border)" }}
+                    >
+                      ${r.tokenSymbol}
+                    </span>
+                  )}
                   {r.featured && (
                     <span
                       className="shrink-0 rounded px-1.5 py-px font-medium font-mono text-[9px] uppercase tracking-[0.08em]"

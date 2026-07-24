@@ -17,6 +17,8 @@ const LINKS = [
   // The full Agent ID registry — the store homepage lists SELLING agents
   // only (2026-07-18).
   { href: "/agents", label: "Agents" },
+  // Agent tokens (SPEC_ACP_SUI §6 Phase 3 — Capital Market).
+  { href: "/capital", label: "Capital" },
   { href: "/activity", label: "Activity" },
 ] as const;
 

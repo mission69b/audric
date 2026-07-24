@@ -427,6 +427,63 @@ export type JobReview = InferSelectModel<typeof jobReview>;
 
 // Generic named cursor for pollers (currently just the escrow-job event
 // indexer; the value is an opaque GraphQL pagination cursor).
+// Agent Capital (SPEC_ACP_SUI §6) — event-derived read models. Truth is the
+// chain (`agent_capital` registry + LpLock events); these rows exist so the
+// Capital tab and token pages render without walking events per request.
+
+export const agentToken = pgTable(
+  "AgentToken",
+  {
+    /** The tokenized agent's address (Agent ID key). One row per agent. */
+    agent: text("agent").primaryKey().notNull(),
+    /** Fully-qualified coin type `pkg::module::OTW`. */
+    coinType: text("coinType").notNull(),
+    symbol: varchar("symbol", { length: 8 }).notNull(),
+    launcher: text("launcher").notNull(),
+    boundAtMs: bigint("boundAtMs", { mode: "number" }).notNull(),
+    boundTxDigest: text("boundTxDigest").notNull(),
+    /** Set by the finalize event — pool + 10y LP lock recorded on-chain. */
+    poolId: text("poolId"),
+    lockId: text("lockId"),
+    finalizedAtMs: bigint("finalizedAtMs", { mode: "number" }),
+    /** Lifetime fees claimed to the agent wallet, per side, raw units. */
+    feesClaimedAgentRaw: bigint("feesClaimedAgentRaw", { mode: "number" })
+      .notNull()
+      .default(0),
+    feesClaimedSuiRaw: bigint("feesClaimedSuiRaw", { mode: "number" })
+      .notNull()
+      .default(0),
+    feeClaimCount: integer("feeClaimCount").notNull().default(0),
+  },
+  (t) => ({
+    finalizedIdx: index("AgentToken_finalizedAtMs_idx").on(t.finalizedAtMs),
+    coinTypeIdx: index("AgentToken_coinType_idx").on(t.coinType),
+  })
+);
+
+export type AgentToken = InferSelectModel<typeof agentToken>;
+
+export const feeClaim = pgTable(
+  "FeeClaim",
+  {
+    /** `${txDigest}:${lockId}` — one claim event per row, idempotent. */
+    id: text("id").primaryKey().notNull(),
+    lockId: text("lockId").notNull(),
+    agent: text("agent").notNull(),
+    coinTypeA: text("coinTypeA").notNull(),
+    coinTypeB: text("coinTypeB").notNull(),
+    amountA: bigint("amountA", { mode: "number" }).notNull(),
+    amountB: bigint("amountB", { mode: "number" }).notNull(),
+    txDigest: text("txDigest").notNull(),
+    timestampMs: bigint("timestampMs", { mode: "number" }).notNull(),
+  },
+  (t) => ({
+    agentIdx: index("FeeClaim_agent_idx").on(t.agent, t.timestampMs),
+  })
+);
+
+export type FeeClaim = InferSelectModel<typeof feeClaim>;
+
 export const indexerCursor = pgTable("IndexerCursor", {
   name: varchar("name", { length: 32 }).primaryKey().notNull(),
   value: text("value").notNull(),

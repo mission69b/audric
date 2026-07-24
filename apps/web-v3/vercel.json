@@ -2,6 +2,7 @@
   "framework": "nextjs",
   "crons": [
     { "path": "/api/cron/agent-index", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/job-index", "schedule": "*/5 * * * *" }
+    { "path": "/api/cron/job-index", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/capital-index", "schedule": "*/5 * * * *" }
   ]
 }

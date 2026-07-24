@@ -1,6 +1,7 @@
 import {
   getAgentNamesByAddresses,
   getAgentProfileByNumericId,
+  getAgentToken,
   getUserById,
   getUserByUsername,
   listEscrowJobs,
@@ -247,18 +248,20 @@ export default async function AgentProfilePage({
   // to a RELEASED escrow Job object, so stars can't exist without a sale.
   // Job stats + engagements (Phase 2 §5.3) come from the same event-indexed
   // ledger the Scan homepage reads.
-  const [jobReviews, jobStats, { jobs: engagements }] = await Promise.all([
-    listJobReviews(walletAddress).catch(() => ({
-      reviews: [],
-      score: null,
-      count: 0,
-    })),
-    sellerJobStats(walletAddress).catch(() => null),
-    listEscrowJobs({ seller: walletAddress, limit: 10 }).catch(() => ({
-      jobs: [],
-      total: 0,
-    })),
-  ]);
+  const [jobReviews, jobStats, { jobs: engagements }, token] =
+    await Promise.all([
+      listJobReviews(walletAddress).catch(() => ({
+        reviews: [],
+        score: null,
+        count: 0,
+      })),
+      sellerJobStats(walletAddress).catch(() => null),
+      listEscrowJobs({ seller: walletAddress, limit: 10 }).catch(() => ({
+        jobs: [],
+        total: 0,
+      })),
+      getAgentToken(walletAddress).catch(() => null),
+    ]);
   // Buyers with registered Agent IDs render by name, not raw address.
   const buyerNames = await getAgentNamesByAddresses([
     ...jobReviews.reviews.map((r) => r.buyer),
@@ -322,6 +325,15 @@ export default async function AgentProfilePage({
             )}
             {profile && !profile.active && (
               <Badge variant="destructive">inactive</Badge>
+            )}
+            {token?.finalizedAtMs != null && (
+              <Link
+                className="rounded-md border px-2 py-0.5 font-mono text-[11px] text-foreground no-underline"
+                href={`/${walletAddress}/token`}
+                style={{ borderColor: "var(--ag-border)" }}
+              >
+                ${token.symbol} · Trade
+              </Link>
             )}
           </div>
           <div className="mt-1.5 font-mono text-[13px] text-fg-subtle">

@@ -113,8 +113,8 @@ export function ApiKeysSection() {
         <code className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-foreground text-[11px]">
           {API_BASE_URL}
         </code>
-        . Private (zero data retention). Free daily allowance on
-        kimi-k2.7-code; paid models draw from credit.
+        . Private (zero data retention). Free daily allowance on kimi-k2.7-code;
+        paid models draw from credit.
       </p>
 
       {keys.length > 0 && (
@@ -225,7 +225,11 @@ export function ApiKeysSection() {
                 <Copy className="size-3.5" />
               )}
             </Button>
-            <Button onClick={() => setNewSecret(null)} size="sm" variant="ghost">
+            <Button
+              onClick={() => setNewSecret(null)}
+              size="sm"
+              variant="ghost"
+            >
               Done
             </Button>
           </div>
