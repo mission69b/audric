@@ -48,10 +48,7 @@ NEXT_AGENT_KICKOFF.md
 # Covers any design handoff bundle (handoff_audric, handoff_username_flow, future bundles).
 design_handoff_*/
 scripts/
-# but track tooling under apps/web-v2/scripts (g6 smoke verifier, etc.)
-!apps/web-v2/scripts/
-!apps/web-v2/scripts/**
-# and apps/web-v3/scripts (stripe seed + billing/identity ops scripts)
+# track tooling under apps/web-v3/scripts (stripe seed + billing/identity ops)
 !apps/web-v3/scripts/
 !apps/web-v3/scripts/**
 

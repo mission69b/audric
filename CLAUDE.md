@@ -20,7 +20,7 @@ audric (this repo) → Consumer product: audric.ai — private decentralized AI
 suimpp (separate)  → Protocol: suimpp.dev, @suimpp/mpp
 ```
 
-### This repo — work in `apps/web-v3` ONLY
+### This repo — work in `apps/web-v3` (and `apps/console`)
 ```
 audric/
 ├── apps/web-v3/   ← audric.ai (LIVE). Clean-fork of the Vercel AI chatbot template.
@@ -31,16 +31,16 @@ audric/
 │   ├── lib/credit/    ← tiers.ts (Free/Pro/Max) + Stripe billing
 │   ├── lib/{audric-auth,zklogin,memwal,blob,env}.ts
 │   └── components/chat/, components/ai-elements/
-└── apps/web-v2/   ← LEGACY/FROZEN (legacy.audric.ai). Do NOT touch. The old engine/DeFi app.
+└── apps/console/  ← agents.t2000.ai — t2 Agents store + console
 ```
 
-> ⚠️ `apps/web-v2` is the frozen legacy app (engine + NAVI/DeFi + Prisma). All current work is `apps/web-v3`. Ignore web-v2 unless explicitly asked.
+> ⚠️ `apps/web-v2` (legacy.audric.ai, engine + NAVI/DeFi + Prisma) was **deleted 2026-07-24**. Do not recreate it. All consumer work is `apps/web-v3`.
 
 ---
 
 ## Critical rules
 
-1. **Work in `apps/web-v3`.** web-v2 is frozen.
+1. **Work in `apps/web-v3`** (consumer) or `apps/console` (t2 Agents). The legacy web-v2 app is gone.
 2. **No `@t2000/engine`.** It was retired. web-v3 composes the **AI SDK 7** (`ai@7`, upgraded from v6 on 2026-06-25 — S.496) over the **Vercel AI Gateway** + `@t2000/sdk` directly. There is no engine, no `getDefaultTools`, no `AISDKEngine`. (v7 portable `reasoning` drives the Auto router; `@ai-sdk/otel` is registered in `instrumentation.ts`; `Experimental_Agent` is now an alias of `ToolLoopAgent`.)
 3. **No DeFi.** No NAVI / save / borrow / lending / Prisma. The wallet does **send (gasless USDC/USDsui) · swap (Cetus, in SDK) · pay (x402 Recipes)**.
 4. **Money writes are CLIENT-executed.** `send_transfer` / `run_recipe` have no server `execute` — the browser signs via zkLogin on tap-to-confirm. The server NEVER holds keys.

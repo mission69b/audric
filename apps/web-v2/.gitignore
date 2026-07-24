@@ -1,8 +1,0 @@
-# env (per-app overrides; root .gitignore covers node_modules/.next/.turbo/etc.)
-.env*
-!.env.example
-
-# playwright (template's E2E artifacts)
-playwright-report
-test-results
-.vercel

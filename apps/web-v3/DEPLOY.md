@@ -1,9 +1,9 @@
-# Deploying Audric v3 (→ apex `audric.ai`)
+# Deploying Audric (`audric.ai`)
 
-> **Plan: v3 becomes the primary site at `audric.ai`; the current web-v2 moves
-> to `v2.audric.ai`.** Stage it (verify v3 on a temp domain first, then cut the
-> apex over) — see §6. web-v2 is live with real users, so the swap is the
-> highest-risk step; it's also a fast DNS rollback.
+> Live app = `apps/web-v3` at apex `audric.ai`. The legacy `apps/web-v2`
+> (`legacy.audric.ai` / `v2.audric.ai`) was **deleted from the repo
+> 2026-07-24** — do not redeploy it. Rollback is v3-only (redeploy / revert
+> git on the `audric-web-v3` Vercel project).
 
 Founder-driven checklist. The app is a Next 16 / pnpm-monorepo workspace
 (`@audric/web-v3`) consuming `@t2000/sdk`. Build runs DB migrations then
@@ -11,10 +11,12 @@ Founder-driven checklist. The app is a Next 16 / pnpm-monorepo workspace
 
 ## 1. Vercel project
 
-- New Vercel project from the `audric` repo.
+- Vercel project from the `audric` repo (project name historically
+  `audric-web-v3`).
 - **Root Directory:** `apps/web-v3`. **Install:** `pnpm install` (monorepo).
 - **Build Command:** default (`pnpm build` → `tsx lib/db/migrate && next build`).
 - Node 20+.
+- Domains: `audric.ai` + `www.audric.ai`.
 
 ## 2. Environment variables (Vercel → Settings → Environment Variables)
 
@@ -44,22 +46,20 @@ The env contract is validated at boot (`lib/env.ts`) — a missing/empty
 
 ## 3. Auth origins (zkLogin)
 
-Add BOTH the temp verification domain (e.g. `https://v3.audric.ai`) and the
-final apex up front, so nothing breaks at cutover:
-
 - **Google OAuth** → Authorized JavaScript origins: `https://audric.ai`,
-  `https://www.audric.ai`, `https://v3.audric.ai`. Redirect URIs:
-  `https://audric.ai/auth/callback` (+ the www / v3 variants).
-- **Enoki** → add `https://audric.ai` (+ www, + the temp domain) to the key's
-  allowed origins.
+  `https://www.audric.ai`. Redirect URIs:
+  `https://audric.ai/auth/callback` (+ the www variant).
+- **Enoki** → add `https://audric.ai` (+ www) to the key's allowed origins.
+
+Remove any leftover `legacy.audric.ai` / `v2.audric.ai` / `v3.audric.ai`
+origins once those hostnames are gone.
 
 ## 4. Stripe production webhook (replaces `stripe listen`)
 
 `stripe listen` is **dev-only**. For prod, register a real endpoint:
 
 - Stripe Dashboard → Developers → Webhooks → Add endpoint:
-  `https://audric.ai/api/stripe/webhook` (use the temp domain while verifying,
-  then update to the apex at cutover).
+  `https://audric.ai/api/stripe/webhook`.
 - Events: `checkout.session.completed`, `customer.subscription.created`,
   `customer.subscription.updated`, `customer.subscription.deleted`,
   `invoice.paid`.
@@ -71,26 +71,15 @@ final apex up front, so nothing breaks at cutover:
 
 - Use a dedicated **production** Neon branch/DB (not the dev one).
 - Migrations run automatically in the build step (`tsx lib/db/migrate`).
+- This is **Drizzle + `POSTGRES_URL`** via `@audric/accounts`. The old
+  web-v2 Prisma / `DATABASE_URL` Neon is unrelated — safe to archive after
+  confirming no handle-backfill work remains.
 
-## 6. Domain cutover (v3 → apex `audric.ai`, web-v2 → `v2.audric.ai`)
+## 6. Domains
 
-Stage it — don't point the apex at an unverified deploy:
-
-1. **Deploy + verify v3 on a temp domain first** (e.g. `v3.audric.ai` on the v3
-   Vercel project). Run the §7 smoke there. Do NOT cut the apex until it's green.
-2. **Move web-v2 to `v2.audric.ai`:** in the web-v2 Vercel project, add the
-   `v2.audric.ai` domain, then remove the apex `audric.ai` (+ www). Update
-   web-v2's own OAuth/Enoki origins + any hardcoded `audric.ai` URLs to
-   `v2.audric.ai` so it keeps working there.
-3. **Point the apex at v3:** in the v3 project, add `audric.ai` (+ `www`).
-4. **Flip v3's config to the apex:** update v3's OAuth/Enoki origins + the Stripe
-   webhook endpoint to `https://audric.ai` (§3/§4).
-5. **Rollback (fast):** if anything is wrong, re-add the apex domain to the
-   web-v2 project — DNS/domain reassignment, no redeploy needed.
-
-Notes: web-v2 is live with real users — do step 2 in a low-traffic window and
-keep it reachable at `v2.audric.ai`. A small "Try the new Audric" link from
-v2 → apex is a nice-to-have, not required (the apex IS v3 after cutover).
+Apex + www already point at the web-v3 Vercel project. If a hostname still
+resolves to the retired `audric-web-v2` project, remove it there and delete
+that Vercel project.
 
 ## 7. Post-deploy smoke
 
@@ -98,7 +87,6 @@ v2 → apex is a nice-to-have, not required (the apex IS v3 after cutover).
 - [ ] Sign in with Google → Passport address + 7-day session.
 - [ ] Premium model gated on credit; free model never gated.
 - [ ] Image generation renders inline.
-- [ ] P2P `send_transfer` taps to confirm (gasless).
-- [ ] Credit: card top-up → webhook 200 → balance updates.
-- [ ] Subscriptions (if enabled): subscribe → tier + included credit.
-- [ ] Settings: delete-all-chats + purge-all work; memory toggle persists.
+- [ ] Send USDC (tap-to-confirm) lands on-chain.
+- [ ] Settings: memory toggle, delete chat, purge-all.
+- [ ] Confidential mode: toggle → TEE model → verify receipt.

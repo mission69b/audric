@@ -61,12 +61,14 @@ Not a chatbot — an agent that figures out what each turn needs and does it, us
 ## Architecture
 
 ```
-audric.ai → apps/web-v3   ← the live app (this is where work happens)
-            apps/web-v2   ← legacy/frozen (legacy.audric.ai); the old finance app on @t2000/*@4.x
+audric.ai          → apps/web-v3   ← the live consumer app
+agents.t2000.ai    → apps/console  ← t2 Agents store + console
 
 @t2000/sdk   ← wallet + payments (send / swap / x402 pay), gRPC
 t2000.ai     ← separate repo: CLI, SDK, MCP, gateway, contracts — the infra that powers Audric
 ```
+
+> `apps/web-v2` (legacy.audric.ai) was deleted 2026-07-24.
 
 See [`apps/web-v3/README.md`](./apps/web-v3/README.md) for app-level docs (stack, running locally, deploy).
 
