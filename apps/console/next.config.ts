@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   // substrate + zkLogin auth — SPEC_T2000_API_V2 §2).
   transpilePackages: ["@audric/accounts", "@audric/auth", "@audric/onramp"],
   poweredByHeader: false,
+  // The agent-coin bytecode rewriter loads its wasm behind a dynamic import,
+  // which Next's serverless file tracer misses — without this the launch
+  // route 500s with ENOENT on move_bytecode_template_bg.wasm (S.810 dogfood).
+  // Both glob roots covered: hoisted + pnpm virtual store.
+  outputFileTracingIncludes: {
+    "/api/capital/launch-prepare": [
+      "./node_modules/@mysten/move-bytecode-template/**",
+      "../../node_modules/.pnpm/@mysten+move-bytecode-template@*/node_modules/@mysten/move-bytecode-template/**",
+    ],
+  },
   async redirects() {
     // /join is the onboarding page (tabbed hire/sell, 2026-07-19); /sell and
     // /buy are aliases into it. The other retail-era paths (SPEC_HUB_V1)
